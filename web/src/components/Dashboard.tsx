@@ -21,6 +21,19 @@ export type Physician = {
   weeksVacation?: number
 }
 
+// Responsive helper
+function useIsMobile(breakpoint = 768): boolean {
+  const [isMobile, setIsMobile] = useState<boolean>(
+    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+  )
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < breakpoint)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [breakpoint])
+  return isMobile
+}
+
 // Extend FutureYear with nonMdEmploymentCosts
 export type FutureYear = {
   year: number
@@ -454,7 +467,10 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             store.setFutureValue(scenario, year, 'totalIncome', Number(e.target.value))
           }
           disabled={isReadOnly}
-          style={{ width: '100%' }}
+          style={{ 
+            width: '100%',
+            ['--fill-percent' as any]: `${((fy.totalIncome - 2000000) / (4000000 - 2000000)) * 100}%`
+          }}
         />
         <input
           type="text"
@@ -499,7 +515,10 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             )
           }
           disabled={isReadOnly}
-          style={{ width: '100%' }}
+          style={{ 
+            width: '100%',
+            ['--fill-percent' as any]: `${((fy.nonEmploymentCosts - 100000) / (500000 - 100000)) * 100}%`
+          }}
         />
         <input
           type="text"
@@ -546,7 +565,10 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             )
           }
           disabled={isReadOnly}
-          style={{ width: '100%' }}
+          style={{ 
+            width: '100%',
+            ['--fill-percent' as any]: `${((fy.nonMdEmploymentCosts - 50000) / (300000 - 50000)) * 100}%`
+          }}
         />
         <input
           type="text"
@@ -613,7 +635,10 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             )
           }
           disabled={isReadOnly}
-          style={{ width: '100%' }}
+          style={{ 
+            width: '100%',
+            ['--fill-percent' as any]: `${(fy.locumDays / 120) * 100}%`
+          }}
         />
         <input
           type="text"
@@ -655,7 +680,10 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             )
           }
           disabled={isReadOnly}
-          style={{ width: '100%' }}
+          style={{ 
+            width: '100%',
+            ['--fill-percent' as any]: `${(fy.miscEmploymentCosts / 100000) * 100}%`
+          }}
         />
         <input
           type="text"
@@ -792,7 +820,10 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   })
                 }
                 disabled={readOnly}
-                style={{ width: '100%' }}
+                style={{ 
+                  width: '100%',
+                  ['--fill-percent' as any]: `${((p.salary ?? 0) - 350000) / (650000 - 350000) * 100}%`
+                }}
               />
               <input
                 type="text"
@@ -887,7 +918,10 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   })
                 }
                 disabled={readOnly}
-                style={{ width: '100%' }}
+                style={{ 
+                  width: '100%',
+                  ['--fill-percent' as any]: `${((p.weeksVacation ?? 0) - 2) / (16 - 2) * 100}%`
+                }}
               />
               <input
                 type="text"
@@ -1016,17 +1050,34 @@ function YearOnYearControls({ scenario }: { scenario: ScenarioKey }) {
         <div>
           <label style={{ display: 'block', fontSize: 14, marginBottom: 4 }}>Income Growth %</label>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <input
-              type="range"
-              min={-10}
-              max={10}
-              step={1}
-              value={sc.projection.incomeGrowthPct}
-              onChange={(e) => {
-                store.setProjectionGrowthPct(scenario, 'income', Number(e.target.value))
-              }}
-              style={{ flex: 1 }}
-            />
+            <div style={{ position: 'relative', flex: 1 }}>
+              <input
+                type="range"
+                min={-10}
+                max={10}
+                step={1}
+                value={sc.projection.incomeGrowthPct}
+                onChange={(e) => {
+                  store.setProjectionGrowthPct(scenario, 'income', Number(e.target.value))
+                }}
+                style={{ 
+                  width: '100%',
+                  ['--fill-start' as any]: sc.projection.incomeGrowthPct >= 0 ? '50%' : `${((sc.projection.incomeGrowthPct + 10) / 20) * 100}%`,
+                  ['--fill-end' as any]: sc.projection.incomeGrowthPct >= 0 ? `${((sc.projection.incomeGrowthPct + 10) / 20) * 100}%` : '50%',
+                }}
+                className="growth-slider"
+              />
+              <div style={{
+                position: 'absolute',
+                top: 'calc(50% + 4px)',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '2px',
+                height: '8px',
+                backgroundColor: '#374151',
+                pointerEvents: 'none'
+              }} />
+            </div>
             <input
               type="number"
               min={-10}
@@ -1042,17 +1093,34 @@ function YearOnYearControls({ scenario }: { scenario: ScenarioKey }) {
         <div>
           <label style={{ display: 'block', fontSize: 14, marginBottom: 4 }}>Cost Growth %</label>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <input
-              type="range"
-              min={-10}
-              max={10}
-              step={1}
-              value={sc.projection.costGrowthPct}
-              onChange={(e) => {
-                store.setProjectionGrowthPct(scenario, 'cost', Number(e.target.value))
-              }}
-              style={{ flex: 1 }}
-            />
+            <div style={{ position: 'relative', flex: 1 }}>
+              <input
+                type="range"
+                min={-10}
+                max={10}
+                step={1}
+                value={sc.projection.costGrowthPct}
+                onChange={(e) => {
+                  store.setProjectionGrowthPct(scenario, 'cost', Number(e.target.value))
+                }}
+                style={{ 
+                  width: '100%',
+                  ['--fill-start' as any]: sc.projection.costGrowthPct >= 0 ? '50%' : `${((sc.projection.costGrowthPct + 10) / 20) * 100}%`,
+                  ['--fill-end' as any]: sc.projection.costGrowthPct >= 0 ? `${((sc.projection.costGrowthPct + 10) / 20) * 100}%` : '50%',
+                }}
+                className="growth-slider"
+              />
+              <div style={{
+                position: 'absolute',
+                top: 'calc(50% + 4px)',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '2px',
+                height: '8px',
+                backgroundColor: '#374151',
+                pointerEvents: 'none'
+              }} />
+            </div>
             <input
               type="number"
               min={-10}
@@ -1234,6 +1302,7 @@ function HistoricAndProjectionChart() {
 
 export function Dashboard() {
   const store = useDashboardStore()
+  const isMobile = useIsMobile()
   useEffect(() => {}, [])
   useEffect(() => {
     // Nudge Plotly to recompute sizes when layout width changes
@@ -1274,9 +1343,9 @@ export function Dashboard() {
   }
 
   return (
-    <div style={{ fontFamily: 'Inter, system-ui, Arial', padding: 16, maxWidth: store.scenarioBEnabled ? 'none' : 1000, margin: store.scenarioBEnabled ? '0' : '0 auto' }}>
+    <div style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16, maxWidth: store.scenarioBEnabled ? 'none' : 1000, margin: store.scenarioBEnabled ? '0' : '0 auto' }}>
       <h2 style={{ marginTop: 0 }}>RadiantCare Physician Compensation</h2>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8, gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end', flexWrap: 'wrap', marginBottom: 8, gap: 8 }}>
         <button onClick={() => { store.resetToDefaults(); window.location.hash = '' }} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Reset to defaults</button>
         <button onClick={copyShareLink} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Copy shareable link</button>
       </div>
@@ -1300,10 +1369,10 @@ export function Dashboard() {
         <div style={{
           border: '1px solid #e5e7eb',
           borderRadius: 8,
-          padding: 12,
+          padding: isMobile ? 8 : 12,
           marginTop: 0,
           display: 'grid',
-          gridTemplateColumns: store.scenarioBEnabled ? '1fr 1fr' : '1fr',
+          gridTemplateColumns: store.scenarioBEnabled && !isMobile ? '1fr 1fr' : '1fr',
           alignItems: 'start',
           gap: 12,
           background: '#f9fafb',
@@ -1318,7 +1387,7 @@ export function Dashboard() {
                   key={`A-${yr}`}
                   onClick={() => store.setSelectedYear('A', yr)}
                   style={{
-                    padding: '8px 12px',
+                    padding: isMobile ? '6px 10px' : '8px 12px',
                     borderRadius: 6,
                     border: '1px solid #ccc',
                     background: store.scenarioA.selectedYear === yr ? '#f0f4ff' : 'white',
@@ -1342,11 +1411,11 @@ export function Dashboard() {
               <YearOnYearControls scenario={'B'} />
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {[2025, ...store.scenarioB.future.map((f) => f.year)].map((yr) => (
-                  <button
+                <button
                     key={`B-${yr}`}
                     onClick={() => store.setSelectedYear('B', yr)}
                     style={{
-                      padding: '8px 12px',
+                    padding: isMobile ? '6px 10px' : '8px 12px',
                       borderRadius: 6,
                       border: '1px solid #ccc',
                       background: store.scenarioB?.selectedYear === yr ? '#f0f4ff' : 'white',

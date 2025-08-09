@@ -67,20 +67,40 @@ button:active {
   box-shadow: 0 1px 3px rgba(0,0,0,0.12) inset;
 }
 
-/* Range slider baseline track */
+/* Range slider track with filled effect */
 input[type="range"]::-webkit-slider-runnable-track {
   height: 4px;
-  background: #e5e7eb; /* light gray line */
+  background: linear-gradient(to right, #c4c9d0 0%, #c4c9d0 var(--fill-percent, 0%), #e5e7eb var(--fill-percent, 0%), #e5e7eb 100%);
   border-radius: 4px;
 }
 input[type="range"]::-moz-range-track {
   height: 4px;
-  background: #e5e7eb;
+  background: #e5e7eb; /* Firefox fallback */
+  border-radius: 4px;
+}
+/* Firefox filled effect using ::-moz-range-progress */
+input[type="range"]::-moz-range-progress {
+  background: #c4c9d0;
+  height: 4px;
   border-radius: 4px;
 }
 input[type="range"]:disabled::-webkit-slider-runnable-track,
 input[type="range"]:disabled::-moz-range-track {
   background: #f0f1f3;
+}
+input[type="range"]:disabled::-moz-range-progress {
+  background: #d1d5db;
+}
+
+/* Special growth sliders with center-to-handle fill */
+input[type="range"].growth-slider::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, #e5e7eb 0%, #e5e7eb var(--fill-start, 50%), #c4c9d0 var(--fill-start, 50%), #c4c9d0 var(--fill-end, 50%), #e5e7eb var(--fill-end, 50%), #e5e7eb 100%);
+}
+input[type="range"].growth-slider::-moz-range-track {
+  background: #e5e7eb;
+}
+input[type="range"].growth-slider::-moz-range-progress {
+  background: transparent; /* Let the track handle the fill effect */
 }
 
 /* Range slider thumb hover glow */
@@ -131,6 +151,29 @@ input[type="range"]::-webkit-slider-thumb {
 /* Firefox generally centers automatically, but ensure consistency */
 input[type="range"]::-moz-range-thumb {
   /* Firefox centers by default; keep equal sizes to track */
+}
+
+/* Slider thumb color tweaks (light blue) */
+input[type="range"]::-webkit-slider-thumb {
+  background: #dbeafe; /* light blue */
+  border-color: #60a5fa; /* blue-400 */
+}
+input[type="range"]:hover::-webkit-slider-thumb {
+  box-shadow: 0 0 0 6px rgba(96, 165, 250, 0.2); /* blue halo */
+}
+input[type="range"]:active::-webkit-slider-thumb {
+  background: #bfdbfe; /* slightly darker on drag */
+}
+/* Firefox */
+input[type="range"]::-moz-range-thumb {
+  background: #dbeafe;
+  border-color: #60a5fa;
+}
+input[type="range"]:hover::-moz-range-thumb {
+  box-shadow: 0 0 0 6px rgba(96, 165, 250, 0.2);
+}
+input[type="range"]:active::-moz-range-thumb {
+  background: #bfdbfe;
 }
 
 @media (prefers-color-scheme: light) {
