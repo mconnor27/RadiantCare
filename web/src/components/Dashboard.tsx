@@ -189,7 +189,7 @@ export const useDashboardStore = create<Store>()(
   persist(
     immer<Store>((set, get) => {
       void get
-      return ({
+      return {
         historic: HISTORIC_DATA,
         scenarioA: {
           future: INITIAL_FUTURE_YEARS_A,
@@ -245,14 +245,9 @@ export const useDashboardStore = create<Store>()(
           set((state) => {
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!sc) return
-            // clamp and set
             const clamped = Math.max(-10, Math.min(10, value))
-            if (field === 'income') {
-              sc.projection.incomeGrowthPct = clamped
-            } else {
-              sc.projection.costGrowthPct = clamped
-            }
-            // recompute projections immediately from the last actual
+            if (field === 'income') sc.projection.incomeGrowthPct = clamped
+            else sc.projection.costGrowthPct = clamped
             const last = state.historic[state.historic.length - 1]
             const incomeGpct = sc.projection.incomeGrowthPct / 100
             const costGpct = sc.projection.costGrowthPct / 100
@@ -266,7 +261,6 @@ export const useDashboardStore = create<Store>()(
               fy.totalIncome = income
               fy.nonEmploymentCosts = costs
               fy.nonMdEmploymentCosts = nonMd
-              // locumDays and miscEmploymentCosts are manual per year; leave unchanged
             }
           }),
         applyProjectionFromLastActual: (scenario) =>
@@ -286,7 +280,6 @@ export const useDashboardStore = create<Store>()(
               fy.totalIncome = income
               fy.nonEmploymentCosts = costs
               fy.nonMdEmploymentCosts = nonMd
-              // locumDays and miscEmploymentCosts are manual per year; leave unchanged
             }
           }),
         setSelectedYear: (scenario, year) =>
@@ -295,7 +288,6 @@ export const useDashboardStore = create<Store>()(
             if (!sc) return
             sc.selectedYear = year
           }),
-        // Load a snapshot from a shared URL or imported JSON
         loadSnapshot: (snapshot) =>
           set((state) => {
             state.scenarioA = snapshot.scenarioA
@@ -304,7 +296,6 @@ export const useDashboardStore = create<Store>()(
           }),
         resetToDefaults: () =>
           set((state) => {
-            // Reset scenarios to initial defaults
             state.scenarioA = {
               future: INITIAL_FUTURE_YEARS_A.map((f) => ({ ...f, physicians: [...f.physicians] })),
               projection: { incomeGrowthPct: 0, costGrowthPct: 0 },
@@ -313,8 +304,8 @@ export const useDashboardStore = create<Store>()(
             state.scenarioBEnabled = false
             state.scenarioB = undefined
           }, false),
-      })
-    })),
+      }
+    }),
     {
       name: 'radiantcare-state-v1',
       storage: createJSONStorage((): Storage => localStorage),
@@ -1287,7 +1278,7 @@ export function Dashboard() {
       <h2 style={{ marginTop: 0 }}>RadiantCare Physician Compensation</h2>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8, gap: 8 }}>
         <button onClick={() => { store.resetToDefaults(); window.location.hash = '' }} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Reset to defaults</button>
-        <button onClick={copyShareLink} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Copy share link</button>
+        <button onClick={copyShareLink} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Copy shareable link</button>
       </div>
       <HistoricAndProjectionChart key={store.scenarioBEnabled ? 'withB' : 'withoutB'} />
 
