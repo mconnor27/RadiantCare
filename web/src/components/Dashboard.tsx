@@ -456,7 +456,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
       <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb', padding: 8 }}>
 
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Total Income</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={2000000}
@@ -479,7 +479,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             store.setFutureValue(scenario, year, 'totalIncome', Number(e.target.value.replace(/[^0-9]/g, '')))
           }
           disabled={isReadOnly}
-          style={{ width: 140 }}
+          style={{ width: isMobile ? 120 : 140, justifySelf: isMobile ? 'end' : undefined }}
         />
         <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: '14px', color: '#666', width: '16px', height: '16px', textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
           onMouseEnter={(e) => {
@@ -499,7 +499,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
       </div>
 
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Non-Employment Costs</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={100000}
@@ -532,7 +532,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             )
           }
           disabled={isReadOnly}
-          style={{ width: 140 }}
+          style={{ width: isMobile ? 120 : 140, justifySelf: isMobile ? 'end' : undefined }}
         />
         <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 14, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
           onMouseEnter={(e) => {
@@ -549,7 +549,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
       </div>
 
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Non‑MD Employment Costs</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={50000}
@@ -582,7 +582,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             )
           }
           disabled={isReadOnly}
-          style={{ width: 140 }}
+          style={{ width: isMobile ? 120 : 140, justifySelf: isMobile ? 'end' : undefined }}
         />
         <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 14, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
           onMouseEnter={(e) => {
@@ -619,7 +619,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
       </div>
 
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Locum's Costs</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={0}
@@ -644,7 +644,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
           type="text"
           value={`${currency(Math.round(fy.locumDays * LOCUM_DAY_RATE))} — ${fy.locumDays} days`}
           readOnly
-          style={{ width: 200 }}
+          style={{ width: isMobile ? 160 : 200, justifySelf: isMobile ? 'end' : undefined }}
         />
         <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 14, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
           onMouseEnter={(e) => {
@@ -664,7 +664,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
       </div>
 
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Misc Employment Costs</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={0}
@@ -693,11 +693,11 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
               scenario,
               year,
               'miscEmploymentCosts',
-              Number(e.target.value.replace(/[^0-9]/g, ''))
+              Number(e.target.value)
             )
           }
           disabled={isReadOnly}
-          style={{ width: 140 }}
+          style={{ width: isMobile ? 120 : 140, justifySelf: isMobile ? 'end' : undefined }}
         />
         <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 14, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
           onMouseEnter={(e) => {
@@ -1040,13 +1040,14 @@ function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
 function YearOnYearControls({ scenario }: { scenario: ScenarioKey }) {
   const store = useDashboardStore()
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB
+  const isMobile = useIsMobile()
   
   if (!sc) return null
   
   return (
     <div style={{ marginBottom: 12, padding: 8, backgroundColor: '#f8f9fa', borderRadius: 4, border: '1px solid #e5e7eb' }}>
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, textAlign: 'center' }}>Year-over-Year Growth</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
         <div>
           <label style={{ display: 'block', fontSize: 14, marginBottom: 4 }}>Income Growth %</label>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -1086,7 +1087,7 @@ function YearOnYearControls({ scenario }: { scenario: ScenarioKey }) {
               onChange={(e) => {
                 store.setProjectionGrowthPct(scenario, 'income', Number(e.target.value))
               }}
-              style={{ width: 56, fontSize: 14 }}
+              style={{ width: isMobile ? 48 : 56, fontSize: 14 }}
             />
           </div>
         </div>
@@ -1129,7 +1130,7 @@ function YearOnYearControls({ scenario }: { scenario: ScenarioKey }) {
               onChange={(e) => {
                 store.setProjectionGrowthPct(scenario, 'cost', Number(e.target.value))
               }}
-              style={{ width: 56, fontSize: 14 }}
+              style={{ width: isMobile ? 48 : 56, fontSize: 14 }}
             />
           </div>
         </div>
@@ -1140,6 +1141,7 @@ function YearOnYearControls({ scenario }: { scenario: ScenarioKey }) {
 
 function HistoricAndProjectionChart() {
   const store = useDashboardStore()
+  const isMobile = useIsMobile()
   const historicYears = store.historic.map((h) => h.year)
   const incomeHistoric = store.historic.map((h) => h.totalIncome)
   const costHistoric = store.historic.map((h) => h.nonEmploymentCosts)
@@ -1188,7 +1190,7 @@ function HistoricAndProjectionChart() {
     <div
       style={{
         flex: 1,
-        minWidth: 600,
+        minWidth: isMobile ? undefined : 600,
         maxWidth: 1100,
         margin: '0 auto',
         border: '1px solid #e5e7eb',
@@ -1245,7 +1247,7 @@ function HistoricAndProjectionChart() {
           doubleClick: false as any,
         }}
         useResizeHandler={true}
-        style={{ width: '100%', height: 420 }}
+        style={{ width: '100%', height: isMobile ? 320 : 420 }}
       />
     </div>
   )
@@ -1332,7 +1334,7 @@ export function Dashboard() {
           <div>
             <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario A</div>
             <YearOnYearControls scenario={'A'} />
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal' }}>
               {[2025, ...store.scenarioA.future.map((f) => f.year)].map((yr) => (
                 <button
                   key={`A-${yr}`}
@@ -1360,7 +1362,7 @@ export function Dashboard() {
             <div>
               <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario B</div>
               <YearOnYearControls scenario={'B'} />
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal' }}>
                 {[2025, ...store.scenarioB.future.map((f) => f.year)].map((yr) => (
                 <button
                     key={`B-${yr}`}
@@ -1392,6 +1394,7 @@ export function Dashboard() {
 
 function OverallCompensationSummary() {
   const store = useDashboardStore()
+  const isMobile = useIsMobile()
   const years = [2025, ...store.scenarioA.future.map((f) => f.year)]
   const perYearA = years.map((y) => ({ year: y, comps: computeAllCompensationsForYear(y, 'A') }))
   const perYearB = store.scenarioBEnabled && store.scenarioB
@@ -1492,11 +1495,11 @@ function OverallCompensationSummary() {
           }}
           config={{ responsive: true, displayModeBar: false }}
           useResizeHandler={true}
-          style={{ width: '100%', height: 420 }}
+          style={{ width: '100%', height: isMobile ? 360 : 420 }}
         />
       </div>
 
-      <div style={{ marginTop: 8 }}>
+      <div style={{ marginTop: 8, overflowX: isMobile ? 'auto' : 'visible' }}>
         <div style={{ fontWeight: 600, marginBottom: 2 }}>Per Physician by year</div>
         <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 2, fontWeight: 600 }}>
           <div>Name</div>
