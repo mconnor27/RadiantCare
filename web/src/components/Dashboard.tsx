@@ -1206,8 +1206,8 @@ function HistoricAndProjectionChart() {
         layout={{
           title: { text: 'RadiantCare: Historic and Projected Totals' },
           dragmode: false as any,
-          legend: { orientation: 'h' },
-          margin: { l: 60, r: 20, t: 40, b: 40 },
+          legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.1, yanchor: 'top' },
+          margin: { l: 60, r: 20, t: 40, b: 64 },
           yaxis: {
             tickprefix: '$',
             separatethousands: true,
@@ -1274,7 +1274,7 @@ export function Dashboard() {
   }
 
   return (
-    <div style={{ fontFamily: 'Inter, system-ui, Arial', padding: 16, maxWidth: store.scenarioBEnabled ? 'none' : 1100, margin: store.scenarioBEnabled ? '0' : '0 auto' }}>
+    <div style={{ fontFamily: 'Inter, system-ui, Arial', padding: 16, maxWidth: store.scenarioBEnabled ? 'none' : 1000, margin: store.scenarioBEnabled ? '0' : '0 auto' }}>
       <h2 style={{ marginTop: 0 }}>RadiantCare Physician Compensation</h2>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8, gap: 8 }}>
         <button onClick={() => { store.resetToDefaults(); window.location.hash = '' }} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Reset to defaults</button>
@@ -1380,6 +1380,10 @@ function OverallCompensationSummary() {
   // const totalPerYear = perYear.map(({ year, comps }) => ({ year, total: comps.reduce((s, c) => s + c.comp, 0) }))
 
   const allNames = Array.from(new Set(perYearA.flatMap((y) => y.comps.map((c) => c.name))))
+  // Assign a consistent color per person for both scenarios
+  const colorPalette = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+  const colorByName: Record<string, string> = {}
+  allNames.forEach((n, i) => { colorByName[n] = colorPalette[i % colorPalette.length] })
   const seriesA = allNames.map((name) => ({
     name,
     values: years.map((y) => {
@@ -1431,34 +1435,40 @@ function OverallCompensationSummary() {
       <h3 style={{ margin: '12px 0' }}>Multi-Year Compensation Summary (2025–2030)</h3>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <Plot
-          data={[
-            ...seriesA.map((s) => ({
-              type: 'scatter',
-              mode: 'lines+markers',
-              name: `A — ${s.name}`,
-              x: years,
-              y: s.values,
-              line: { width: isHighlighted('A', s.name) ? 3 : 1.2 }, // solid for A
-              opacity: highlight ? (isHighlighted('A', s.name) ? 1 : 0.2) : 1,
-            })),
-            ...(store.scenarioBEnabled
-              ? seriesB.map((s) => ({
+          data={(() => {
+            const rows: any[] = []
+            for (const name of allNames) {
+              const a = seriesA.find((s) => s.name === name)!
+              rows.push({
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: store.scenarioBEnabled ? `${name} (A)` : name,
+                x: years,
+                y: a.values,
+                line: { color: colorByName[name], width: isHighlighted('A', name) ? 3 : 1.2 },
+                opacity: highlight ? (isHighlighted('A', name) ? 1 : 0.2) : 1,
+              })
+              if (store.scenarioBEnabled) {
+                const b = seriesB.find((s) => s.name === name)!
+                rows.push({
                   type: 'scatter',
                   mode: 'lines+markers',
-                  name: `B — ${s.name}`,
+                  name: `${name} (B)`,
                   x: years,
-                  y: s.values,
-                  line: { dash: 'dot', width: isHighlighted('B', s.name) ? 3 : 1.2 }, // dotted for B
-                  opacity: highlight ? (isHighlighted('B', s.name) ? 1 : 0.2) : 1,
-                }))
-              : []),
-          ] as any}
+                  y: b.values,
+                  line: { color: colorByName[name], dash: 'dot', width: isHighlighted('B', name) ? 3 : 1.2 },
+                  opacity: highlight ? (isHighlighted('B', name) ? 1 : 0.2) : 1,
+                })
+              }
+            }
+            return rows
+          })() as any}
           layout={{
             title: { text: 'Compensation per Physician (by year)', font: { size: 14 } },
-            margin: { l: 48, r: 8, t: 28, b: 36 },
+            margin: { l: 48, r: 8, t: 28, b: 72 },
             yaxis: { tickprefix: '$', separatethousands: true },
             xaxis: { dtick: 1 },
-            legend: { orientation: 'h' },
+            legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.08, yanchor: 'top' },
           }}
           config={{ responsive: true, displayModeBar: false }}
           useResizeHandler={true}
