@@ -34,6 +34,45 @@ function useIsMobile(breakpoint = 768): boolean {
   return isMobile
 }
 
+// Helper function for creating mobile-friendly tooltips
+function createTooltip(id: string, content: string, e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>) {
+  const existing = document.getElementById(id)
+  if (existing) existing.remove()
+  
+  const tooltip = document.createElement('div')
+  tooltip.id = id
+  const isMobileTooltip = window.innerWidth <= 768
+  
+  if (isMobileTooltip) {
+    tooltip.className = 'tooltip-mobile'
+    tooltip.style.cssText = `position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; z-index: 9999; max-width: calc(100vw - 40px); box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+  } else {
+    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+  }
+  
+  tooltip.textContent = content
+  document.body.appendChild(tooltip)
+  
+  if (!isMobileTooltip) {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    tooltip.style.left = `${rect.right + 10}px`
+    tooltip.style.top = `${rect.top + window.scrollY}px`
+  }
+  
+  // Auto-hide tooltip on mobile after 3 seconds
+  if (isMobileTooltip) {
+    setTimeout(() => {
+      const t = document.getElementById(id)
+      if (t) t.remove()
+    }, 3000)
+  }
+}
+
+function removeTooltip(id: string) {
+  const tooltip = document.getElementById(id)
+  if (tooltip) tooltip.remove()
+}
+
 // Extend FutureYear with nonMdEmploymentCosts
 export type FutureYear = {
   year: number
@@ -457,7 +496,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
       <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb', padding: 8 }}>
 
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Total Income</div>
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={2000000}
@@ -483,24 +522,15 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
           style={{ width: isMobile ? 120 : 140, justifySelf: isMobile ? 'end' : undefined }}
         />
         <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: '14px', color: '#666', width: '16px', height: '16px', textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-          onMouseEnter={(e) => {
-            const existing = document.getElementById('income-tooltip')
-            if (existing) existing.remove()
-            const tooltip = document.createElement('div')
-            tooltip.id = 'income-tooltip'
-            tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
-            tooltip.textContent = 'Gross (Therapy and Other)'
-            document.body.appendChild(tooltip)
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-            tooltip.style.left = `${rect.right + 10}px`
-            tooltip.style.top = `${rect.top + window.scrollY}px`
-          }}
-          onMouseLeave={() => { const t = document.getElementById('income-tooltip'); if (t) t.remove() }}
+          onMouseEnter={(e) => createTooltip('income-tooltip', 'Gross (Therapy and Other)', e)}
+          onMouseLeave={() => removeTooltip('income-tooltip')}
+          onTouchStart={(e) => createTooltip('income-tooltip', 'Gross (Therapy and Other)', e)}
+          onClick={(e) => createTooltip('income-tooltip', 'Gross (Therapy and Other)', e)}
         >ℹ</div>
       </div>
 
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Non-Employment Costs</div>
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={100000}
@@ -536,21 +566,15 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
           style={{ width: isMobile ? 120 : 140, justifySelf: isMobile ? 'end' : undefined }}
         />
         <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 14, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-          onMouseEnter={(e) => {
-            const existing = document.getElementById('nonemp-tooltip'); if (existing) existing.remove();
-            const tooltip = document.createElement('div'); tooltip.id = 'nonemp-tooltip';
-            tooltip.style.cssText = 'position:absolute;background:#333;color:#fff;padding:8px 12px;border-radius:4px;font-size:12px;white-space:pre-line;z-index:1000;max-width:360px;box-shadow:0 2px 8px rgba(0,0,0,0.2);pointer-events:none;';
-            tooltip.textContent = 'Includes these non-employment categories:\n\nInsurance Cost\nState/Local Taxes\nCommunications Cost\nLicensure Costs\nPromotional Costs\nBilling Costs\nOffice Overhead\nCapital Expense';
-            document.body.appendChild(tooltip);
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            tooltip.style.left = `${rect.right + 10}px`; tooltip.style.top = `${rect.top + window.scrollY}px`;
-          }}
-          onMouseLeave={() => { const t = document.getElementById('nonemp-tooltip'); if (t) t.remove(); }}
+          onMouseEnter={(e) => createTooltip('nonemp-tooltip', 'Includes these non-employment categories:\n\nInsurance Cost\nState/Local Taxes\nCommunications Cost\nLicensure Costs\nPromotional Costs\nBilling Costs\nOffice Overhead\nCapital Expense', e)}
+          onMouseLeave={() => removeTooltip('nonemp-tooltip')}
+          onTouchStart={(e) => createTooltip('nonemp-tooltip', 'Includes these non-employment categories:\n\nInsurance Cost\nState/Local Taxes\nCommunications Cost\nLicensure Costs\nPromotional Costs\nBilling Costs\nOffice Overhead\nCapital Expense', e)}
+          onClick={(e) => createTooltip('nonemp-tooltip', 'Includes these non-employment categories:\n\nInsurance Cost\nState/Local Taxes\nCommunications Cost\nLicensure Costs\nPromotional Costs\nBilling Costs\nOffice Overhead\nCapital Expense', e)}
         >ℹ</div>
       </div>
 
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Non‑MD Employment Costs</div>
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={50000}
@@ -620,7 +644,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
       </div>
 
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Locum's Costs</div>
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={0}
@@ -665,7 +689,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
       </div>
 
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Misc Employment Costs</div>
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={0}
@@ -1297,7 +1321,7 @@ export function Dashboard() {
   }
 
   return (
-    <div style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16, maxWidth: store.scenarioBEnabled ? 'none' : 1000, margin: store.scenarioBEnabled ? '0' : '0 auto' }}>
+    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16, maxWidth: store.scenarioBEnabled ? 'none' : 1000, margin: store.scenarioBEnabled ? '0' : '0 auto' }}>
       <h2 style={{ marginTop: 0 }}>RadiantCare Physician Compensation</h2>
       <div style={{ display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end', flexWrap: 'wrap', marginBottom: 8, gap: 8 }}>
         <button onClick={() => { store.resetToDefaults(); window.location.hash = '' }} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Reset to defaults</button>
@@ -1320,7 +1344,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div style={{
+        <div className="scenario-grid" style={{
           border: '1px solid #e5e7eb',
           borderRadius: 8,
           padding: isMobile ? 8 : 12,
@@ -1335,7 +1359,7 @@ export function Dashboard() {
           <div>
             <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario A</div>
             <YearOnYearControls scenario={'A'} />
-            <div style={{ display: 'flex', gap: 8, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal' }}>
+            <div className="year-buttons" style={{ display: 'flex', gap: 8, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal' }}>
               {[2025, ...store.scenarioA.future.map((f) => f.year)].map((yr) => (
                 <button
                   key={`A-${yr}`}
@@ -1363,7 +1387,7 @@ export function Dashboard() {
             <div>
               <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario B</div>
               <YearOnYearControls scenario={'B'} />
-              <div style={{ display: 'flex', gap: 8, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal' }}>
+              <div className="year-buttons" style={{ display: 'flex', gap: 8, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal' }}>
                 {[2025, ...store.scenarioB.future.map((f) => f.year)].map((yr) => (
                 <button
                     key={`B-${yr}`}
