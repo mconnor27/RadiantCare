@@ -187,130 +187,133 @@ const INITIAL_FUTURE_YEARS_GENERIC: FutureYear[] = FUTURE_YEARS_BASE.map((b) => 
 
 export const useDashboardStore = create<Store>()(
   persist(
-    immer<Store>((set, get) => ({
-      historic: HISTORIC_DATA,
-      scenarioA: {
-        future: INITIAL_FUTURE_YEARS_A,
-        projection: { incomeGrowthPct: 0, costGrowthPct: 0 },
-        selectedYear: FUTURE_YEARS_BASE[0].year,
-      },
-      scenarioB: undefined,
-      scenarioBEnabled: false,
-      setScenarioEnabled: (enabled) =>
-        set((state) => {
-          state.scenarioBEnabled = enabled
-          if (enabled) {
-            const cloned = JSON.parse(
-              JSON.stringify(state.scenarioA)
-            ) as ScenarioState
-            state.scenarioB = {
-              future: cloned.future,
-              projection: { ...cloned.projection },
-              selectedYear: state.scenarioA.selectedYear,
+    immer<Store>((set, get) => {
+      void get
+      return ({
+        historic: HISTORIC_DATA,
+        scenarioA: {
+          future: INITIAL_FUTURE_YEARS_A,
+          projection: { incomeGrowthPct: 0, costGrowthPct: 0 },
+          selectedYear: FUTURE_YEARS_BASE[0].year,
+        },
+        scenarioB: undefined,
+        scenarioBEnabled: false,
+        setScenarioEnabled: (enabled) =>
+          set((state) => {
+            state.scenarioBEnabled = enabled
+            if (enabled) {
+              const cloned = JSON.parse(
+                JSON.stringify(state.scenarioA)
+              ) as ScenarioState
+              state.scenarioB = {
+                future: cloned.future,
+                projection: { ...cloned.projection },
+                selectedYear: state.scenarioA.selectedYear,
+              }
+            } else {
+              state.scenarioB = undefined
             }
-          } else {
+          }),
+        setFutureValue: (scenario, year, field, value) =>
+          set((state) => {
+            const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
+            if (!sc) return
+            const fy = sc.future.find((f) => f.year === year)
+            if (fy) {
+              ;(fy as any)[field] = value
+            }
+          }),
+        upsertPhysician: (scenario, year, physician) =>
+          set((state) => {
+            const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
+            if (!sc) return
+            const fy = sc.future.find((f) => f.year === year)
+            if (!fy) return
+            const idx = fy.physicians.findIndex((p) => p.id === physician.id)
+            if (idx >= 0) fy.physicians[idx] = physician
+            else fy.physicians.push(physician)
+          }),
+        removePhysician: (scenario, year, physicianId) =>
+          set((state) => {
+            const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
+            if (!sc) return
+            const fy = sc.future.find((f) => f.year === year)
+            if (!fy) return
+            fy.physicians = fy.physicians.filter((p) => p.id !== physicianId)
+          }),
+        setProjectionGrowthPct: (scenario, field, value) =>
+          set((state) => {
+            const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
+            if (!sc) return
+            // clamp and set
+            const clamped = Math.max(-10, Math.min(10, value))
+            if (field === 'income') {
+              sc.projection.incomeGrowthPct = clamped
+            } else {
+              sc.projection.costGrowthPct = clamped
+            }
+            // recompute projections immediately from the last actual
+            const last = state.historic[state.historic.length - 1]
+            const incomeGpct = sc.projection.incomeGrowthPct / 100
+            const costGpct = sc.projection.costGrowthPct / 100
+            let income = last.totalIncome
+            let costs = last.nonEmploymentCosts
+            let nonMd = DEFAULT_NON_MD_EMPLOYMENT_COSTS_BASE
+            for (const fy of sc.future) {
+              income = income * (1 + incomeGpct)
+              costs = costs * (1 + costGpct)
+              nonMd = nonMd * (1 + costGpct)
+              fy.totalIncome = income
+              fy.nonEmploymentCosts = costs
+              fy.nonMdEmploymentCosts = nonMd
+              // locumDays and miscEmploymentCosts are manual per year; leave unchanged
+            }
+          }),
+        applyProjectionFromLastActual: (scenario) =>
+          set((state) => {
+            const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
+            if (!sc) return
+            const last = state.historic[state.historic.length - 1]
+            const incomeGpct = sc.projection.incomeGrowthPct / 100
+            const costGpct = sc.projection.costGrowthPct / 100
+            let income = last.totalIncome
+            let costs = last.nonEmploymentCosts
+            let nonMd = DEFAULT_NON_MD_EMPLOYMENT_COSTS_BASE
+            for (const fy of sc.future) {
+              income = income * (1 + incomeGpct)
+              costs = costs * (1 + costGpct)
+              nonMd = nonMd * (1 + costGpct)
+              fy.totalIncome = income
+              fy.nonEmploymentCosts = costs
+              fy.nonMdEmploymentCosts = nonMd
+              // locumDays and miscEmploymentCosts are manual per year; leave unchanged
+            }
+          }),
+        setSelectedYear: (scenario, year) =>
+          set((state) => {
+            const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
+            if (!sc) return
+            sc.selectedYear = year
+          }),
+        // Load a snapshot from a shared URL or imported JSON
+        loadSnapshot: (snapshot) =>
+          set((state) => {
+            state.scenarioA = snapshot.scenarioA
+            state.scenarioBEnabled = !!snapshot.scenarioBEnabled
+            state.scenarioB = snapshot.scenarioBEnabled && snapshot.scenarioB ? snapshot.scenarioB : undefined
+          }),
+        resetToDefaults: () =>
+          set((state) => {
+            // Reset scenarios to initial defaults
+            state.scenarioA = {
+              future: INITIAL_FUTURE_YEARS_A.map((f) => ({ ...f, physicians: [...f.physicians] })),
+              projection: { incomeGrowthPct: 0, costGrowthPct: 0 },
+              selectedYear: FUTURE_YEARS_BASE[0].year,
+            }
+            state.scenarioBEnabled = false
             state.scenarioB = undefined
-          }
-        }),
-      setFutureValue: (scenario, year, field, value) =>
-        set((state) => {
-          const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
-          if (!sc) return
-          const fy = sc.future.find((f) => f.year === year)
-          if (fy) {
-            ;(fy as any)[field] = value
-          }
-        }),
-      upsertPhysician: (scenario, year, physician) =>
-        set((state) => {
-          const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
-          if (!sc) return
-          const fy = sc.future.find((f) => f.year === year)
-          if (!fy) return
-          const idx = fy.physicians.findIndex((p) => p.id === physician.id)
-          if (idx >= 0) fy.physicians[idx] = physician
-          else fy.physicians.push(physician)
-        }),
-      removePhysician: (scenario, year, physicianId) =>
-        set((state) => {
-          const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
-          if (!sc) return
-          const fy = sc.future.find((f) => f.year === year)
-          if (!fy) return
-          fy.physicians = fy.physicians.filter((p) => p.id !== physicianId)
-        }),
-      setProjectionGrowthPct: (scenario, field, value) =>
-        set((state) => {
-          const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
-          if (!sc) return
-          // clamp and set
-          const clamped = Math.max(-10, Math.min(10, value))
-          if (field === 'income') {
-            sc.projection.incomeGrowthPct = clamped
-          } else {
-            sc.projection.costGrowthPct = clamped
-          }
-          // recompute projections immediately from the last actual
-          const last = state.historic[state.historic.length - 1]
-          const incomeGpct = sc.projection.incomeGrowthPct / 100
-          const costGpct = sc.projection.costGrowthPct / 100
-          let income = last.totalIncome
-          let costs = last.nonEmploymentCosts
-          let nonMd = DEFAULT_NON_MD_EMPLOYMENT_COSTS_BASE
-          for (const fy of sc.future) {
-            income = income * (1 + incomeGpct)
-            costs = costs * (1 + costGpct)
-            nonMd = nonMd * (1 + costGpct)
-            fy.totalIncome = income
-            fy.nonEmploymentCosts = costs
-            fy.nonMdEmploymentCosts = nonMd
-            // locumDays and miscEmploymentCosts are manual per year; leave unchanged
-          }
-        }),
-      applyProjectionFromLastActual: (scenario) =>
-        set((state) => {
-          const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
-          if (!sc) return
-          const last = state.historic[state.historic.length - 1]
-          const incomeGpct = sc.projection.incomeGrowthPct / 100
-          const costGpct = sc.projection.costGrowthPct / 100
-          let income = last.totalIncome
-          let costs = last.nonEmploymentCosts
-          let nonMd = DEFAULT_NON_MD_EMPLOYMENT_COSTS_BASE
-          for (const fy of sc.future) {
-            income = income * (1 + incomeGpct)
-            costs = costs * (1 + costGpct)
-            nonMd = nonMd * (1 + costGpct)
-            fy.totalIncome = income
-            fy.nonEmploymentCosts = costs
-            fy.nonMdEmploymentCosts = nonMd
-            // locumDays and miscEmploymentCosts are manual per year; leave unchanged
-          }
-        }),
-      setSelectedYear: (scenario, year) =>
-        set((state) => {
-          const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
-          if (!sc) return
-          sc.selectedYear = year
-        }),
-      // Load a snapshot from a shared URL or imported JSON
-      loadSnapshot: (snapshot) =>
-        set((state) => {
-          state.scenarioA = snapshot.scenarioA
-          state.scenarioBEnabled = !!snapshot.scenarioBEnabled
-          state.scenarioB = snapshot.scenarioBEnabled && snapshot.scenarioB ? snapshot.scenarioB : undefined
-        }),
-      resetToDefaults: () =>
-        set((state) => {
-          // Reset scenarios to initial defaults
-          state.scenarioA = {
-            future: INITIAL_FUTURE_YEARS_A.map((f) => ({ ...f, physicians: [...f.physicians] })),
-            projection: { incomeGrowthPct: 0, costGrowthPct: 0 },
-            selectedYear: FUTURE_YEARS_BASE[0].year,
-          }
-          state.scenarioBEnabled = false
-          state.scenarioB = undefined
-        }, false),
+          }, false),
+      })
     })),
     {
       name: 'radiantcare-state-v1',
@@ -1081,7 +1084,6 @@ function HistoricAndProjectionChart() {
   const historicYears = store.historic.map((h) => h.year)
   const incomeHistoric = store.historic.map((h) => h.totalIncome)
   const costHistoric = store.historic.map((h) => h.nonEmploymentCosts)
-  const payrollHistoric = store.historic.map((h) => h.employeePayroll ?? 0)
   const netHistoric = store.historic.map((h) => h.totalIncome - h.nonEmploymentCosts - (h.employeePayroll ?? 0))
   const lastActual = store.historic[store.historic.length - 1]
 
