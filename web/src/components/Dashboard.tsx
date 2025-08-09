@@ -1050,7 +1050,7 @@ function YearOnYearControls({ scenario }: { scenario: ScenarioKey }) {
         <div>
           <label style={{ display: 'block', fontSize: 14, marginBottom: 4 }}>Income Growth %</label>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <div style={{ position: 'relative', flex: 1 }}>
+            <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', height: 32 }}>
               <input
                 type="range"
                 min={-10}
@@ -1061,7 +1061,7 @@ function YearOnYearControls({ scenario }: { scenario: ScenarioKey }) {
                   store.setProjectionGrowthPct(scenario, 'income', Number(e.target.value))
                 }}
                 style={{ 
-                  width: '100%',
+                  width: '100%', margin: 0,
                   ['--fill-start' as any]: sc.projection.incomeGrowthPct >= 0 ? '50%' : `${((sc.projection.incomeGrowthPct + 10) / 20) * 100}%`,
                   ['--fill-end' as any]: sc.projection.incomeGrowthPct >= 0 ? `${((sc.projection.incomeGrowthPct + 10) / 20) * 100}%` : '50%',
                 }}
@@ -1069,7 +1069,7 @@ function YearOnYearControls({ scenario }: { scenario: ScenarioKey }) {
               />
               <div style={{
                 position: 'absolute',
-                top: 'calc(50% + 4px)',
+                top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
                 width: '2px',
@@ -1093,7 +1093,7 @@ function YearOnYearControls({ scenario }: { scenario: ScenarioKey }) {
         <div>
           <label style={{ display: 'block', fontSize: 14, marginBottom: 4 }}>Cost Growth %</label>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <div style={{ position: 'relative', flex: 1 }}>
+            <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', height: 32 }}>
               <input
                 type="range"
                 min={-10}
@@ -1104,7 +1104,7 @@ function YearOnYearControls({ scenario }: { scenario: ScenarioKey }) {
                   store.setProjectionGrowthPct(scenario, 'cost', Number(e.target.value))
                 }}
                 style={{ 
-                  width: '100%',
+                  width: '100%', margin: 0,
                   ['--fill-start' as any]: sc.projection.costGrowthPct >= 0 ? '50%' : `${((sc.projection.costGrowthPct + 10) / 20) * 100}%`,
                   ['--fill-end' as any]: sc.projection.costGrowthPct >= 0 ? `${((sc.projection.costGrowthPct + 10) / 20) * 100}%` : '50%',
                 }}
@@ -1112,7 +1112,7 @@ function YearOnYearControls({ scenario }: { scenario: ScenarioKey }) {
               />
               <div style={{
                 position: 'absolute',
-                top: 'calc(50% + 4px)',
+                top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
                 width: '2px',
@@ -1144,13 +1144,22 @@ function HistoricAndProjectionChart() {
   const incomeHistoric = store.historic.map((h) => h.totalIncome)
   const costHistoric = store.historic.map((h) => h.nonEmploymentCosts)
   const netHistoric = store.historic.map((h) => h.totalIncome - h.nonEmploymentCosts - (h.employeePayroll ?? 0))
+  const employmentHistoric = store.historic.map((h) => h.employeePayroll ?? 0)
   const lastActual = store.historic[store.historic.length - 1]
 
   // Calculate max Y value from all data
   const scAIncome = store.scenarioA.future.map(f => f.totalIncome)
   const scACosts = store.scenarioA.future.map(f => f.nonEmploymentCosts)
+  const scAEmployment = store.scenarioA.future.map(f => {
+    const md = f.physicians.filter(p => p.type === 'employee').reduce((s,e) => s + (e.salary ?? 0), 0)
+    return md + f.nonMdEmploymentCosts
+  })
   const scBIncome = store.scenarioB?.future.map(f => f.totalIncome) || []
   const scBCosts = store.scenarioB?.future.map(f => f.nonEmploymentCosts) || []
+  const scBEmployment = store.scenarioB?.future.map(f => {
+    const md = f.physicians.filter(p => p.type === 'employee').reduce((s,e) => s + (e.salary ?? 0), 0)
+    return md + f.nonMdEmploymentCosts
+  }) || []
   const scANet = store.scenarioA.future.map(f => {
     const md = f.physicians.filter(p => p.type === 'employee').reduce((s,e) => s + (e.salary ?? 0), 0)
     return f.totalIncome - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - (f.locumDays * LOCUM_DAY_RATE) - md
@@ -1164,11 +1173,14 @@ function HistoricAndProjectionChart() {
     ...incomeHistoric,
     ...costHistoric,
     ...netHistoric,
+    ...employmentHistoric,
     ...scAIncome,
     ...scACosts,
+    ...scAEmployment,
     ...scANet,
     ...scBIncome,
     ...scBCosts,
+    ...scBEmployment,
     ...scBNet
   )
 
@@ -1186,95 +1198,34 @@ function HistoricAndProjectionChart() {
       }}
     >
       <Plot
-        data={[
-          // Historic data (solid lines)
-          {
-            x: historicYears,
-            y: incomeHistoric,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'Total Income',
-            line: { color: '#1976d2', width: 3 },
-          },
-          {
-            x: historicYears,
-            y: costHistoric,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'Non-Employment Costs',
-            line: { color: '#e65100', width: 3 },
-          },
-          {
-            x: historicYears,
-            y: netHistoric,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'Net Income (Historic)',
-            line: { color: '#2e7d32', width: 3 },
-          },
-          // Scenario A projections (dotted lines)
-          {
-            x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)],
-            y: [NET_PARTNER_POOL_2025, ...scANet],
-            type: 'scatter',
-            mode: 'lines',
-            name: 'Net projection A',
-            line: { dash: 'dot', color: '#2e7d32', width: 2 },
-            hovertemplate: 'A: %{y:$,.0f}<extra></extra>',
-          },
-          {
-            x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)],
-            y: [lastActual.totalIncome, ...store.scenarioA.future.map(f => f.totalIncome)],
-            type: 'scatter',
-            mode: 'lines',
-            name: 'Income projection A',
-            line: { dash: 'dot', color: '#1976d2', width: 2 },
-            hovertemplate: 'A: %{y:$,.0f}<extra></extra>',
-          },
-          {
-            x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)],
-            y: [lastActual.nonEmploymentCosts, ...store.scenarioA.future.map(f => f.nonEmploymentCosts)],
-            type: 'scatter',
-            mode: 'lines',
-            name: 'Cost projection A',
-            line: { dash: 'dot', color: '#e65100', width: 2 },
-            hovertemplate: 'A: %{y:$,.0f}<extra></extra>',
-          },
-          // Scenario B projections (dashed lines, if enabled)
-          ...(store.scenarioBEnabled && store.scenarioB ? [
-            {
-              x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)],
-              y: [NET_PARTNER_POOL_2025, ...scBNet],
-              type: 'scatter',
-              mode: 'lines',
-              name: 'Net projection B',
-              line: { dash: 'dash', color: '#2e7d32', width: 2 },
-              hovertemplate: 'B: %{y:$,.0f}<extra></extra>',
-            },
-            {
-              x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)],
-              y: [lastActual.totalIncome, ...store.scenarioB.future.map(f => f.totalIncome)],
-              type: 'scatter',
-              mode: 'lines',
-              name: 'Income projection B',
-              line: { dash: 'dash', color: '#1976d2', width: 2 },
-              hovertemplate: 'B: %{y:$,.0f}<extra></extra>',
-            },
-            {
-              x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)],
-              y: [lastActual.nonEmploymentCosts, ...store.scenarioB.future.map(f => f.nonEmploymentCosts)],
-              type: 'scatter',
-              mode: 'lines',
-              name: 'Cost projection B',
-              line: { dash: 'dash', color: '#e65100', width: 2 },
-              hovertemplate: 'B: %{y:$,.0f}<extra></extra>',
-            }
-          ] : []),
-        ] as any}
+        data={(() => {
+          const traces: any[] = []
+          // Group: Income
+          traces.push({ x: historicYears, y: incomeHistoric, type: 'scatter', mode: 'lines+markers', name: 'Total Income', line: { color: '#1976d2', width: 3 }, legendgroup: 'income', legendrank: 1 })
+          traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [lastActual.totalIncome, ...store.scenarioA.future.map(f => f.totalIncome)], type: 'scatter', mode: 'lines', name: 'Income projection A', line: { dash: 'dot', color: '#1976d2', width: 2 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 2 })
+          if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [lastActual.totalIncome, ...store.scenarioB.future.map(f => f.totalIncome)], type: 'scatter', mode: 'lines', name: 'Income projection B', line: { dash: 'dash', color: '#1976d2', width: 2 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 3 })
+
+          // Group: Non-employment costs
+          traces.push({ x: historicYears, y: costHistoric, type: 'scatter', mode: 'lines+markers', name: 'Non-Employment Costs', line: { color: '#e65100', width: 3 }, legendgroup: 'cost', legendrank: 1 })
+          traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [lastActual.nonEmploymentCosts, ...store.scenarioA.future.map(f => f.nonEmploymentCosts)], type: 'scatter', mode: 'lines', name: 'Cost projection A', line: { dash: 'dot', color: '#e65100', width: 2 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'cost', legendrank: 2 })
+          if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [lastActual.nonEmploymentCosts, ...store.scenarioB.future.map(f => f.nonEmploymentCosts)], type: 'scatter', mode: 'lines', name: 'Cost projection B', line: { dash: 'dash', color: '#e65100', width: 2 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'cost', legendrank: 3 })
+
+          // Group: Net income
+          traces.push({ x: historicYears, y: netHistoric, type: 'scatter', mode: 'lines+markers', name: 'Net Income (Historic)', line: { color: '#2e7d32', width: 3 }, legendgroup: 'net', legendrank: 1 })
+          traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [NET_PARTNER_POOL_2025, ...scANet], type: 'scatter', mode: 'lines', name: 'Net projection A', line: { dash: 'dot', color: '#2e7d32', width: 2 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'net', legendrank: 2 })
+          if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [NET_PARTNER_POOL_2025, ...scBNet], type: 'scatter', mode: 'lines', name: 'Net projection B', line: { dash: 'dash', color: '#2e7d32', width: 2 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'net', legendrank: 3 })
+
+          // Group: Employment
+          traces.push({ x: historicYears, y: employmentHistoric, type: 'scatter', mode: 'lines+markers', name: 'Employment Costs (Historic)', line: { color: '#6b7280', width: 3 }, legendgroup: 'employment', legendrank: 1 })
+          traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [lastActual.employeePayroll ?? 0, ...scAEmployment], type: 'scatter', mode: 'lines', name: 'Employment projection A', line: { dash: 'dot', color: '#6b7280', width: 2 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'employment', legendrank: 2 })
+          if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [lastActual.employeePayroll ?? 0, ...scBEmployment], type: 'scatter', mode: 'lines', name: 'Employment projection B', line: { dash: 'dash', color: '#6b7280', width: 2 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'employment', legendrank: 3 })
+
+          return traces
+        })() as any}
         layout={{
           title: { text: 'RadiantCare: Historic and Projected Totals' },
           dragmode: false as any,
-          legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.1, yanchor: 'top' },
+          legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.1, yanchor: 'top', traceorder: 'grouped' },
           margin: { l: 60, r: 20, t: 40, b: 64 },
           yaxis: {
             tickprefix: '$',
