@@ -1011,10 +1011,10 @@ function YearOnYearControls({ scenario }: { scenario: ScenarioKey }) {
   
   return (
     <div style={{ marginBottom: 12, padding: 8, backgroundColor: '#f8f9fa', borderRadius: 4, border: '1px solid #e5e7eb' }}>
-      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Year-over-Year Growth</div>
+      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, textAlign: 'center' }}>Year-over-Year Growth</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>
-          <label style={{ display: 'block', fontSize: 11, marginBottom: 2 }}>Income Growth %</label>
+          <label style={{ display: 'block', fontSize: 14, marginBottom: 4 }}>Income Growth %</label>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             <input
               type="range"
@@ -1035,12 +1035,12 @@ function YearOnYearControls({ scenario }: { scenario: ScenarioKey }) {
               onChange={(e) => {
                 store.setProjectionGrowthPct(scenario, 'income', Number(e.target.value))
               }}
-              style={{ width: 50, fontSize: 11 }}
+              style={{ width: 56, fontSize: 14 }}
             />
           </div>
         </div>
         <div>
-          <label style={{ display: 'block', fontSize: 11, marginBottom: 2 }}>Cost Growth %</label>
+          <label style={{ display: 'block', fontSize: 14, marginBottom: 4 }}>Cost Growth %</label>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             <input
               type="range"
@@ -1061,7 +1061,7 @@ function YearOnYearControls({ scenario }: { scenario: ScenarioKey }) {
               onChange={(e) => {
                 store.setProjectionGrowthPct(scenario, 'cost', Number(e.target.value))
               }}
-              style={{ width: 50, fontSize: 11 }}
+              style={{ width: 56, fontSize: 14 }}
             />
           </div>
         </div>
@@ -1476,9 +1476,9 @@ function OverallCompensationSummary() {
         />
       </div>
 
-      <div style={{ marginTop: 12 }}>
-        <div style={{ fontWeight: 600, marginBottom: 6 }}>Per Physician by year</div>
-        <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 6, fontWeight: 600 }}>
+      <div style={{ marginTop: 8 }}>
+        <div style={{ fontWeight: 600, marginBottom: 2 }}>Per Physician by year</div>
+        <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 2, fontWeight: 600 }}>
           <div>Name</div>
           {years.map((y) => (
             <div key={y} style={{ textAlign: 'right' }}>{y}</div>
@@ -1488,7 +1488,7 @@ function OverallCompensationSummary() {
         {allNames.map((name, idx) => (
           <div key={name} style={{ display: 'contents' }}>
             <div
-              style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 6, padding: '2px 0', borderTop: '1px solid #f0f0f0', background: idx % 2 === 0 ? '#f3f4f6' : 'transparent' }}
+              style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '1px 0', borderTop: '1px solid #f0f0f0', background: idx % 2 === 0 ? '#f3f4f6' : 'transparent' }}
               onMouseEnter={() => setHighlight({ scenario: 'A', name })}
               onMouseLeave={() => setHighlight(null)}
             >
@@ -1508,7 +1508,7 @@ function OverallCompensationSummary() {
             </div>
             {store.scenarioBEnabled && (
               <div
-                style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 6, padding: '2px 0', borderTop: '1px solid #f0f0f0', background: idx % 2 === 0 ? '#f3f4f6' : 'transparent' }}
+                style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '1px 0', borderTop: '1px solid #f0f0f0', background: idx % 2 === 0 ? '#f3f4f6' : 'transparent' }}
                 onMouseEnter={() => setHighlight({ scenario: 'B', name })}
                 onMouseLeave={() => setHighlight(null)}
               >
@@ -1529,7 +1529,7 @@ function OverallCompensationSummary() {
         ))}
 
         {/* Net Income total row(s) */}
-        <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 6, padding: '6px 0', borderTop: '2px solid #e5e7eb', background: '#eef7ee', fontWeight: 700 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '2px solid #e5e7eb', background: '#eef7ee', fontWeight: 700 }}>
           <div>Net Income (Scenario A)</div>
           {netIncomeA.map((v, i) => (
             <div key={`NA-${i}`} style={{ textAlign: 'right' }}>{currency(v)}</div>
@@ -1537,7 +1537,7 @@ function OverallCompensationSummary() {
           <div style={{ textAlign: 'right' }}>{currency(netIncomeA.reduce((a, b) => a + b, 0))}</div>
         </div>
         {store.scenarioBEnabled && (
-          <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 6, padding: '6px 0', borderTop: '1px solid #e5e7eb', background: '#eef7ee', fontWeight: 700 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '1px solid #e5e7eb', background: '#eef7ee', fontWeight: 700 }}>
             <div>Net Income (Scenario B)</div>
             {netIncomeB.map((v, i) => (
               <div key={`NB-${i}`} style={{ textAlign: 'right' }}>{currency(v)}</div>
