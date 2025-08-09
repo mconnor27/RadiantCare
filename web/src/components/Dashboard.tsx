@@ -434,6 +434,7 @@ function usePartnerComp(year: number, scenario: ScenarioKey) {
 
 function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) {
   const store = useDashboardStore()
+  const isMobile = useIsMobile()
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
   const isReadOnly = year === 2025
   const last2025 = store.historic.find((h) => h.year === 2025)
