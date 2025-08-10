@@ -139,7 +139,7 @@ function defaultPhysiciansGeneric(year: number): Physician[] {
     { id: `${year}-P1`, name: 'Physician 1', type: 'partner', weeksVacation: 4 },
     { id: `${year}-P2`, name: 'Physician 2', type: 'partner', weeksVacation: 4 },
     { id: `${year}-P3`, name: 'Physician 3', type: 'partner', weeksVacation: 4 },
-    { id: `${year}-E1`, name: 'Physician 4', type: 'employee', salary: 250000 },
+    { id: `${year}-E1`, name: 'Physician 4', type: 'employee', salary: 500000 },
   ]
 }
 /* eslint-enable @typescript-eslint/no-unused-vars */
@@ -325,17 +325,133 @@ export const useDashboardStore = create<Store>()(
             if (!sc) return
             const fy = sc.future.find((f) => f.year === year)
             if (!fy) return
+
+            // Update or add in the chosen year
             const idx = fy.physicians.findIndex((p) => p.id === physician.id)
+            const isNewInYear = idx < 0
+            const previousInYear = idx >= 0 ? fy.physicians[idx] : undefined
+            const oldName = previousInYear?.name
             if (idx >= 0) fy.physicians[idx] = physician
             else fy.physicians.push(physician)
+
+            // If the physician's name changed, propagate the new name across ALL years
+            if (oldName && oldName !== physician.name) {
+              for (const fut of sc.future) {
+                for (let k = 0; k < fut.physicians.length; k++) {
+                  if (fut.physicians[k].name === oldName) {
+                    fut.physicians[k] = { ...fut.physicians[k], name: physician.name }
+                  }
+                }
+              }
+            }
+
+            // Helper to build a reasonable id for a given future year
+            const toIdForYear = (targetYear: number, base: Physician) => {
+              const nameSlug = (base.name || 'physician')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '')
+              return `${targetYear}-${nameSlug || 'md'}`
+            }
+
+            // Propagation rules across subsequent years
+            const targetName = physician.name
+            const salarySource = typeof physician.salary === 'number' ? physician.salary : undefined
+            const weeksSource = typeof physician.weeksVacation === 'number' ? physician.weeksVacation : undefined
+            const becomesPartnerNextYears = physician.type === 'employeeToPartner'
+
+            for (const fut of sc.future) {
+              if (fut.year <= year) continue
+
+              // Find same MD by name (preferred) or id
+              let j = fut.physicians.findIndex((p) => p.name === targetName)
+              if (j < 0) j = fut.physicians.findIndex((p) => p.id === physician.id)
+
+              if (j < 0) {
+                // If adding in this year (or if not present later), add them for all subsequent years
+                if (isNewInYear) {
+                  // Determine type for this future year based on rules:
+                  // - Mixed in the edited year -> partner thereafter
+                  // - Employee in the edited year -> employee for next year, then partner starting year+2
+                  let computedType: PhysicianType = physician.type
+                  if (becomesPartnerNextYears) {
+                    computedType = 'partner'
+                  } else if (physician.type === 'employee') {
+                    computedType = fut.year >= year + 2 ? 'partner' : 'employee'
+                  }
+
+                  const cloned: Physician = {
+                    id: toIdForYear(fut.year, physician),
+                    name: physician.name,
+                    type: computedType,
+                    salary:
+                      computedType === 'partner'
+                        ? undefined
+                        : (physician.type === 'employee' || physician.type === 'employeeToPartner')
+                          ? (physician.salary ?? 500000)
+                          : undefined,
+                    weeksVacation:
+                      computedType === 'partner' || computedType === 'employeeToPartner'
+                        ? (physician.weeksVacation ?? 8)
+                        : undefined,
+                    employeePortionOfYear: computedType === 'partner' ? undefined : physician.employeePortionOfYear,
+                  }
+                  fut.physicians.push(cloned)
+                  continue
+                } else {
+                  // If not new but missing later, skip unless we explicitly want to re-create
+                  // The requested behavior does not require re-creating on edit
+                  continue
+                }
+              }
+
+              const existing = fut.physicians[j]
+              const updated: Physician = { ...existing }
+
+              // Mixed one year -> partner thereafter
+              if (becomesPartnerNextYears) {
+                updated.type = 'partner'
+                updated.salary = undefined
+                updated.employeePortionOfYear = undefined
+              }
+
+              // Salary minimum propagation for employees
+              if (salarySource !== undefined) {
+                if (updated.type === 'employee' || updated.type === 'employeeToPartner') {
+                  const currentSalary = typeof updated.salary === 'number' ? updated.salary : 0
+                  updated.salary = Math.max(currentSalary, salarySource)
+                }
+              }
+
+              // Weeks off minimum propagation for partners
+              if (weeksSource !== undefined) {
+                if (updated.type === 'partner' || updated.type === 'employeeToPartner') {
+                  const currentWeeks = typeof updated.weeksVacation === 'number' ? updated.weeksVacation : 0
+                  updated.weeksVacation = Math.max(currentWeeks, weeksSource)
+                }
+              }
+
+              fut.physicians[j] = updated
+            }
           }),
         removePhysician: (scenario, year, physicianId) =>
           set((state) => {
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!sc) return
-            const fy = sc.future.find((f) => f.year === year)
-            if (!fy) return
-            fy.physicians = fy.physicians.filter((p) => p.id !== physicianId)
+            // Identify by id and, if possible, by name to remove across years
+            const thisYear = sc.future.find((f) => f.year === year)
+            if (!thisYear) return
+            const toRemove = thisYear.physicians.find((p) => p.id === physicianId)
+            const nameKey = toRemove?.name
+
+            for (const fut of sc.future) {
+              if (fut.year < year) continue
+              fut.physicians = fut.physicians.filter((p) => {
+                if (p.id === physicianId) return false
+                if (nameKey && p.name === nameKey) return false
+                return true
+              })
+            }
           }),
         setProjectionGrowthPct: (scenario, field, value) =>
           set((state) => {
@@ -603,7 +719,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             store.setFutureValue(scenario, year, 'totalIncome', Number(e.target.value.replace(/[^0-9]/g, '')))
           }
           disabled={isReadOnly}
-          style={{ width: isMobile ? 120 : 140, justifySelf: isMobile ? 'end' : undefined }}
+          style={{ width: isMobile ? 100 : 100, justifySelf: isMobile ? 'end' : undefined }}
         />
         <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: '14px', color: '#666', width: '16px', height: '16px', textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
           onMouseEnter={(e) => createTooltip('income-tooltip', 'Gross (Therapy and Other)', e)}
@@ -647,7 +763,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             )
           }
           disabled={isReadOnly}
-          style={{ width: isMobile ? 120 : 140, justifySelf: isMobile ? 'end' : undefined }}
+          style={{ width: isMobile ? 100 : 100, justifySelf: isMobile ? 'end' : undefined }}
         />
         <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 14, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
           onMouseEnter={(e) => createTooltip('nonemp-tooltip', 'Includes these non-employment categories:\n\nInsurance Cost\nState/Local Taxes\nCommunications Cost\nLicensure Costs\nPromotional Costs\nBilling Costs\nOffice Overhead\nCapital Expense', e)}
@@ -691,7 +807,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             )
           }
           disabled={isReadOnly}
-          style={{ width: isMobile ? 120 : 140, justifySelf: isMobile ? 'end' : undefined }}
+          style={{ width: isMobile ? 100 : 100, justifySelf: isMobile ? 'end' : undefined }}
         />
         <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 14, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
           onMouseEnter={(e) => {
@@ -752,9 +868,9 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
         />
         <input
           type="text"
-          value={`${currency(Math.round(fy.locumDays * LOCUM_DAY_RATE))} — ${fy.locumDays} days`}
+          value={`${currency(Math.round(fy.locumDays * LOCUM_DAY_RATE))} (${fy.locumDays} d)`}
           readOnly
-          style={{ width: isMobile ? 140 : 140, justifySelf: isMobile ? 'end' : undefined }}
+          style={{ width: isMobile ? 100 : 100, justifySelf: isMobile ? 'end' : undefined }}
         />
         <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 14, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
           onMouseEnter={(e) => {
@@ -807,7 +923,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             )
           }
           disabled={isReadOnly}
-          style={{ width: isMobile ? 120 : 140, justifySelf: isMobile ? 'end' : undefined }}
+          style={{ width: isMobile ? 100 : 100, justifySelf: isMobile ? 'end' : undefined }}
         />
         <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 14, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
           onMouseEnter={(e) => {
@@ -927,7 +1043,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
               type: e.target.value as PhysicianType,
               // Initialize sensible defaults when switching types
               employeePortionOfYear: e.target.value === 'employeeToPartner' ? (p.employeePortionOfYear ?? 0.5) : p.employeePortionOfYear,
-              salary: e.target.value !== 'partner' ? (p.salary ?? 250000) : undefined,
+              salary: e.target.value !== 'partner' ? (p.salary ?? 500000) : undefined,
               weeksVacation: e.target.value !== 'employee' ? (p.weeksVacation ?? 8) : undefined,
             })
           }
@@ -967,7 +1083,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                     salary: Number(e.target.value.replace(/[^0-9]/g, '')),
                   })
                 }
-                style={{ width: 120 }}
+                style={{ width: 100 }}
                 disabled={readOnly}
               />
             </div>
@@ -1066,7 +1182,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                     weeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
                   })
                 }
-                style={{ width: 120 }}
+                style={{ width: 100 }}
                 disabled={readOnly}
               />
             </div>
@@ -1139,7 +1255,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                       employeePortionOfYear: snapped / 100,
                     })
                   }}
-                  style={{ width: 120, height: 20, padding: '2px 8px' }}
+                  style={{ width: 100, height: 20, padding: '2px 2px' }}
                   disabled={readOnly}
                 />
               </div>
@@ -1171,7 +1287,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                       salary: Number(e.target.value.replace(/[^0-9]/g, '')),
                     })
                   }
-                  style={{ width: 120 }}
+                  style={{ width: 100 }}
                   disabled={readOnly}
                 />
               </div>
@@ -1203,7 +1319,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                       weeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
                     })
                   }
-                  style={{ width: 120 }}
+                  style={{ width: 100 }}
                   disabled={readOnly}
                 />
               </div>
@@ -1275,14 +1391,13 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
         <button
           onClick={() => {
             const nextIndex = fy.physicians.length
-            const numPartners = fy.physicians.filter((x) => x.type === 'partner').length
-            const type: PhysicianType = numPartners < 3 ? 'partner' : 'employee'
+            const type: PhysicianType = 'employee'
             store.upsertPhysician(scenario, year, {
               id: `${year}-${nextIndex}`,
               name: `Physician ${nextIndex + 1}`,
               type,
-              salary: type === 'employee' ? 250000 : undefined,
-              weeksVacation: type === 'partner' ? 4 : undefined,
+              salary: 500000,
+              weeksVacation: undefined,
             })
           }}
           style={{
@@ -1583,7 +1698,7 @@ function HistoricAndProjectionChart() {
           doubleClick: false as any,
         }}
         useResizeHandler={true}
-        style={{ width: '100%', height: isMobile ? 320 : 420 }}
+        style={{ width: '100%', height: isMobile ? 320 : 480 }}
       />
     </div>
   )
@@ -1632,7 +1747,7 @@ export function Dashboard() {
   }
 
   return (
-    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16, maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '0 auto' }}>
+    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16, maxWidth: store.scenarioBEnabled ? 1400 : 1000, margin: '0 auto' }}>
       <h2 style={{ marginTop: 0 }}>RadiantCare Physician Compensation</h2>
       <div style={{ display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end', flexWrap: 'wrap', marginBottom: 8, gap: 8 }}>
         <button onClick={() => { store.resetToDefaults(); window.location.hash = '' }} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Reset to defaults</button>
@@ -1950,7 +2065,7 @@ function ParametersSummary() {
     })
   }
 
-  const renderScenario = (scenario: 'A' | 'B') => {
+    const renderScenario = (scenario: 'A' | 'B') => {
     const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
     const data = buildYearData(scenario)
     const maxPhysicians = Math.max(...data.map((d) => d.physicians.length))
@@ -1958,17 +2073,17 @@ function ParametersSummary() {
     const yearColWidth = 135
     const columnGap = 4
     return (
-      <div style={{ marginTop: 12, border: '1px solid #e5e7eb', borderRadius: 8, padding: 10, background: '#f9fafb', maxWidth: 1000, marginLeft: 'auto', marginRight: 'auto' }}>
+      <div style={{ marginTop: 12, border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, background: '#f9fafb', maxWidth: 1000, marginLeft: 'auto', marginRight: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>Scenario {scenario} Parameters</div>
-          <div style={{ fontSize: 12, color: '#374151' }}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>Scenario {scenario} Parameters</div>
+          <div style={{ fontSize: 13, color: '#374151' }}>
             Growth — Income: {sc.projection.incomeGrowthPct}% · Cost: {sc.projection.costGrowthPct}%
           </div>
         </div>
 
         <div style={{ marginTop: 6, overflowX: isMobile ? 'auto' : 'visible' }}>
-          <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 13 }}>Per-year core values</div>
-          <div style={{ display: 'grid', gridTemplateColumns: `${labelColWidth}px repeat(${data.length}, ${yearColWidth}px)`, columnGap: columnGap, rowGap: 2, alignItems: 'start', fontSize: 12, fontVariantNumeric: 'tabular-nums' as any }}>
+          <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>Per-year core values</div>
+          <div style={{ display: 'grid', gridTemplateColumns: `${labelColWidth}px repeat(${data.length}, ${yearColWidth}px)`, columnGap: columnGap, rowGap: 2, alignItems: 'start', fontSize: 13, fontVariantNumeric: 'tabular-nums' as any }}>
             <div style={{ fontWeight: 600, whiteSpace: 'nowrap', textAlign: 'left' }}>Metric</div>
             {data.map((d) => (
               <div key={`hdr-${scenario}-${d.year}`} style={{ fontWeight: 600, textAlign: 'left' }}>{d.year}</div>
@@ -1997,8 +2112,8 @@ function ParametersSummary() {
         </div>
 
         <div style={{ marginTop: 8, overflowX: isMobile ? 'auto' : 'visible' }}>
-          <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 13 }}>Physicians per year</div>
-          <div style={{ display: 'grid', gridTemplateColumns: `${labelColWidth}px repeat(${data.length}, ${yearColWidth}px)`, columnGap: columnGap, rowGap: 3, fontSize: 12, alignItems: 'center', fontVariantNumeric: 'tabular-nums' as any }}>
+          <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>Physicians per year</div>
+          <div style={{ display: 'grid', gridTemplateColumns: `${labelColWidth}px repeat(${data.length}, ${yearColWidth}px)`, columnGap: columnGap, rowGap: 3, fontSize: 13, alignItems: 'center', fontVariantNumeric: 'tabular-nums' as any }}>
             <div style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>Slot</div>
             {data.map((d) => (
               <div key={`ph-h-${scenario}-${d.year}`} style={{ textAlign: 'left', fontWeight: 600 }}>{d.year}</div>
