@@ -11,7 +11,7 @@ export type YearRow = {
   employeePayroll?: number
 }
 
-export type PhysicianType = 'partner' | 'employee'
+export type PhysicianType = 'partner' | 'employee' | 'employeeToPartner'
 
 export type Physician = {
   id: string
@@ -19,6 +19,8 @@ export type Physician = {
   type: PhysicianType
   salary?: number
   weeksVacation?: number
+  // For mixed type: portion of the year as an employee (0..1). Remainder is partner.
+  employeePortionOfYear?: number
 }
 
 // Responsive helper
@@ -45,9 +47,9 @@ function createTooltip(id: string, content: string, e: React.MouseEvent<HTMLElem
   
   if (isMobileTooltip) {
     tooltip.className = 'tooltip-mobile'
-    tooltip.style.cssText = `position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; z-index: 9999; max-width: calc(100vw - 40px); box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+          tooltip.style.cssText = `position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 9999; max-width: calc(100vw - 40px); box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
   } else {
-    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
   }
   
   tooltip.textContent = content
@@ -130,6 +132,8 @@ const HISTORIC_DATA: YearRow[] = [
   { year: 2025, totalIncome: 3385975.78, nonEmploymentCosts: 224191.46, employeePayroll: 777845.26 },
 ]
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// @ts-ignore: kept for future use
 function defaultPhysiciansGeneric(year: number): Physician[] {
   return [
     { id: `${year}-P1`, name: 'Physician 1', type: 'partner', weeksVacation: 4 },
@@ -138,6 +142,7 @@ function defaultPhysiciansGeneric(year: number): Physician[] {
     { id: `${year}-E1`, name: 'Physician 4', type: 'employee', salary: 250000 },
   ]
 }
+/* eslint-enable @typescript-eslint/no-unused-vars */
 
 function scenarioADefaultsByYear(year: number): Physician[] {
   if (year === 2025) {
@@ -152,8 +157,9 @@ function scenarioADefaultsByYear(year: number): Physician[] {
     return [
       { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-      { id: `${year}-BT`, name: 'BT', type: 'employee', salary: 550000 },
-      { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 550000 },
+      // BT transitions to partner in Q4 (75% employee, 25% partner)
+      { id: `${year}-BT`, name: 'BT', type: 'employeeToPartner', salary: 500000, weeksVacation: 8, employeePortionOfYear: 0.75 },
+      { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 500000 },
     ]
   }
   if (year === 2027) {
@@ -161,7 +167,7 @@ function scenarioADefaultsByYear(year: number): Physician[] {
       { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
       { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8 },
-      { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 575000 },
+      { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 525000 },
     ]
   }
   // 2028-2029
@@ -218,7 +224,7 @@ const FUTURE_YEARS_BASE: Omit<FutureYear, 'physicians'>[] = Array.from({ length:
     nonEmploymentCosts:
       HISTORIC_DATA[HISTORIC_DATA.length - 1].nonEmploymentCosts,
     nonMdEmploymentCosts: DEFAULT_NON_MD_EMPLOYMENT_COSTS_BASE,
-    locumDays: 30,
+    locumDays: 90,
     miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
   }
 })
@@ -228,14 +234,44 @@ const INITIAL_FUTURE_YEARS_A: FutureYear[] = FUTURE_YEARS_BASE.map((b) => ({
   physicians: scenarioADefaultsByYear(b.year),
 }))
 
-/* Generic template for alternative scenarios if needed */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-// @ts-ignore: kept for future use
-const INITIAL_FUTURE_YEARS_GENERIC: FutureYear[] = FUTURE_YEARS_BASE.map((b) => ({
+function scenarioBDefaultsByYear(year: number): Physician[] {
+  if (year === 2025) {
+    return [
+      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 9 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
+      { id: `${year}-GA`, name: 'GA', type: 'partner', weeksVacation: 16 },
+      { id: `${year}-BT`, name: 'BT', type: 'employee', salary: 400000 }, // Higher salary for B
+    ]
+  }
+  if (year === 2026) {
+    return [
+      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 }, // Less vacation
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
+      { id: `${year}-BT`, name: 'BT', type: 'employeeToPartner', salary: 600000, weeksVacation: 8, employeePortionOfYear: 0.75 }, // Stays employee longer
+      { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 600000 },
+    ]
+  }
+  if (year === 2027) {
+    return [
+      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
+      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8 },
+      { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 600000 },
+    ]
+  }
+  // 2028-2029
+  return [
+    { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
+    { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
+    { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8 },
+    { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 8 },
+  ]
+}
+
+const INITIAL_FUTURE_YEARS_B: FutureYear[] = FUTURE_YEARS_BASE.map((b) => ({
   ...b,
-  physicians: defaultPhysiciansGeneric(b.year),
+  physicians: scenarioBDefaultsByYear(b.year),
 }))
-/* eslint-enable @typescript-eslint/no-unused-vars */
 
 export const useDashboardStore = create<Store>()(
   persist(
@@ -245,21 +281,23 @@ export const useDashboardStore = create<Store>()(
         historic: HISTORIC_DATA,
         scenarioA: {
           future: INITIAL_FUTURE_YEARS_A,
-          projection: { incomeGrowthPct: 0, costGrowthPct: 0 },
+          projection: { incomeGrowthPct: 3, costGrowthPct: 3 },
           selectedYear: FUTURE_YEARS_BASE[0].year,
         },
-        scenarioB: undefined,
-        scenarioBEnabled: false,
+        scenarioB: {
+          future: INITIAL_FUTURE_YEARS_B,
+          projection: { incomeGrowthPct: 3, costGrowthPct: 3 },
+          selectedYear: FUTURE_YEARS_BASE[0].year,
+        },
+        scenarioBEnabled: true,
         setScenarioEnabled: (enabled) =>
           set((state) => {
             state.scenarioBEnabled = enabled
             if (enabled) {
-              const cloned = JSON.parse(
-                JSON.stringify(state.scenarioA)
-              ) as ScenarioState
+              // Initialize scenario B with its own defaults instead of cloning A
               state.scenarioB = {
-                future: cloned.future,
-                projection: { ...cloned.projection },
+                future: INITIAL_FUTURE_YEARS_B.map((f) => ({ ...f, physicians: [...f.physicians] })),
+                projection: { incomeGrowthPct: 3, costGrowthPct: 3 },
                 selectedYear: state.scenarioA.selectedYear,
               }
             } else {
@@ -350,11 +388,15 @@ export const useDashboardStore = create<Store>()(
           set((state) => {
             state.scenarioA = {
               future: INITIAL_FUTURE_YEARS_A.map((f) => ({ ...f, physicians: [...f.physicians] })),
-              projection: { incomeGrowthPct: 0, costGrowthPct: 0 },
+              projection: { incomeGrowthPct: 3, costGrowthPct: 3 },
               selectedYear: FUTURE_YEARS_BASE[0].year,
             }
-            state.scenarioBEnabled = false
-            state.scenarioB = undefined
+            state.scenarioBEnabled = true
+            state.scenarioB = {
+              future: INITIAL_FUTURE_YEARS_B.map((f) => ({ ...f, physicians: [...f.physicians] })),
+              projection: { incomeGrowthPct: 3, costGrowthPct: 3 },
+              selectedYear: FUTURE_YEARS_BASE[0].year,
+            }
           }, false),
       }
     }),
@@ -374,6 +416,7 @@ export const useDashboardStore = create<Store>()(
 setTimeout(() => {
   const store = useDashboardStore.getState()
   store.applyProjectionFromLastActual('A')
+  store.applyProjectionFromLastActual('B')
 }, 0)
 
 function currency(value: number): string {
@@ -383,6 +426,12 @@ function currency(value: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   })
+}
+
+// Abbreviated currency for compact displays (e.g., $525k)
+function currencyShort(value: number): string {
+  const thousands = Math.round(value / 1000)
+  return `$${thousands}k`
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -407,6 +456,34 @@ function calculateEmployeeTotalCost(employee: Physician): number {
   const totalPayrollTaxes = socialSecurityTax + medicareTax + additionalMedicareTax + unemploymentTax
   
   return baseSalary + annualBenefits + totalPayrollTaxes
+}
+
+// Mixed type helpers
+function getEmployeePortionOfYear(physician: Physician): number {
+  if (physician.type === 'employee') return 1
+  if (physician.type === 'partner') return 0
+  const val = physician.employeePortionOfYear ?? 0.5
+  return clamp(val, 0, 1)
+}
+
+function getPartnerPortionOfYear(physician: Physician): number {
+  return 1 - getEmployeePortionOfYear(physician)
+}
+
+function getPartnerFTEWeight(physician: Physician): number {
+  const weeks = clamp(physician.weeksVacation ?? 0, 0, 16)
+  const baseFte = 1 - weeks / 52
+  return baseFte * getPartnerPortionOfYear(physician)
+}
+
+function snapPercentToFifthsAndThirds(rawPercent: number): number {
+  // Round to nearest 5%
+  let p = Math.round(rawPercent / 5) * 5
+  // Snap near 33% and 67%
+  if (Math.abs(p - 33) <= 2) p = 33
+  if (Math.abs(p - 67) <= 2) p = 67
+  // Clamp 0..100
+  return Math.max(0, Math.min(100, p))
 }
 
 // Generate tooltip content for employee cost breakdown
@@ -448,20 +525,16 @@ function usePartnerComp(year: number, scenario: ScenarioKey) {
       return partnerFTEs.map(({ p, weight }) => ({ id: p.id, name: p.name, comp: (weight / totalWeight) * NET_PARTNER_POOL_2025 }))
     }
     if (!fy) return [] as { id: string; name: string; comp: number }[]
-    const partners = fy.physicians.filter((p) => p.type === 'partner')
-    const employees = fy.physicians.filter((p) => p.type === 'employee')
-    const totalEmployeeSalary = employees.reduce(
-      (sum, e) => sum + (e.salary ?? 0),
-      0
-    )
+    const partners = fy.physicians.filter((p) => p.type === 'partner' || p.type === 'employeeToPartner')
+    const employees = fy.physicians.filter((p) => p.type === 'employee' || p.type === 'employeeToPartner')
+    const totalEmployeeSalary = employees.reduce((sum, e) => {
+      const employeePortion = getEmployeePortionOfYear(e)
+      return sum + (e.salary ?? 0) * employeePortion
+    }, 0)
     const totalCosts = fy.nonEmploymentCosts + fy.nonMdEmploymentCosts + fy.miscEmploymentCosts + (fy.locumDays * LOCUM_DAY_RATE) + totalEmployeeSalary
     const pool = Math.max(0, fy.totalIncome - totalCosts)
     if (partners.length === 0) return []
-    const partnerFTEs = partners.map((p) => {
-      const weeks = clamp(p.weeksVacation ?? 0, 0, 16)
-      const fte = 1 - weeks / 52
-      return { p, weight: fte }
-    })
+    const partnerFTEs = partners.map((p) => ({ p, weight: getPartnerFTEWeight(p) }))
     const totalWeight = partnerFTEs.reduce((s, x) => s + x.weight, 0) || 1
     return partnerFTEs.map(({ p, weight }) => ({
       id: p.id,
@@ -623,6 +696,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
               border-radius: 4px;
               font-size: 12px;
               white-space: pre-line;
+              text-align: left;
               z-index: 1000;
               max-width: 360px;
               box-shadow: 0 2px 8px rgba(0,0,0,0.2);
@@ -643,7 +717,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
         </div>
       </div>
 
-      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Locum's Costs</div>
+      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Locums Costs</div>
       <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
@@ -669,7 +743,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
           type="text"
           value={`${currency(Math.round(fy.locumDays * LOCUM_DAY_RATE))} — ${fy.locumDays} days`}
           readOnly
-          style={{ width: isMobile ? 160 : 200, justifySelf: isMobile ? 'end' : undefined }}
+          style={{ width: isMobile ? 140 : 140, justifySelf: isMobile ? 'end' : undefined }}
         />
         <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 14, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
           onMouseEnter={(e) => {
@@ -677,7 +751,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             if (existing) existing.remove()
             const tooltip = document.createElement('div')
             tooltip.id = 'locums-tooltip'
-            tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+            tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
             tooltip.textContent = 'Assumes $2,000 per day'
             document.body.appendChild(tooltip)
             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
@@ -738,6 +812,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
               border-radius: 4px;
               font-size: 12px;
               white-space: pre-line;
+              text-align: left;
               z-index: 1000;
               max-width: 300px;
               box-shadow: 0 2px 8px rgba(0,0,0,0.2);
@@ -773,7 +848,24 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             {partnerComp.map((p) => (
               <Fragment key={p.id}>
                 <div>{p.name}</div>
-                <div style={{ textAlign: 'right' }}>{currency(p.comp)}</div>
+                <div style={{ textAlign: 'right', position: 'relative', overflow: 'visible' }}>
+                  {currency(p.comp)}
+                  {(() => {
+                    const md = fy?.physicians.find((x) => x.id === p.id)
+                    if (md && md.type === 'employeeToPartner') {
+                      const employeePortion = md.employeePortionOfYear ?? 0
+                      const w2 = (md.salary ?? 0) * employeePortion
+                      if (w2 > 0) {
+                        return (
+                          <span style={{ position: 'absolute', left: 'calc(100% + 8px)', top: 0, whiteSpace: 'nowrap', color: '#6b7280', fontWeight: 400 }}>
+                            {`(+ ${currency(w2)} W2)`}
+                          </span>
+                        )
+                      }
+                    }
+                    return null
+                  })()}
+                </div>
               </Fragment>
             ))}
             <div style={{ gridColumn: '1 / -1', height: 1, background: '#e5e7eb', margin: '4px 0' }} />
@@ -804,7 +896,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
           paddingTop: 8,
           marginTop: 8,
           display: 'grid',
-          gridTemplateColumns: '1fr 110px 1fr 20px 20px',
+          gridTemplateColumns: '120px 150px 1fr 20px 20px',
           gap: 8,
           alignItems: 'center',
         }}
@@ -822,12 +914,17 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
             store.upsertPhysician(scenario, year, {
               ...p,
               type: e.target.value as PhysicianType,
+              // Initialize sensible defaults when switching types
+              employeePortionOfYear: e.target.value === 'employeeToPartner' ? (p.employeePortionOfYear ?? 0.5) : p.employeePortionOfYear,
+              salary: e.target.value !== 'partner' ? (p.salary ?? 250000) : undefined,
+              weeksVacation: e.target.value !== 'employee' ? (p.weeksVacation ?? 8) : undefined,
             })
           }
           disabled={readOnly}
         >
           <option value="partner">Partner</option>
           <option value="employee">Employee</option>
+          <option value="employeeToPartner">Employee → Partner</option>
         </select>
         {p.type === 'employee' ? (
           <>
@@ -889,6 +986,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   border-radius: 4px;
                   font-size: 12px;
                   white-space: pre-line;
+                  text-align: left;
                   z-index: 1000;
                   max-width: 300px;
                   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
@@ -927,7 +1025,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
               ×
             </button>
           </>
-        ) : (
+        ) : p.type === 'partner' ? (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
               <input
@@ -962,6 +1060,178 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
               />
             </div>
             <div style={{ width: '16px' }}></div>
+            <button
+              onClick={() => store.removePhysician(scenario, year, p.id)}
+              disabled={!canDelete}
+              title={canDelete ? 'Remove' : 'Minimum 3 physicians'}
+              style={{
+                width: 20,
+                height: 20,
+                border: '1px solid #ccc',
+                borderRadius: 4,
+                background: canDelete ? '#fff' : '#f3f3f3',
+                cursor: canDelete ? 'pointer' : 'not-allowed',
+                lineHeight: '18px',
+                textAlign: 'center',
+                padding: 0,
+              }}
+            >
+              ×
+            </button>
+          </>
+        ) : (
+          // employeeToPartner
+          <>
+            <div style={{ display: 'grid', gridTemplateRows: 'auto auto auto', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 20 }}>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    className="growth-slider"
+                    value={Math.round((p.employeePortionOfYear ?? 0.5) * 100)}
+                    onChange={(e) => {
+                      const raw = Number(e.target.value)
+                      const snapped = snapPercentToFifthsAndThirds(raw)
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        employeePortionOfYear: snapped / 100,
+                      })
+                    }}
+                    disabled={readOnly}
+                    style={{ 
+                      width: '100%', margin: 0,
+                      ['--fill-start' as any]: (snapPercentToFifthsAndThirds(Math.round((p.employeePortionOfYear ?? 0.5) * 100)) >= 50)
+                        ? '50%'
+                        : `${snapPercentToFifthsAndThirds(Math.round((p.employeePortionOfYear ?? 0.5) * 100))}%`,
+                      ['--fill-end' as any]: (snapPercentToFifthsAndThirds(Math.round((p.employeePortionOfYear ?? 0.5) * 100)) >= 50)
+                        ? `${snapPercentToFifthsAndThirds(Math.round((p.employeePortionOfYear ?? 0.5) * 100))}%`
+                        : '50%'
+                    }}
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    width: '2px', height: '8px', backgroundColor: '#374151', pointerEvents: 'none'
+                  }} />
+                </div>
+                <input
+                  type="text"
+                  value={`${snapPercentToFifthsAndThirds(Math.round((p.employeePortionOfYear ?? 0.5) * 100))}% employee`}
+                  onChange={(e) => {
+                    const digits = Number((e.target.value.match(/\d+/)?.[0]) ?? '0')
+                    const snapped = snapPercentToFifthsAndThirds(digits)
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      employeePortionOfYear: snapped / 100,
+                    })
+                  }}
+                  style={{ width: 120, height: 20, padding: '2px 8px' }}
+                  disabled={readOnly}
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                <input
+                  type="range"
+                  min={350000}
+                  max={650000}
+                  step={1000}
+                  value={p.salary ?? 0}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      salary: Number(e.target.value),
+                    })
+                  }
+                  disabled={readOnly}
+                  style={{ 
+                    width: '100%',
+                    ['--fill-percent' as any]: `${((p.salary ?? 0) - 350000) / (650000 - 350000) * 100}%`
+                  }}
+                />
+                <input
+                  type="text"
+                  value={currency(Math.round(p.salary ?? 0))}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      salary: Number(e.target.value.replace(/[^0-9]/g, '')),
+                    })
+                  }
+                  style={{ width: 120 }}
+                  disabled={readOnly}
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                <input
+                  type="range"
+                  min={2}
+                  max={16}
+                  step={1}
+                  value={p.weeksVacation ?? 8}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      weeksVacation: Number(e.target.value),
+                    })
+                  }
+                  disabled={readOnly}
+                  style={{ 
+                    width: '100%',
+                    ['--fill-percent' as any]: `${((p.weeksVacation ?? 8) - 2) / (16 - 2) * 100}%`
+                  }}
+                />
+                <input
+                  type="text"
+                  value={`${p.weeksVacation ?? 8} weeks off`}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      weeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
+                    })
+                  }
+                  style={{ width: 120 }}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateRows: '20px 20px 20px', rowGap: 8, alignItems: 'center', justifyItems: 'center' }}>
+              <div 
+                style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: '14px', color: '#666', width: '16px', height: '16px', textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                onMouseEnter={(e) => {
+                  const tooltip = document.createElement('div')
+                  tooltip.id = 'employee-partner-tooltip'
+                  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 320px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                  const empPct = Math.round((p.employeePortionOfYear ?? 0.5) * 100)
+                  const partnerPct = 100 - empPct
+                  let extra = ''
+                  if (empPct === 75 && partnerPct === 25) extra = `\n(For example: Employee for Q1–Q3, Partner for Q4)`
+                  tooltip.textContent = `Mixed role in year:\nEmployee portion: ${empPct}%\nPartner portion: ${partnerPct}%${extra}`
+                  document.body.appendChild(tooltip)
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                  tooltip.style.left = `${rect.right + 10}px`
+                  tooltip.style.top = `${rect.top + window.scrollY}px`
+                }}
+                onMouseLeave={() => { const t = document.getElementById('employee-partner-tooltip'); if (t) t.remove() }}
+              >ℹ</div>
+              <div 
+                style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: '14px', color: '#666', width: '16px', height: '16px', textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                onMouseEnter={(e) => {
+                  const tooltip = document.createElement('div')
+                  tooltip.id = 'employee-tooltip'
+                  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                  tooltip.textContent = getEmployeeCostTooltip(p)
+                  document.body.appendChild(tooltip)
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                  tooltip.style.left = `${rect.right + 10}px`
+                  tooltip.style.top = `${rect.top + window.scrollY}px`
+                }}
+                onMouseLeave={() => { const t = document.getElementById('employee-tooltip'); if (t) t.remove() }}
+              >ℹ</div>
+              <div style={{ height: 28 }} />
+            </div>
             <button
               onClick={() => store.removePhysician(scenario, year, p.id)}
               disabled={!canDelete}
@@ -1039,27 +1309,41 @@ function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
     }
   }
   if (!fy) return [] as { id: string; name: string; type: PhysicianType; comp: number }[]
-  const partnerComp = (() => {
-    const partners = fy!.physicians.filter((p) => p.type === 'partner')
-    const employees = fy!.physicians.filter((p) => p.type === 'employee')
-    const totalEmployeeCosts = employees.reduce(
-      (sum, e) => sum + calculateEmployeeTotalCost(e),
-      0
-    )
-    const pool = year === 2025
-      ? NET_PARTNER_POOL_2025
-      : Math.max(0, fy!.totalIncome - (fy!.nonEmploymentCosts + fy!.nonMdEmploymentCosts + fy!.miscEmploymentCosts + (fy!.locumDays * LOCUM_DAY_RATE) + totalEmployeeCosts))
-    const parts = partners.map((p) => ({
-      p,
-      weight: 1 - clamp(p.weeksVacation ?? 0, 0, 16) / 52,
-    }))
-    const totalWeight = parts.reduce((s, x) => s + x.weight, 0) || 1
-    return parts.map(({ p, weight }) => ({ id: p.id, name: p.name, type: 'partner' as const, comp: (weight / totalWeight) * pool }))
-  })()
-  const employees = fy!.physicians
-    .filter((p) => p.type === 'employee')
-    .map((e) => ({ id: e.id, name: e.name, type: 'employee' as const, comp: e.salary ?? 0 }))
-  return [...partnerComp, ...employees]
+  const partners = fy!.physicians.filter((p) => p.type === 'partner' || p.type === 'employeeToPartner')
+  const employees = fy!.physicians.filter((p) => p.type === 'employee' || p.type === 'employeeToPartner')
+
+  const totalEmployeeCosts = employees.reduce((sum, e) => {
+    const portion = e.type === 'employeeToPartner' ? getEmployeePortionOfYear(e) : (e.type === 'employee' ? 1 : 0)
+    if (portion <= 0) return sum
+    // For pool calculation, only reduce by W2 salary portion (benefits/taxes handled elsewhere/visualized)
+    const salaryPortion = (e.salary ?? 0) * portion
+    return sum + salaryPortion
+  }, 0)
+
+  const pool = year === 2025
+    ? NET_PARTNER_POOL_2025
+    : Math.max(0, fy!.totalIncome - (fy!.nonEmploymentCosts + fy!.nonMdEmploymentCosts + fy!.miscEmploymentCosts + (fy!.locumDays * LOCUM_DAY_RATE) + totalEmployeeCosts))
+
+  const parts = partners.map((p) => ({ p, weight: getPartnerFTEWeight(p) }))
+  const totalWeight = parts.reduce((s, x) => s + x.weight, 0) || 1
+  const partnerShares = parts.map(({ p, weight }) => ({ id: p.id, name: p.name, type: 'partner' as const, baseShare: (weight / totalWeight) * pool, physician: p }))
+
+  // Compose final list per physician (ensure each physician appears once with combined comp if mixed)
+  const results: { id: string; name: string; type: PhysicianType; comp: number }[] = []
+  // Add partner and mixed
+  for (const s of partnerShares) {
+    let comp = s.baseShare
+    if (s.physician.type === 'employeeToPartner') {
+      const salaryPortion = (s.physician.salary ?? 0) * getEmployeePortionOfYear(s.physician)
+      comp += salaryPortion
+    }
+    results.push({ id: s.id, name: s.name, type: 'partner', comp })
+  }
+  // Add pure employees (exclude mixed already included)
+  for (const e of fy!.physicians.filter((p) => p.type === 'employee')) {
+    results.push({ id: e.id, name: e.name, type: 'employee', comp: e.salary ?? 0 })
+  }
+  return results
 }
 
 function YearOnYearControls({ scenario }: { scenario: ScenarioKey }) {
@@ -1178,21 +1462,37 @@ function HistoricAndProjectionChart() {
   const scAIncome = store.scenarioA.future.map(f => f.totalIncome)
   const scACosts = store.scenarioA.future.map(f => f.nonEmploymentCosts)
   const scAEmployment = store.scenarioA.future.map(f => {
-    const md = f.physicians.filter(p => p.type === 'employee').reduce((s,e) => s + (e.salary ?? 0), 0)
+    const md = f.physicians.reduce((s, e) => {
+      if (e.type === 'employee') return s + (e.salary ?? 0)
+      if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+      return s
+    }, 0)
     return md + f.nonMdEmploymentCosts
   })
   const scBIncome = store.scenarioB?.future.map(f => f.totalIncome) || []
   const scBCosts = store.scenarioB?.future.map(f => f.nonEmploymentCosts) || []
   const scBEmployment = store.scenarioB?.future.map(f => {
-    const md = f.physicians.filter(p => p.type === 'employee').reduce((s,e) => s + (e.salary ?? 0), 0)
+    const md = f.physicians.reduce((s, e) => {
+      if (e.type === 'employee') return s + (e.salary ?? 0)
+      if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+      return s
+    }, 0)
     return md + f.nonMdEmploymentCosts
   }) || []
   const scANet = store.scenarioA.future.map(f => {
-    const md = f.physicians.filter(p => p.type === 'employee').reduce((s,e) => s + (e.salary ?? 0), 0)
+    const md = f.physicians.reduce((s, e) => {
+      if (e.type === 'employee') return s + (e.salary ?? 0)
+      if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+      return s
+    }, 0)
     return f.totalIncome - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - (f.locumDays * LOCUM_DAY_RATE) - md
   })
   const scBNet = store.scenarioB?.future.map(f => {
-    const md = f.physicians.filter(p => p.type === 'employee').reduce((s,e) => s + (e.salary ?? 0), 0)
+    const md = f.physicians.reduce((s, e) => {
+      if (e.type === 'employee') return s + (e.salary ?? 0)
+      if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+      return s
+    }, 0)
     return f.totalIncome - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - (f.locumDays * LOCUM_DAY_RATE) - md
   }) || []
   
@@ -1321,7 +1621,7 @@ export function Dashboard() {
   }
 
   return (
-    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16, maxWidth: store.scenarioBEnabled ? 'none' : 1000, margin: store.scenarioBEnabled ? '0' : '0 auto' }}>
+    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16, maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '0 auto' }}>
       <h2 style={{ marginTop: 0 }}>RadiantCare Physician Compensation</h2>
       <div style={{ display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end', flexWrap: 'wrap', marginBottom: 8, gap: 8 }}>
         <button onClick={() => { store.resetToDefaults(); window.location.hash = '' }} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Reset to defaults</button>
@@ -1413,6 +1713,9 @@ export function Dashboard() {
         </div>
       </div>
       <OverallCompensationSummary />
+      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+        <ParametersSummary />
+      </div>
     </div>
   )
 }
@@ -1457,7 +1760,11 @@ function OverallCompensationSummary() {
   const netIncomeA = years.map((y) => {
     if (y === 2025) return NET_PARTNER_POOL_2025
     const fy = store.scenarioA.future.find((f) => f.year === y)!
-    const md = fy.physicians.filter((p) => p.type === 'employee').reduce((s, e) => s + (e.salary ?? 0), 0)
+    const md = fy.physicians.reduce((s, e) => {
+      if (e.type === 'employee') return s + (e.salary ?? 0)
+      if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+      return s
+    }, 0)
     return (
       fy.totalIncome - fy.nonEmploymentCosts - fy.nonMdEmploymentCosts - fy.miscEmploymentCosts - fy.locumDays * LOCUM_DAY_RATE - md
     )
@@ -1466,7 +1773,11 @@ function OverallCompensationSummary() {
     ? years.map((y) => {
         if (y === 2025) return NET_PARTNER_POOL_2025
         const fy = store.scenarioB!.future.find((f) => f.year === y)!
-        const md = fy.physicians.filter((p) => p.type === 'employee').reduce((s, e) => s + (e.salary ?? 0), 0)
+        const md = fy.physicians.reduce((s, e) => {
+          if (e.type === 'employee') return s + (e.salary ?? 0)
+          if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+          return s
+        }, 0)
         return (
           fy.totalIncome - fy.nonEmploymentCosts - fy.nonMdEmploymentCosts - fy.miscEmploymentCosts - fy.locumDays * LOCUM_DAY_RATE - md
         )
@@ -1495,6 +1806,8 @@ function OverallCompensationSummary() {
                 y: a.values,
                 line: { color: colorByName[name], width: isHighlighted('A', name) ? 3 : 1.2 },
                 opacity: highlight ? (isHighlighted('A', name) ? 1 : 0.2) : 1,
+                legendgroup: name, // Group by physician name
+                legendrank: 1, // A scenario appears first in each group
               })
               if (store.scenarioBEnabled) {
                 const b = seriesB.find((s) => s.name === name)!
@@ -1506,6 +1819,8 @@ function OverallCompensationSummary() {
                   y: b.values,
                   line: { color: colorByName[name], dash: 'dot', width: isHighlighted('B', name) ? 3 : 1.2 },
                   opacity: highlight ? (isHighlighted('B', name) ? 1 : 0.2) : 1,
+                  legendgroup: name, // Same group as the A scenario
+                  legendrank: 2, // B scenario appears second in each group
                 })
               }
             }
@@ -1516,7 +1831,7 @@ function OverallCompensationSummary() {
             margin: { l: 48, r: 8, t: 28, b: 72 },
             yaxis: { tickprefix: '$', separatethousands: true },
             xaxis: { dtick: 1 },
-            legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.08, yanchor: 'top' },
+            legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.08, yanchor: 'top', traceorder: 'grouped' },
           }}
           config={{ responsive: true, displayModeBar: false }}
           useResizeHandler={true}
@@ -1599,3 +1914,131 @@ function OverallCompensationSummary() {
 }
 
 
+
+function ParametersSummary() {
+  const store = useDashboardStore()
+  const isMobile = useIsMobile()
+
+  const buildYearData = (scenario: 'A' | 'B') => {
+    const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
+    const historic2025 = store.historic.find((h) => h.year === 2025)!
+    const years = [2025, ...sc.future.map((f) => f.year)]
+    return years.map((year) => {
+      if (year === 2025) {
+        return {
+          year,
+          totalIncome: historic2025.totalIncome,
+          nonEmploymentCosts: historic2025.nonEmploymentCosts,
+          nonMdEmploymentCosts: DEFAULT_NON_MD_EMPLOYMENT_COSTS_BASE,
+          locumDays: 30,
+          miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+          physicians: scenarioADefaultsByYear(2025),
+        } as FutureYear
+      }
+      return sc.future.find((f) => f.year === year) as FutureYear
+    })
+  }
+
+  const renderScenario = (scenario: 'A' | 'B') => {
+    const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
+    const data = buildYearData(scenario)
+    const maxPhysicians = Math.max(...data.map((d) => d.physicians.length))
+    const labelColWidth = 150
+    const yearColWidth = 135
+    const columnGap = 4
+    return (
+      <div style={{ marginTop: 12, border: '1px solid #e5e7eb', borderRadius: 8, padding: 10, background: '#f9fafb', maxWidth: 1000, marginLeft: 'auto', marginRight: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>Scenario {scenario} Parameters</div>
+          <div style={{ fontSize: 12, color: '#374151' }}>
+            Growth — Income: {sc.projection.incomeGrowthPct}% · Cost: {sc.projection.costGrowthPct}%
+          </div>
+        </div>
+
+        <div style={{ marginTop: 6, overflowX: isMobile ? 'auto' : 'visible' }}>
+          <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 13 }}>Per-year core values</div>
+          <div style={{ display: 'grid', gridTemplateColumns: `${labelColWidth}px repeat(${data.length}, ${yearColWidth}px)`, columnGap: columnGap, rowGap: 2, alignItems: 'start', fontSize: 12, fontVariantNumeric: 'tabular-nums' as any }}>
+            <div style={{ fontWeight: 600, whiteSpace: 'nowrap', textAlign: 'left' }}>Metric</div>
+            {data.map((d) => (
+              <div key={`hdr-${scenario}-${d.year}`} style={{ fontWeight: 600, textAlign: 'left' }}>{d.year}</div>
+            ))}
+            <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Income</div>
+            {data.map((d) => (
+              <div key={`inc-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{currency(Math.round(d.totalIncome))}</div>
+            ))}
+            <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Non-Employment</div>
+            {data.map((d) => (
+              <div key={`nec-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{currency(Math.round(d.nonEmploymentCosts))}</div>
+            ))}
+            <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Non‑MD Employment</div>
+            {data.map((d) => (
+              <div key={`nmd-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{currency(Math.round(d.nonMdEmploymentCosts))}</div>
+            ))}
+            <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Locums</div>
+            {data.map((d) => (
+              <div key={`loc-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{`${d.locumDays} d (${currencyShort(d.locumDays * LOCUM_DAY_RATE)})`}</div>
+            ))}
+            <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Misc Employment</div>
+            {data.map((d) => (
+              <div key={`msc-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{currency(Math.round(d.miscEmploymentCosts))}</div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 8, overflowX: isMobile ? 'auto' : 'visible' }}>
+          <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 13 }}>Physicians per year</div>
+          <div style={{ display: 'grid', gridTemplateColumns: `${labelColWidth}px repeat(${data.length}, ${yearColWidth}px)`, columnGap: columnGap, rowGap: 3, fontSize: 12, alignItems: 'center', fontVariantNumeric: 'tabular-nums' as any }}>
+            <div style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>Slot</div>
+            {data.map((d) => (
+              <div key={`ph-h-${scenario}-${d.year}`} style={{ textAlign: 'left', fontWeight: 600 }}>{d.year}</div>
+            ))}
+            {Array.from({ length: maxPhysicians }).map((_, rowIdx) => (
+              <Fragment key={`row-${scenario}-${rowIdx}`}>
+                <div style={{ color: '#4b5563', whiteSpace: 'nowrap' }}>#{rowIdx + 1}</div>
+                {data.map((d) => {
+                  const p = d.physicians[rowIdx]
+                  if (!p) return <div key={`cell-${scenario}-${d.year}-${rowIdx}`} />
+                  const role = p.type === 'partner' ? 'P' : p.type === 'employee' ? 'E' : 'M'
+                  const tokens: string[] = [p.name]
+                  if (p.type === 'employeeToPartner') {
+                    const empPct = Math.round((p.employeePortionOfYear ?? 0.5) * 100)
+                    const partPct = Math.max(0, 100 - empPct)
+                    const wk = typeof p.weeksVacation === 'number' ? `${p.weeksVacation}w` : ''
+                    const sal = typeof p.salary === 'number' ? currencyShort(p.salary).toUpperCase() : ''
+                    const mix = empPct === partPct ? '50/50' : (empPct > partPct ? `${empPct}E` : `${partPct}P`)
+                    const payTime = sal && wk ? `${sal}/${wk}` : sal || wk
+                    if (mix) tokens.push(mix)
+                    if (payTime) tokens.push(payTime)
+                  } else {
+                    if (role === 'E') {
+                      const sal = typeof p.salary === 'number' ? currencyShort(p.salary).toUpperCase() : ''
+                      tokens.push('E')
+                      if (sal) tokens.push(sal)
+                    } else if (role === 'P') {
+                      const wk = typeof p.weeksVacation === 'number' ? `${p.weeksVacation}w` : ''
+                      tokens.push('P')
+                      if (wk) tokens.push(wk)
+                    }
+                  }
+                  return (
+                    <div key={`cell-${scenario}-${d.year}-${rowIdx}`} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}>
+                      {tokens.join(' · ')}
+                    </div>
+                  )
+                })}
+              </Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <h3 style={{ margin: '8px 0', fontSize: 15 }}>Parameters Summary</h3>
+      {renderScenario('A')}
+      {store.scenarioBEnabled && store.scenarioB && renderScenario('B')}
+    </div>
+  )
+}

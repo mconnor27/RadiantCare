@@ -3,9 +3,10 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* Force light mode always - ignore system dark mode preference */
+  color-scheme: light only;
+  color: #213547;
+  background-color: #ffffff;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -46,7 +47,7 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: #f9f9f9;
   cursor: pointer;
   transition: border-color 0.25s;
 }
@@ -182,6 +183,7 @@ input[type="range"]:active::-moz-range-thumb {
   background: #bfdbfe;
 }
 
+/* Removed dark mode support - app is always light mode
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
@@ -193,6 +195,35 @@ input[type="range"]:active::-moz-range-thumb {
   button {
     background-color: #f9f9f9;
   }
+}
+*/
+
+/* Force light mode on all browsers including iOS Safari */
+html {
+  color-scheme: light only;
+  background-color: #ffffff;
+}
+
+body {
+  background-color: #ffffff;
+  color: #213547;
+}
+
+/* Ensure all form elements stay light mode */
+input, select, textarea, button {
+  color-scheme: light only;
+  background-color: #ffffff;
+  color: #213547;
+}
+
+/* Override any potential dark mode styling from the system */
+* {
+  color-scheme: light only;
+}
+
+/* Make sure plots/charts respect light mode */
+.js-plotly-plot {
+  background-color: #ffffff !important;
 }
 
 /* ============================================
