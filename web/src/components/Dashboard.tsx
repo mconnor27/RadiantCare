@@ -1999,30 +1999,28 @@ function ParametersSummary() {
                   const p = d.physicians[rowIdx]
                   if (!p) return <div key={`cell-${scenario}-${d.year}-${rowIdx}`} />
                   const role = p.type === 'partner' ? 'P' : p.type === 'employee' ? 'E' : 'M'
-                  const tokens: string[] = [p.name]
+                  const tokens: string[] = [p.name, role]
+                  
                   if (p.type === 'employeeToPartner') {
                     const empPct = Math.round((p.employeePortionOfYear ?? 0.5) * 100)
-                    const partPct = Math.max(0, 100 - empPct)
                     const wk = typeof p.weeksVacation === 'number' ? `${p.weeksVacation}w` : ''
                     const sal = typeof p.salary === 'number' ? currencyShort(p.salary).toUpperCase() : ''
-                    const mix = empPct === partPct ? '50/50' : (empPct > partPct ? `${empPct}E` : `${partPct}P`)
+                    const pctLabel = empPct === 50 ? '50/50' : `${empPct}%E`
                     const payTime = sal && wk ? `${sal}/${wk}` : sal || wk
-                    if (mix) tokens.push(mix)
-                    if (payTime) tokens.push(payTime)
-                  } else {
-                    if (role === 'E') {
-                      const sal = typeof p.salary === 'number' ? currencyShort(p.salary).toUpperCase() : ''
-                      tokens.push('E')
-                      if (sal) tokens.push(sal)
-                    } else if (role === 'P') {
-                      const wk = typeof p.weeksVacation === 'number' ? `${p.weeksVacation}w` : ''
-                      tokens.push('P')
-                      if (wk) tokens.push(wk)
-                    }
+                    const detail = payTime ? `${pctLabel} ${payTime}` : pctLabel
+                    tokens.push(detail)
+                  } else if (p.type === 'employee') {
+                    const sal = typeof p.salary === 'number' ? currencyShort(p.salary).toUpperCase() : ''
+                    if (sal) tokens.push(sal)
+                  } else if (p.type === 'partner') {
+                    const wk = typeof p.weeksVacation === 'number' ? `${p.weeksVacation}w` : ''
+                    if (wk) tokens.push(wk)
                   }
                   return (
-                    <div key={`cell-${scenario}-${d.year}-${rowIdx}`} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}>
-                      {tokens.join(' · ')}
+                    <div key={`cell-${scenario}-${d.year}-${rowIdx}`} style={{ display: 'grid', gridTemplateColumns: '24px 12px 1fr', gap: 2, whiteSpace: 'nowrap', overflow: 'hidden', textAlign: 'left', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 500 }}>{tokens[0]}</span>
+                      <span style={{ color: '#6b7280' }}>{tokens[1] || ''}</span>
+                      <span style={{ color: '#6b7280', fontSize: '11px' }}>{tokens[2] || ''}</span>
                     </div>
                   )
                 })}
