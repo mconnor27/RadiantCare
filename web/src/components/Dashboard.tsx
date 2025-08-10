@@ -290,7 +290,7 @@ export const useDashboardStore = create<Store>()(
           selectedYear: FUTURE_YEARS_BASE[0].year,
         },
         scenarioBEnabled: true,
-        setScenarioEnabled: (enabled) =>
+        setScenarioEnabled: (enabled) => {
           set((state) => {
             state.scenarioBEnabled = enabled
             if (enabled) {
@@ -303,7 +303,13 @@ export const useDashboardStore = create<Store>()(
             } else {
               state.scenarioB = undefined
             }
-          }),
+          })
+          // Apply projections to scenario B if it was just enabled
+          if (enabled) {
+            const store = useDashboardStore.getState()
+            if (store.scenarioB) store.applyProjectionFromLastActual('B')
+          }
+        },
         setFutureValue: (scenario, year, field, value) =>
           set((state) => {
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
@@ -384,7 +390,7 @@ export const useDashboardStore = create<Store>()(
             state.scenarioBEnabled = !!snapshot.scenarioBEnabled
             state.scenarioB = snapshot.scenarioBEnabled && snapshot.scenarioB ? snapshot.scenarioB : undefined
           }),
-        resetToDefaults: () =>
+        resetToDefaults: () => {
           set((state) => {
             state.scenarioA = {
               future: INITIAL_FUTURE_YEARS_A.map((f) => ({ ...f, physicians: [...f.physicians] })),
@@ -397,7 +403,12 @@ export const useDashboardStore = create<Store>()(
               projection: { incomeGrowthPct: 3, costGrowthPct: 3 },
               selectedYear: FUTURE_YEARS_BASE[0].year,
             }
-          }, false),
+          }, false)
+          // Apply the 3% growth projections to the future year values
+          const store = useDashboardStore.getState()
+          store.applyProjectionFromLastActual('A')
+          if (store.scenarioB) store.applyProjectionFromLastActual('B')
+        },
       }
     }),
     {
