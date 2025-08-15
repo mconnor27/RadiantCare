@@ -157,9 +157,8 @@ function scenarioADefaultsByYear(year: number): Physician[] {
     return [
       { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-      // BT transitions to partner in Q4 (75% employee, 25% partner)
-      { id: `${year}-BT`, name: 'BT', type: 'employeeToPartner', salary: 500000, weeksVacation: 8, employeePortionOfYear: 0.75 },
-      { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 500000 },
+      { id: `${year}-BT`, name: 'BT', type: 'employeeToPartner', salary: 600000, weeksVacation: 8, employeePortionOfYear: 0.75 },
+      { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 600000 },
     ]
   }
   if (year === 2027) {
@@ -167,7 +166,7 @@ function scenarioADefaultsByYear(year: number): Physician[] {
       { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
       { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8 },
-      { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 525000 },
+      { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 600000 },
     ]
   }
   // 2028-2029
@@ -240,15 +239,17 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
       { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 9 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
       { id: `${year}-GA`, name: 'GA', type: 'partner', weeksVacation: 16 },
-      { id: `${year}-BT`, name: 'BT', type: 'employee', salary: 400000 }, // Higher salary for B
+      { id: `${year}-BT`, name: 'BT', type: 'employee', salary: 400000 },
+      { id: `${year}-P5`, name: 'Physician 5', type: 'employee', salary: 600000 }, // 5th physician
     ]
   }
   if (year === 2026) {
     return [
-      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 }, // Less vacation
+      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-      { id: `${year}-BT`, name: 'BT', type: 'employeeToPartner', salary: 600000, weeksVacation: 8, employeePortionOfYear: 0.75 }, // Stays employee longer
+      { id: `${year}-BT`, name: 'BT', type: 'employeeToPartner', salary: 600000, weeksVacation: 8, employeePortionOfYear: 0.75 },
       { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 600000 },
+      { id: `${year}-P5`, name: 'Physician 5', type: 'employee', salary: 600000 },
     ]
   }
   if (year === 2027) {
@@ -257,6 +258,7 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
       { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8 },
       { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 600000 },
+      { id: `${year}-P5`, name: 'Physician 5', type: 'employee', salary: 600000 },
     ]
   }
   // 2028-2029
@@ -265,6 +267,7 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
     { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
     { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8 },
     { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 8 },
+    { id: `${year}-P5`, name: 'Physician 5', type: 'partner', weeksVacation: 8 },
   ]
 }
 
@@ -286,7 +289,7 @@ export const useDashboardStore = create<Store>()(
         },
         scenarioB: {
           future: INITIAL_FUTURE_YEARS_B,
-          projection: { incomeGrowthPct: 3, costGrowthPct: 3 },
+          projection: { incomeGrowthPct: 0, costGrowthPct: 3 },
           selectedYear: FUTURE_YEARS_BASE[0].year,
         },
         scenarioBEnabled: true,
@@ -297,7 +300,7 @@ export const useDashboardStore = create<Store>()(
               // Initialize scenario B with its own defaults instead of cloning A
               state.scenarioB = {
                 future: INITIAL_FUTURE_YEARS_B.map((f) => ({ ...f, physicians: [...f.physicians] })),
-                projection: { incomeGrowthPct: 3, costGrowthPct: 3 },
+                projection: { incomeGrowthPct: 0, costGrowthPct: 3 },
                 selectedYear: state.scenarioA.selectedYear,
               }
             } else {
@@ -516,7 +519,7 @@ export const useDashboardStore = create<Store>()(
             state.scenarioBEnabled = true
             state.scenarioB = {
               future: INITIAL_FUTURE_YEARS_B.map((f) => ({ ...f, physicians: [...f.physicians] })),
-              projection: { incomeGrowthPct: 3, costGrowthPct: 3 },
+              projection: { incomeGrowthPct: 0, costGrowthPct: 3 },
               selectedYear: FUTURE_YEARS_BASE[0].year,
             }
           }, false)
@@ -611,6 +614,32 @@ function snapPercentToFifthsAndThirds(rawPercent: number): number {
   if (Math.abs(p - 67) <= 2) p = 67
   // Clamp 0..100
   return Math.max(0, Math.min(100, p))
+}
+
+// Helper function to abbreviate physician names for summary display
+function abbreviatePhysicianName(name: string): string {
+  // Check if it's a default "Physician X" format
+  if (/^Physician\s+\d+$/i.test(name.trim())) {
+    return '??'
+  }
+  
+  // If name is 2 characters or less, return as-is
+  if (name.trim().length <= 2) {
+    return name.trim()
+  }
+  
+  // Split by spaces and take first letter of first two words
+  const words = name.trim().split(/\s+/)
+  if (words.length >= 2) {
+    const firstInitial = words[0].charAt(0).toUpperCase()
+    const secondInitial = words[1].charAt(0).toUpperCase()
+    return firstInitial + secondInitial
+  } else if (words.length === 1) {
+    // If only one word, take first two characters
+    return words[0].substring(0, 2).toUpperCase()
+  }
+  
+  return name.trim()
 }
 
 // Generate tooltip content for employee cost breakdown
@@ -1856,7 +1885,10 @@ function OverallCompensationSummary() {
     : undefined
   // const totalPerYear = perYear.map(({ year, comps }) => ({ year, total: comps.reduce((s, c) => s + c.comp, 0) }))
 
-  const allNames = Array.from(new Set(perYearA.flatMap((y) => y.comps.map((c) => c.name))))
+  // Collect all physician names from both scenarios
+  const allNamesFromA = perYearA.flatMap((y) => y.comps.map((c) => c.name))
+  const allNamesFromB = perYearB ? perYearB.flatMap((y) => y.comps.map((c) => c.name)) : []
+  const allNames = Array.from(new Set([...allNamesFromA, ...allNamesFromB]))
   // Assign a consistent color per person for both scenarios
   const colorPalette = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
   const colorByName: Record<string, string> = {}
@@ -1878,37 +1910,27 @@ function OverallCompensationSummary() {
       }))
     : []
 
+  // Calculate locums data for both scenarios
+  const locumsSeriesA = years.map((y) => {
+    const fy = y === 2025 
+      ? { locumDays: 30 } // 2025 default
+      : store.scenarioA.future.find(f => f.year === y)
+    return (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+  })
+  const locumsSeriesB = store.scenarioBEnabled && store.scenarioB
+    ? years.map((y) => {
+        const fy = y === 2025 
+          ? { locumDays: 30 } // 2025 default
+          : store.scenarioB!.future.find(f => f.year === y)
+        return (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+      })
+    : []
+
   const [highlight, setHighlight] = useState<null | { scenario: 'A' | 'B'; name: string }>(null)
   const isHighlighted = (scenario: 'A' | 'B', name: string) =>
     highlight ? highlight.scenario === scenario && highlight.name === name : true
 
-  // Compute net income (partner pool) per year for each scenario
-  const netIncomeA = years.map((y) => {
-    if (y === 2025) return NET_PARTNER_POOL_2025
-    const fy = store.scenarioA.future.find((f) => f.year === y)!
-    const md = fy.physicians.reduce((s, e) => {
-      if (e.type === 'employee') return s + (e.salary ?? 0)
-      if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
-      return s
-    }, 0)
-    return (
-      fy.totalIncome - fy.nonEmploymentCosts - fy.nonMdEmploymentCosts - fy.miscEmploymentCosts - fy.locumDays * LOCUM_DAY_RATE - md
-    )
-  })
-  const netIncomeB = store.scenarioBEnabled && store.scenarioB
-    ? years.map((y) => {
-        if (y === 2025) return NET_PARTNER_POOL_2025
-        const fy = store.scenarioB!.future.find((f) => f.year === y)!
-        const md = fy.physicians.reduce((s, e) => {
-          if (e.type === 'employee') return s + (e.salary ?? 0)
-          if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
-          return s
-        }, 0)
-        return (
-          fy.totalIncome - fy.nonEmploymentCosts - fy.nonMdEmploymentCosts - fy.miscEmploymentCosts - fy.locumDays * LOCUM_DAY_RATE - md
-        )
-      })
-    : []
+
 
   // const totalsByPhysician = allNames.map((name) => ({
   //   name,
@@ -1950,6 +1972,33 @@ function OverallCompensationSummary() {
                 })
               }
             }
+            
+            // Add Locums traces
+            rows.push({
+              type: 'scatter',
+              mode: 'lines+markers',
+              name: store.scenarioBEnabled ? 'Locums (A)' : 'Locums',
+              x: years,
+              y: locumsSeriesA,
+              line: { color: '#888888', width: isHighlighted('A', 'Locums') ? 3 : 1.2 },
+              opacity: highlight ? (isHighlighted('A', 'Locums') ? 1 : 0.2) : 1,
+              legendgroup: 'Locums', // Group by itself
+              legendrank: 999, // Put at end
+            })
+            if (store.scenarioBEnabled) {
+              rows.push({
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Locums (B)',
+                x: years,
+                y: locumsSeriesB,
+                line: { color: '#888888', dash: 'dot', width: isHighlighted('B', 'Locums') ? 3 : 1.2 },
+                opacity: highlight ? (isHighlighted('B', 'Locums') ? 1 : 0.2) : 1,
+                legendgroup: 'Locums', // Same group as A scenario
+                legendrank: 1000, // Put at end after A
+              })
+            }
+            
             return rows
           })() as any}
           layout={{
@@ -1963,6 +2012,116 @@ function OverallCompensationSummary() {
           useResizeHandler={true}
           style={{ width: '100%', height: isMobile ? 360 : 420 }}
         />
+      </div>
+
+      {/* Locums Override Controls */}
+      <div style={{ marginTop: 8, marginBottom: 12, padding: 8, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fffbeb' }}>
+        <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>Locums Cost Override (All Years)</div>
+        <div style={{ fontSize: 12, color: '#d97706', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span>⚠️</span>
+          <span>These sliders override individual per-year locum day settings</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: store.scenarioBEnabled && !isMobile ? '1fr 1fr' : '1fr', gap: 16 }}>
+          {/* Scenario A Locums Slider */}
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Scenario A</div>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center' }}>
+              {(() => {
+                const firstFuture = store.scenarioA.future[0]
+                const currentDays = firstFuture?.locumDays ?? 90
+                const currentCost = currentDays * LOCUM_DAY_RATE
+                const fillPercent = (currentCost / 400000) * 100
+                
+                return (
+                  <>
+                    <input
+                      type="range"
+                      min={0}
+                      max={400000}
+                      step={2000}
+                      value={currentCost}
+                      onChange={(e) => {
+                        const cost = Number(e.target.value)
+                        const days = Math.round(cost / LOCUM_DAY_RATE)
+                        // Update all years in scenario A
+                        store.scenarioA.future.forEach(fy => {
+                          store.setFutureValue('A', fy.year, 'locumDays', days)
+                        })
+                      }}
+                      style={{ 
+                        width: '100%',
+                        ['--fill-percent' as any]: `${fillPercent}%`
+                      }}
+                    />
+                    <input
+                      type="text"
+                      value={`${currency(currentCost)} (${currentDays} d)`}
+                      readOnly
+                      style={{ width: isMobile ? 120 : 140, fontSize: 12, justifySelf: isMobile ? 'end' : undefined }}
+                    />
+                    <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 12, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                      onMouseEnter={(e) => createTooltip('locums-a-tooltip', 'Sets locum cost for all years in Scenario A\nCost is converted to days at $2,000 per day', e)}
+                      onMouseLeave={() => removeTooltip('locums-a-tooltip')}
+                      onTouchStart={(e) => createTooltip('locums-a-tooltip', 'Sets locum cost for all years in Scenario A\nCost is converted to days at $2,000 per day', e)}
+                      onClick={(e) => createTooltip('locums-a-tooltip', 'Sets locum cost for all years in Scenario A\nCost is converted to days at $2,000 per day', e)}
+                    >ℹ</div>
+                  </>
+                )
+              })()}
+            </div>
+          </div>
+
+          {/* Scenario B Locums Slider */}
+          {store.scenarioBEnabled && store.scenarioB && (
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Scenario B</div>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center' }}>
+                {(() => {
+                  const firstFuture = store.scenarioB!.future[0]
+                  const currentDays = firstFuture?.locumDays ?? 90
+                  const currentCost = currentDays * LOCUM_DAY_RATE
+                  const fillPercent = (currentCost / 400000) * 100
+                  
+                  return (
+                    <>
+                      <input
+                        type="range"
+                        min={0}
+                        max={400000}
+                        step={2000}
+                        value={currentCost}
+                        onChange={(e) => {
+                          const cost = Number(e.target.value)
+                          const days = Math.round(cost / LOCUM_DAY_RATE)
+                          // Update all years in scenario B
+                          store.scenarioB!.future.forEach(fy => {
+                            store.setFutureValue('B', fy.year, 'locumDays', days)
+                          })
+                        }}
+                        style={{ 
+                          width: '100%',
+                          ['--fill-percent' as any]: `${fillPercent}%`
+                        }}
+                      />
+                      <input
+                        type="text"
+                        value={`${currency(currentCost)} (${currentDays} d)`}
+                        readOnly
+                        style={{ width: isMobile ? 120 : 140, fontSize: 12, justifySelf: isMobile ? 'end' : undefined }}
+                      />
+                      <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 12, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                        onMouseEnter={(e) => createTooltip('locums-b-tooltip', 'Sets locum cost for all years in Scenario B\nCost is converted to days at $2,000 per day', e)}
+                        onMouseLeave={() => removeTooltip('locums-b-tooltip')}
+                        onTouchStart={(e) => createTooltip('locums-b-tooltip', 'Sets locum cost for all years in Scenario B\nCost is converted to days at $2,000 per day', e)}
+                        onClick={(e) => createTooltip('locums-b-tooltip', 'Sets locum cost for all years in Scenario B\nCost is converted to days at $2,000 per day', e)}
+                      >ℹ</div>
+                    </>
+                  )
+                })()}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div style={{ marginTop: 8, overflowX: isMobile ? 'auto' : 'visible' }}>
@@ -2017,22 +2176,231 @@ function OverallCompensationSummary() {
           </div>
         ))}
 
-        {/* Net Income total row(s) */}
-        <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '2px solid #e5e7eb', background: '#eef7ee', fontWeight: 700 }}>
-          <div>Net Income (Scenario A)</div>
-          {netIncomeA.map((v, i) => (
-            <div key={`NA-${i}`} style={{ textAlign: 'right' }}>{currency(v)}</div>
-          ))}
-          <div style={{ textAlign: 'right' }}>{currency(netIncomeA.reduce((a, b) => a + b, 0))}</div>
-        </div>
-        {store.scenarioBEnabled && (
-          <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '1px solid #e5e7eb', background: '#eef7ee', fontWeight: 700 }}>
-            <div>Net Income (Scenario B)</div>
-            {netIncomeB.map((v, i) => (
-              <div key={`NB-${i}`} style={{ textAlign: 'right' }}>{currency(v)}</div>
-            ))}
-            <div style={{ textAlign: 'right' }}>{currency(netIncomeB.reduce((a, b) => a + b, 0))}</div>
+        {/* Locums rows */}
+        <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '2px solid #e5e7eb', background: '#f8f9fa', fontSize: '14px', color: '#6b7280' }}>
+          <div style={{ paddingLeft: '8px' }}>+ Locums (Scenario A)</div>
+          {years.map((y, i) => {
+            const fy = y === 2025 
+              ? { locumDays: 30 } // 2025 default
+              : store.scenarioA.future.find(f => f.year === y)
+            const locumCost = (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+            return <div key={`LA-${i}`} style={{ textAlign: 'right' }}>{currency(locumCost)}</div>
+          })}
+          <div style={{ textAlign: 'right' }}>
+            {currency(years.reduce((total, y) => {
+              const fy = y === 2025 
+                ? { locumDays: 30 } // 2025 default
+                : store.scenarioA.future.find(f => f.year === y)
+              return total + ((fy?.locumDays ?? 0) * LOCUM_DAY_RATE)
+            }, 0))}
           </div>
+        </div>
+        {store.scenarioBEnabled && store.scenarioB && (
+          <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #e5e7eb', background: '#f8f9fa', fontSize: '14px', color: '#6b7280' }}>
+            <div style={{ paddingLeft: '8px' }}>+ Locums (Scenario B)</div>
+            {years.map((y, i) => {
+              const fy = y === 2025 
+                ? { locumDays: 30 } // 2025 default
+                : store.scenarioB!.future.find(f => f.year === y)
+              const locumCost = (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+              return <div key={`LB-${i}`} style={{ textAlign: 'right' }}>{currency(locumCost)}</div>
+            })}
+            <div style={{ textAlign: 'right' }}>
+              {currency(years.reduce((total, y) => {
+                const fy = y === 2025 
+                  ? { locumDays: 30 } // 2025 default
+                  : store.scenarioB!.future.find(f => f.year === y)
+                return total + ((fy?.locumDays ?? 0) * LOCUM_DAY_RATE)
+              }, 0))}
+            </div>
+          </div>
+        )}
+
+        {/* Scenario A Total row */}
+        <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '2px solid #e5e7eb', background: '#eef7ff', fontWeight: 700 }}>
+          <div>Scenario A (Total)</div>
+          {years.map((y) => {
+            const totalComp = perYearA.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
+            const fy = y === 2025 
+              ? { locumDays: 30 } // 2025 default
+              : store.scenarioA.future.find(f => f.year === y)
+            const locumCost = (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+            return <div key={`SAT-${y}`} style={{ textAlign: 'right' }}>{currency(totalComp + locumCost)}</div>
+          })}
+          <div style={{ textAlign: 'right' }}>
+            {currency(
+              perYearA.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
+              years.reduce((total, y) => {
+                const fy = y === 2025 
+                  ? { locumDays: 30 } // 2025 default
+                  : store.scenarioA.future.find(f => f.year === y)
+                return total + ((fy?.locumDays ?? 0) * LOCUM_DAY_RATE)
+              }, 0)
+            )}
+          </div>
+        </div>
+
+        {/* Scenario B Total row */}
+        {store.scenarioBEnabled && store.scenarioB && perYearB && (
+          <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '1px solid #e5e7eb', background: '#eef7ff', fontWeight: 700 }}>
+            <div>Scenario B (Total)</div>
+            {years.map((y) => {
+              const totalComp = perYearB.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
+              const fy = y === 2025 
+                ? { locumDays: 30 } // 2025 default
+                : store.scenarioB!.future.find(f => f.year === y)
+              const locumCost = (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+              return <div key={`SBT-${y}`} style={{ textAlign: 'right' }}>{currency(totalComp + locumCost)}</div>
+            })}
+            <div style={{ textAlign: 'right' }}>
+              {currency(
+                perYearB.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
+                years.reduce((total, y) => {
+                  const fy = y === 2025 
+                    ? { locumDays: 30 } // 2025 default
+                    : store.scenarioB!.future.find(f => f.year === y)
+                  return total + ((fy?.locumDays ?? 0) * LOCUM_DAY_RATE)
+                }, 0)
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Per Scenario by Year table */}
+      <div style={{ marginTop: 16, overflowX: isMobile ? 'auto' : 'visible' }}>
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>Per Scenario by Year</div>
+        <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 2, fontWeight: 600 }}>
+          <div>Scenario</div>
+          {years.map((y) => (
+            <div key={y} style={{ textAlign: 'right' }}>{y}</div>
+          ))}
+          <div style={{ textAlign: 'right' }}>Total</div>
+        </div>
+
+        {/* Scenario A - Individual physicians */}
+        {allNames.map((name, idx) => (
+          <div key={`SA-${name}`} style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: idx === 0 ? '1px solid #f0f0f0' : '1px solid #f8f8f8', background: '#f9fafb' }}>
+            <div style={{ paddingLeft: '8px' }}>{name} (A)</div>
+            {years.map((y) => {
+              const found = perYearA.find((py) => py.year === y)?.comps.find((c) => c.name === name)
+              return <div key={`SA-${name}-${y}`} style={{ textAlign: 'right' }}>{currency(found ? found.comp : 0)}</div>
+            })}
+            <div style={{ textAlign: 'right' }}>
+              {currency(
+                seriesA.find((s) => s.name === name)?.values.reduce((a, b) => a + b, 0) ?? 0
+              )}
+            </div>
+          </div>
+        ))}
+
+        {/* Scenario A - Locums */}
+        <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #f0f0f0', background: '#f9fafb', fontSize: '14px', color: '#6b7280' }}>
+          <div style={{ paddingLeft: '16px' }}>+ Locums (A)</div>
+          {years.map((y, i) => {
+            const fy = y === 2025 
+              ? { locumDays: 30 } // 2025 default
+              : store.scenarioA.future.find(f => f.year === y)
+            const locumCost = (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+            return <div key={`SAL-${i}`} style={{ textAlign: 'right' }}>{currency(locumCost)}</div>
+          })}
+          <div style={{ textAlign: 'right' }}>
+            {currency(years.reduce((total, y) => {
+              const fy = y === 2025 
+                ? { locumDays: 30 } // 2025 default
+                : store.scenarioA.future.find(f => f.year === y)
+              return total + ((fy?.locumDays ?? 0) * LOCUM_DAY_RATE)
+            }, 0))}
+          </div>
+        </div>
+
+        {/* Scenario A - Total including locums */}
+        <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '1px solid #e5e7eb', background: '#eef7ff', fontWeight: 700 }}>
+          <div>Scenario A (Total)</div>
+          {years.map((y) => {
+            const totalComp = perYearA.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
+            const fy = y === 2025 
+              ? { locumDays: 30 } // 2025 default
+              : store.scenarioA.future.find(f => f.year === y)
+            const locumCost = (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+            return <div key={`SAT-${y}`} style={{ textAlign: 'right' }}>{currency(totalComp + locumCost)}</div>
+          })}
+          <div style={{ textAlign: 'right' }}>
+            {currency(
+              perYearA.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
+              years.reduce((total, y) => {
+                const fy = y === 2025 
+                  ? { locumDays: 30 } // 2025 default
+                  : store.scenarioA.future.find(f => f.year === y)
+                return total + ((fy?.locumDays ?? 0) * LOCUM_DAY_RATE)
+              }, 0)
+            )}
+          </div>
+        </div>
+
+        {/* Scenario B rows - only if enabled */}
+        {store.scenarioBEnabled && store.scenarioB && perYearB && (
+          <>
+            {/* Scenario B - Individual physicians */}
+            {allNames.map((name, idx) => (
+              <div key={`SB-${name}`} style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: idx === 0 ? '2px solid #e5e7eb' : '1px solid #f8f8f8', background: '#faf9f7' }}>
+                <div style={{ paddingLeft: '8px' }}>{name} (B)</div>
+                {years.map((y) => {
+                  const found = perYearB.find((py) => py.year === y)?.comps.find((c) => c.name === name)
+                  return <div key={`SB-${name}-${y}`} style={{ textAlign: 'right' }}>{currency(found ? found.comp : 0)}</div>
+                })}
+                <div style={{ textAlign: 'right' }}>
+                  {currency(
+                    seriesB.find((s) => s.name === name)?.values.reduce((a, b) => a + b, 0) ?? 0
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* Scenario B - Locums */}
+            <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #f0f0f0', background: '#faf9f7', fontSize: '14px', color: '#6b7280' }}>
+              <div style={{ paddingLeft: '16px' }}>+ Locums (B)</div>
+              {years.map((y, i) => {
+                const fy = y === 2025 
+                  ? { locumDays: 30 } // 2025 default
+                  : store.scenarioB!.future.find(f => f.year === y)
+                const locumCost = (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+                return <div key={`SBL-${i}`} style={{ textAlign: 'right' }}>{currency(locumCost)}</div>
+              })}
+              <div style={{ textAlign: 'right' }}>
+                {currency(years.reduce((total, y) => {
+                  const fy = y === 2025 
+                    ? { locumDays: 30 } // 2025 default
+                    : store.scenarioB!.future.find(f => f.year === y)
+                  return total + ((fy?.locumDays ?? 0) * LOCUM_DAY_RATE)
+                }, 0))}
+              </div>
+            </div>
+
+            {/* Scenario B - Total including locums */}
+            <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '1px solid #e5e7eb', background: '#eef7ff', fontWeight: 700 }}>
+              <div>Scenario B (Total)</div>
+              {years.map((y) => {
+                const totalComp = perYearB.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
+                const fy = y === 2025 
+                  ? { locumDays: 30 } // 2025 default
+                  : store.scenarioB!.future.find(f => f.year === y)
+                const locumCost = (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+                return <div key={`SBT-${y}`} style={{ textAlign: 'right' }}>{currency(totalComp + locumCost)}</div>
+              })}
+              <div style={{ textAlign: 'right' }}>
+                {currency(
+                  perYearB.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
+                  years.reduce((total, y) => {
+                    const fy = y === 2025 
+                      ? { locumDays: 30 } // 2025 default
+                      : store.scenarioB!.future.find(f => f.year === y)
+                    return total + ((fy?.locumDays ?? 0) * LOCUM_DAY_RATE)
+                  }, 0)
+                )}
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -2125,7 +2493,7 @@ function ParametersSummary() {
                   const p = d.physicians[rowIdx]
                   if (!p) return <div key={`cell-${scenario}-${d.year}-${rowIdx}`} />
                   const role = p.type === 'partner' ? 'P' : p.type === 'employee' ? 'E' : 'M'
-                  const tokens: string[] = [p.name, role]
+                  const tokens: string[] = [abbreviatePhysicianName(p.name), role]
                   
                   if (p.type === 'employeeToPartner') {
                     const empPct = Math.round((p.employeePortionOfYear ?? 0.5) * 100)
