@@ -165,16 +165,32 @@ function scenarioADefaultsByYear(year: number): Physician[] {
     return [
       { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8 },
+      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8 }, // First year as partner
       { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 600000 },
     ]
   }
-  // 2028-2029
+  if (year === 2028) {
   return [
     { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
     { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-    { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8 },
-    { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 8 },
+      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 9 }, // Second year as partner
+      { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 8 }, // First year as partner
+    ]
+  }
+  if (year === 2029) {
+    return [
+      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
+      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 10 }, // Third year as partner
+      { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 9 }, // Second year as partner
+    ]
+  }
+  // 2030+
+  return [
+    { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
+    { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
+    { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2027)) }, // Increases yearly, max 12
+    { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)) }, // Increases yearly, max 12
   ]
 }
 
@@ -256,18 +272,36 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
     return [
       { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8 },
+      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8 }, // First year as partner
       { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 600000 },
       { id: `${year}-P5`, name: 'Physician 5', type: 'employee', salary: 600000 },
     ]
   }
-  // 2028-2029
+  if (year === 2028) {
   return [
     { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
     { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-    { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8 },
-    { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 8 },
-    { id: `${year}-P5`, name: 'Physician 5', type: 'partner', weeksVacation: 8 },
+      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 9 }, // Second year as partner
+      { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 8 }, // First year as partner
+      { id: `${year}-P5`, name: 'Physician 5', type: 'partner', weeksVacation: 8 }, // First year as partner
+    ]
+  }
+  if (year === 2029) {
+    return [
+      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
+      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 10 }, // Third year as partner
+      { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 9 }, // Second year as partner
+      { id: `${year}-P5`, name: 'Physician 5', type: 'partner', weeksVacation: 9 }, // Second year as partner
+    ]
+  }
+  // 2030+
+  return [
+    { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
+    { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
+    { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2027)) }, // Increases yearly, max 12
+    { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)) }, // Increases yearly, max 12
+    { id: `${year}-P5`, name: 'Physician 5', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)) }, // Increases yearly, max 12
   ]
 }
 
