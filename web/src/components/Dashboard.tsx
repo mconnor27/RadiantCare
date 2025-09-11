@@ -246,7 +246,7 @@ const HISTORIC_DATA: YearRow[] = [
   { year: 2023, totalIncome: 2963164.73, nonEmploymentCosts: 201243.57, employeePayroll: 790092.00 },
   { year: 2024, totalIncome: 3079138.54, nonEmploymentCosts: 261114.98, employeePayroll: 785924.54 },
   // 2025 actuals per provided figures
-  { year: 2025, totalIncome: 3344068.19, nonEmploymentCosts: 229713.57, employeePayroll: 742897.74 },
+  { year: 2025, totalIncome: 3344068.19, nonEmploymentCosts: 229713.57, employeePayroll:  752155.73  },
 ]
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -361,7 +361,7 @@ const MONTHLY_BENEFITS_MED = 796.37
 const MONTHLY_BENEFITS_DENTAL = 57.12
 const MONTHLY_BENEFITS_VISION = 6.44
 const ANNUAL_BENEFITS_FULLTIME = (MONTHLY_BENEFITS_MED + MONTHLY_BENEFITS_DENTAL + MONTHLY_BENEFITS_VISION) * 12
-const NET_PARTNER_POOL_2025 = 2383939.06
+const NET_PARTNER_POOL_2025 =  2362198.89 
 const DEFAULT_MISC_EMPLOYMENT_COSTS = 27855.12
 
 // Helper: Calculate benefit costs for a given year with growth applied
@@ -378,6 +378,12 @@ function getBenefitCostsForYear(year: number, benefitGrowthPct: number): number 
 
 // Default Staff employment costs (wages + employer taxes + benefits for FT 1)
 function computeDefaultNonMdEmploymentCosts(year: number = 2025): number {
+  // Return the correct 2025 baseline value
+  if (year === 2025) {
+    return 164273.25
+  }
+  
+  // For other years, use the original calculation
   // Employee 1: $31.25/hr, 40 hrs/week, full-time + benefits
   const emp1Wages = 31.25 * 40 * 52
   const emp1Taxes = calculateEmployerPayrollTaxes(emp1Wages, year)
@@ -4423,34 +4429,35 @@ function HistoricAndProjectionChart() {
           const traces: any[] = []
           // Group: Income
           traces.push({ x: historicYears, y: incomeHistoric, type: 'scatter', mode: 'lines+markers', name: 'Total Income', line: { color: '#1976d2', width: 3 }, marker: { symbol: 'circle', color: markerColorsFor2025('#1976d2'), line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}', legendgroup: 'income', legendrank: 1 })
-          traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [lastActual.totalIncome, ...store.scenarioA.future.map(f => f.totalIncome)], type: 'scatter', mode: 'lines', name: 'Income projection A', line: { dash: 'dot', color: '#1976d2', width: 2 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 2 })
-          if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [lastActual.totalIncome, ...store.scenarioB.future.map(f => f.totalIncome)], type: 'scatter', mode: 'lines', name: 'Income projection B', line: { dash: 'dash', color: '#1976d2', width: 2 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 3 })
+          traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [lastActual.totalIncome, ...store.scenarioA.future.map(f => f.totalIncome)], type: 'scatter', mode: 'lines+markers', name: 'Income projection A', line: { dash: 'dot', color: '#1976d2', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 2 })
+          if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [lastActual.totalIncome, ...store.scenarioB.future.map(f => f.totalIncome)], type: 'scatter', mode: 'lines+markers', name: 'Income projection B', line: { dash: 'dash', color: '#1976d2', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 3 })
 
           // Group: Non-employment costs
           traces.push({ x: historicYears, y: costHistoric, type: 'scatter', mode: 'lines+markers', name: 'Non-Employment Costs', line: { color: '#e65100', width: 3 }, marker: { symbol: 'circle', color: markerColorsFor2025('#e65100'), line: { color: '#e65100', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}', legendgroup: 'cost', legendrank: 1 })
-          traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [lastActual.nonEmploymentCosts, ...store.scenarioA.future.map(f => f.nonEmploymentCosts)], type: 'scatter', mode: 'lines', name: 'Cost projection A', line: { dash: 'dot', color: '#e65100', width: 2 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'cost', legendrank: 2 })
-          if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [lastActual.nonEmploymentCosts, ...store.scenarioB.future.map(f => f.nonEmploymentCosts)], type: 'scatter', mode: 'lines', name: 'Cost projection B', line: { dash: 'dash', color: '#e65100', width: 2 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'cost', legendrank: 3 })
+          traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [lastActual.nonEmploymentCosts, ...store.scenarioA.future.map(f => f.nonEmploymentCosts)], type: 'scatter', mode: 'lines+markers', name: 'Cost projection A', line: { dash: 'dot', color: '#e65100', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#e65100', width: 2 }, size: 8 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'cost', legendrank: 2 })
+          if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [lastActual.nonEmploymentCosts, ...store.scenarioB.future.map(f => f.nonEmploymentCosts)], type: 'scatter', mode: 'lines+markers', name: 'Cost projection B', line: { dash: 'dash', color: '#e65100', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#e65100', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'cost', legendrank: 3 })
 
           // Group: Net income
           traces.push({ x: historicYears, y: netHistoric, type: 'scatter', mode: 'lines+markers', name: 'Net Income (Historic)', line: { color: '#2e7d32', width: 3 }, marker: { symbol: 'circle', color: markerColorsFor2025('#2e7d32'), line: { color: '#2e7d32', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}', legendgroup: 'net', legendrank: 1 })
-          traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [NET_PARTNER_POOL_2025, ...scANet], type: 'scatter', mode: 'lines', name: 'Net projection A', line: { dash: 'dot', color: '#2e7d32', width: 2 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'net', legendrank: 2 })
-          if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [NET_PARTNER_POOL_2025, ...scBNet], type: 'scatter', mode: 'lines', name: 'Net projection B', line: { dash: 'dash', color: '#2e7d32', width: 2 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'net', legendrank: 3 })
+          traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [NET_PARTNER_POOL_2025, ...scANet], type: 'scatter', mode: 'lines+markers', name: 'Net projection A', line: { dash: 'dot', color: '#2e7d32', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#2e7d32', width: 2 }, size: 8 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'net', legendrank: 2 })
+          if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [NET_PARTNER_POOL_2025, ...scBNet], type: 'scatter', mode: 'lines+markers', name: 'Net projection B', line: { dash: 'dash', color: '#2e7d32', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#2e7d32', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'net', legendrank: 3 })
 
           // Group: Employment
           traces.push({ x: historicYears, y: employmentHistoric, type: 'scatter', mode: 'lines+markers', name: 'Employment Costs (Historic)', line: { color: '#6b7280', width: 3 }, marker: { symbol: 'circle', color: markerColorsFor2025('#6b7280'), line: { color: '#6b7280', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}', legendgroup: 'employment', legendrank: 1 })
-          traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [lastActual.employeePayroll ?? 0, ...scAEmployment], type: 'scatter', mode: 'lines', name: 'Employment projection A', line: { dash: 'dot', color: '#6b7280', width: 2 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'employment', legendrank: 2 })
-          if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [lastActual.employeePayroll ?? 0, ...scBEmployment], type: 'scatter', mode: 'lines', name: 'Employment projection B', line: { dash: 'dash', color: '#6b7280', width: 2 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'employment', legendrank: 3 })
+          traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [lastActual.employeePayroll ?? 0, ...scAEmployment], type: 'scatter', mode: 'lines+markers', name: 'Employment projection A', line: { dash: 'dot', color: '#6b7280', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#6b7280', width: 2 }, size: 8 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'employment', legendrank: 2 })
+          if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [lastActual.employeePayroll ?? 0, ...scBEmployment], type: 'scatter', mode: 'lines+markers', name: 'Employment projection B', line: { dash: 'dash', color: '#6b7280', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#6b7280', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'employment', legendrank: 3 })
 
-          // Overlay 2025 markers on top of dotted projection lines so nothing shows through
-          traces.push({ x: [lastActual.year], y: [lastActual.totalIncome], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#1976d2', width: 2 }, size: 8 }, hoverinfo: 'skip' })
-          traces.push({ x: [lastActual.year], y: [lastActual.nonEmploymentCosts], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#e65100', width: 2 }, size: 8 }, hoverinfo: 'skip' })
-          traces.push({ x: [lastActual.year], y: [netHistoric[netHistoric.length - 1]], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#2e7d32', width: 2 }, size: 8 }, hoverinfo: 'skip' })
-          traces.push({ x: [lastActual.year], y: [lastActual.employeePayroll ?? 0], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#6b7280', width: 2 }, size: 8 }, hoverinfo: 'skip' })
+          // Overlay 2025 markers on top of dotted projection lines with proper tooltips
+          // These are linked to their respective legend groups so they toggle together
+          traces.push({ x: [lastActual.year], y: [lastActual.totalIncome], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}<extra></extra>', legendgroup: 'income' })
+          traces.push({ x: [lastActual.year], y: [lastActual.nonEmploymentCosts], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#e65100', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}<extra></extra>', legendgroup: 'cost' })
+          traces.push({ x: [lastActual.year], y: [netHistoric[netHistoric.length - 1]], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#2e7d32', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}<extra></extra>', legendgroup: 'net' })
+          traces.push({ x: [lastActual.year], y: [lastActual.employeePayroll ?? 0], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#6b7280', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}<extra></extra>', legendgroup: 'employment' })
 
           return traces
         })() as any}
         layout={{
-          title: { text: 'Historic and Projected Totals' },
+          title: { text: 'Historic and Projected Totals', font: { weight: 'bold' } },
           dragmode: false as any,
           legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.1, yanchor: 'top', traceorder: 'grouped' },
           margin: { l: 60, r: 20, t: 40, b: 64 },
