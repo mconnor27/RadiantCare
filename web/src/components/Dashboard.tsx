@@ -362,7 +362,7 @@ const MONTHLY_BENEFITS_DENTAL = 57.12
 const MONTHLY_BENEFITS_VISION = 6.44
 const ANNUAL_BENEFITS_FULLTIME = (MONTHLY_BENEFITS_MED + MONTHLY_BENEFITS_DENTAL + MONTHLY_BENEFITS_VISION) * 12
 const NET_PARTNER_POOL_2025 =  2362198.89 
-const DEFAULT_MISC_EMPLOYMENT_COSTS = 27855.12
+const DEFAULT_MISC_EMPLOYMENT_COSTS = 29115.51
 
 // Helper: Calculate benefit costs for a given year with growth applied
 function getBenefitCostsForYear(year: number, benefitGrowthPct: number): number {
@@ -793,7 +793,7 @@ export const useDashboardStore = create<Store>()(
               baselineData = {
                 totalIncome: last2024.totalIncome,
                 nonEmploymentCosts: last2024.nonEmploymentCosts,
-                miscEmploymentCosts: 18182.56, // 2024 actual misc employment from image
+                miscEmploymentCosts: 24623.49, // 2024 actual misc employment from image
                 nonMdEmploymentCosts: 164677.44, // 2024 actual staff employment costs
               }
             } else if (last2025) {
@@ -876,7 +876,7 @@ export const useDashboardStore = create<Store>()(
               baselineData = {
                 totalIncome: last2024.totalIncome,
                 nonEmploymentCosts: last2024.nonEmploymentCosts,
-                miscEmploymentCosts: 18182.56, // 2024 actual misc employment from image
+                miscEmploymentCosts: 24623.49, // 2024 actual misc employment from image
                 nonMdEmploymentCosts: 164677.44, // 2024 actual staff employment costs
               }
             } else if (last2025) {
@@ -951,7 +951,7 @@ export const useDashboardStore = create<Store>()(
                   nonEmploymentCosts: last2024.nonEmploymentCosts,
                   nonMdEmploymentCosts: 164677.44, // 2024 actual staff employment costs
                   locumCosts: 113400, // 2024 actual locums costs
-                  miscEmploymentCosts: 18182.56, // 2024 actual misc employment
+                  miscEmploymentCosts: 24623.49, // 2024 actual misc employment
                   physicians: scenario2024Defaults(),
                 }
               } else if (sc.dataMode === '2025 Data' && last2025) {
@@ -1519,8 +1519,16 @@ function usePartnerComp(year: number, scenario: ScenarioKey) {
         return { p, weight }
       })
       const totalWeight = partnerFTEs.reduce((s, x) => s + x.weight, 0) || 1
-      // For 2025, we need to account for HW's buyout cost and delayed W2 payments
-      const buyoutCosts = partners.reduce((sum, p) => sum + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0), 0)
+      // For 2025, only account for buyout costs of partners who worked part of the year
+      // Partners who retired in prior year (weight = 0) shouldn't reduce the active partner pool
+      const buyoutCosts = partners.reduce((sum, p) => {
+        if (p.type === 'partnerToRetire') {
+          const weight = (1 - (p.weeksVacation ?? 0) / 52) * (p.partnerPortionOfYear ?? 0.5)
+          // Only subtract buyout if the partner worked part of the year
+          return sum + (weight > 0 ? (p.buyoutCost ?? 0) : 0)
+        }
+        return sum
+      }, 0)
       const delayedW2Costs = partners.reduce((sum, p) => {
         if (p.type === 'employeeToPartner') {
           const delayed = calculateDelayedW2Payment(p, year)
@@ -1531,13 +1539,23 @@ function usePartnerComp(year: number, scenario: ScenarioKey) {
       
       // Use different partner pools based on data mode
       const basePool = dataMode === '2024 Data' ? 2032099.02 : NET_PARTNER_POOL_2025
-      const adjustedPool = basePool - buyoutCosts - delayedW2Costs
+      // NET_PARTNER_POOL_2025 is already net of all costs, so only subtract buyouts
+      // delayedW2Costs are already accounted for in the net pool
+      const adjustedPool = basePool - buyoutCosts
       
-      return partnerFTEs.map(({ p, weight }) => ({ 
-        id: p.id, 
-        name: p.name, 
-        comp: (weight / totalWeight) * adjustedPool + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0)
-      }))
+      return partnerFTEs
+        .filter(({ p, weight }) => {
+          // Exclude partners who retired in prior year and only got buyout (no working portion)
+          if (p.type === 'partnerToRetire' && weight === 0) {
+            return false
+          }
+          return true
+        })
+        .map(({ p, weight }) => ({ 
+          id: p.id, 
+          name: p.name, 
+          comp: (weight / totalWeight) * adjustedPool + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0)
+        }))
     }
     if (!fy) return [] as { id: string; name: string; comp: number }[]
     const partners = fy.physicians.filter((p) => p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire')
@@ -1566,7 +1584,12 @@ function usePartnerComp(year: number, scenario: ScenarioKey) {
       }
     }, 0)
     const totalBuyoutCosts = fy.physicians.reduce((sum, p) => {
-      return sum + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0)
+      if (p.type === 'partnerToRetire') {
+        const weight = getPartnerFTEWeight(p)
+        // Only subtract buyout if the partner worked part of the year
+        return sum + (weight > 0 ? (p.buyoutCost ?? 0) : 0)
+      }
+      return sum
     }, 0)
     // Calculate delayed W2 payments for employeeToPartner physicians
     const totalDelayedW2Costs = fy.physicians.reduce((sum, p) => {
@@ -1581,11 +1604,19 @@ function usePartnerComp(year: number, scenario: ScenarioKey) {
     if (partners.length === 0) return []
     const partnerFTEs = partners.map((p) => ({ p, weight: getPartnerFTEWeight(p) }))
     const totalWeight = partnerFTEs.reduce((s, x) => s + x.weight, 0) || 1
-    return partnerFTEs.map(({ p, weight }) => ({
-      id: p.id,
-      name: p.name,
-      comp: (weight / totalWeight) * pool + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0),
-    }))
+    return partnerFTEs
+      .filter(({ p, weight }) => {
+        // Exclude partners who retired in prior year and only got buyout (no working portion)
+        if (p.type === 'partnerToRetire' && weight === 0) {
+          return false
+        }
+        return true
+      })
+      .map(({ p, weight }) => ({
+        id: p.id,
+        name: p.name,
+        comp: (weight / totalWeight) * pool + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0),
+      }))
   }, [fy, sc, dataMode])
 }
 
@@ -3339,6 +3370,155 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
               <span style={{ transform: 'translateY(-1px)', display: 'inline-block' }}>×</span>
             </button>
           </>
+        ) : p.type === 'partner' ? (
+          // partner
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+              <input
+                type="range"
+                min={2}
+                max={(() => {
+                  const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+                  return (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
+                })()}
+                step={1}
+                value={p.weeksVacation ?? 8}
+                onChange={(e) =>
+                  store.upsertPhysician(scenario, year, {
+                    ...p,
+                    weeksVacation: Number(e.target.value),
+                  })
+                }
+                disabled={readOnly}
+                style={{ 
+                  width: '100%',
+                  ['--fill-percent' as any]: `${((p.weeksVacation ?? 8) - 2) / ((() => {
+                    const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+                    return (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
+                  })() - 2) * 100}%`
+                }}
+              />
+              <input
+                type="text"
+                value={`${p.weeksVacation ?? 8} weeks off`}
+                onChange={(e) => {
+                  const weeks = Number(e.target.value.replace(/[^0-9]/g, ''))
+                  if (!isNaN(weeks)) {
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      weeksVacation: weeks,
+                    })
+                  }
+                }}
+                style={{ 
+                  width: 100, 
+                  height: 20, 
+                  padding: '2px 8px', 
+                  border: '1px solid #ccc',
+                  borderRadius: 3,
+                  fontSize: 12
+                }}
+                disabled={readOnly}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img
+                src={p.receivesBonuses ? '/bonus_selected.png' : '/bonus_unselected.png'}
+                alt={`Bonus ${p.receivesBonuses ? 'enabled' : 'disabled'}`}
+                data-bonus-id={p.id}
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  objectFit: 'contain',
+                  cursor: readOnly ? 'default' : 'pointer',
+                  opacity: readOnly ? 0.5 : 1
+                }}
+                onClick={(e) => {
+                  if (readOnly) return
+                  const newBonusState = !p.receivesBonuses
+                  store.upsertPhysician(scenario, year, {
+                    ...p,
+                    receivesBonuses: newBonusState,
+                    bonusAmount: newBonusState ? (p.bonusAmount ?? 0) : 0,
+                  })
+                  // Update tooltip in real-time if it's currently visible
+                  const tooltip = document.getElementById('benefits-tooltip-partner')
+                  if (tooltip) {
+                    tooltip.innerHTML = `Bonuses: ${newBonusState ? 'Enabled' : 'Disabled'}`
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  if (!readOnly) {
+                    createBonusTooltip(p.id, p.bonusAmount ?? 0, e, (_, amount) => {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        bonusAmount: amount,
+                      })
+                    })
+                    e.currentTarget.style.opacity = '0.8'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!readOnly) {
+                    // Add a delay before hiding to allow mouse to move to tooltip
+                    const tooltip = document.getElementById(`bonus-slider-${p.id}`)
+                    if (tooltip) {
+                      (tooltip as any).hideTimeout = setTimeout(() => {
+                        if (tooltip && !tooltip.matches(':hover')) {
+                          removeTooltip(`bonus-slider-${p.id}`)
+                        }
+                      }, 150)
+                    }
+                    e.currentTarget.style.opacity = '1'
+                  }
+                }}
+                onTouchStart={(e) => {
+                  if (!readOnly) {
+                    createBonusTooltip(p.id, p.bonusAmount ?? 0, e, (_, amount) => {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        bonusAmount: amount,
+                      })
+                    })
+                  }
+                }}
+              />
+            </div>
+            <div 
+              style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+              onMouseEnter={(e) => {
+                const tooltip = document.createElement('div')
+                tooltip.id = 'partner-tooltip'
+                tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                const weeks = p.weeksVacation ?? 8
+                const fte = 1 - weeks / 52
+                tooltip.textContent = `Partner:\nWeeks off: ${weeks}\nFTE: ${(fte * 100).toFixed(1)}%`
+                document.body.appendChild(tooltip)
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                tooltip.style.left = `${rect.right + 10}px`
+                tooltip.style.top = `${rect.top + window.scrollY}px`
+              }}
+              onMouseLeave={() => { const t = document.getElementById('partner-tooltip'); if (t) t.remove() }}
+            ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+            <button
+              onClick={() => store.removePhysician(scenario, year, p.id)}
+              disabled={!canDelete}
+              title={canDelete ? 'Remove' : 'Minimum 3 physicians'}
+              style={{
+                width: 20,
+                height: 20,
+                border: '1px solid #ccc',
+                borderRadius: 4,
+                background: canDelete ? '#fff' : '#f3f3f3',
+                cursor: canDelete ? 'pointer' : 'not-allowed',
+                lineHeight: '18px',
+                textAlign: 'center',
+                padding: 0,
+              }}
+            >
+              <span style={{ transform: 'translateY(-1px)', display: 'inline-block' }}>×</span>
+            </button>
+          </>
         ) : (
           // employeeToPartner
           <>
@@ -3707,80 +3887,80 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
         padding: 8
       }}>
         {rows}
-      </div>
-
-      {/* Locums costs row */}
-      <div
-        style={{
-          borderTop: '1px solid #d1d5db',
-          paddingTop: 10,
-          marginTop: 10,
-          display: 'grid',
-          gridTemplateColumns: '20px 120px 150px 1fr 20px 20px 20px',
-          gap: 8,
-          alignItems: 'center',
-          cursor: 'default',
-          background: 'transparent'
-        }}
-      >
-        <div></div> {/* Empty space for drag handle column alignment */}
-        <div style={{ fontWeight: 500, color: '#6b7280' }}></div>
-        <div style={{ 
-          fontFamily: 'system-ui, Avenir, Helvetica, Arial, sans-serif',
-          fontWeight: 400,
-          color: '#213547',
-          textAlign: 'left',
-          paddingLeft: 6,
-          fontSize: '14px'
-        }}>Locums Costs</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
-          <input
-            type="range"
-            min={0}
-            max={240000}
-            step={1000}
-            value={locumCosts}
-            onChange={(e) => onLocumCostsChange(Number(e.target.value))}
-            disabled={readOnly}
-            style={{ 
-              width: '100%',
-              ['--fill-percent' as any]: `${(locumCosts / 240000) * 100}%`
-            }}
-          />
-          <input
-            type="text"
-            value={currency(Math.round(locumCosts))}
-            readOnly
-            style={{ 
-              width: 100, 
-              height: 20, 
-              padding: '2px 8px', 
-              border: '1px solid #ccc',
-              borderRadius: 3,
-              fontSize: 12
-            }}
-          />
-        </div>
-        <div></div> {/* Empty benefits column */}
-        <div 
-          style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-          onMouseEnter={(e) => {
-            const existing = document.getElementById('locums-tooltip')
-            if (existing) existing.remove()
-            const tooltip = document.createElement('div')
-            tooltip.id = 'locums-tooltip'
-            tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
-            tooltip.textContent = '~$2,000 per day'
-            document.body.appendChild(tooltip)
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-            tooltip.style.left = `${rect.right + 10}px`
-            tooltip.style.top = `${rect.top + window.scrollY}px`
+        
+        {/* Locums costs row - always last row in purple panel */}
+        <div
+          style={{
+            borderTop: '1px solid #d1d5db',
+            paddingTop: 10,
+            marginTop: 10,
+            display: 'grid',
+            gridTemplateColumns: '20px 120px 150px 1fr 20px 20px 20px',
+            gap: 8,
+            alignItems: 'center',
+            cursor: 'default',
+            background: 'transparent'
           }}
-          onMouseLeave={() => { const t = document.getElementById('locums-tooltip'); if (t) t.remove() }}
         >
-          <span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span>
+          <div></div> {/* Empty space for drag handle column alignment */}
+          <div style={{ fontWeight: 500, color: '#6b7280' }}></div>
+          <div style={{ 
+            fontFamily: 'system-ui, Avenir, Helvetica, Arial, sans-serif',
+            fontWeight: 400,
+            color: '#213547',
+            textAlign: 'left',
+            paddingLeft: 6,
+            fontSize: '14px'
+          }}>Locums Costs</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
+            <input
+              type="range"
+              min={0}
+              max={240000}
+              step={1000}
+              value={locumCosts}
+              onChange={(e) => onLocumCostsChange(Number(e.target.value))}
+              disabled={readOnly}
+              style={{ 
+                width: '100%',
+                ['--fill-percent' as any]: `${(locumCosts / 240000) * 100}%`
+              }}
+            />
+            <input
+              type="text"
+              value={currency(Math.round(locumCosts))}
+              readOnly
+              style={{ 
+                width: 100, 
+                height: 20, 
+                padding: '2px 8px', 
+                border: '1px solid #ccc',
+                borderRadius: 3,
+                fontSize: 12
+              }}
+            />
+          </div>
+          <div></div> {/* Empty benefits column */}
+          <div 
+            style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+            onMouseEnter={(e) => {
+              const existing = document.getElementById('locums-tooltip')
+              if (existing) existing.remove()
+              const tooltip = document.createElement('div')
+              tooltip.id = 'locums-tooltip'
+              tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+              tooltip.textContent = '~$2,000 per day'
+              document.body.appendChild(tooltip)
+              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+              tooltip.style.left = `${rect.right + 10}px`
+              tooltip.style.top = `${rect.top + window.scrollY}px`
+            }}
+            onMouseLeave={() => { const t = document.getElementById('locums-tooltip'); if (t) t.remove() }}
+          >
+            <span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span>
+          </div>
+          <div></div> {/* Empty delete column */}
         </div>
-        <div></div> {/* Empty delete column */}
       </div>
 
       {!readOnly && (
@@ -3909,7 +4089,12 @@ function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
   }, 0)
 
   const totalBuyoutCosts = fy!.physicians.reduce((sum, p) => {
-    return sum + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0)
+    if (p.type === 'partnerToRetire') {
+      const weight = getPartnerFTEWeight(p)
+      // Only subtract buyout if the partner worked part of the year
+      return sum + (weight > 0 ? (p.buyoutCost ?? 0) : 0)
+    }
+    return sum
   }, 0)
 
   // Calculate delayed W2 payments for employeeToPartner physicians
@@ -3930,7 +4115,8 @@ function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
           return 2032099.02 - totalBuyoutCosts - totalDelayedW2Costs
         } else {
           // Use 2025 baseline or custom (default behavior)
-          return NET_PARTNER_POOL_2025 - totalBuyoutCosts - totalDelayedW2Costs
+          // NET_PARTNER_POOL_2025 is already net of all costs, so only subtract buyouts
+          return NET_PARTNER_POOL_2025 - totalBuyoutCosts
         }
       })()
     : Math.max(0, fy!.totalIncome - (fy!.nonEmploymentCosts + fy!.nonMdEmploymentCosts + fy!.miscEmploymentCosts + fy!.locumCosts + totalEmployeeCosts + totalBuyoutCosts + totalDelayedW2Costs))
@@ -3948,8 +4134,13 @@ function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
 
   // Compose final list per physician (ensure each physician appears once with combined comp if mixed)
   const results: { id: string; name: string; type: PhysicianType; comp: number }[] = []
-  // Add partner and mixed
+  // Add partner and mixed (exclude retired partners with no working portion)
   for (const s of partnerShares) {
+    // Skip partners who retired in prior year and only got buyout (no working portion)
+    if (s.physician.type === 'partnerToRetire' && s.baseShare === 0) {
+      continue
+    }
+    
     let comp = s.baseShare
     if (s.physician.type === 'employeeToPartner') {
       const salaryPortion = (s.physician.salary ?? 0) * getEmployeePortionOfYear(s.physician)
@@ -4826,7 +5017,7 @@ function OverallCompensationSummary() {
 
         {/* Locums rows */}
         <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '2px solid #e5e7eb', background: '#f8f9fa', fontSize: '14px', color: '#6b7280' }}>
-          <div style={{ paddingLeft: '8px' }}>{store.scenarioBEnabled ? '+ Locums (Scenario A)' : '+ Locums'}</div>
+          <div style={{ paddingLeft: '8px' }}>{store.scenarioBEnabled ? 'Locums (Scenario A)' : 'Locums'}</div>
           {years.map((y, i) => {
             const fy = y === 2025 
               ? { locumCosts: 54600 } // 2025 default
@@ -4845,7 +5036,7 @@ function OverallCompensationSummary() {
         </div>
         {store.scenarioBEnabled && store.scenarioB && (
           <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #e5e7eb', background: '#f8f9fa', fontSize: '14px', color: '#6b7280' }}>
-            <div style={{ paddingLeft: '8px' }}>+ Locums (Scenario B)</div>
+            <div style={{ paddingLeft: '8px' }}>Locums (Scenario B)</div>
             {years.map((y, i) => {
               const fy = y === 2025 
                 ? { locumCosts: 54600 } // 2025 default
@@ -4945,7 +5136,7 @@ function OverallCompensationSummary() {
 
         {/* Scenario A - Locums */}
         <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #f0f0f0', background: '#f9fafb', fontSize: '14px', color: '#6b7280' }}>
-          <div style={{ paddingLeft: '16px' }}>+ Locums (A)</div>
+          <div style={{ paddingLeft: '16px' }}>Locums (A)</div>
           {years.map((y, i) => {
             const fy = y === 2025 
               ? { locumCosts: 54600 } // 2025 default
@@ -5008,7 +5199,7 @@ function OverallCompensationSummary() {
 
             {/* Scenario B - Locums */}
             <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #f0f0f0', background: '#faf9f7', fontSize: '14px', color: '#6b7280' }}>
-              <div style={{ paddingLeft: '16px' }}>+ Locums (B)</div>
+              <div style={{ paddingLeft: '16px' }}>Locums (B)</div>
               {years.map((y, i) => {
                 const fy = y === 2025 
                   ? { locumCosts: 54600 } // 2025 default
