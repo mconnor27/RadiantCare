@@ -1,0 +1,6 @@
+{
+    "timeline.pageSize": 1000,
+    "workbench.commandPalette.history": 200,
+    "workbench.localHistory.maxFileEntries": 500,
+    "workbench.localHistory.maxFileSize": 3000
+}

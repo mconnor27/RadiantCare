@@ -11,7 +11,7 @@ export type YearRow = {
   employeePayroll?: number
 }
 
-export type PhysicianType = 'partner' | 'employee' | 'employeeToPartner'
+export type PhysicianType = 'partner' | 'employee' | 'employeeToPartner' | 'partnerToRetire' | 'newEmployee' | 'employeeToTerminate'
 
 export type Physician = {
   id: string
@@ -21,6 +21,20 @@ export type Physician = {
   weeksVacation?: number
   // For mixed type: portion of the year as an employee (0..1). Remainder is partner.
   employeePortionOfYear?: number
+  // For partnerToRetire: portion of the year working as partner (0..1). Remainder is retired.
+  partnerPortionOfYear?: number
+  // For newEmployee: portion of the year when they start (0 = Jan 1, 1 = Dec 31)
+  startPortionOfYear?: number
+  // For employeeToTerminate: portion of the year when they terminate (0 = Jan 1, 1 = Dec 31)
+  terminatePortionOfYear?: number
+  // Whether this employee receives benefits (medical/dental/vision)
+  receivesBenefits?: boolean
+  // Whether this employee receives bonuses
+  receivesBonuses?: boolean
+  // Relocation/Signing bonus amount
+  bonusAmount?: number
+  // Buyout cost for retiring partners
+  buyoutCost?: number
 }
 
 // Responsive helper
@@ -75,26 +89,125 @@ function removeTooltip(id: string) {
   if (tooltip) tooltip.remove()
 }
 
+// Helper function for creating interactive bonus slider tooltip
+function createBonusTooltip(
+  physicianId: string, 
+  currentAmount: number, 
+  e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>,
+  onUpdate: (physicianId: string, amount: number) => void,
+  isTerminatedEmployee: boolean = false
+) {
+  const tooltipId = `bonus-slider-${physicianId}`
+  const existing = document.getElementById(tooltipId)
+  if (existing) existing.remove()
+  
+  const tooltip = document.createElement('div')
+  tooltip.id = tooltipId
+  const isMobileTooltip = window.innerWidth <= 768
+  
+  if (isMobileTooltip) {
+    tooltip.className = 'tooltip-mobile'
+    tooltip.style.cssText = `position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 9999; max-width: calc(100vw - 40px); box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
+  } else {
+    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
+  }
+  
+  // Set ranges and labels based on employee type
+  const minValue = isTerminatedEmployee ? -30000 : 0
+  const maxValue = 30000
+  const title = isTerminatedEmployee ? 'Bonus Repayment/Return' : 'Relocation/Signing Bonus'
+  const displayAmount = isTerminatedEmployee && currentAmount < 0 
+    ? `-$${Math.abs(currentAmount || 0).toLocaleString()}`
+    : `$${(currentAmount || 0).toLocaleString()}`
+  
+  // Create tooltip content
+  tooltip.innerHTML = `
+    <div style="margin-bottom: 6px; font-weight: 600; white-space: nowrap;">${title}</div>
+    <div style="padding: 2px 0;">
+      <input type="range" min="${minValue}" max="${maxValue}" step="500" value="${currentAmount}" 
+        style="width: 180px; margin-bottom: 4px; cursor: pointer;" class="growth-slider" id="${tooltipId}-slider" />
+      <div style="text-align: center; font-weight: 600; user-select: none;" id="${tooltipId}-amount">${displayAmount}</div>
+    </div>
+  `
+  
+  document.body.appendChild(tooltip)
+  
+  if (!isMobileTooltip) {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    tooltip.style.left = `${rect.right + 10}px`
+    tooltip.style.top = `${rect.top + window.scrollY}px`
+  }
+  
+  // Add event listener for real-time updates
+  const slider = document.getElementById(`${tooltipId}-slider`) as HTMLInputElement
+  const amountDisplay = document.getElementById(`${tooltipId}-amount`)
+  
+  if (slider && amountDisplay) {
+    slider.addEventListener('input', (event) => {
+      const target = event.target as HTMLInputElement
+      const newAmount = Number(target.value)
+      const displayText = isTerminatedEmployee && newAmount < 0 
+        ? `-$${Math.abs(newAmount || 0).toLocaleString()}`
+        : `$${(newAmount || 0).toLocaleString()}`
+      amountDisplay.textContent = displayText
+      onUpdate(physicianId, newAmount)
+    })
+  }
+  
+  // Add hover events to tooltip to keep it visible when interacting
+  tooltip.addEventListener('mouseenter', () => {
+    // Cancel any pending hide timeouts when entering tooltip
+    clearTimeout((tooltip as any).hideTimeout)
+  })
+  
+  tooltip.addEventListener('mouseleave', () => {
+    // Hide tooltip when leaving tooltip area
+    removeTooltip(tooltipId)
+  })
+  
+  // Click outside to close
+  const clickOutsideHandler = (event: MouseEvent) => {
+    if (!tooltip.contains(event.target as Node) && 
+        !document.querySelector(`[data-bonus-id="${physicianId}"]`)?.contains(event.target as Node)) {
+      removeTooltip(tooltipId)
+      document.removeEventListener('click', clickOutsideHandler)
+    }
+  }
+  
+  // Add click outside handler after a brief delay to avoid immediate closure
+  setTimeout(() => document.addEventListener('click', clickOutsideHandler), 100)
+  
+  // Auto-hide tooltip on mobile after 8 seconds (longer since it's interactive)
+  if (isMobileTooltip) {
+    setTimeout(() => removeTooltip(tooltipId), 8000)
+  }
+}
+
 // Extend FutureYear with nonMdEmploymentCosts
 export type FutureYear = {
   year: number
   totalIncome: number
   nonEmploymentCosts: number
   nonMdEmploymentCosts: number
-  locumDays: number
+  locumCosts: number
   miscEmploymentCosts: number
   physicians: Physician[]
 }
 
 type Projection = {
-  incomeGrowthPct: number // -10%..+10% YOY for income
-  costGrowthPct: number // -10%..+10% YOY for costs
+  incomeGrowthPct: number // Total income growth percentage
+  nonEmploymentCostsPct: number // Non-Employment Costs growth percentage
+  nonMdEmploymentCostsPct: number // Staff Employment Costs growth percentage
+  locumsCosts: number // Locums costs in dollars (global override)
+  miscEmploymentCostsPct: number // Misc Employment Costs growth percentage
+  benefitCostsGrowthPct: number // Benefit Costs growth percentage
 }
 
 type ScenarioState = {
   future: FutureYear[]
   projection: Projection
   selectedYear: number
+  dataMode: 'Custom' | '2024 Data' | '2025 Data'
 }
 
 type ScenarioKey = 'A' | 'B'
@@ -108,28 +221,32 @@ type Store = {
   setFutureValue: (
     scenario: ScenarioKey,
     year: number,
-    field: 'totalIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'locumDays' | 'miscEmploymentCosts',
+    field: 'totalIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'locumCosts' | 'miscEmploymentCosts',
     value: number
   ) => void
   upsertPhysician: (scenario: ScenarioKey, year: number, physician: Physician) => void
   removePhysician: (scenario: ScenarioKey, year: number, physicianId: string) => void
-  setProjectionGrowthPct: (scenario: ScenarioKey, field: 'income' | 'cost', value: number) => void
+  reorderPhysicians: (scenario: ScenarioKey, year: number, fromIndex: number, toIndex: number) => void
+  setProjectionField: (scenario: ScenarioKey, field: keyof Projection, value: number) => void
   applyProjectionFromLastActual: (scenario: ScenarioKey) => void
   setSelectedYear: (scenario: ScenarioKey, year: number) => void
+  setDataMode: (scenario: ScenarioKey, mode: 'Custom' | '2024 Data' | '2025 Data') => void
   loadSnapshot: (snapshot: { scenarioA: ScenarioState; scenarioBEnabled: boolean; scenarioB?: ScenarioState }) => void
   resetToDefaults: () => void
 }
 
 const HISTORIC_DATA: YearRow[] = [
-  { year: 2018, totalIncome: 2385672.70, nonEmploymentCosts: 164316.85, employeePayroll: 357360.09 },
-  { year: 2019, totalIncome: 2502863.99, nonEmploymentCosts: 169489.41, employeePayroll: 533175.95 },
-  { year: 2020, totalIncome: 2535470.73, nonEmploymentCosts: 171135.92, employeePayroll: 573277.22 },
-  { year: 2021, totalIncome: 2686548.27, nonEmploymentCosts: 176804.30, employeePayroll: 652879.00 },
-  { year: 2022, totalIncome: 2582389.65, nonEmploymentCosts: 268128.56, employeePayroll: 503812.98 },
-  { year: 2023, totalIncome: 2961520.28, nonEmploymentCosts: 199599.12, employeePayroll: 790092.00 },
-  { year: 2024, totalIncome: 3076628.83, nonEmploymentCosts: 258605.27, employeePayroll: 785924.54 },
+  { year: 2016, totalIncome: 2325241.84, nonEmploymentCosts: 167375.03, employeePayroll: 188151.97 },
+  { year: 2017, totalIncome: 2376068.79, nonEmploymentCosts: 170366.16, employeePayroll: 180060.96 },
+  { year: 2018, totalIncome: 2386310.08, nonEmploymentCosts: 162454.23, employeePayroll: 357360.09 },
+  { year: 2019, totalIncome: 2503463.49, nonEmploymentCosts: 170088.91, employeePayroll: 533175.95 },
+  { year: 2020, totalIncome: 2535944.52, nonEmploymentCosts: 171824.41, employeePayroll: 573277.22 },
+  { year: 2021, totalIncome: 2686843.84, nonEmploymentCosts: 176887.39, employeePayroll: 655524.05 },
+  { year: 2022, totalIncome: 2582916.38, nonEmploymentCosts: 269191.26, employeePayroll: 503812.98 },
+  { year: 2023, totalIncome: 2963164.73, nonEmploymentCosts: 201243.57, employeePayroll: 790092.00 },
+  { year: 2024, totalIncome: 3079138.54, nonEmploymentCosts: 261114.98, employeePayroll: 785924.54 },
   // 2025 actuals per provided figures
-  { year: 2025, totalIncome: 3385975.78, nonEmploymentCosts: 224191.46, employeePayroll: 777845.26 },
+  { year: 2025, totalIncome: 3344068.19, nonEmploymentCosts: 229713.57, employeePayroll: 742897.74 },
 ]
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -144,91 +261,138 @@ function defaultPhysiciansGeneric(year: number): Physician[] {
 }
 /* eslint-enable @typescript-eslint/no-unused-vars */
 
+function scenario2024Defaults(): Physician[] {
+  return [
+    { id: `2024-CD`, name: 'CD', type: 'employeeToTerminate', terminatePortionOfYear: 30/365, salary: 318640, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Jan 31 termination
+    { id: `2024-MC`, name: 'MC', type: 'employee', salary: 341323.02, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
+    { id: `2024-BT`, name: 'BT', type: 'newEmployee', startPortionOfYear: 279/365, salary: 407196, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Oct 7 start
+    { id: `2024-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
+    { id: `2024-GA`, name: 'GA', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0 },
+    { id: `2024-HW`, name: 'HW', type: 'partner', weeksVacation: 19, receivesBonuses: false, bonusAmount: 0 },
+  ]
+}
+
 function scenarioADefaultsByYear(year: number): Physician[] {
   if (year === 2025) {
     return [
-      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 9 },
-      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-      { id: `${year}-GA`, name: 'GA', type: 'partner', weeksVacation: 16 },
-      { id: `${year}-BT`, name: 'BT', type: 'employee', salary: 400000 },
+      { id: `${year}-MC`, name: 'MC', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 328840, weeksVacation: 9, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-GA`, name: 'GA', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-BT`, name: 'BT', type: 'employee', salary: 430760, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-HW`, name: 'HW', type: 'partnerToRetire', partnerPortionOfYear: 0, buyoutCost: 51666.58, receivesBonuses: false, bonusAmount: 0 },
     ]
   }
   if (year === 2026) {
     return [
-      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
-      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-      { id: `${year}-BT`, name: 'BT', type: 'employeeToPartner', salary: 600000, weeksVacation: 8, employeePortionOfYear: 0.75 },
-      { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 600000 },
+      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-GA`, name: 'GA', type: 'partnerToRetire', partnerPortionOfYear: 182/365, weeksVacation: 8, buyoutCost: 50000, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-BT`, name: 'BT', type: 'employeeToPartner', employeePortionOfYear: 181/365, salary: 507240, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-LK`, name: 'LK', type: 'newEmployee', startPortionOfYear: 151/365, salary: 600000, receivesBenefits: true, receivesBonuses: true, bonusAmount: 20000 },
     ]
   }
   if (year === 2027) {
     return [
-      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
-      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8 }, // First year as partner
-      { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 600000 },
+      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 }, // First year as partner
+      { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 600000, receivesBonuses: false, bonusAmount: 0 },
     ]
   }
   if (year === 2028) {
   return [
-    { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
-    { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 9 }, // Second year as partner
-      { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 8 }, // First year as partner
+    { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
+    { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
+      { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 }, // First year as partner
     ]
   }
   if (year === 2029) {
     return [
-      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
-      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 10 }, // Third year as partner
-      { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 9 }, // Second year as partner
+      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 }, // Third year as partner
+      { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
     ]
   }
   // 2030+
   return [
-    { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
-    { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-    { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2027)) }, // Increases yearly, max 12
-    { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)) }, // Increases yearly, max 12
+    { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
+    { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
+    { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2027)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
+    { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
   ]
 }
 
-// Helper: employer payroll taxes for W2 annual wages
-function calculateEmployerPayrollTaxes(annualWages: number): number {
-  const socialSecurityTax = Math.min(annualWages, 176100) * 0.062
-  const medicareTax = annualWages * 0.0145
-  const additionalMedicareTax = annualWages > 200000 ? (annualWages - 200000) * 0.009 : 0
-  const unemploymentTax = Math.min(annualWages, 72800) * 0.01
-  return socialSecurityTax + medicareTax + additionalMedicareTax + unemploymentTax
+// Helper: Get Social Security wage base limit for a given year
+function getSocialSecurityWageBase(year: number): number {
+  const wageBases: Record<number, number> = {
+    2025: 176100,
+    2026: 183600,
+    2027: 190800,
+    2028: 198900,
+    2029: 207000,
+    2030: 215400,
+  }
+  return wageBases[year] || wageBases[2030] // Use 2030 as fallback for later years
+}
+
+// Helper: employer payroll taxes for W2 annual wages (WA State medical practice <50 employees)
+function calculateEmployerPayrollTaxes(annualWages: number, year: number = 2025): number {
+  const ssWageBase = getSocialSecurityWageBase(year)
+  
+  // Federal taxes
+  const federalUnemploymentTax = Math.min(annualWages, 7000) * 0.006 // FUTA: 0.6% on first $7,000
+  const socialSecurityTax = Math.min(annualWages, ssWageBase) * 0.062 // FICA: 6.2%
+  const medicareTax = annualWages * 0.0145 // Medicare: 1.45% on all wages
+  // Note: Additional Medicare tax (0.9% over $200K) is employee-paid, not employer-paid
+  
+  // Washington State taxes
+  const waUnemploymentTax = Math.min(annualWages, 72800) * 0.009 // WA SUTA: 0.9% on first $72,800
+  const waFamilyLeaveTax = Math.min(annualWages, ssWageBase) * 0.00658 // WA FLI: 0.658% on first SS wage base
+  const waStateDisabilityTax = annualWages * 0.00255 // WA SDI: 0.255% on all wages
+  const washingtonRateTax = annualWages * 0.0003 // Washington Rate: 0.030% on all wages
+  
+  return federalUnemploymentTax + socialSecurityTax + medicareTax + 
+         waUnemploymentTax + waFamilyLeaveTax + waStateDisabilityTax + washingtonRateTax
 }
 
 const MONTHLY_BENEFITS_MED = 796.37
 const MONTHLY_BENEFITS_DENTAL = 57.12
 const MONTHLY_BENEFITS_VISION = 6.44
 const ANNUAL_BENEFITS_FULLTIME = (MONTHLY_BENEFITS_MED + MONTHLY_BENEFITS_DENTAL + MONTHLY_BENEFITS_VISION) * 12
-const LOCUM_DAY_RATE = 2000
 const NET_PARTNER_POOL_2025 = 2383939.06
-const DEFAULT_MISC_EMPLOYMENT_COSTS = 20000
+const DEFAULT_MISC_EMPLOYMENT_COSTS = 27855.12
 
-// Default Non-MD staff costs (wages + employer taxes + benefits for FT 1)
-function computeDefaultNonMdEmploymentCosts(): number {
+// Helper: Calculate benefit costs for a given year with growth applied
+function getBenefitCostsForYear(year: number, benefitGrowthPct: number): number {
+  const baseYear = 2025
+  const baseCost = (MONTHLY_BENEFITS_MED + MONTHLY_BENEFITS_DENTAL + MONTHLY_BENEFITS_VISION) * 12
+  if (year <= baseYear) {
+    return baseCost
+  }
+  const yearsOfGrowth = year - baseYear
+  const growthMultiplier = Math.pow(1 + benefitGrowthPct / 100, yearsOfGrowth)
+  return baseCost * growthMultiplier
+}
+
+// Default Staff employment costs (wages + employer taxes + benefits for FT 1)
+function computeDefaultNonMdEmploymentCosts(year: number = 2025): number {
   // Employee 1: $31.25/hr, 40 hrs/week, full-time + benefits
   const emp1Wages = 31.25 * 40 * 52
-  const emp1Taxes = calculateEmployerPayrollTaxes(emp1Wages)
+  const emp1Taxes = calculateEmployerPayrollTaxes(emp1Wages, year)
   const emp1Total = emp1Wages + emp1Taxes + ANNUAL_BENEFITS_FULLTIME
   // Employee 2: $27/hr, 32 hrs/week, part-time (no benefits specified)
   const emp2Wages = 27 * 32 * 52
-  const emp2Taxes = calculateEmployerPayrollTaxes(emp2Wages)
+  const emp2Taxes = calculateEmployerPayrollTaxes(emp2Wages, year)
   const emp2Total = emp2Wages + emp2Taxes
   // Employee 3: $23/hr, 20 hrs/week, part-time
   const emp3Wages = 23 * 20 * 52
-  const emp3Taxes = calculateEmployerPayrollTaxes(emp3Wages)
+  const emp3Taxes = calculateEmployerPayrollTaxes(emp3Wages, year)
   const emp3Total = emp3Wages + emp3Taxes
   return Math.round(emp1Total + emp2Total + emp3Total)
 }
 
-const DEFAULT_NON_MD_EMPLOYMENT_COSTS_BASE = computeDefaultNonMdEmploymentCosts()
 
 const FUTURE_YEARS_BASE: Omit<FutureYear, 'physicians'>[] = Array.from({ length: 5 }).map((_, idx) => {
   const startYear = HISTORIC_DATA[HISTORIC_DATA.length - 1].year + 1 // start after last actual (2026)
@@ -238,8 +402,8 @@ const FUTURE_YEARS_BASE: Omit<FutureYear, 'physicians'>[] = Array.from({ length:
     totalIncome: HISTORIC_DATA[HISTORIC_DATA.length - 1].totalIncome,
     nonEmploymentCosts:
       HISTORIC_DATA[HISTORIC_DATA.length - 1].nonEmploymentCosts,
-    nonMdEmploymentCosts: DEFAULT_NON_MD_EMPLOYMENT_COSTS_BASE,
-    locumDays: 90,
+    nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(year),
+    locumCosts: 120000,
     miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
   }
 })
@@ -252,56 +416,58 @@ const INITIAL_FUTURE_YEARS_A: FutureYear[] = FUTURE_YEARS_BASE.map((b) => ({
 function scenarioBDefaultsByYear(year: number): Physician[] {
   if (year === 2025) {
     return [
-      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 9 },
-      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-      { id: `${year}-GA`, name: 'GA', type: 'partner', weeksVacation: 16 },
-      { id: `${year}-BT`, name: 'BT', type: 'employee', salary: 400000 },
-      { id: `${year}-P5`, name: 'Physician 5', type: 'employee', salary: 600000 }, // 5th physician
+      { id: `${year}-MC`, name: 'MC', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 328840, weeksVacation: 9, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-GA`, name: 'GA', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-BT`, name: 'BT', type: 'employee', salary: 430760, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-HW`, name: 'HW', type: 'partnerToRetire', partnerPortionOfYear: 0, buyoutCost: 51666.58, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-P5`, name: 'Physician 5', type: 'employee', salary: 600000, receivesBenefits: true, receivesBonuses: false, bonusAmount: 0 }, // 5th physician
     ]
   }
   if (year === 2026) {
     return [
-      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
-      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-      { id: `${year}-BT`, name: 'BT', type: 'employeeToPartner', salary: 600000, weeksVacation: 8, employeePortionOfYear: 0.75 },
-      { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 600000 },
-      { id: `${year}-P5`, name: 'Physician 5', type: 'employee', salary: 600000 },
+      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-GA`, name: 'GA', type: 'partnerToRetire', partnerPortionOfYear: 182/365, weeksVacation: 8, buyoutCost: 50000, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-BT`, name: 'BT', type: 'employeeToPartner', employeePortionOfYear: 181/365, salary: 507240, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-LK`, name: 'LK', type: 'newEmployee', startPortionOfYear: 151/365, salary: 600000, receivesBenefits: true, receivesBonuses: true, bonusAmount: 20000 },
+      { id: `${year}-P5`, name: 'Physician 5', type: 'employee', salary: 600000, receivesBonuses: false, bonusAmount: 0 },
     ]
   }
   if (year === 2027) {
     return [
-      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
-      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8 }, // First year as partner
-      { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 600000 },
-      { id: `${year}-P5`, name: 'Physician 5', type: 'employee', salary: 600000 },
+      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 }, // First year as partner
+      { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 600000, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-P5`, name: 'Physician 5', type: 'employee', salary: 600000, receivesBonuses: false, bonusAmount: 0 },
     ]
   }
   if (year === 2028) {
   return [
-    { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
-    { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 9 }, // Second year as partner
-      { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 8 }, // First year as partner
-      { id: `${year}-P5`, name: 'Physician 5', type: 'partner', weeksVacation: 8 }, // First year as partner
+    { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
+    { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
+      { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 }, // First year as partner
+      { id: `${year}-P5`, name: 'Physician 5', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 }, // First year as partner
     ]
   }
   if (year === 2029) {
     return [
-      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
-      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 10 }, // Third year as partner
-      { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 9 }, // Second year as partner
-      { id: `${year}-P5`, name: 'Physician 5', type: 'partner', weeksVacation: 9 }, // Second year as partner
+      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 }, // Third year as partner
+      { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
+      { id: `${year}-P5`, name: 'Physician 5', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
     ]
   }
   // 2030+
   return [
-    { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10 },
-    { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12 },
-    { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2027)) }, // Increases yearly, max 12
-    { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)) }, // Increases yearly, max 12
-    { id: `${year}-P5`, name: 'Physician 5', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)) }, // Increases yearly, max 12
+    { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
+    { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
+    { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2027)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
+    { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
+    { id: `${year}-P5`, name: 'Physician 5', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
   ]
 }
 
@@ -309,7 +475,6 @@ const INITIAL_FUTURE_YEARS_B: FutureYear[] = FUTURE_YEARS_BASE.map((b) => ({
   ...b,
   physicians: scenarioBDefaultsByYear(b.year),
 }))
-
 export const useDashboardStore = create<Store>()(
   persist(
     immer<Store>((set, get) => {
@@ -318,13 +483,29 @@ export const useDashboardStore = create<Store>()(
         historic: HISTORIC_DATA,
         scenarioA: {
           future: INITIAL_FUTURE_YEARS_A,
-          projection: { incomeGrowthPct: 3, costGrowthPct: 3 },
-          selectedYear: FUTURE_YEARS_BASE[0].year,
+          projection: { 
+            incomeGrowthPct: 3.7, 
+            nonEmploymentCostsPct: 7.8, 
+            nonMdEmploymentCostsPct: 6.0, 
+            locumsCosts: 120000, 
+            miscEmploymentCostsPct: 6.7,
+            benefitCostsGrowthPct: 5.0
+          },
+          selectedYear: 2025, // Default to Baseline tab
+          dataMode: '2025 Data',
         },
         scenarioB: {
           future: INITIAL_FUTURE_YEARS_B,
-          projection: { incomeGrowthPct: 0, costGrowthPct: 3 },
-          selectedYear: FUTURE_YEARS_BASE[0].year,
+          projection: { 
+            incomeGrowthPct: 3.7, 
+            nonEmploymentCostsPct: 7.8, 
+            nonMdEmploymentCostsPct: 6.0, 
+            locumsCosts: 120000, 
+            miscEmploymentCostsPct: 6.7,
+            benefitCostsGrowthPct: 5.0
+          },
+          selectedYear: 2025, // Default to Baseline tab
+          dataMode: '2025 Data',
         },
         scenarioBEnabled: true,
         setScenarioEnabled: (enabled) => {
@@ -334,8 +515,16 @@ export const useDashboardStore = create<Store>()(
               // Initialize scenario B with its own defaults instead of cloning A
               state.scenarioB = {
                 future: INITIAL_FUTURE_YEARS_B.map((f) => ({ ...f, physicians: [...f.physicians] })),
-                projection: { incomeGrowthPct: 0, costGrowthPct: 3 },
+                projection: { 
+                  incomeGrowthPct: 3.7, 
+                  nonEmploymentCostsPct: 7.8, 
+                  nonMdEmploymentCostsPct: 6.0, 
+                  locumsCosts: 120000, 
+                  miscEmploymentCostsPct: 6.7,
+                  benefitCostsGrowthPct: 5.0
+                },
                 selectedYear: state.scenarioA.selectedYear,
+                dataMode: '2025 Data',
               }
             } else {
               state.scenarioB = undefined
@@ -396,9 +585,23 @@ export const useDashboardStore = create<Store>()(
             const salarySource = typeof physician.salary === 'number' ? physician.salary : undefined
             const weeksSource = typeof physician.weeksVacation === 'number' ? physician.weeksVacation : undefined
             const becomesPartnerNextYears = physician.type === 'employeeToPartner'
+            const retiresThisYear = physician.type === 'partnerToRetire'
+            const terminatesThisYear = physician.type === 'employeeToTerminate'
 
             for (const fut of sc.future) {
               if (fut.year <= year) continue
+
+              // If this physician retires this year, remove them from future years
+              if (retiresThisYear) {
+                fut.physicians = fut.physicians.filter((p) => p.name !== targetName && p.id !== physician.id)
+                continue
+              }
+
+              // If this physician terminates employment this year, remove them from future years
+              if (terminatesThisYear) {
+                fut.physicians = fut.physicians.filter((p) => p.name !== targetName && p.id !== physician.id)
+                continue
+              }
 
               // Find same MD by name (preferred) or id
               let j = fut.physicians.findIndex((p) => p.name === targetName)
@@ -408,13 +611,39 @@ export const useDashboardStore = create<Store>()(
                 // If adding in this year (or if not present later), add them for all subsequent years
                 if (isNewInYear) {
                   // Determine type for this future year based on rules:
-                  // - Mixed in the edited year -> partner thereafter
-                  // - Employee in the edited year -> employee for next year, then partner starting year+2
+                  // - Mixed (employeeToPartner) in the edited year -> partner thereafter
+                  // - Employee in the edited year -> employee for next year, then employeeToPartner transition year, then partner
+                  // - New Employee in the edited year -> employee for next year, then employeeToPartner transition year, then partner
+                  // - Employee->Terminate should not propagate (they leave employment)
+                  // - partnerToRetire should not propagate (handled above with continue)
                   let computedType: PhysicianType = physician.type
                   if (becomesPartnerNextYears) {
                     computedType = 'partner'
-                  } else if (physician.type === 'employee') {
-                    computedType = fut.year >= year + 2 ? 'partner' : 'employee'
+                  } else if (physician.type === 'employee' || physician.type === 'newEmployee') {
+                    // Calculate transition year based on start date for newEmployee
+                    let transitionYear = year + 2; // Default for regular employees
+                    
+                    if (physician.type === 'newEmployee' && physician.startPortionOfYear) {
+                      // For new employees, calculate how long they've been working to determine partner eligibility
+                      // If they start mid-year, they need a full year + transition year
+                      const startMonth = Math.floor((physician.startPortionOfYear * 365) / 30.44) + 1; // Approximate month
+                      if (startMonth > 6) { // If starting after mid-year (July+), need extra year
+                        transitionYear = year + 3;
+                      }
+                    }
+                    
+                    if (fut.year < transitionYear) {
+                      computedType = 'employee'
+                    } else if (fut.year === transitionYear) {
+                      // Use employeeToPartner for the transition year to handle delayed W2 payments
+                      // This ensures all partner transitions properly account for W2 payments
+                      computedType = 'employeeToPartner'
+                    } else {
+                      computedType = 'partner'
+                    }
+                  } else if (physician.type === 'partnerToRetire') {
+                    // This should not happen since we continue above, but just in case
+                    continue
                   }
 
                   const cloned: Physician = {
@@ -424,14 +653,20 @@ export const useDashboardStore = create<Store>()(
                     salary:
                       computedType === 'partner'
                         ? undefined
-                        : (physician.type === 'employee' || physician.type === 'employeeToPartner')
+                        : (physician.type === 'employee' || physician.type === 'employeeToPartner' || physician.type === 'newEmployee' || physician.type === 'employeeToTerminate')
                           ? (physician.salary ?? 500000)
                           : undefined,
                     weeksVacation:
                       computedType === 'partner' || computedType === 'employeeToPartner'
                         ? (physician.weeksVacation ?? 8)
                         : undefined,
-                    employeePortionOfYear: computedType === 'partner' ? undefined : physician.employeePortionOfYear,
+                    employeePortionOfYear: 
+                      computedType === 'partner' 
+                        ? undefined 
+                        : computedType === 'employeeToPartner' 
+                          ? 0 // Always use Partner->Employee type (employeePortionOfYear = 0) in transition year
+                              // This ensures delayed W2 payments are calculated even for Jan 1 start dates
+                          : physician.employeePortionOfYear,
                   }
                   fut.physicians.push(cloned)
                   continue
@@ -454,7 +689,7 @@ export const useDashboardStore = create<Store>()(
 
               // Salary minimum propagation for employees
               if (salarySource !== undefined) {
-                if (updated.type === 'employee' || updated.type === 'employeeToPartner') {
+                if (updated.type === 'employee' || updated.type === 'employeeToPartner' || updated.type === 'newEmployee' || updated.type === 'employeeToTerminate') {
                   const currentSalary = typeof updated.salary === 'number' ? updated.salary : 0
                   updated.salary = Math.max(currentSalary, salarySource)
                 }
@@ -490,45 +725,199 @@ export const useDashboardStore = create<Store>()(
               })
             }
           }),
-        setProjectionGrowthPct: (scenario, field, value) =>
+        reorderPhysicians: (scenario, year, fromIndex, toIndex) =>
           set((state) => {
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!sc) return
-            const clamped = Math.max(-10, Math.min(10, value))
-            if (field === 'income') sc.projection.incomeGrowthPct = clamped
-            else sc.projection.costGrowthPct = clamped
-            const last = state.historic[state.historic.length - 1]
+            const fy = sc.future.find((f) => f.year === year)
+            if (!fy) return
+            
+            // Create a copy of the physicians array and reorder it
+            const physicians = [...fy.physicians]
+            const [movedPhysician] = physicians.splice(fromIndex, 1)
+            physicians.splice(toIndex, 0, movedPhysician)
+            
+            // Update the physicians array
+            fy.physicians = physicians
+          }),
+        setProjectionField: (scenario, field, value) =>
+          set((state) => {
+            const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
+            if (!sc) return
+            
+            // Apply appropriate limits based on field type
+            if (field === 'locumsCosts') {
+              // Locums costs are in dollars, so use reasonable range (0 to 1M)
+              sc.projection[field] = Math.max(0, Math.min(1000000, value))
+            } else {
+              // Percentage fields should be limited to reasonable range (-10% to +20%)
+              // Also round to 1 decimal place to avoid floating point artifacts (e.g., 5.700001)
+              const clamped = Math.max(-10, Math.min(20, value))
+              sc.projection[field] = Math.round(clamped * 10) / 10
+            }
+            
+            // Apply the updated projections to all future years immediately within the same state update
+            // Use baseline data based on selected dataMode
+            const dataMode = sc.dataMode
+            const last2024 = state.historic.find((h) => h.year === 2024)
+            const last2025 = state.historic.find((h) => h.year === 2025)
+            
+            // Determine starting values based on data mode
+            let baselineData
+            if (dataMode === 'Custom') {
+              // For Custom mode, use the existing baseline data from year 2025 in future array
+              const customBaseline = sc.future.find(f => f.year === 2025)
+              if (customBaseline) {
+                baselineData = {
+                  totalIncome: customBaseline.totalIncome,
+                  nonEmploymentCosts: customBaseline.nonEmploymentCosts,
+                  miscEmploymentCosts: customBaseline.miscEmploymentCosts,
+                  nonMdEmploymentCosts: customBaseline.nonMdEmploymentCosts,
+                }
+              } else {
+                // Fallback if Custom baseline missing (shouldn't happen)
+                baselineData = {
+                  totalIncome: last2025?.totalIncome || 3344068.19,
+                  nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
+                  miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+                  nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+                }
+              }
+            } else if (dataMode === '2024 Data' && last2024) {
+              baselineData = {
+                totalIncome: last2024.totalIncome,
+                nonEmploymentCosts: last2024.nonEmploymentCosts,
+                miscEmploymentCosts: 18182.56, // 2024 actual misc employment from image
+                nonMdEmploymentCosts: 164677.44, // 2024 actual staff employment costs
+              }
+            } else if (last2025) {
+              baselineData = {
+                totalIncome: last2025.totalIncome,
+                nonEmploymentCosts: last2025.nonEmploymentCosts,
+                miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+                nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+              }
+            } else {
+              // Fallback to 2025 hardcoded values
+              baselineData = {
+                totalIncome: 3344068.19,
+                nonEmploymentCosts: 229713.57,
+                miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+                nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+              }
+            }
+            
+            // Convert percentage growth rates to decimal multipliers
             const incomeGpct = sc.projection.incomeGrowthPct / 100
-            const costGpct = sc.projection.costGrowthPct / 100
-            let income = last.totalIncome
-            let costs = last.nonEmploymentCosts
-            let nonMd = DEFAULT_NON_MD_EMPLOYMENT_COSTS_BASE
+            const nonEmploymentGpct = sc.projection.nonEmploymentCostsPct / 100
+            const nonMdEmploymentGpct = sc.projection.nonMdEmploymentCostsPct / 100
+            const miscEmploymentGpct = sc.projection.miscEmploymentCostsPct / 100
+            
+            // Starting values from the selected baseline
+            let income = baselineData.totalIncome
+            let nonEmploymentCosts = baselineData.nonEmploymentCosts
+            let nonMdEmploymentCosts = baselineData.nonMdEmploymentCosts
+            let miscEmploymentCosts = baselineData.miscEmploymentCosts
+            
+            // Apply projections to each future year (SKIP baseline year 2025)
             for (const fy of sc.future) {
+              if (fy.year === 2025) continue  // Never overwrite baseline data
+              
               income = income * (1 + incomeGpct)
-              costs = costs * (1 + costGpct)
-              nonMd = nonMd * (1 + costGpct)
+              nonEmploymentCosts = nonEmploymentCosts * (1 + nonEmploymentGpct)
+              nonMdEmploymentCosts = nonMdEmploymentCosts * (1 + nonMdEmploymentGpct)
+              miscEmploymentCosts = miscEmploymentCosts * (1 + miscEmploymentGpct)
+              
               fy.totalIncome = income
-              fy.nonEmploymentCosts = costs
-              fy.nonMdEmploymentCosts = nonMd
+              fy.nonEmploymentCosts = nonEmploymentCosts
+              fy.nonMdEmploymentCosts = nonMdEmploymentCosts
+              fy.miscEmploymentCosts = miscEmploymentCosts
+              fy.locumCosts = sc.projection.locumsCosts
             }
           }),
         applyProjectionFromLastActual: (scenario) =>
           set((state) => {
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!sc) return
-            const last = state.historic[state.historic.length - 1]
+            
+            // Use baseline data based on selected dataMode
+            const dataMode = sc.dataMode
+            const last2024 = state.historic.find((h) => h.year === 2024)
+            const last2025 = state.historic.find((h) => h.year === 2025)
+            
+            // Determine starting values based on data mode
+            let baselineData
+            if (dataMode === 'Custom') {
+              // For Custom mode, use the existing baseline data from year 2025 in future array
+              const customBaseline = sc.future.find(f => f.year === 2025)
+              if (customBaseline) {
+                baselineData = {
+                  totalIncome: customBaseline.totalIncome,
+                  nonEmploymentCosts: customBaseline.nonEmploymentCosts,
+                  miscEmploymentCosts: customBaseline.miscEmploymentCosts,
+                  nonMdEmploymentCosts: customBaseline.nonMdEmploymentCosts,
+                }
+              } else {
+                // Fallback if Custom baseline missing (shouldn't happen)
+                baselineData = {
+                  totalIncome: last2025?.totalIncome || 3344068.19,
+                  nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
+                  miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+                  nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+                }
+              }
+            } else if (dataMode === '2024 Data' && last2024) {
+              baselineData = {
+                totalIncome: last2024.totalIncome,
+                nonEmploymentCosts: last2024.nonEmploymentCosts,
+                miscEmploymentCosts: 18182.56, // 2024 actual misc employment from image
+                nonMdEmploymentCosts: 164677.44, // 2024 actual staff employment costs
+              }
+            } else if (last2025) {
+              baselineData = {
+                totalIncome: last2025.totalIncome,
+                nonEmploymentCosts: last2025.nonEmploymentCosts,
+                miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+                nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+              }
+            } else {
+              // Fallback to 2025 hardcoded values
+              baselineData = {
+                totalIncome: 3344068.19,
+                nonEmploymentCosts: 229713.57,
+                miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+                nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+              }
+            }
+            
+            // Convert percentage growth rates to decimal multipliers
             const incomeGpct = sc.projection.incomeGrowthPct / 100
-            const costGpct = sc.projection.costGrowthPct / 100
-            let income = last.totalIncome
-            let costs = last.nonEmploymentCosts
-            let nonMd = DEFAULT_NON_MD_EMPLOYMENT_COSTS_BASE
+            const nonEmploymentGpct = sc.projection.nonEmploymentCostsPct / 100
+            const nonMdEmploymentGpct = sc.projection.nonMdEmploymentCostsPct / 100
+            const miscEmploymentGpct = sc.projection.miscEmploymentCostsPct / 100
+            
+            // Starting values from the selected baseline
+            let income = baselineData.totalIncome
+            let nonEmploymentCosts = baselineData.nonEmploymentCosts
+            let nonMdEmploymentCosts = baselineData.nonMdEmploymentCosts
+            let miscEmploymentCosts = baselineData.miscEmploymentCosts
+            
+            // Apply projections to each future year (SKIP baseline year 2025)
             for (const fy of sc.future) {
+              if (fy.year === 2025) continue  // Never overwrite baseline data
+              
               income = income * (1 + incomeGpct)
-              costs = costs * (1 + costGpct)
-              nonMd = nonMd * (1 + costGpct)
+              nonEmploymentCosts = nonEmploymentCosts * (1 + nonEmploymentGpct)
+              nonMdEmploymentCosts = nonMdEmploymentCosts * (1 + nonMdEmploymentGpct)
+              miscEmploymentCosts = miscEmploymentCosts * (1 + miscEmploymentGpct)
+              
               fy.totalIncome = income
-              fy.nonEmploymentCosts = costs
-              fy.nonMdEmploymentCosts = nonMd
+              fy.nonEmploymentCosts = nonEmploymentCosts
+              fy.nonMdEmploymentCosts = nonMdEmploymentCosts
+              fy.miscEmploymentCosts = miscEmploymentCosts
+              
+              // Set locums costs from the global override
+              fy.locumCosts = sc.projection.locumsCosts
             }
           }),
         setSelectedYear: (scenario, year) =>
@@ -536,6 +925,62 @@ export const useDashboardStore = create<Store>()(
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!sc) return
             sc.selectedYear = year
+          }),
+        setDataMode: (scenario, mode) =>
+          set((state) => {
+            const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
+            if (!sc) return
+            
+            // If switching TO Custom mode, capture current baseline data and make it editable
+            if (mode === 'Custom' && sc.dataMode !== 'Custom') {
+              const last2024 = state.historic.find((h) => h.year === 2024)
+              const last2025 = state.historic.find((h) => h.year === 2025)
+              
+              let baselineData: FutureYear
+              
+              if (sc.dataMode === '2024 Data' && last2024) {
+                baselineData = {
+                  year: 2025,
+                  totalIncome: last2024.totalIncome,
+                  nonEmploymentCosts: last2024.nonEmploymentCosts,
+                  nonMdEmploymentCosts: 164677.44, // 2024 actual staff employment costs
+                  locumCosts: 113400, // 2024 actual locums costs
+                  miscEmploymentCosts: 18182.56, // 2024 actual misc employment
+                  physicians: scenario2024Defaults(),
+                }
+              } else if (sc.dataMode === '2025 Data' && last2025) {
+                baselineData = {
+                  year: 2025,
+                  totalIncome: last2025.totalIncome,
+                  nonEmploymentCosts: last2025.nonEmploymentCosts,
+                  nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+                  locumCosts: 54600,
+                  miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+                  physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
+                }
+              } else {
+                // Fallback to 2025 defaults
+                baselineData = {
+                  year: 2025,
+                  totalIncome: last2025?.totalIncome || 3344068.19,
+                  nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
+                  nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+                  locumCosts: 54600,
+                  miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+                  physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
+                }
+              }
+              
+              // Set the baseline data as the first entry in future years (replacing or adding 2025)
+              const existingIndex = sc.future.findIndex(f => f.year === 2025)
+              if (existingIndex >= 0) {
+                sc.future[existingIndex] = baselineData
+              } else {
+                sc.future.unshift(baselineData)
+              }
+            }
+            
+            sc.dataMode = mode
           }),
         loadSnapshot: (snapshot) =>
           set((state) => {
@@ -545,19 +990,32 @@ export const useDashboardStore = create<Store>()(
           }),
         resetToDefaults: () => {
           set((state) => {
-            state.scenarioA = {
-              future: INITIAL_FUTURE_YEARS_A.map((f) => ({ ...f, physicians: [...f.physicians] })),
-              projection: { incomeGrowthPct: 3, costGrowthPct: 3 },
-              selectedYear: FUTURE_YEARS_BASE[0].year,
+            // ONLY reset projection parameters - NEVER touch baseline data or future years
+            state.scenarioA.projection = { 
+              incomeGrowthPct: 3.7, 
+              nonEmploymentCostsPct: 7.8, 
+              nonMdEmploymentCostsPct: 6.0, 
+              locumsCosts: 120000, 
+              miscEmploymentCostsPct: 6.7,
+              benefitCostsGrowthPct: 5.0
             }
+            state.scenarioA.selectedYear = 2025 // Reset to Baseline tab
+            
             state.scenarioBEnabled = true
-            state.scenarioB = {
-              future: INITIAL_FUTURE_YEARS_B.map((f) => ({ ...f, physicians: [...f.physicians] })),
-              projection: { incomeGrowthPct: 0, costGrowthPct: 3 },
-              selectedYear: FUTURE_YEARS_BASE[0].year,
+            
+            if (state.scenarioB) {
+              state.scenarioB.projection = { 
+                incomeGrowthPct: 3.7, 
+                nonEmploymentCostsPct: 7.8, 
+                nonMdEmploymentCostsPct: 6.0, 
+                locumsCosts: 120000, 
+                miscEmploymentCostsPct: 6.7,
+                benefitCostsGrowthPct: 5.0
+              }
+              state.scenarioB.selectedYear = 2025 // Reset to Baseline tab
             }
           }, false)
-          // Apply the 3% growth projections to the future year values
+          // Recalculate future years from existing baseline data using reset projection parameters
           const store = useDashboardStore.getState()
           store.applyProjectionFromLastActual('A')
           if (store.scenarioB) store.applyProjectionFromLastActual('B')
@@ -584,6 +1042,10 @@ setTimeout(() => {
 }, 0)
 
 function currency(value: number): string {
+  // Handle undefined/null values gracefully
+  if (value == null || isNaN(value)) {
+    value = 0
+  }
   return value.toLocaleString('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -602,54 +1064,210 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
 }
 
-// Calculate total cost for an employee including benefits and payroll taxes
-function calculateEmployeeTotalCost(employee: Physician): number {
+// Calculate when benefits start for a new employee based on the new waiting period rules
+function calculateBenefitStartDay(startDay: number, year: number): number {
+  const { month: startMonth, day: startDayOfMonth } = dayOfYearToDate(startDay, year)
+  
+  // Rule: If start date is the first of any month (except February), benefits start next month
+  if (startDayOfMonth === 1 && startMonth !== 2) {
+    // Benefits start on the first of the next month
+    const nextMonth = startMonth === 12 ? 1 : startMonth + 1
+    const nextYear = startMonth === 12 ? year + 1 : year
+    
+    if (nextYear > year) {
+      // If it rolls to next year, benefits start after this year ends
+      return daysInYear(year) + 1
+    }
+    
+    // Calculate day of year for first of next month
+    const daysInMonth = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    let dayOfYear = 0
+    for (let i = 0; i < nextMonth - 1; i++) {
+      dayOfYear += daysInMonth[i]
+    }
+    return dayOfYear + 1
+  }
+  
+  // Rule: If start is mid-month (or Feb 1st), benefits start one month PLUS rounding up to next month start
+  // This means: 30 days + beginning of first full month after that
+  const thirtyDaysAfterStart = startDay + 30
+  
+  if (thirtyDaysAfterStart > daysInYear(year)) {
+    // If 30 days after start goes into next year, benefits start after this year
+    return daysInYear(year) + 1
+  }
+  
+  // Find what month the 30-day mark falls in
+  const { month: month30Days } = dayOfYearToDate(thirtyDaysAfterStart, year)
+  
+  // Benefits start on the first of the month AFTER the 30-day mark
+  const benefitMonth = month30Days === 12 ? 1 : month30Days + 1
+  const benefitYear = month30Days === 12 ? year + 1 : year
+  
+  if (benefitYear > year) {
+    // If benefits start next year, return beyond this year
+    return daysInYear(year) + 1
+  }
+  
+  // Calculate day of year for first of benefit month
+  const daysInMonth = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  let dayOfYear = 0
+  for (let i = 0; i < benefitMonth - 1; i++) {
+    dayOfYear += daysInMonth[i]
+  }
+  return dayOfYear + 1
+}
+
+// Calculate total cost for an employee including benefits and payroll taxes (WA State medical practice <50 employees)
+function calculateEmployeeTotalCost(employee: Physician, year: number = 2025, benefitGrowthPct: number = 5.0): number {
   const baseSalary = employee.salary || 0
+  const bonusAmount = employee.bonusAmount || 0
   
-  // Monthly benefits (convert to annual)
-  const annualBenefits = (796.37 + 57.12 + 6.44) * 12 // $10,314.36 annually
+  // Monthly benefits (convert to annual) - only if employee receives benefits
+  let annualBenefits = 0
+  if (employee.receivesBenefits) {
+    const yearlyBenefitCost = getBenefitCostsForYear(year, benefitGrowthPct)
+    if (employee.type === 'newEmployee') {
+      // For new employees, use the new benefit waiting period calculation
+      const startDay = startPortionToStartDay(employee.startPortionOfYear ?? 0, year)
+      const benefitStartDay = calculateBenefitStartDay(startDay, year)
+      const totalDays = daysInYear(year)
+      
+      // Only count benefits if they start within this year
+      if (benefitStartDay <= totalDays) {
+        const benefitDays = Math.max(0, totalDays - benefitStartDay + 1)
+        const benefitPortion = benefitDays / totalDays
+        annualBenefits = yearlyBenefitCost * benefitPortion
+      }
+    } else {
+      // For regular employees and mixed types, full benefits if they receive them
+      annualBenefits = yearlyBenefitCost
+    }
+  }
   
-  // WA State and Federal payroll taxes (employer portion)
-  const socialSecurityTax = Math.min(baseSalary, 176100) * 0.062 // 6.2% up to $176,100
-  const medicareTax = baseSalary * 0.0145 // 1.45% on all wages
-  const additionalMedicareTax = baseSalary > 200000 ? (baseSalary - 200000) * 0.009 : 0 // 0.9% on wages over $200K
+  // Calculate all employer payroll taxes using the comprehensive function
+  const totalPayrollTaxes = calculateEmployerPayrollTaxes(baseSalary, year)
   
-  // WA UI tax (using average rate of 1.0% on first $72,800)
-  const unemploymentTax = Math.min(baseSalary, 72800) * 0.01
-  
-  const totalPayrollTaxes = socialSecurityTax + medicareTax + additionalMedicareTax + unemploymentTax
-  
-  return baseSalary + annualBenefits + totalPayrollTaxes
+  return baseSalary + annualBenefits + totalPayrollTaxes + bonusAmount
 }
 
 // Mixed type helpers
 function getEmployeePortionOfYear(physician: Physician): number {
   if (physician.type === 'employee') return 1
   if (physician.type === 'partner') return 0
+  if (physician.type === 'newEmployee') {
+    // New employees work from their start date to end of year
+    const startPortion = physician.startPortionOfYear ?? 0
+    return 1 - startPortion
+  }
+  if (physician.type === 'employeeToTerminate') {
+    // Terminating employees work from beginning of year to termination date
+    const terminatePortion = physician.terminatePortionOfYear ?? 1
+    return terminatePortion
+  }
   const val = physician.employeePortionOfYear ?? 0.5
   return clamp(val, 0, 1)
 }
 
 function getPartnerPortionOfYear(physician: Physician): number {
-  return 1 - getEmployeePortionOfYear(physician)
+  if (physician.type === 'employee') return 0
+  if (physician.type === 'newEmployee') return 0
+  if (physician.type === 'employeeToTerminate') return 0
+  if (physician.type === 'partner') return 1
+  if (physician.type === 'employeeToPartner') return 1 - getEmployeePortionOfYear(physician)
+  if (physician.type === 'partnerToRetire') return physician.partnerPortionOfYear ?? 0.5
+  return 0
 }
 
 function getPartnerFTEWeight(physician: Physician): number {
-  const weeks = clamp(physician.weeksVacation ?? 0, 0, 16)
+  // Allow up to 24 weeks for historical data compatibility
+  const weeks = clamp(physician.weeksVacation ?? 0, 0, 24)
   const baseFte = 1 - weeks / 52
   return baseFte * getPartnerPortionOfYear(physician)
 }
 
-function snapPercentToFifthsAndThirds(rawPercent: number): number {
-  // Round to nearest 5%
-  let p = Math.round(rawPercent / 5) * 5
-  // Snap near 33% and 67%
-  if (Math.abs(p - 33) <= 2) p = 33
-  if (Math.abs(p - 67) <= 2) p = 67
-  // Clamp 0..100
-  return Math.max(0, Math.min(100, p))
+
+// Helper functions for date-based employee->partner transition
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0)
 }
 
+function daysInYear(year: number): number {
+  return isLeapYear(year) ? 366 : 365
+}
+
+function dayOfYearToDate(dayOfYear: number, year: number): { month: number, day: number } {
+  const daysInMonth = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  let remainingDays = dayOfYear
+  let month = 0
+  
+  while (remainingDays > daysInMonth[month]) {
+    remainingDays -= daysInMonth[month]
+    month++
+  }
+  
+  return { month: month + 1, day: remainingDays }
+}
+
+function dateToString(month: number, day: number): string {
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  return `${monthNames[month - 1]} ${day}`
+}
+
+function employeePortionToTransitionDay(employeePortionOfYear: number, year: number): number {
+  const totalDays = daysInYear(year)
+  // If employeePortionOfYear is 0, they transition on Jan 1 (day 1)
+  // If employeePortionOfYear is 1, they transition on Jan 1 of next year (day = totalDays + 1)
+  return Math.max(1, Math.round(employeePortionOfYear * totalDays) + 1)
+}
+
+function transitionDayToEmployeePortion(transitionDay: number, year: number): number {
+  const totalDays = daysInYear(year)
+  // Day 1 means transition on Jan 1 (0% employee time - partner from day 1)
+  // Day N means they were employee for (N-1) days, then partner from day N onward
+  return Math.max(0, (transitionDay - 1) / totalDays)
+}
+
+// Helper for retirement portion - day 0 means retired in prior year (0 working days), day 1+ means last day of work
+function retirementDayToPartnerPortion(retirementDay: number, year: number): number {
+  const totalDays = daysInYear(year)
+  if (retirementDay === 0) {
+    // Day 0 means retired in prior year - 0 working days in current year
+    return 0
+  }
+  return retirementDay / totalDays
+}
+
+function partnerPortionToRetirementDay(partnerPortionOfYear: number, year: number): number {
+  const totalDays = daysInYear(year)
+  if (partnerPortionOfYear === 0) {
+    // 0 working portion means day 0 (retired in prior year)
+    return 0
+  }
+  return Math.round(partnerPortionOfYear * totalDays)
+}
+
+// Helper for new employee start date - similar to transition day but for start of employment
+function startPortionToStartDay(startPortionOfYear: number, year: number): number {
+  const totalDays = daysInYear(year)
+  // startPortionOfYear 0 means Jan 1 (day 1), 1 means Dec 31 (last day)
+  return Math.max(1, Math.round(startPortionOfYear * totalDays) + 1)
+}
+
+function startDayToStartPortion(startDay: number, year: number): number {
+  const totalDays = daysInYear(year)
+  // Day 1 means start on Jan 1 (0% through year), last day means start near end
+  return Math.max(0, Math.min(1, (startDay - 1) / totalDays))
+}
+
+// Helper function to get quarter start days for a given year (Apr 1, Jul 1, Oct 1)
+function getQuarterStartDays(year: number): { q2: number; q3: number; q4: number } {
+  const isLeap = isLeapYear(year)
+  const q2 = 31 + (isLeap ? 29 : 28) + 31 + 1 // Apr 1
+  const q3 = 31 + (isLeap ? 29 : 28) + 31 + 30 + 31 + 30 + 1 // Jul 1
+  const q4 = 31 + (isLeap ? 29 : 28) + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 1 // Oct 1
+  return { q2, q3, q4 }
+}
 // Helper function to abbreviate physician names for summary display
 function abbreviatePhysicianName(name: string): string {
   // Check if it's a default "Physician X" format
@@ -676,24 +1294,202 @@ function abbreviatePhysicianName(name: string): string {
   return name.trim()
 }
 
-// Generate tooltip content for employee cost breakdown
-function getEmployeeCostTooltip(employee: Physician): string {
-  const baseSalary = employee.salary || 0
-  const benefits = (796.37 + 57.12 + 6.44) * 12
-  const socialSecurity = Math.min(baseSalary, 176100) * 0.062
-  const medicare = baseSalary * 0.0145
-  const additionalMedicare = baseSalary > 200000 ? (baseSalary - 200000) * 0.009 : 0
-  const unemployment = Math.min(baseSalary, 72800) * 0.01
-  const totalCost = calculateEmployeeTotalCost(employee)
+// Bi-weekly payroll schedule calculations
+// Reference: 12/20/2024 pay date for period 11/30/2024-12/13/2024
+const REFERENCE_PAY_DATE = new Date('2024-12-20')
+const REFERENCE_PERIOD_END = new Date('2024-12-13')
+
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date)
+  result.setDate(result.getDate() + days)
+  return result
+}
+
+function getPayPeriodsForYear(year: number): Array<{ periodStart: Date; periodEnd: Date; payDate: Date }> {
+  const periods: Array<{ periodStart: Date; periodEnd: Date; payDate: Date }> = []
   
-  return `Employee Total Cost Breakdown:
-Base Salary: ${currency(baseSalary)}
-Benefits (Medical/Dental/Vision): ${currency(benefits)}
-Social Security Tax (6.2%): ${currency(socialSecurity)}
-Medicare Tax (1.45%): ${currency(medicare)}${additionalMedicare > 0 ? `
-Additional Medicare (0.9%): ${currency(additionalMedicare)}` : ''}
-WA Unemployment Tax (1.0%): ${currency(unemployment)}
-Total Cost: ${currency(totalCost)}
+  // Start from reference point and work backwards to find the first period of the year
+  let currentPeriodEnd = new Date(REFERENCE_PERIOD_END)
+  let currentPayDate = new Date(REFERENCE_PAY_DATE)
+  
+  // Go back to find the first pay period of the target year
+  while (currentPeriodEnd.getFullYear() > year || 
+         (currentPeriodEnd.getFullYear() === year && currentPeriodEnd.getMonth() > 0) ||
+         (currentPeriodEnd.getFullYear() === year && currentPeriodEnd.getMonth() === 0 && currentPeriodEnd.getDate() > 14)) {
+    currentPeriodEnd = addDays(currentPeriodEnd, -14)
+    currentPayDate = addDays(currentPayDate, -14)
+  }
+  
+  // Now work forward to collect all periods that could affect the target year
+  const nextYearEnd = new Date(year + 1, 0, 31) // Include early next year for delayed payments
+  
+  while (currentPayDate <= nextYearEnd) {
+    const periodStart = addDays(currentPeriodEnd, -13) // 14-day period
+    
+    periods.push({
+      periodStart,
+      periodEnd: new Date(currentPeriodEnd),
+      payDate: new Date(currentPayDate)
+    })
+    
+    // Move to next bi-weekly period
+    currentPeriodEnd = addDays(currentPeriodEnd, 14)
+    currentPayDate = addDays(currentPayDate, 14)
+  }
+  
+  return periods
+}
+
+function calculateDelayedW2Payment(physician: Physician, year: number): { amount: number; taxes: number; periodDetails: string } {
+  if (physician.type !== 'employeeToPartner') {
+    return { amount: 0, taxes: 0, periodDetails: '' }
+  }
+  
+  // Manual override for MC in 2025
+  if (physician.name === 'MC' && year === 2025) {
+    return {
+      amount: 15289.23,
+      taxes: 1493.36,
+      periodDetails: '12/14/24-12/27/24, 12/28/24-12/31/24 (manual override)'
+    }
+  }
+  
+  const transitionDay = employeePortionToTransitionDay(physician.employeePortionOfYear ?? 0.5, year)
+  const transitionDate = new Date(year, 0, transitionDay) // Convert to actual date
+  
+  const periods = getPayPeriodsForYear(year)
+  const salary = physician.salary ?? 0
+  
+  // Calculate hourly rate: salary ÷ (52 weeks × 5 days × 8 hours)
+  const annualWorkHours = 52 * 5 * 8  // 2,080 hours per year
+  const hourlyRate = salary / annualWorkHours
+  
+  let totalWorkDays = 0
+  let periodDetails: string[] = []
+  
+  // Helper function to count business days (Mon-Fri) in a date range
+  function countBusinessDays(startDate: Date, endDate: Date): number {
+    let count = 0
+    const current = new Date(startDate)
+    
+    while (current <= endDate) {
+      const dayOfWeek = current.getDay()
+      // 1 = Monday through 5 = Friday
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+        count++
+      }
+      current.setDate(current.getDate() + 1)
+    }
+    
+    return count
+  }
+  
+  // Find periods where work was done in prior year but paid in current year
+  for (const period of periods) {
+    // Skip periods where pay date is before transition date
+    if (period.payDate < transitionDate) continue
+    
+    // Check if work period was in prior year
+    if (period.periodStart.getFullYear() < year || period.periodEnd.getFullYear() < year) {
+      // Calculate business days in prior year
+      const priorYearEnd = new Date(year - 1, 11, 31)
+      const periodStartInPriorYear = period.periodStart.getFullYear() < year ? period.periodStart : new Date(year, 0, 1)
+      const periodEndInPriorYear = period.periodEnd.getFullYear() < year ? period.periodEnd : priorYearEnd
+      
+      if (periodStartInPriorYear <= priorYearEnd) {
+        const businessDaysInPriorYear = countBusinessDays(periodStartInPriorYear, periodEndInPriorYear)
+        totalWorkDays += businessDaysInPriorYear
+        
+        const periodStartStr = `${periodStartInPriorYear.getMonth() + 1}/${periodStartInPriorYear.getDate()}`
+        const periodEndStr = `${periodEndInPriorYear.getMonth() + 1}/${periodEndInPriorYear.getDate()}`
+        const payDateStr = `${period.payDate.getMonth() + 1}/${period.payDate.getDate()}`
+        periodDetails.push(`${periodStartStr}-${periodEndStr} (paid ${payDateStr}, ${businessDaysInPriorYear} work days)`)
+      }
+    }
+  }
+  
+  // Calculate total amount: business days × 8 hours/day × hourly rate
+  const amount = totalWorkDays * 8 * hourlyRate
+  const taxes = calculateEmployerPayrollTaxes(amount, year)
+  
+  return {
+    amount: Math.round(amount),
+    taxes: Math.round(taxes),
+    periodDetails: periodDetails.join(', ')
+  }
+}
+
+// Generate tooltip content for employee cost breakdown (WA State medical practice <50 employees)
+function getEmployeeCostTooltip(employee: Physician, year: number = 2025, benefitGrowthPct: number = 5.0, delayedW2Amount: number = 0, delayedW2Taxes: number = 0, delayedW2Details: string = ''): string {
+  const baseSalary = employee.salary || 0
+  const bonusAmount = employee.bonusAmount || 0
+  
+  // Calculate benefits with new waiting period for new employees
+  let benefits = 0
+  let benefitsNote = ''
+  if (employee.receivesBenefits) {
+    const yearlyBenefitCost = getBenefitCostsForYear(year, benefitGrowthPct)
+    if (employee.type === 'newEmployee') {
+      const startDay = startPortionToStartDay(employee.startPortionOfYear ?? 0, year)
+      const benefitStartDay = calculateBenefitStartDay(startDay, year)
+      const totalDays = daysInYear(year)
+      
+      if (benefitStartDay <= totalDays) {
+        const benefitDays = Math.max(0, totalDays - benefitStartDay + 1)
+        const benefitPortion = benefitDays / totalDays
+        benefits = yearlyBenefitCost * benefitPortion
+        
+        const { month: benefitMonth, day: benefitDay } = dayOfYearToDate(benefitStartDay, year)
+        const benefitStartDate = dateToString(benefitMonth, benefitDay)
+        benefitsNote = ` (benefits start ${benefitStartDate})`
+      } else {
+        benefitsNote = ` (benefits start next year)`
+      }
+    } else {
+      benefits = yearlyBenefitCost
+    }
+  }
+  
+  const ssWageBase = getSocialSecurityWageBase(year)
+  
+  // Federal taxes
+  const federalUnemployment = Math.min(baseSalary, 7000) * 0.006
+  const socialSecurity = Math.min(baseSalary, ssWageBase) * 0.062
+  const medicare = baseSalary * 0.0145
+  // Note: Additional Medicare tax is employee-paid, not employer-paid
+  
+  // Washington State taxes
+  const waUnemployment = Math.min(baseSalary, 72800) * 0.009
+  const waFamilyLeave = Math.min(baseSalary, ssWageBase) * 0.00658
+  const waStateDisability = baseSalary * 0.00255
+  const washingtonRate = baseSalary * 0.0003
+  
+  const totalCost = calculateEmployeeTotalCost(employee, year, benefitGrowthPct)
+  const totalCostWithDelayed = totalCost + delayedW2Amount + delayedW2Taxes
+  
+  return `Employee Total Cost Breakdown (${year}):
+Base Salary: ${currency(baseSalary)}${bonusAmount > 0 ? `
+Relocation/Signing Bonus: ${currency(bonusAmount)}` : ''}${employee.receivesBenefits ? `
+Benefits (Medical/Dental/Vision): ${currency(benefits)}${benefitsNote}` : `
+Benefits: None`}
+
+Federal Taxes:
+FUTA (0.6% on first $7K): ${currency(federalUnemployment)}
+Social Security (6.2% on first ${currency(ssWageBase)}): ${currency(socialSecurity)}
+Medicare (1.45%): ${currency(medicare)}
+
+Washington State Taxes:
+SUTA (0.9% on first $72.8K): ${currency(waUnemployment)}
+Family Leave (0.658% on first ${currency(ssWageBase)}): ${currency(waFamilyLeave)}
+State Disability (0.255%): ${currency(waStateDisability)}
+Washington Rate (0.030%): ${currency(washingtonRate)}${delayedW2Amount > 0 ? `
+
+Delayed W2 Payments (Prior Year Work):
+W2 Amount: ${currency(delayedW2Amount)}
+Payroll Taxes: ${currency(delayedW2Taxes)}
+Pay Periods: ${delayedW2Details}` : ''}
+
+Total Cost: ${currency(totalCostWithDelayed)}
 
 This total cost is deducted from the partner compensation pool.`
 }
@@ -702,26 +1498,79 @@ function usePartnerComp(year: number, scenario: ScenarioKey) {
   const store = useDashboardStore()
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
   const fy = sc.future.find((f) => f.year === year)
+  const dataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode
   return useMemo(() => {
-    // Special handling for 2025: fixed partner pool and scenario A defaults
-    if (!fy && year === 2025) {
-      const partners = scenarioADefaultsByYear(2025).filter((p) => p.type === 'partner')
+    // For baseline year (2025): always derive from the selected data mode unless in Custom.
+    // This avoids stale Custom state (e.g., a persisted 2025 entry in future years) from skewing baseline.
+    if (year === 2025 && dataMode !== 'Custom') {
+      const baselinePhysicians = dataMode === '2024 Data' ? scenario2024Defaults() : scenarioADefaultsByYear(2025)
+      const partners = baselinePhysicians.filter((p) => p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire')
       const partnerFTEs = partners.map((p) => {
-        const weeks = clamp(p.weeksVacation ?? 0, 0, 16)
+        // Allow up to 24 weeks for historical data compatibility
+        const weeks = clamp(p.weeksVacation ?? 0, 0, 24)
         const fte = 1 - weeks / 52
-        return { p, weight: fte }
+        const weight = fte * getPartnerPortionOfYear(p)
+        return { p, weight }
       })
       const totalWeight = partnerFTEs.reduce((s, x) => s + x.weight, 0) || 1
-      return partnerFTEs.map(({ p, weight }) => ({ id: p.id, name: p.name, comp: (weight / totalWeight) * NET_PARTNER_POOL_2025 }))
+      // For 2025, we need to account for HW's buyout cost and delayed W2 payments
+      const buyoutCosts = partners.reduce((sum, p) => sum + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0), 0)
+      const delayedW2Costs = partners.reduce((sum, p) => {
+        if (p.type === 'employeeToPartner') {
+          const delayed = calculateDelayedW2Payment(p, year)
+          return sum + delayed.amount + delayed.taxes
+        }
+        return sum
+      }, 0)
+      
+      // Use different partner pools based on data mode
+      const basePool = dataMode === '2024 Data' ? 2032099.02 : NET_PARTNER_POOL_2025
+      const adjustedPool = basePool - buyoutCosts - delayedW2Costs
+      
+      return partnerFTEs.map(({ p, weight }) => ({ 
+        id: p.id, 
+        name: p.name, 
+        comp: (weight / totalWeight) * adjustedPool + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0)
+      }))
     }
     if (!fy) return [] as { id: string; name: string; comp: number }[]
-    const partners = fy.physicians.filter((p) => p.type === 'partner' || p.type === 'employeeToPartner')
-    const employees = fy.physicians.filter((p) => p.type === 'employee' || p.type === 'employeeToPartner')
-    const totalEmployeeSalary = employees.reduce((sum, e) => {
+    const partners = fy.physicians.filter((p) => p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire')
+    const employees = fy.physicians.filter((p) => p.type === 'employee' || p.type === 'employeeToPartner' || p.type === 'newEmployee' || p.type === 'employeeToTerminate')
+    const totalEmployeeCosts = employees.reduce((sum, e) => {
       const employeePortion = getEmployeePortionOfYear(e)
-      return sum + (e.salary ?? 0) * employeePortion
+      if (employeePortion <= 0) return sum
+      
+      // Calculate full employee cost including benefits and payroll taxes
+      if (e.type === 'newEmployee') {
+        // For new employees, calculate prorated total cost
+        const proratedEmployee = { ...e, salary: (e.salary ?? 0) * employeePortion }
+        return sum + calculateEmployeeTotalCost(proratedEmployee, year, sc.projection.benefitCostsGrowthPct)
+      } else if (e.type === 'employeeToTerminate') {
+        // For terminating employees, calculate prorated total cost
+        const proratedEmployee = { ...e, salary: (e.salary ?? 0) * employeePortion }
+        return sum + calculateEmployeeTotalCost(proratedEmployee, year, sc.projection.benefitCostsGrowthPct)
+      } else if (e.type === 'employeeToPartner') {
+        // For mixed types, only count the employee portion of their total cost
+        const employeePortionSalary = (e.salary ?? 0) * employeePortion
+        const employeePortionPhysician = { ...e, salary: employeePortionSalary }
+        return sum + calculateEmployeeTotalCost(employeePortionPhysician, year, sc.projection.benefitCostsGrowthPct)
+      } else {
+        // For regular employees, calculate full cost
+        return sum + calculateEmployeeTotalCost(e, year, sc.projection.benefitCostsGrowthPct)
+      }
     }, 0)
-    const totalCosts = fy.nonEmploymentCosts + fy.nonMdEmploymentCosts + fy.miscEmploymentCosts + (fy.locumDays * LOCUM_DAY_RATE) + totalEmployeeSalary
+    const totalBuyoutCosts = fy.physicians.reduce((sum, p) => {
+      return sum + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0)
+    }, 0)
+    // Calculate delayed W2 payments for employeeToPartner physicians
+    const totalDelayedW2Costs = fy.physicians.reduce((sum, p) => {
+      if (p.type === 'employeeToPartner') {
+        const delayed = calculateDelayedW2Payment(p, year)
+        return sum + delayed.amount + delayed.taxes
+      }
+      return sum
+    }, 0)
+    const totalCosts = fy.nonEmploymentCosts + fy.nonMdEmploymentCosts + fy.miscEmploymentCosts + fy.locumCosts + totalEmployeeCosts + totalBuyoutCosts + totalDelayedW2Costs
     const pool = Math.max(0, fy.totalIncome - totalCosts)
     if (partners.length === 0) return []
     const partnerFTEs = partners.map((p) => ({ p, weight: getPartnerFTEWeight(p) }))
@@ -729,35 +1578,120 @@ function usePartnerComp(year: number, scenario: ScenarioKey) {
     return partnerFTEs.map(({ p, weight }) => ({
       id: p.id,
       name: p.name,
-      comp: (weight / totalWeight) * pool,
+      comp: (weight / totalWeight) * pool + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0),
     }))
-  }, [fy, sc])
+  }, [fy, sc, dataMode])
 }
 
 function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) {
   const store = useDashboardStore()
   const isMobile = useIsMobile()
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
-  const isReadOnly = year === 2025
+  const dataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+  const isReadOnly = year === 2025 && dataMode !== 'Custom'
+  const last2024 = store.historic.find((h) => h.year === 2024)
   const last2025 = store.historic.find((h) => h.year === 2025)
-  const fy = isReadOnly && last2025
-    ? {
-        year: 2025,
-        totalIncome: last2025.totalIncome,
-        nonEmploymentCosts: last2025.nonEmploymentCosts,
-        nonMdEmploymentCosts: DEFAULT_NON_MD_EMPLOYMENT_COSTS_BASE,
-        locumDays: 30,
-        miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-        physicians: scenarioADefaultsByYear(2025),
-      } as FutureYear
+  
+  const fy = isReadOnly && (last2024 || last2025)
+    ? (() => {
+        // For Custom mode, use the editable data from future years array
+        if ((dataMode as string) === 'Custom') {
+          const customData = sc.future.find((f) => f.year === 2025)
+          if (customData) return customData
+          // Fallback if no custom data exists yet
+          return {
+            year: 2025,
+            totalIncome: last2025?.totalIncome || 3344068.19,
+            nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
+            nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+            locumCosts: 54600,
+            miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+            physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
+          } as FutureYear
+        }
+        // Determine baseline data based on selected data mode
+        else if (dataMode === '2024 Data' && last2024) {
+          return {
+            year: 2025,
+            totalIncome: last2024.totalIncome,
+            nonEmploymentCosts: last2024.nonEmploymentCosts,
+            nonMdEmploymentCosts: 164677.44, // 2024 actual staff employment costs
+            locumCosts: 113400, // 2024 actual locums costs
+            miscEmploymentCosts: 18182.56, // 2024 actual misc employment from image
+            physicians: scenario2024Defaults(),
+          } as FutureYear
+        } else if (dataMode === '2025 Data' && last2025) {
+          return {
+            year: 2025,
+            totalIncome: last2025.totalIncome,
+            nonEmploymentCosts: last2025.nonEmploymentCosts,
+            nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+            locumCosts: 54600,
+            miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+            physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
+          } as FutureYear
+        } else {
+          // Fallback 
+          return {
+            year: 2025,
+            totalIncome: last2025?.totalIncome || 3344068.19,
+            nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
+            nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+            locumCosts: 54600,
+            miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+            physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
+          } as FutureYear
+        }
+      })()
     : (sc.future.find((f) => f.year === year) as FutureYear)
   const partnerComp = usePartnerComp(year, scenario)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ fontWeight: 700, fontSize: 18 }}>{year}</div>
-      <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb', padding: 8 }}>
+      {year === 2025 ? (
+        <div style={{ position: 'relative' }}>
+          <div style={{ 
+            display: 'flex', 
+            gap: 8, 
+            alignItems: 'center', 
+            marginBottom: 4,
+            animation: 'fadeInSlideDown 0.3s ease-out',
+            transformOrigin: 'top'
+          }}>
+            <span style={{ marginLeft: 13, fontWeight: 700, fontSize: 16, color: '#374151' }}>Data Source:</span>
+            {(['Custom', '2024 Data', '2025 Data'] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => {
+                store.setDataMode(scenario, mode)
+                // Only recalculate projections when switching between actual data modes (not to/from Custom)
+                if (mode !== 'Custom') {
+                  store.applyProjectionFromLastActual(scenario)
+                }
+              }}
+              style={{
+                padding: '4px 8px',
+                borderRadius: 4,
+                border: '1px solid #ccc',
+                background: (scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode) === mode ? '#f0f4ff' : 'white',
+                fontWeight: (scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode) === mode ? 600 : 400,
+                cursor: 'pointer',
+                fontSize: 12,
+              }}
+            >
+              {mode}
+            </button>
+            ))}
+          </div>
+        </div>
 
+        
+      ) : (
+        <div style={{ fontWeight: 700, fontSize: 18 }}>{year}</div>
+      )}
+      <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#f3f4f6', padding: 8 }}>
+
+      <div style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)' }}>
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Total Income</div>
       <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
@@ -765,33 +1699,43 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
           min={2000000}
           max={4000000}
           step={1000}
-          value={fy.totalIncome}
+          value={fy.totalIncome || 3000000}
           onChange={(e) =>
             store.setFutureValue(scenario, year, 'totalIncome', Number(e.target.value))
           }
           disabled={isReadOnly}
           style={{ 
             width: '100%',
-            ['--fill-percent' as any]: `${((fy.totalIncome - 2000000) / (4000000 - 2000000)) * 100}%`
+            ['--fill-percent' as any]: `${(((fy.totalIncome || 3000000) - 2000000) / (4000000 - 2000000)) * 100}%`
           }}
         />
         <input
           type="text"
-          value={currency(Math.round(fy.totalIncome))}
+          value={currency(Math.round(fy.totalIncome || 3000000))}
           onChange={(e) =>
             store.setFutureValue(scenario, year, 'totalIncome', Number(e.target.value.replace(/[^0-9]/g, '')))
           }
           disabled={isReadOnly}
-          style={{ width: isMobile ? 100 : 100, justifySelf: isMobile ? 'end' : undefined }}
+          style={{ 
+            width: isMobile ? 100 : 100, 
+            height: 20, 
+            padding: '2px 8px', 
+            border: '1px solid #ccc',
+            borderRadius: 3,
+            fontSize: 12,
+            justifySelf: isMobile ? 'end' : undefined
+          }}
         />
-        <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: '14px', color: '#666', width: '16px', height: '16px', textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-          onMouseEnter={(e) => createTooltip('income-tooltip', 'Gross (Therapy and Other)', e)}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+          onMouseEnter={(e) => createTooltip('income-tooltip', 'Gross (Therapy, Other Professional, Interest)', e)}
           onMouseLeave={() => removeTooltip('income-tooltip')}
-          onTouchStart={(e) => createTooltip('income-tooltip', 'Gross (Therapy and Other)', e)}
-          onClick={(e) => createTooltip('income-tooltip', 'Gross (Therapy and Other)', e)}
-        >ℹ</div>
+          onTouchStart={(e) => createTooltip('income-tooltip', 'Gross (Therapy, Other Professional, Interest)', e)}
+          onClick={(e) => createTooltip('income-tooltip', 'Gross (Therapy, Other Professional, Interest)', e)}
+        ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+      </div>
       </div>
 
+      <div style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)' }}>
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Non-Employment Costs</div>
       <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
@@ -799,7 +1743,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
           min={100000}
           max={500000}
           step={1000}
-          value={fy.nonEmploymentCosts}
+          value={fy.nonEmploymentCosts || 200000}
           onChange={(e) =>
             store.setFutureValue(
               scenario,
@@ -811,12 +1755,12 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
           disabled={isReadOnly}
           style={{ 
             width: '100%',
-            ['--fill-percent' as any]: `${((fy.nonEmploymentCosts - 100000) / (500000 - 100000)) * 100}%`
+            ['--fill-percent' as any]: `${(((fy.nonEmploymentCosts || 200000) - 100000) / (500000 - 100000)) * 100}%`
           }}
         />
         <input
           type="text"
-          value={currency(Math.round(fy.nonEmploymentCosts))}
+          value={currency(Math.round(fy.nonEmploymentCosts || 200000))}
           onChange={(e) =>
             store.setFutureValue(
               scenario,
@@ -826,24 +1770,34 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             )
           }
           disabled={isReadOnly}
-          style={{ width: isMobile ? 100 : 100, justifySelf: isMobile ? 'end' : undefined }}
+          style={{ 
+            width: isMobile ? 100 : 100, 
+            height: 20, 
+            padding: '2px 8px', 
+            border: '1px solid #ccc',
+            borderRadius: 3,
+            fontSize: 12,
+            justifySelf: isMobile ? 'end' : undefined
+          }}
         />
-        <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 14, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: 11, fontFamily: 'Arial, sans-serif', color: '#666', width: 20, height: 20, border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
           onMouseEnter={(e) => createTooltip('nonemp-tooltip', 'Includes these non-employment categories:\n\nInsurance Cost\nState/Local Taxes\nCommunications Cost\nLicensure Costs\nPromotional Costs\nBilling Costs\nOffice Overhead\nCapital Expense', e)}
           onMouseLeave={() => removeTooltip('nonemp-tooltip')}
           onTouchStart={(e) => createTooltip('nonemp-tooltip', 'Includes these non-employment categories:\n\nInsurance Cost\nState/Local Taxes\nCommunications Cost\nLicensure Costs\nPromotional Costs\nBilling Costs\nOffice Overhead\nCapital Expense', e)}
           onClick={(e) => createTooltip('nonemp-tooltip', 'Includes these non-employment categories:\n\nInsurance Cost\nState/Local Taxes\nCommunications Cost\nLicensure Costs\nPromotional Costs\nBilling Costs\nOffice Overhead\nCapital Expense', e)}
-        >ℹ</div>
+        ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+      </div>
       </div>
 
-      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Non‑MD Employment Costs</div>
+      <div style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)' }}>
+      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Staff Employment Costs</div>
       <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={50000}
           max={300000}
           step={1000}
-          value={fy.nonMdEmploymentCosts}
+          value={fy.nonMdEmploymentCosts || 150000}
           onChange={(e) =>
             store.setFutureValue(
               scenario,
@@ -855,12 +1809,12 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
           disabled={isReadOnly}
           style={{ 
             width: '100%',
-            ['--fill-percent' as any]: `${((fy.nonMdEmploymentCosts - 50000) / (300000 - 50000)) * 100}%`
+            ['--fill-percent' as any]: `${(((fy.nonMdEmploymentCosts || 150000) - 50000) / (300000 - 50000)) * 100}%`
           }}
         />
         <input
           type="text"
-          value={currency(Math.round(fy.nonMdEmploymentCosts))}
+          value={currency(Math.round(fy.nonMdEmploymentCosts || 150000))}
           onChange={(e) =>
             store.setFutureValue(
               scenario,
@@ -870,9 +1824,17 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             )
           }
           disabled={isReadOnly}
-          style={{ width: isMobile ? 100 : 100, justifySelf: isMobile ? 'end' : undefined }}
+          style={{ 
+            width: isMobile ? 100 : 100, 
+            height: 20, 
+            padding: '2px 8px', 
+            border: '1px solid #ccc',
+            borderRadius: 3,
+            fontSize: 12,
+            justifySelf: isMobile ? 'end' : undefined
+          }}
         />
-        <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 14, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: 11, fontFamily: 'Arial, sans-serif', color: '#666', width: 20, height: 20, border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
           onMouseEnter={(e) => {
             const existing = document.getElementById('nonmd-tooltip')
             if (existing) existing.remove()
@@ -903,63 +1865,19 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             if (tooltip) tooltip.remove()
           }}
         >
-          ℹ
+          <span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span>
         </div>
       </div>
 
-      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Locums Costs</div>
-      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
-        <input
-          type="range"
-          min={0}
-          max={120}
-          step={1}
-          value={fy.locumDays}
-          onChange={(e) =>
-            store.setFutureValue(
-              scenario,
-              year,
-              'locumDays',
-              Number(e.target.value)
-            )
-          }
-          disabled={isReadOnly}
-          style={{ 
-            width: '100%',
-            ['--fill-percent' as any]: `${(fy.locumDays / 120) * 100}%`
-          }}
-        />
-        <input
-          type="text"
-          value={`${currency(Math.round(fy.locumDays * LOCUM_DAY_RATE))} (${fy.locumDays} d)`}
-          readOnly
-          style={{ width: isMobile ? 100 : 100, justifySelf: isMobile ? 'end' : undefined }}
-        />
-        <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 14, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-          onMouseEnter={(e) => {
-            const existing = document.getElementById('locums-tooltip')
-            if (existing) existing.remove()
-            const tooltip = document.createElement('div')
-            tooltip.id = 'locums-tooltip'
-            tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
-            tooltip.textContent = 'Assumes $2,000 per day'
-            document.body.appendChild(tooltip)
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-            tooltip.style.left = `${rect.right + 10}px`
-            tooltip.style.top = `${rect.top + window.scrollY}px`
-          }}
-          onMouseLeave={() => { const t = document.getElementById('locums-tooltip'); if (t) t.remove() }}
-        >ℹ</div>
-      </div>
 
-      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Misc Employment Costs</div>
+      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2, marginTop: 8 }}>Misc Employment Costs</div>
       <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={0}
           max={100000}
           step={1000}
-          value={fy.miscEmploymentCosts}
+          value={fy.miscEmploymentCosts || 25000}
           onChange={(e) =>
             store.setFutureValue(
               scenario,
@@ -971,12 +1889,12 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
           disabled={isReadOnly}
           style={{ 
             width: '100%',
-            ['--fill-percent' as any]: `${(fy.miscEmploymentCosts / 100000) * 100}%`
+            ['--fill-percent' as any]: `${((fy.miscEmploymentCosts || 25000) / 100000) * 100}%`
           }}
         />
         <input
           type="text"
-          value={currency(Math.round(fy.miscEmploymentCosts))}
+          value={currency(Math.round(fy.miscEmploymentCosts || 25000))}
           onChange={(e) =>
             store.setFutureValue(
               scenario,
@@ -986,9 +1904,17 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             )
           }
           disabled={isReadOnly}
-          style={{ width: isMobile ? 100 : 100, justifySelf: isMobile ? 'end' : undefined }}
+          style={{ 
+            width: isMobile ? 100 : 100, 
+            height: 20, 
+            padding: '2px 8px', 
+            border: '1px solid #ccc',
+            borderRadius: 3,
+            fontSize: 12,
+            justifySelf: isMobile ? 'end' : undefined
+          }}
         />
-        <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 14, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: 11, fontFamily: 'Arial, sans-serif', color: '#666', width: 20, height: 20, border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
           onMouseEnter={(e) => {
             const existing = document.getElementById('misc-tooltip')
             if (existing) existing.remove()
@@ -1008,7 +1934,8 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
               box-shadow: 0 2px 8px rgba(0,0,0,0.2);
               pointer-events: none;
             `
-            tooltip.textContent = 'Includes Profit Sharing, Gifts, Recruiting, etc.'
+            const baseContent = 'Includes:\nGifts\nProfit Sharing\nRelocation\nRecruiting'
+            tooltip.textContent = baseContent
             document.body.appendChild(tooltip)
             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
             tooltip.style.left = `${rect.right + 10}px`
@@ -1019,8 +1946,9 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             if (tooltip) tooltip.remove()
           }}
         >
-          ℹ
+          <span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span>
         </div>
+      </div>
       </div>
       </div>
 
@@ -1028,11 +1956,19 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
         year={year}
         scenario={scenario}
         readOnly={isReadOnly}
-        physiciansOverride={isReadOnly ? scenarioADefaultsByYear(2025) : undefined}
+        physiciansOverride={isReadOnly ? (() => {
+          if (dataMode === '2024 Data') {
+            return scenario2024Defaults()
+          } else {
+            return scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
+          }
+        })() : undefined}
+        locumCosts={fy.locumCosts}
+        onLocumCostsChange={(value) => store.setFutureValue(scenario, year, 'locumCosts', value)}
       />
 
       {partnerComp.length > 0 && (
-        <div style={{ marginTop: 6, border: '1px solid #e5e7eb', borderRadius: 8, padding: 8, background: '#f9fafb' }}>
+        <div style={{ marginTop: 6, border: '1px solid #e5e7eb', borderRadius: 8, padding: 8, background: '#f3f4f6' }}>
           <div style={{ fontWeight: 600, textAlign: 'center', marginBottom: 4 }}>Partner Compensation</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', justifyContent: 'center', columnGap: 16, rowGap: 2 }}>
             {partnerComp.map((p) => (
@@ -1043,6 +1979,17 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
                   {(() => {
                     const md = fy?.physicians.find((x) => x.id === p.id)
                     if (md && md.type === 'employeeToPartner') {
+                      // Show delayed W2 payments for employeeToPartner physicians
+                      const delayedW2 = calculateDelayedW2Payment(md, year)
+                      if (delayedW2.amount > 0) {
+                        return (
+                          <span style={{ position: 'absolute', left: 'calc(100% + 8px)', top: 0, whiteSpace: 'nowrap', color: '#6b7280', fontWeight: 400 }}>
+                            {`(+ ${currency(delayedW2.amount)} W2)`}
+                          </span>
+                        )
+                      }
+                      
+                      // Fallback to regular W2 calculation if no delayed payments
                       const employeePortion = md.employeePortionOfYear ?? 0
                       const w2 = (md.salary ?? 0) * employeePortion
                       if (w2 > 0) {
@@ -1066,37 +2013,106 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
           </div>
         </div>
       )}
+
     </div>
   )
 }
-
-function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride }: { year: number; scenario: ScenarioKey; readOnly?: boolean; physiciansOverride?: Physician[] }) {
+function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride, locumCosts, onLocumCostsChange }: { year: number; scenario: ScenarioKey; readOnly?: boolean; physiciansOverride?: Physician[]; locumCosts: number; onLocumCostsChange: (value: number) => void }) {
   const store = useDashboardStore()
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
   const fy = sc.future.find((f) => f.year === year)!
   const physicians = physiciansOverride ?? fy.physicians
 
-  const rows = physicians.map((p) => {
+  const rows = physicians.map((p, index) => {
     const canDelete = !readOnly && physicians.length > 3
     return (
       <div
         key={p.id}
+        onDragOver={(e) => {
+          e.preventDefault()
+          e.dataTransfer.dropEffect = 'move'
+          // Add visual feedback for drop zone
+          e.currentTarget.style.backgroundColor = '#f0f9ff'
+        }}
+        onDragLeave={(e) => {
+          // Remove visual feedback when leaving drop zone
+          e.currentTarget.style.backgroundColor = 'transparent'
+        }}
+        onDrop={(e) => {
+          if (readOnly) return
+          e.preventDefault()
+          // Reset visual feedback
+          e.currentTarget.style.backgroundColor = 'transparent'
+          const fromIndex = parseInt(e.dataTransfer.getData('text/plain'))
+          const toIndex = index
+          if (fromIndex !== toIndex) {
+            store.reorderPhysicians(scenario, year, fromIndex, toIndex)
+          }
+        }}
         style={{
-          borderTop: '1px solid #eee',
-          paddingTop: 8,
-          marginTop: 8,
+          borderTop: '1px solid #d1d5db',
+          paddingTop: 10,
+          marginTop: 10,
           display: 'grid',
-          gridTemplateColumns: '120px 150px 1fr 20px 20px',
+          gridTemplateColumns: '20px 120px 150px 1fr 20px 20px 20px', // Drag handle + existing layout
           gap: 8,
           alignItems: 'center',
+          cursor: 'default',
+          background: 'transparent'
         }}
       >
+        {/* Drag Handle */}
+        <div
+          draggable={!readOnly}
+          onDragStart={(e) => {
+            if (readOnly) return
+            e.dataTransfer.setData('text/plain', index.toString())
+            e.dataTransfer.effectAllowed = 'move'
+            // Add a subtle drag effect to the entire row
+            e.currentTarget.parentElement!.style.opacity = '0.5'
+          }}
+          onDragEnd={(e) => {
+            // Reset the entire row opacity
+            e.currentTarget.parentElement!.style.opacity = '1'
+          }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: readOnly ? '#ccc' : '#333', // Made darker
+            fontSize: '14px',
+            cursor: readOnly ? 'default' : 'grab',
+            userSelect: 'none',
+            opacity: readOnly ? 0.3 : 1.0, // Made fully opaque when active
+          }}
+          onMouseDown={(e) => {
+            if (!readOnly) {
+              e.currentTarget.style.cursor = 'grabbing'
+            }
+          }}
+          onMouseUp={(e) => {
+            if (!readOnly) {
+              e.currentTarget.style.cursor = 'grab'
+            }
+          }}
+          title={readOnly ? '' : 'Drag to reorder'}
+        >
+          ⋮⋮
+        </div>
         <input
           value={p.name}
           onChange={(e) =>
             store.upsertPhysician(scenario, year, { ...p, name: e.target.value })
           }
           disabled={readOnly}
+          style={{ 
+            width: '100%', 
+            height: 20, 
+            padding: '2px 8px', 
+            border: '1px solid #ccc',
+            borderRadius: 3,
+            fontSize: 12
+          }}
         />
         <select
           value={p.type}
@@ -1106,221 +2122,173 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
               type: e.target.value as PhysicianType,
               // Initialize sensible defaults when switching types
               employeePortionOfYear: e.target.value === 'employeeToPartner' ? (p.employeePortionOfYear ?? 0.5) : p.employeePortionOfYear,
-              salary: e.target.value !== 'partner' ? (p.salary ?? 500000) : undefined,
-              weeksVacation: e.target.value !== 'employee' ? (p.weeksVacation ?? 8) : undefined,
+              partnerPortionOfYear: e.target.value === 'partnerToRetire' ? (p.partnerPortionOfYear ?? 0.5) : p.partnerPortionOfYear,
+              startPortionOfYear: e.target.value === 'newEmployee' ? (p.startPortionOfYear ?? 0) : p.startPortionOfYear,
+              terminatePortionOfYear: e.target.value === 'employeeToTerminate' ? (p.terminatePortionOfYear ?? 1) : p.terminatePortionOfYear,
+              salary: e.target.value !== 'partner' && e.target.value !== 'partnerToRetire' ? (p.salary ?? 500000) : undefined,
+              weeksVacation: e.target.value !== 'employee' && e.target.value !== 'newEmployee' ? (p.weeksVacation ?? 8) : undefined,
+              receivesBenefits: e.target.value !== 'partner' && e.target.value !== 'partnerToRetire' ? (p.receivesBenefits ?? true) : undefined,
+              buyoutCost: e.target.value === 'partnerToRetire' ? (p.buyoutCost ?? 50000) : undefined,
             })
           }
           disabled={readOnly}
         >
-          <option value="partner">Partner</option>
+          <option value="newEmployee">New Employee</option>
           <option value="employee">Employee</option>
+          <option value="employeeToTerminate">Employee → Terminate</option>
           <option value="employeeToPartner">Employee → Partner</option>
+          <option value="partner">Partner</option>
+          <option value="partnerToRetire">Partner → Retire</option>
         </select>
-        {p.type === 'employee' ? (
+        {p.type === 'newEmployee' ? (
+          // newEmployee
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-              <input
-                type="range"
-                min={350000}
-                max={650000}
-                step={1000}
-                value={p.salary ?? 0}
-                onChange={(e) =>
-                  store.upsertPhysician(scenario, year, {
-                    ...p,
-                    salary: Number(e.target.value),
-                  })
-                }
-                disabled={readOnly}
-                style={{ 
-                  width: '100%',
-                  ['--fill-percent' as any]: `${((p.salary ?? 0) - 350000) / (650000 - 350000) * 100}%`
-                }}
-              />
-              <input
-                type="text"
-                value={currency(Math.round(p.salary ?? 0))}
-                onChange={(e) =>
-                  store.upsertPhysician(scenario, year, {
-                    ...p,
-                    salary: Number(e.target.value.replace(/[^0-9]/g, '')),
-                  })
-                }
-                style={{ width: 100 }}
-                disabled={readOnly}
-              />
-            </div>
-            <div 
-              style={{ 
-                position: 'relative',
-                display: 'inline-block',
-                cursor: 'help',
-                fontSize: '14px',
-                color: '#666',
-                width: '16px',
-                height: '16px',
-                textAlign: 'center',
-                lineHeight: '16px',
-                border: '1px solid #ccc',
-                borderRadius: '50%',
-                backgroundColor: '#f8f9fa'
-              }}
-              onMouseEnter={(e) => {
-                const tooltip = document.createElement('div')
-                tooltip.id = 'employee-tooltip'
-                tooltip.style.cssText = `
-                  position: absolute;
-                  background: #333;
-                  color: white;
-                  padding: 8px 12px;
-                  border-radius: 4px;
-                  font-size: 12px;
-                  white-space: pre-line;
-                  text-align: left;
-                  z-index: 1000;
-                  max-width: 300px;
-                  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-                  pointer-events: none;
-                `
-                tooltip.textContent = getEmployeeCostTooltip(p)
-                document.body.appendChild(tooltip)
-                
-                const rect = e.currentTarget.getBoundingClientRect()
-                tooltip.style.left = `${rect.right + 10}px`
-                tooltip.style.top = `${rect.top + window.scrollY}px`
-              }}
-              onMouseLeave={() => {
-                const tooltip = document.getElementById('employee-tooltip')
-                if (tooltip) tooltip.remove()
-              }}
-            >
-              ℹ
-            </div>
-            <button
-              onClick={() => store.removePhysician(scenario, year, p.id)}
-              disabled={!canDelete}
-              title={canDelete ? 'Remove' : 'Minimum 3 physicians'}
-              style={{
-                width: 20,
-                height: 20,
-                border: '1px solid #ccc',
-                borderRadius: 4,
-                background: canDelete ? '#fff' : '#f3f3f3',
-                cursor: canDelete ? 'pointer' : 'not-allowed',
-                lineHeight: '18px',
-                textAlign: 'center',
-                padding: 0,
-              }}
-            >
-              ×
-            </button>
-          </>
-        ) : p.type === 'partner' ? (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-              <input
-                type="range"
-                min={2}
-                max={16}
-                step={1}
-                value={p.weeksVacation ?? 0}
-                onChange={(e) =>
-                  store.upsertPhysician(scenario, year, {
-                    ...p,
-                    weeksVacation: Number(e.target.value),
-                  })
-                }
-                disabled={readOnly}
-                style={{ 
-                  width: '100%',
-                  ['--fill-percent' as any]: `${((p.weeksVacation ?? 0) - 2) / (16 - 2) * 100}%`
-                }}
-              />
-              <input
-                type="text"
-                value={`${p.weeksVacation ?? 0} weeks off`}
-                onChange={(e) =>
-                  store.upsertPhysician(scenario, year, {
-                    ...p,
-                    weeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
-                  })
-                }
-                style={{ width: 100 }}
-                disabled={readOnly}
-              />
-            </div>
-            <div style={{ width: '16px' }}></div>
-            <button
-              onClick={() => store.removePhysician(scenario, year, p.id)}
-              disabled={!canDelete}
-              title={canDelete ? 'Remove' : 'Minimum 3 physicians'}
-              style={{
-                width: 20,
-                height: 20,
-                border: '1px solid #ccc',
-                borderRadius: 4,
-                background: canDelete ? '#fff' : '#f3f3f3',
-                cursor: canDelete ? 'pointer' : 'not-allowed',
-                lineHeight: '18px',
-                textAlign: 'center',
-                padding: 0,
-              }}
-            >
-              ×
-            </button>
-          </>
-        ) : (
-          // employeeToPartner
-          <>
-            <div style={{ display: 'grid', gridTemplateRows: 'auto auto auto', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateRows: 'auto auto', gap: 8 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 20 }}>
                   <input
                     type="range"
-                    min={0}
-                    max={100}
-                    step={5}
+                    min={1}
+                    max={daysInYear(year)}
+                    step={1}
                     className="growth-slider"
-                    value={Math.round((p.employeePortionOfYear ?? 0.5) * 100)}
+                    value={startPortionToStartDay(p.startPortionOfYear ?? 0, year)}
                     onChange={(e) => {
-                      const raw = Number(e.target.value)
-                      const snapped = snapPercentToFifthsAndThirds(raw)
+                      const startDay = Number(e.target.value)
+                      const startPortion = startDayToStartPortion(startDay, year)
                       store.upsertPhysician(scenario, year, {
                         ...p,
-                        employeePortionOfYear: snapped / 100,
+                        startPortionOfYear: startPortion,
                       })
                     }}
                     disabled={readOnly}
                     style={{ 
                       width: '100%', margin: 0,
-                      ['--fill-start' as any]: (snapPercentToFifthsAndThirds(Math.round((p.employeePortionOfYear ?? 0.5) * 100)) >= 50)
-                        ? '50%'
-                        : `${snapPercentToFifthsAndThirds(Math.round((p.employeePortionOfYear ?? 0.5) * 100))}%`,
-                      ['--fill-end' as any]: (snapPercentToFifthsAndThirds(Math.round((p.employeePortionOfYear ?? 0.5) * 100)) >= 50)
-                        ? `${snapPercentToFifthsAndThirds(Math.round((p.employeePortionOfYear ?? 0.5) * 100))}%`
-                        : '50%'
+                      ['--fill-percent' as any]: `${((startPortionToStartDay(p.startPortionOfYear ?? 0, year) - 1) / (daysInYear(year) - 1)) * 100}%`
                     }}
                   />
-                  <div style={{
-                    position: 'absolute',
-                    top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                    width: '2px', height: '8px', backgroundColor: '#374151', pointerEvents: 'none'
-                  }} />
-                </div>
-                <input
-                  type="text"
-                  value={`${snapPercentToFifthsAndThirds(Math.round((p.employeePortionOfYear ?? 0.5) * 100))}% employee`}
-                  onChange={(e) => {
-                    const digits = Number((e.target.value.match(/\d+/)?.[0]) ?? '0')
-                    const snapped = snapPercentToFifthsAndThirds(digits)
-                    store.upsertPhysician(scenario, year, {
-                      ...p,
-                      employeePortionOfYear: snapped / 100,
+                  {/* Exact quarter tickmarks at Apr 1, Jul 1, Oct 1 (leap-year aware) */}
+                  {(() => {
+                    const { q2, q3, q4 } = getQuarterStartDays(year)
+                    const totalDays = daysInYear(year)
+                    return [
+                      { day: q2, key: 'Q2' },
+                      { day: q3, key: 'Q3' },
+                      { day: q4, key: 'Q4' },
+                    ].map(({ day, key }) => {
+                      const f = (day - 1) / (totalDays - 1)
+                      const left = `calc(${(f * 100).toFixed(6)}% + ${((0.5 - f) * 18).toFixed(2)}px)`
+                      return (
+                        <div
+                          key={key}
+                          style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left,
+                            transform: 'translate(-50%, -50%)',
+                            width: '2px',
+                            height: '8px',
+                            backgroundColor: '#374151',
+                            pointerEvents: 'none',
+                          }}
+                        />
+                      )
                     })
-                  }}
-                  style={{ width: 100, height: 20, padding: '2px 2px' }}
-                  disabled={readOnly}
-                />
+                  })()}
+                </div>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 100, height: 20 }}>
+                  <input
+                    type="text"
+                    value={(() => {
+                      const startDay = startPortionToStartDay(p.startPortionOfYear ?? 0, year)
+                      const { month, day } = dayOfYearToDate(startDay, year)
+                      return `→ ${dateToString(month, day)}`
+                    })()}
+                    onChange={() => {
+                      // Read-only display
+                    }}
+                    style={{ 
+                      width: '100%', 
+                      height: 20, 
+                      padding: readOnly ? '2px 2px' : '2px 18px 2px 2px', // Right padding for buttons when not readOnly
+                      border: '1px solid #ccc',
+                      borderRadius: 3,
+                      fontSize: 12
+                    }}
+                    disabled={readOnly}
+                    readOnly={true}
+                  />
+                  {!readOnly && (
+                    <div style={{ 
+                      position: 'absolute', 
+                      right: 1, 
+                      top: 1, 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      height: 18
+                    }}>
+                      <button
+                        onClick={() => {
+                          const currentDay = startPortionToStartDay(p.startPortionOfYear ?? 0, year)
+                          const newDay = Math.min(daysInYear(year), currentDay + 1)
+                          const startPortion = startDayToStartPortion(newDay, year)
+                          store.upsertPhysician(scenario, year, {
+                            ...p,
+                            startPortionOfYear: startPortion,
+                          })
+                        }}
+                        style={{
+                          width: 16,
+                          height: 9,
+                          border: '1px solid #ccc',
+                          borderBottom: 'none',
+                          borderRadius: '2px 2px 0 0',
+                          background: '#f8f9fa',
+                          cursor: 'pointer',
+                          fontSize: 8,
+                          lineHeight: '7px',
+                          padding: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        onMouseDown={(e) => e.preventDefault()}
+                        title="Next day"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        onClick={() => {
+                          const currentDay = startPortionToStartDay(p.startPortionOfYear ?? 0, year)
+                          const newDay = Math.max(1, currentDay - 1)
+                          const startPortion = startDayToStartPortion(newDay, year)
+                          store.upsertPhysician(scenario, year, {
+                            ...p,
+                            startPortionOfYear: startPortion,
+                          })
+                        }}
+                        style={{
+                          width: 16,
+                          height: 9,
+                          border: '1px solid #ccc',
+                          borderRadius: '0 0 2px 2px',
+                          background: '#f8f9fa',
+                          cursor: 'pointer',
+                          fontSize: 8,
+                          lineHeight: '7px',
+                          padding: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        onMouseDown={(e) => e.preventDefault()}
+                        title="Previous day"
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
                 <input
@@ -1350,77 +2318,159 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                       salary: Number(e.target.value.replace(/[^0-9]/g, '')),
                     })
                   }
-                  style={{ width: 100 }}
-                  disabled={readOnly}
-                />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-                <input
-                  type="range"
-                  min={2}
-                  max={16}
-                  step={1}
-                  value={p.weeksVacation ?? 8}
-                  onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
-                      ...p,
-                      weeksVacation: Number(e.target.value),
-                    })
-                  }
-                  disabled={readOnly}
                   style={{ 
-                    width: '100%',
-                    ['--fill-percent' as any]: `${((p.weeksVacation ?? 8) - 2) / (16 - 2) * 100}%`
+                    width: 100, 
+                    height: 20, 
+                    padding: '2px 8px', 
+                    border: '1px solid #ccc',
+                    borderRadius: 3,
+                    fontSize: 12
                   }}
-                />
-                <input
-                  type="text"
-                  value={`${p.weeksVacation ?? 8} weeks off`}
-                  onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
-                      ...p,
-                      weeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
-                    })
-                  }
-                  style={{ width: 100 }}
                   disabled={readOnly}
                 />
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateRows: '20px 20px 20px', rowGap: 8, alignItems: 'center', justifyItems: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateRows: '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+              <img
+                src={p.receivesBonuses ? '/bonus_selected.png' : '/bonus_unselected.png'}
+                alt={`Bonus ${p.receivesBonuses ? 'enabled' : 'disabled'}`}
+                data-bonus-id={p.id}
+                style={{
+                  width: '20px',
+                  height: 'auto',
+                  maxHeight: '20px',
+                  cursor: readOnly ? 'default' : 'pointer',
+                  opacity: readOnly ? 0.6 : 1,
+                  objectFit: 'contain'
+                }}
+                onClick={(e) => {
+                  if (!readOnly) {
+                    createBonusTooltip(p.id, p.bonusAmount ?? 0, e, (_, amount) => {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        bonusAmount: amount,
+                        receivesBonuses: amount !== 0
+                      })
+                    }, p.type === 'employeeToTerminate')
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  if (!readOnly) {
+                    createBonusTooltip(p.id, p.bonusAmount ?? 0, e, (_, amount) => {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        bonusAmount: amount,
+                        receivesBonuses: amount !== 0
+                      })
+                    }, p.type === 'employeeToTerminate')
+                    e.currentTarget.style.opacity = '0.8'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!readOnly) {
+                    // Add a delay before hiding to allow mouse to move to tooltip
+                    const tooltip = document.getElementById(`bonus-slider-${p.id}`)
+                    if (tooltip) {
+                      (tooltip as any).hideTimeout = setTimeout(() => {
+                        if (tooltip && !tooltip.matches(':hover')) {
+                          removeTooltip(`bonus-slider-${p.id}`)
+                        }
+                      }, 150)
+                    }
+                    e.currentTarget.style.opacity = '1'
+                  }
+                }}
+                onTouchStart={(e) => {
+                  if (!readOnly) {
+                    createBonusTooltip(p.id, p.bonusAmount ?? 0, e, (_, amount) => {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        bonusAmount: amount,
+                        receivesBonuses: amount !== 0
+                      })
+                    }, p.type === 'employeeToTerminate')
+                  }
+                }}
+              />
+              <img
+                src={p.receivesBenefits ? '/benefit_selected.png?v=2' : '/benefit_unselected.png'}
+                alt={`Benefits ${p.receivesBenefits ? 'enabled' : 'disabled'}`}
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  cursor: readOnly ? 'default' : 'pointer',
+                  opacity: readOnly ? 0.6 : 1
+                }}
+                onClick={() => {
+                  if (!readOnly) {
+                    const newBenefitsState = !p.receivesBenefits
+                    store.upsertPhysician(scenario, year, {
+                      ...p, 
+                      receivesBenefits: newBenefitsState
+                    })
+                    // Update tooltip in real-time if it's currently visible
+                    const tooltip = document.getElementById('benefits-tooltip-new')
+                    if (tooltip) {
+                      tooltip.innerHTML = `Benefits: ${newBenefitsState ? 'Enabled' : 'Disabled'}`
+                    }
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  createTooltip('benefits-tooltip-new', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)
+                  if (!readOnly) {
+                    e.currentTarget.style.opacity = '0.8'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  removeTooltip('benefits-tooltip-new')
+                  if (!readOnly) {
+                    e.currentTarget.style.opacity = '1'
+                  }
+                }}
+                onTouchStart={(e) => createTooltip('benefits-tooltip-new', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)}
+              />
+            </div>
+            <div style={{ display: 'grid', gridTemplateRows: '19px 19px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
               <div 
-                style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: '14px', color: '#666', width: '16px', height: '16px', textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
                 onMouseEnter={(e) => {
                   const tooltip = document.createElement('div')
-                  tooltip.id = 'employee-partner-tooltip'
-                  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 320px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
-                  const empPct = Math.round((p.employeePortionOfYear ?? 0.5) * 100)
-                  const partnerPct = 100 - empPct
+                  tooltip.id = 'new-employee-tooltip'
+                  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 380px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                  const startDay = startPortionToStartDay(p.startPortionOfYear ?? 0, year)
+                  const { month, day } = dayOfYearToDate(startDay, year)
+                  const startDate = dateToString(month, day)
+                  const workingPortion = 1 - (p.startPortionOfYear ?? 0)
+                  const workingPct = Math.round(workingPortion * 100)
+                  const proratedSalary = (p.salary ?? 0) * workingPortion
                   let extra = ''
-                  if (empPct === 75 && partnerPct === 25) extra = `\n(For example: Employee for Q1–Q3, Partner for Q4)`
-                  tooltip.textContent = `Mixed role in year:\nEmployee portion: ${empPct}%\nPartner portion: ${partnerPct}%${extra}`
+                  if (Math.abs(startDay - 183) <= 1) extra = `\n(Mid-year start)`
+                  
+                  tooltip.textContent = `New Employee:\nStart date: ${startDate}\nWorking portion: ${workingPct}%\nProrated salary: ${currency(proratedSalary)}${extra}`
                   document.body.appendChild(tooltip)
                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
                   tooltip.style.left = `${rect.right + 10}px`
                   tooltip.style.top = `${rect.top + window.scrollY}px`
                 }}
-                onMouseLeave={() => { const t = document.getElementById('employee-partner-tooltip'); if (t) t.remove() }}
-              >ℹ</div>
+                onMouseLeave={() => { const t = document.getElementById('new-employee-tooltip'); if (t) t.remove() }}
+              ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
               <div 
-                style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: '14px', color: '#666', width: '16px', height: '16px', textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
                 onMouseEnter={(e) => {
                   const tooltip = document.createElement('div')
-                  tooltip.id = 'employee-tooltip'
+                  tooltip.id = 'new-employee-cost-tooltip'
                   tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
-                  tooltip.textContent = getEmployeeCostTooltip(p)
+                  const workingPortion = 1 - (p.startPortionOfYear ?? 0)
+                  const proratedSalary = (p.salary ?? 0) * workingPortion
+                  const tooltip_content = getEmployeeCostTooltip({ ...p, salary: proratedSalary }, year, sc.projection.benefitCostsGrowthPct, 0, 0, '')
+                  tooltip.textContent = tooltip_content.replace('Employee Total Cost', 'New Employee Total Cost (Prorated)')
                   document.body.appendChild(tooltip)
                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
                   tooltip.style.left = `${rect.right + 10}px`
                   tooltip.style.top = `${rect.top + window.scrollY}px`
                 }}
-                onMouseLeave={() => { const t = document.getElementById('employee-tooltip'); if (t) t.remove() }}
-              >ℹ</div>
-              <div style={{ height: 28 }} />
+                onMouseLeave={() => { const t = document.getElementById('new-employee-cost-tooltip'); if (t) t.remove() }}
+              ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
             </div>
             <button
               onClick={() => store.removePhysician(scenario, year, p.id)}
@@ -1438,7 +2488,1201 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                 padding: 0,
               }}
             >
-              ×
+              <span style={{ transform: 'translateY(-1px)', display: 'inline-block' }}>×</span>
+            </button>
+          </>
+        ) : p.type === 'employeeToTerminate' ? (
+          // employeeToTerminate
+          <>
+            <div style={{ display: 'grid', gridTemplateRows: 'auto auto', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 20 }}>
+                  <input
+                    type="range"
+                    min={1}
+                    max={daysInYear(year)}
+                    step={1}
+                    className="growth-slider"
+                    value={startPortionToStartDay(p.terminatePortionOfYear ?? 1, year)}
+                    onChange={(e) => {
+                      const terminateDay = Number(e.target.value)
+                      const terminatePortion = startDayToStartPortion(terminateDay, year)
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        terminatePortionOfYear: terminatePortion,
+                      })
+                    }}
+                    disabled={readOnly}
+                    style={{ 
+                      width: '100%', margin: 0,
+                      ['--fill-percent' as any]: `${((startPortionToStartDay(p.terminatePortionOfYear ?? 1, year) - 1) / (daysInYear(year) - 1)) * 100}%`
+                    }}
+                  />
+                  {/* Exact quarter tickmarks at Apr 1, Jul 1, Oct 1 (leap-year aware) */}
+                  {(() => {
+                    const { q2, q3, q4 } = getQuarterStartDays(year)
+                    const totalDays = daysInYear(year)
+                    return [
+                      { day: q2, key: 'Q2' },
+                      { day: q3, key: 'Q3' },
+                      { day: q4, key: 'Q4' },
+                    ].map(({ day, key }) => {
+                      const f = (day - 1) / (totalDays - 1)
+                      const left = `calc(${(f * 100).toFixed(6)}% + ${((0.5 - f) * 18).toFixed(2)}px)`
+                      return (
+                        <div
+                          key={key}
+                          style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left,
+                            transform: 'translate(-50%, -50%)',
+                            width: '2px',
+                            height: '8px',
+                            backgroundColor: '#374151',
+                            pointerEvents: 'none',
+                          }}
+                        />
+                      )
+                    })
+                  })()}
+                </div>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 100, height: 20 }}>
+                  <input
+                    type="text"
+                    value={(() => {
+                      const terminateDay = startPortionToStartDay(p.terminatePortionOfYear ?? 1, year)
+                      const { month, day } = dayOfYearToDate(terminateDay, year)
+                      return `${dateToString(month, day)} →`
+                    })()}
+                    onChange={() => {
+                      // Read-only display
+                    }}
+                    style={{ 
+                      width: '100%', 
+                      height: 20, 
+                      padding: readOnly ? '2px 2px' : '2px 18px 2px 2px', // Right padding for buttons when not readOnly
+                      border: '1px solid #ccc',
+                      borderRadius: 3,
+                      fontSize: 12
+                    }}
+                    disabled={readOnly}
+                    readOnly={true}
+                  />
+                  {!readOnly && (
+                    <div style={{ 
+                      position: 'absolute', 
+                      right: 1, 
+                      top: 1, 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      height: 18
+                    }}>
+                      <button
+                        onClick={() => {
+                          const currentDay = startPortionToStartDay(p.terminatePortionOfYear ?? 1, year)
+                          const newDay = Math.min(daysInYear(year), currentDay + 1)
+                          const terminatePortion = startDayToStartPortion(newDay, year)
+                          store.upsertPhysician(scenario, year, {
+                            ...p,
+                            terminatePortionOfYear: terminatePortion,
+                          })
+                        }}
+                        style={{
+                          width: 16,
+                          height: 9,
+                          border: '1px solid #ccc',
+                          borderBottom: 'none',
+                          borderRadius: '2px 2px 0 0',
+                          background: '#f8f9fa',
+                          cursor: 'pointer',
+                          fontSize: 8,
+                          lineHeight: '7px',
+                          padding: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        onMouseDown={(e) => e.preventDefault()}
+                        title="Next day"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        onClick={() => {
+                          const currentDay = startPortionToStartDay(p.terminatePortionOfYear ?? 1, year)
+                          const newDay = Math.max(1, currentDay - 1)
+                          const terminatePortion = startDayToStartPortion(newDay, year)
+                          store.upsertPhysician(scenario, year, {
+                            ...p,
+                            terminatePortionOfYear: terminatePortion,
+                          })
+                        }}
+                        style={{
+                          width: 16,
+                          height: 9,
+                          border: '1px solid #ccc',
+                          borderRadius: '0 0 2px 2px',
+                          background: '#f8f9fa',
+                          cursor: 'pointer',
+                          fontSize: 8,
+                          lineHeight: '7px',
+                          padding: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        onMouseDown={(e) => e.preventDefault()}
+                        title="Previous day"
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                <input
+                  type="range"
+                  min={350000}
+                  max={650000}
+                  step={1000}
+                  value={p.salary ?? 0}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      salary: Number(e.target.value),
+                    })
+                  }
+                  disabled={readOnly}
+                  style={{ 
+                    width: '100%',
+                    ['--fill-percent' as any]: `${((p.salary ?? 0) - 350000) / (650000 - 350000) * 100}%`
+                  }}
+                />
+                <input
+                  type="text"
+                  value={currency(Math.round(p.salary ?? 0))}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      salary: Number(e.target.value.replace(/[^0-9]/g, '')),
+                    })
+                  }
+                  style={{ 
+                    width: 100, 
+                    height: 20, 
+                    padding: '2px 8px', 
+                    border: '1px solid #ccc',
+                    borderRadius: 3,
+                    fontSize: 12
+                  }}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateRows: '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+              <img
+                src={p.receivesBonuses ? '/bonus_selected.png' : '/bonus_unselected.png'}
+                alt={`Bonus ${p.receivesBonuses ? 'enabled' : 'disabled'}`}
+                data-bonus-id={p.id}
+                style={{
+                  width: '20px',
+                  height: 'auto',
+                  maxHeight: '20px',
+                  cursor: readOnly ? 'default' : 'pointer',
+                  opacity: readOnly ? 0.6 : 1,
+                  objectFit: 'contain'
+                }}
+                onClick={(e) => {
+                  if (!readOnly) {
+                    createBonusTooltip(p.id, p.bonusAmount ?? 0, e, (_, amount) => {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        bonusAmount: amount,
+                        receivesBonuses: amount !== 0
+                      })
+                    }, p.type === 'employeeToTerminate')
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  if (!readOnly) {
+                    createBonusTooltip(p.id, p.bonusAmount ?? 0, e, (_, amount) => {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        bonusAmount: amount,
+                        receivesBonuses: amount !== 0
+                      })
+                    }, p.type === 'employeeToTerminate')
+                    e.currentTarget.style.opacity = '0.8'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!readOnly) {
+                    // Add a delay before hiding to allow mouse to move to tooltip
+                    const tooltip = document.getElementById(`bonus-slider-${p.id}`)
+                    if (tooltip) {
+                      (tooltip as any).hideTimeout = setTimeout(() => {
+                        if (tooltip && !tooltip.matches(':hover')) {
+                          removeTooltip(`bonus-slider-${p.id}`)
+                        }
+                      }, 150)
+                    }
+                    e.currentTarget.style.opacity = '1'
+                  }
+                }}
+                onTouchStart={(e) => {
+                  if (!readOnly) {
+                    createBonusTooltip(p.id, p.bonusAmount ?? 0, e, (_, amount) => {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        bonusAmount: amount,
+                        receivesBonuses: amount !== 0
+                      })
+                    }, p.type === 'employeeToTerminate')
+                  }
+                }}
+              />
+              <img
+                src={p.receivesBenefits ? '/benefit_selected.png?v=2' : '/benefit_unselected.png'}
+                alt={`Benefits ${p.receivesBenefits ? 'enabled' : 'disabled'}`}
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  cursor: readOnly ? 'default' : 'pointer',
+                  opacity: readOnly ? 0.6 : 1
+                }}
+                onClick={() => {
+                  if (!readOnly) {
+                    const newBenefitsState = !p.receivesBenefits
+                    store.upsertPhysician(scenario, year, {
+                      ...p, 
+                      receivesBenefits: newBenefitsState
+                    })
+                    // Update tooltip in real-time if it's currently visible
+                    const tooltip = document.getElementById('benefits-tooltip-terminate')
+                    if (tooltip) {
+                      tooltip.innerHTML = `Benefits: ${newBenefitsState ? 'Enabled' : 'Disabled'}`
+                    }
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  createTooltip('benefits-tooltip-terminate', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)
+                  if (!readOnly) {
+                    e.currentTarget.style.opacity = '0.8'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  removeTooltip('benefits-tooltip-terminate')
+                  if (!readOnly) {
+                    e.currentTarget.style.opacity = '1'
+                  }
+                }}
+                onTouchStart={(e) => createTooltip('benefits-tooltip-terminate', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)}
+              />
+            </div>
+            <div style={{ display: 'grid', gridTemplateRows: '19px 19px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+              <div 
+                style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                onMouseEnter={(e) => {
+                  const tooltip = document.createElement('div')
+                  tooltip.id = 'terminate-employee-tooltip'
+                  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 380px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                  const terminateDay = startPortionToStartDay(p.terminatePortionOfYear ?? 1, year)
+                  const { month, day } = dayOfYearToDate(terminateDay, year)
+                  const terminateDate = dateToString(month, day)
+                  const workingPortion = p.terminatePortionOfYear ?? 1
+                  const workingPct = Math.round(workingPortion * 100)
+                  const proratedSalary = (p.salary ?? 0) * workingPortion
+                  let extra = ''
+                  if (Math.abs(terminateDay - 183) <= 1) extra = `\n(Mid-year termination)`
+                  
+                  tooltip.textContent = `Terminating Employee:\nTermination date: ${terminateDate}\nWorking portion: ${workingPct}%\nProrated salary: ${currency(proratedSalary)}${extra}`
+                  document.body.appendChild(tooltip)
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                  tooltip.style.left = `${rect.right + 10}px`
+                  tooltip.style.top = `${rect.top + window.scrollY}px`
+                }}
+                onMouseLeave={() => { const t = document.getElementById('terminate-employee-tooltip'); if (t) t.remove() }}
+              ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+              <div 
+                style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                onMouseEnter={(e) => {
+                  const tooltip = document.createElement('div')
+                  tooltip.id = 'terminate-employee-cost-tooltip'
+                  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                  const workingPortion = p.terminatePortionOfYear ?? 1
+                  const proratedSalary = (p.salary ?? 0) * workingPortion
+                  const tooltip_content = getEmployeeCostTooltip({ ...p, salary: proratedSalary }, year, sc.projection.benefitCostsGrowthPct, 0, 0, '')
+                  tooltip.textContent = tooltip_content.replace('Employee Total Cost', 'Terminating Employee Total Cost (Prorated)')
+                  document.body.appendChild(tooltip)
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                  tooltip.style.left = `${rect.right + 10}px`
+                  tooltip.style.top = `${rect.top + window.scrollY}px`
+                }}
+                onMouseLeave={() => { const t = document.getElementById('terminate-employee-cost-tooltip'); if (t) t.remove() }}
+              ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+            </div>
+            <button
+              onClick={() => store.removePhysician(scenario, year, p.id)}
+              disabled={!canDelete}
+              title={canDelete ? 'Remove' : 'Minimum 3 physicians'}
+              style={{
+                width: 20,
+                height: 20,
+                border: '1px solid #ccc',
+                borderRadius: 4,
+                background: canDelete ? '#fff' : '#f3f3f3',
+                cursor: canDelete ? 'pointer' : 'not-allowed',
+                lineHeight: '18px',
+                textAlign: 'center',
+                padding: 0,
+              }}
+            >
+              <span style={{ transform: 'translateY(-1px)', display: 'inline-block' }}>×</span>
+            </button>
+          </>
+        ) : p.type === 'employee' ? (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+              <input
+                type="range"
+                min={350000}
+                max={650000}
+                step={1000}
+                value={p.salary ?? 0}
+                onChange={(e) =>
+                  store.upsertPhysician(scenario, year, {
+                    ...p,
+                    salary: Number(e.target.value),
+                  })
+                }
+                disabled={readOnly}
+                style={{ 
+                  width: '100%',
+                  ['--fill-percent' as any]: `${((p.salary ?? 0) - 350000) / (650000 - 350000) * 100}%`
+                }}
+              />
+              <input
+                type="text"
+                value={currency(Math.round(p.salary ?? 0))}
+                onChange={(e) =>
+                  store.upsertPhysician(scenario, year, {
+                    ...p,
+                    salary: Number(e.target.value.replace(/[^0-9]/g, '')),
+                  })
+                }
+                style={{ 
+                  width: 100, 
+                  height: 20, 
+                  padding: '2px 8px', 
+                  border: '1px solid #ccc',
+                  borderRadius: 3,
+                  fontSize: 12
+                }}
+                disabled={readOnly}
+              />
+            </div>
+            <img
+              src={p.receivesBenefits ? '/benefit_selected.png?v=2' : '/benefit_unselected.png'}
+              alt={`Benefits ${p.receivesBenefits ? 'enabled' : 'disabled'}`}
+              style={{
+                width: '20px',
+                height: '20px',
+                cursor: readOnly ? 'default' : 'pointer',
+                opacity: readOnly ? 0.6 : 1
+              }}
+              onClick={() => {
+                if (!readOnly) {
+                  const newBenefitsState = !p.receivesBenefits
+                  store.upsertPhysician(scenario, year, {
+                    ...p, 
+                    receivesBenefits: newBenefitsState
+                  })
+                  // Update tooltip in real-time if it's currently visible
+                  const tooltip = document.getElementById('benefits-tooltip')
+                  if (tooltip) {
+                    tooltip.innerHTML = `Benefits: ${newBenefitsState ? 'Enabled' : 'Disabled'}`
+                  }
+                }
+              }}
+              onMouseEnter={(e) => {
+                createTooltip('benefits-tooltip', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)
+                if (!readOnly) {
+                  e.currentTarget.style.opacity = '0.8'
+                }
+              }}
+              onMouseLeave={(e) => {
+                removeTooltip('benefits-tooltip')
+                if (!readOnly) {
+                  e.currentTarget.style.opacity = '1'
+                }
+              }}
+              onTouchStart={(e) => createTooltip('benefits-tooltip', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)}
+            />
+            <div 
+              style={{ 
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'help',
+                fontSize: '11px',
+                fontFamily: 'Arial, sans-serif',
+                color: '#666',
+                width: '20px',
+                height: '20px',
+                border: '1px solid #ccc',
+                borderRadius: '50%',
+                backgroundColor: '#f8f9fa'
+              }}
+              onMouseEnter={(e) => {
+                const tooltip = document.createElement('div')
+                tooltip.id = 'employee-tooltip'
+                tooltip.style.cssText = `
+                  position: absolute;
+                  background: #333;
+                  color: white;
+                  padding: 8px 12px;
+                  border-radius: 4px;
+                  font-size: 12px;
+                  white-space: pre-line;
+                  text-align: left;
+                  z-index: 1000;
+                  max-width: 300px;
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                  pointer-events: none;
+                `
+                tooltip.textContent = getEmployeeCostTooltip(p, year, sc.projection.benefitCostsGrowthPct, 0, 0, '')
+                document.body.appendChild(tooltip)
+                
+                const rect = e.currentTarget.getBoundingClientRect()
+                tooltip.style.left = `${rect.right + 10}px`
+                tooltip.style.top = `${rect.top + window.scrollY}px`
+              }}
+              onMouseLeave={() => {
+                const tooltip = document.getElementById('employee-tooltip')
+                if (tooltip) tooltip.remove()
+              }}
+            >
+              <span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span>
+            </div>
+            <button
+              onClick={() => store.removePhysician(scenario, year, p.id)}
+              disabled={!canDelete}
+              title={canDelete ? 'Remove' : 'Minimum 3 physicians'}
+              style={{
+                width: 20,
+                height: 20,
+                border: '1px solid #ccc',
+                borderRadius: 4,
+                background: canDelete ? '#fff' : '#f3f3f3',
+                cursor: canDelete ? 'pointer' : 'not-allowed',
+                lineHeight: '18px',
+                textAlign: 'center',
+                padding: 0,
+              }}
+            >
+              <span style={{ transform: 'translateY(-1px)', display: 'inline-block' }}>×</span>
+            </button>
+          </>
+        ) : p.type === 'partnerToRetire' ? (
+          // partnerToRetire
+          <>
+            <div style={{ display: 'grid', gridTemplateRows: (p.partnerPortionOfYear ?? 0.5) > 0 ? 'auto auto auto' : 'auto auto', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 20 }}>
+                  <input
+                    type="range"
+                    min={0}
+                    max={daysInYear(year)}
+                    step={1}
+                    className="growth-slider"
+                    value={partnerPortionToRetirementDay(p.partnerPortionOfYear ?? 0.5, year)}
+                    onChange={(e) => {
+                      const retirementDay = Number(e.target.value)
+                      const partnerPortion = retirementDayToPartnerPortion(retirementDay, year)
+                      const updatedPhysician = {
+                        ...p,
+                        partnerPortionOfYear: partnerPortion,
+                      }
+                      // If changing to Prior Year (partnerPortion === 0), remove weeksVacation
+                      // If changing away from Prior Year, set default weeksVacation if not present
+                      if (partnerPortion === 0) {
+                        updatedPhysician.weeksVacation = undefined
+                      } else if (p.partnerPortionOfYear === 0 && partnerPortion > 0) {
+                        // Changing from Prior Year to actual working days, set default weeks
+                        updatedPhysician.weeksVacation = updatedPhysician.weeksVacation ?? 8
+                      }
+                      store.upsertPhysician(scenario, year, updatedPhysician)
+                    }}
+                    disabled={readOnly}
+                    style={{ 
+                      width: '100%', margin: 0,
+                      ['--fill-percent' as any]: `${(partnerPortionToRetirementDay(p.partnerPortionOfYear ?? 0.5, year) / daysInYear(year)) * 100}%`
+                    }}
+                  />
+                  {/* Exact quarter tickmarks at Apr 1, Jul 1, Oct 1 (leap-year aware) */}
+                  {(() => {
+                    const { q2, q3, q4 } = getQuarterStartDays(year)
+                    const totalDays = daysInYear(year)
+                    return [
+                      { day: q2, key: 'Q2' },
+                      { day: q3, key: 'Q3' },
+                      { day: q4, key: 'Q4' },
+                    ].map(({ day, key }) => {
+                      const f = day / totalDays
+                      const left = `calc(${(f * 100).toFixed(6)}% + ${((0.5 - f) * 18).toFixed(2)}px)`
+                      return (
+                        <div
+                          key={key}
+                          style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left,
+                            transform: 'translate(-50%, -50%)',
+                            width: '2px',
+                            height: '8px',
+                            backgroundColor: '#374151',
+                            pointerEvents: 'none',
+                          }}
+                        />
+                      )
+                    })
+                  })()}
+                </div>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 100, height: 20 }}>
+                  <input
+                    type="text"
+                    value={(() => {
+                      const retirementDay = partnerPortionToRetirementDay(p.partnerPortionOfYear ?? 0.5, year)
+                      if (retirementDay === 0) {
+                        return "Prior Year"
+                      }
+                      const { month, day } = dayOfYearToDate(retirementDay, year)
+                      return `${dateToString(month, day)} →`
+                    })()}
+                    onChange={() => {
+                      // Read-only display
+                    }}
+                    style={{ 
+                      width: '100%', 
+                      height: 20, 
+                      padding: readOnly ? '2px 2px' : '2px 18px 2px 2px', // Right padding for buttons when not readOnly
+                      border: '1px solid #ccc',
+                      borderRadius: 3,
+                      fontSize: 12
+                    }}
+                    disabled={readOnly}
+                    readOnly={true}
+                  />
+                  {!readOnly && (
+                    <div style={{ 
+                      position: 'absolute', 
+                      right: 1, 
+                      top: 1, 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      height: 18
+                    }}>
+                      <button
+                        onClick={() => {
+                          const currentDay = partnerPortionToRetirementDay(p.partnerPortionOfYear ?? 0.5, year)
+                          const newDay = Math.min(daysInYear(year), currentDay + 1)
+                          const partnerPortion = retirementDayToPartnerPortion(newDay, year)
+                          const updatedPhysician = {
+                            ...p,
+                            partnerPortionOfYear: partnerPortion,
+                          }
+                          // If changing to Prior Year, remove weeksVacation
+                          // If changing away from Prior Year, set default weeksVacation if not present
+                          if (partnerPortion === 0) {
+                            updatedPhysician.weeksVacation = undefined
+                          } else if (p.partnerPortionOfYear === 0 && partnerPortion > 0) {
+                            updatedPhysician.weeksVacation = updatedPhysician.weeksVacation ?? 8
+                          }
+                          store.upsertPhysician(scenario, year, updatedPhysician)
+                        }}
+                        style={{
+                          width: 16,
+                          height: 9,
+                          border: '1px solid #ccc',
+                          borderBottom: 'none',
+                          borderRadius: '2px 2px 0 0',
+                          background: '#f8f9fa',
+                          cursor: 'pointer',
+                          fontSize: 8,
+                          lineHeight: '7px',
+                          padding: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        onMouseDown={(e) => e.preventDefault()}
+                        title="Next day"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        onClick={() => {
+                          const currentDay = partnerPortionToRetirementDay(p.partnerPortionOfYear ?? 0.5, year)
+                          const newDay = Math.max(0, currentDay - 1)
+                          const partnerPortion = retirementDayToPartnerPortion(newDay, year)
+                          const updatedPhysician = {
+                            ...p,
+                            partnerPortionOfYear: partnerPortion,
+                          }
+                          // If changing to Prior Year, remove weeksVacation
+                          // If changing away from Prior Year, set default weeksVacation if not present
+                          if (partnerPortion === 0) {
+                            updatedPhysician.weeksVacation = undefined
+                          } else if (p.partnerPortionOfYear === 0 && partnerPortion > 0) {
+                            updatedPhysician.weeksVacation = updatedPhysician.weeksVacation ?? 8
+                          }
+                          store.upsertPhysician(scenario, year, updatedPhysician)
+                        }}
+                        style={{
+                          width: 16,
+                          height: 9,
+                          border: '1px solid #ccc',
+                          borderRadius: '0 0 2px 2px',
+                          background: '#f8f9fa',
+                          cursor: 'pointer',
+                          fontSize: 8,
+                          lineHeight: '7px',
+                          padding: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        onMouseDown={(e) => e.preventDefault()}
+                        title="Previous day"
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* Only show weeks vacation slider if partnerPortionOfYear > 0 (not Jan 1 retirement) */}
+              {(p.partnerPortionOfYear ?? 0.5) > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                  <input
+                    type="range"
+                    min={2}
+                    max={(() => {
+                      const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+                      return (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
+                    })()}
+                    step={1}
+                    value={p.weeksVacation ?? 8}
+                    onChange={(e) =>
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        weeksVacation: Number(e.target.value),
+                      })
+                    }
+                    disabled={readOnly}
+                    style={{ 
+                      width: '100%',
+                      ['--fill-percent' as any]: `${(() => {
+                        const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+                        const maxWeeks = (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
+                        return ((p.weeksVacation ?? 8) - 2) / (maxWeeks - 2) * 100
+                      })()}%`
+                    }}
+                  />
+                  <input
+                    type="text"
+                    value={`${p.weeksVacation ?? 8} weeks off`}
+                    onChange={(e) =>
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        weeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
+                      })
+                    }
+                    style={{ 
+                    width: 100, 
+                    height: 20, 
+                    padding: '2px 8px', 
+                    border: '1px solid #ccc',
+                    borderRadius: 3,
+                    fontSize: 12
+                  }}
+                    disabled={readOnly}
+                  />
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                <input
+                  type="range"
+                  min={0}
+                  max={100000}
+                  step={1000}
+                  value={p.buyoutCost ?? 0}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      buyoutCost: Number(e.target.value),
+                    })
+                  }
+                  disabled={readOnly}
+                  style={{ 
+                    width: '100%',
+                    ['--fill-percent' as any]: `${((p.buyoutCost ?? 0) / 100000) * 100}%`
+                  }}
+                />
+                <input
+                  type="text"
+                  value={currency(Math.round(p.buyoutCost ?? 0))}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      buyoutCost: Number(e.target.value.replace(/[^0-9]/g, '')),
+                    })
+                  }
+                  style={{ 
+                    width: 100, 
+                    height: 20, 
+                    padding: '2px 8px', 
+                    border: '1px solid #ccc',
+                    borderRadius: 3,
+                    fontSize: 12
+                  }}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+            <div></div> {/* Empty benefits column for retiring partners */}
+              <div style={{ display: 'grid', gridTemplateRows: (p.partnerPortionOfYear ?? 0.5) > 0 ? '19px 19px 19px' : '19px 19px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+                <div 
+                  style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                  onMouseEnter={(e) => {
+                    const tooltip = document.createElement('div')
+                    tooltip.id = 'partner-retire-tooltip'
+                    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 320px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                    const retirementDay = partnerPortionToRetirementDay(p.partnerPortionOfYear ?? 0.5, year)
+                    const { month, day } = dayOfYearToDate(retirementDay, year)
+                    const retirementDate = dateToString(month, day)
+                    const partnerPct = Math.round((p.partnerPortionOfYear ?? 0.5) * 100)
+                    const retiredPct = 100 - partnerPct
+                    let extra = ''
+                    if (retirementDay === 0) {
+                      extra = `\n(Retired in previous year, buyout cost in ${year})`
+                    } else if (Math.abs(retirementDay - 183) <= 1) {
+                      extra = `\n(Mid-year retirement)`
+                    }
+                    tooltip.textContent = `Partner → Retire transition:\nLast working day: ${retirementDay === 0 ? 'Prior Year' : retirementDate}\nWorking portion: ${partnerPct}%\nRetired portion: ${retiredPct}%${extra}`
+                    document.body.appendChild(tooltip)
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    tooltip.style.left = `${rect.right + 10}px`
+                    tooltip.style.top = `${rect.top + window.scrollY}px`
+                  }}
+                  onMouseLeave={() => { const t = document.getElementById('partner-retire-tooltip'); if (t) t.remove() }}
+                ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+                {/* Only show weeks off tooltip if weeks vacation is shown */}
+                {(p.partnerPortionOfYear ?? 0.5) > 0 && (
+                  <div 
+                    style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                    onMouseEnter={(e) => {
+                      const tooltip = document.createElement('div')
+                      tooltip.id = 'weeks-off-tooltip'
+                      tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                      tooltip.textContent = `Weeks Off During Working Period:\n\nThis represents the actual number of weeks off taken during the portion of the year the partner was actively working.\n\nNot prorated - these are full weeks of vacation/time off.`
+                      document.body.appendChild(tooltip)
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                      tooltip.style.left = `${rect.right + 10}px`
+                      tooltip.style.top = `${rect.top + window.scrollY}px`
+                    }}
+                    onMouseLeave={() => { const t = document.getElementById('weeks-off-tooltip'); if (t) t.remove() }}
+                  >
+                    <span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span>
+                  </div>
+                )}
+                <div 
+                  style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                  onMouseEnter={(e) => {
+                    const tooltip = document.createElement('div')
+                    tooltip.id = 'buyout-tooltip'
+                    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                    tooltip.textContent = `Buyout Cost Breakdown:\nBuyout Payment: ${currency(p.buyoutCost ?? 0)}\n\nThis is a one-time cost that reduces the partner compensation pool for the year.`
+                    document.body.appendChild(tooltip)
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    tooltip.style.left = `${rect.right + 10}px`
+                    tooltip.style.top = `${rect.top + window.scrollY}px`
+                  }}
+                  onMouseLeave={() => { const t = document.getElementById('buyout-tooltip'); if (t) t.remove() }}
+                ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+              </div>
+            <button
+              onClick={() => store.removePhysician(scenario, year, p.id)}
+              disabled={!canDelete}
+              title={canDelete ? 'Remove' : 'Minimum 3 physicians'}
+              style={{
+                width: 20,
+                height: 20,
+                border: '1px solid #ccc',
+                borderRadius: 4,
+                background: canDelete ? '#fff' : '#f3f3f3',
+                cursor: canDelete ? 'pointer' : 'not-allowed',
+                lineHeight: '18px',
+                textAlign: 'center',
+                padding: 0,
+              }}
+            >
+              <span style={{ transform: 'translateY(-1px)', display: 'inline-block' }}>×</span>
+            </button>
+          </>
+        ) : (
+          // employeeToPartner
+          <>
+            <div style={{ display: 'grid', gridTemplateRows: 'auto auto auto', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 20 }}>
+                  <input
+                    type="range"
+                    min={1}
+                    max={daysInYear(year)}
+                    step={1}
+                    className="growth-slider"
+                    value={employeePortionToTransitionDay(p.employeePortionOfYear ?? 0.5, year)}
+                    onChange={(e) => {
+                      const transitionDay = Number(e.target.value)
+                      const employeePortion = transitionDayToEmployeePortion(transitionDay, year)
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        employeePortionOfYear: employeePortion,
+                      })
+                    }}
+                    disabled={readOnly}
+                    style={{ 
+                      width: '100%', margin: 0,
+                      ['--fill-percent' as any]: `${((employeePortionToTransitionDay(p.employeePortionOfYear ?? 0.5, year) - 1) / (daysInYear(year) - 1)) * 100}%`
+                    }}
+                  />
+                  {/* Exact quarter tickmarks at Apr 1, Jul 1, Oct 1 (leap-year aware) */}
+                  {(() => {
+                    const { q2, q3, q4 } = getQuarterStartDays(year)
+                    const totalDays = daysInYear(year)
+                    return [
+                      { day: q2, key: 'Q2' },
+                      { day: q3, key: 'Q3' },
+                      { day: q4, key: 'Q4' },
+                    ].map(({ day, key }) => {
+                      const f = (day - 1) / (totalDays - 1)
+                      const left = `calc(${(f * 100).toFixed(6)}% + ${((0.5 - f) * 18).toFixed(2)}px)`
+                      return (
+                        <div
+                          key={key}
+                          style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left,
+                            transform: 'translate(-50%, -50%)',
+                            width: '2px',
+                            height: '8px',
+                            backgroundColor: '#374151',
+                            pointerEvents: 'none',
+                          }}
+                        />
+                      )
+                    })
+                  })()}
+                </div>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 100, height: 20 }}>
+                  <input
+                    type="text"
+                    value={(() => {
+                      const transitionDay = employeePortionToTransitionDay(p.employeePortionOfYear ?? 0.5, year)
+                      const { month, day } = dayOfYearToDate(transitionDay, year)
+                      return `→ ${dateToString(month, day)}`
+                    })()}
+                    onChange={() => {
+                      // Read-only display
+                    }}
+                    style={{ 
+                      width: '100%', 
+                      height: 20, 
+                      padding: readOnly ? '2px 2px' : '2px 18px 2px 2px', // Right padding for buttons when not readOnly
+                      border: '1px solid #ccc',
+                      borderRadius: 3,
+                      fontSize: 12
+                    }}
+                    disabled={readOnly}
+                    readOnly={true}
+                  />
+                  {!readOnly && (
+                    <div style={{ 
+                      position: 'absolute', 
+                      right: 1, 
+                      top: 1, 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      height: 18
+                    }}>
+                      <button
+                        onClick={() => {
+                          const currentDay = employeePortionToTransitionDay(p.employeePortionOfYear ?? 0.5, year)
+                          const newDay = Math.min(daysInYear(year), currentDay + 1)
+                          const employeePortion = transitionDayToEmployeePortion(newDay, year)
+                          store.upsertPhysician(scenario, year, {
+                            ...p,
+                            employeePortionOfYear: employeePortion,
+                          })
+                        }}
+                        style={{
+                          width: 16,
+                          height: 9,
+                          border: '1px solid #ccc',
+                          borderBottom: 'none',
+                          borderRadius: '2px 2px 0 0',
+                          background: '#f8f9fa',
+                          cursor: 'pointer',
+                          fontSize: 8,
+                          lineHeight: '7px',
+                          padding: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        onMouseDown={(e) => e.preventDefault()}
+                        title="Next day"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        onClick={() => {
+                          const currentDay = employeePortionToTransitionDay(p.employeePortionOfYear ?? 0.5, year)
+                          const newDay = Math.max(1, currentDay - 1)
+                          const employeePortion = transitionDayToEmployeePortion(newDay, year)
+                          store.upsertPhysician(scenario, year, {
+                            ...p,
+                            employeePortionOfYear: employeePortion,
+                          })
+                        }}
+                        style={{
+                          width: 16,
+                          height: 9,
+                          border: '1px solid #ccc',
+                          borderRadius: '0 0 2px 2px',
+                          background: '#f8f9fa',
+                          cursor: 'pointer',
+                          fontSize: 8,
+                          lineHeight: '7px',
+                          padding: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        onMouseDown={(e) => e.preventDefault()}
+                        title="Previous day"
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                <input
+                  type="range"
+                  min={350000}
+                  max={650000}
+                  step={1000}
+                  value={p.salary ?? 0}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      salary: Number(e.target.value),
+                    })
+                  }
+                  disabled={readOnly}
+                  style={{ 
+                    width: '100%',
+                    ['--fill-percent' as any]: `${((p.salary ?? 0) - 350000) / (650000 - 350000) * 100}%`
+                  }}
+                />
+                <input
+                  type="text"
+                  value={currency(Math.round(p.salary ?? 0))}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      salary: Number(e.target.value.replace(/[^0-9]/g, '')),
+                    })
+                  }
+                  style={{ 
+                    width: 100, 
+                    height: 20, 
+                    padding: '2px 8px', 
+                    border: '1px solid #ccc',
+                    borderRadius: 3,
+                    fontSize: 12
+                  }}
+                  disabled={readOnly}
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                <input
+                  type="range"
+                  min={2}
+                  max={(() => {
+                    const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+                    return (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
+                  })()}
+                  step={1}
+                  value={p.weeksVacation ?? 8}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      weeksVacation: Number(e.target.value),
+                    })
+                  }
+                  disabled={readOnly}
+                  style={{ 
+                    width: '100%',
+                    ['--fill-percent' as any]: `${(() => {
+                      const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+                      const maxWeeks = (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
+                      return ((p.weeksVacation ?? 8) - 2) / (maxWeeks - 2) * 100
+                    })()}%`
+                  }}
+                />
+                <input
+                  type="text"
+                  value={`${p.weeksVacation ?? 8} weeks off`}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      weeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
+                    })
+                  }
+                  style={{ 
+                    width: 100, 
+                    height: 20, 
+                    padding: '2px 8px', 
+                    border: '1px solid #ccc',
+                    borderRadius: 3,
+                    fontSize: 12
+                  }}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+            <img 
+              src={p.receivesBenefits ? '/benefit_selected.png?v=2' : '/benefit_unselected.png'}
+              alt={`Benefits ${p.receivesBenefits ? 'enabled' : 'disabled'}`}
+              style={{ 
+                width: '20px',
+                height: '20px',
+                cursor: readOnly ? 'default' : 'pointer',
+                opacity: readOnly ? 0.6 : 1,
+                justifySelf: 'center'
+              }}
+              onClick={() => {
+                if (!readOnly) {
+                  const newBenefitsState = !p.receivesBenefits
+                  store.upsertPhysician(scenario, year, { 
+                    ...p, 
+                    receivesBenefits: newBenefitsState
+                  })
+                  // Update tooltip in real-time if it's currently visible
+                  const tooltip = document.getElementById('benefits-tooltip-split')
+                  if (tooltip) {
+                    tooltip.innerHTML = `Benefits: ${newBenefitsState ? 'Enabled' : 'Disabled'}`
+                  }
+                }
+              }}
+              onMouseEnter={(e) => {
+                createTooltip('benefits-tooltip-split', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)
+                if (!readOnly) {
+                  e.currentTarget.style.opacity = '0.8'
+                }
+              }}
+              onMouseLeave={(e) => {
+                removeTooltip('benefits-tooltip-split')
+                if (!readOnly) {
+                  e.currentTarget.style.opacity = '1'
+                }
+              }}
+              onTouchStart={(e) => createTooltip('benefits-tooltip-split', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)}
+            />
+              <div style={{ display: 'grid', gridTemplateRows: '19px 19px 19px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+                <div 
+                  style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                  onMouseEnter={(e) => {
+                    const tooltip = document.createElement('div')
+                    tooltip.id = 'employee-partner-tooltip'
+                    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 380px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                    const transitionDay = employeePortionToTransitionDay(p.employeePortionOfYear ?? 0.5, year)
+                    const { month, day } = dayOfYearToDate(transitionDay, year)
+                    const transitionDate = dateToString(month, day)
+                    const empPct = Math.round((p.employeePortionOfYear ?? 0.5) * 100)
+                    const partnerPct = 100 - empPct
+                    let extra = ''
+                    if (Math.abs(transitionDay - 183) <= 1) extra = `\n(Mid-year transition)`
+                    
+                    // Calculate delayed W2 payments
+                    const delayedW2 = calculateDelayedW2Payment(p, year)
+                    let delayedW2Info = ''
+                    if (delayedW2.amount > 0) {
+                      delayedW2Info = `\n\nDelayed W2 Payments (prior year work):\nW2 Amount: ${currency(delayedW2.amount)}\nPayroll Taxes: ${currency(delayedW2.taxes)}\nTotal Cost: ${currency(delayedW2.amount + delayedW2.taxes)}\nPeriods: ${delayedW2.periodDetails}`
+                    }
+                    
+                    tooltip.textContent = `Employee → Partner transition:\nTransition date: ${transitionDate}\nEmployee portion: ${empPct}%\nPartner portion: ${partnerPct}%${extra}${delayedW2Info}`
+                    document.body.appendChild(tooltip)
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    tooltip.style.left = `${rect.right + 10}px`
+                    tooltip.style.top = `${rect.top + window.scrollY}px`
+                  }}
+                  onMouseLeave={() => { const t = document.getElementById('employee-partner-tooltip'); if (t) t.remove() }}
+                ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+                <div 
+                  style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                  onMouseEnter={(e) => {
+                    const tooltip = document.createElement('div')
+                    tooltip.id = 'employee-tooltip'
+                    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                    const employeePortion = getEmployeePortionOfYear(p)
+                    const employeePortionSalary = (p.salary ?? 0) * employeePortion
+                    const delayedW2 = calculateDelayedW2Payment(p, year)
+                    let tooltip_content = getEmployeeCostTooltip(
+                      { ...p, salary: employeePortionSalary }, 
+                      year, 
+                      sc.projection.benefitCostsGrowthPct,
+                      delayedW2.amount,
+                      delayedW2.taxes,
+                      delayedW2.periodDetails
+                    )
+                    tooltip_content = tooltip_content.replace('Employee Total Cost', `Employee Total Cost (${Math.round(employeePortion * 100)}% of year)`)
+                    
+                    tooltip.textContent = tooltip_content
+                    document.body.appendChild(tooltip)
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    tooltip.style.left = `${rect.right + 10}px`
+                    tooltip.style.top = `${rect.top + window.scrollY}px`
+                  }}
+                  onMouseLeave={() => { const t = document.getElementById('employee-tooltip'); if (t) t.remove() }}
+                ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+                <div></div> {/* Empty space for vacation row */}
+              </div>
+            <button
+              onClick={() => store.removePhysician(scenario, year, p.id)}
+              disabled={!canDelete}
+              title={canDelete ? 'Remove' : 'Minimum 3 physicians'}
+              style={{
+                width: 20,
+                height: 20,
+                border: '1px solid #ccc',
+                borderRadius: 4,
+                background: canDelete ? '#fff' : '#f3f3f3',
+                cursor: canDelete ? 'pointer' : 'not-allowed',
+                lineHeight: '18px',
+                textAlign: 'center',
+                padding: 0,
+              }}
+            >
+              <span style={{ transform: 'translateY(-1px)', display: 'inline-block' }}>×</span>
             </button>
           </>
         )}
@@ -1447,20 +3691,107 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
   })
 
   return (
-    <div style={{ marginTop: 8, border: '1px solid #e5e7eb', borderRadius: 8, padding: 8, background: '#f9fafb' }}>
-      <div style={{ fontWeight: 600 }}>Physicians (up to 6)</div>
-      {rows}
-      {!readOnly && physicians.length < 6 && (
+    <div style={{ marginTop: 8, border: '1px solid #e5e7eb', borderRadius: 8, padding: 8, background: '#f3f4f6' }}>
+      <div style={{ fontWeight: 600, marginBottom: 6 }}>Physicians)</div>
+      <div style={{
+        background: '#ffffff',
+        borderRadius: 8,
+        border: '1px solid rgba(126, 34, 206, 0.4)',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(126, 34, 206, 0.05), 0 0 10px rgba(126, 34, 206, 0.08), 0 0 6px rgba(126, 34, 206, 0.4)',
+        padding: 8
+      }}>
+        {rows}
+      </div>
+
+      {/* Locums costs row */}
+      <div
+        style={{
+          borderTop: '1px solid #d1d5db',
+          paddingTop: 10,
+          marginTop: 10,
+          display: 'grid',
+          gridTemplateColumns: '20px 120px 150px 1fr 20px 20px 20px',
+          gap: 8,
+          alignItems: 'center',
+          cursor: 'default',
+          background: 'transparent'
+        }}
+      >
+        <div></div> {/* Empty space for drag handle column alignment */}
+        <div style={{ fontWeight: 500, color: '#6b7280' }}></div>
+        <div style={{ 
+          fontFamily: 'system-ui, Avenir, Helvetica, Arial, sans-serif',
+          fontWeight: 400,
+          color: '#213547',
+          textAlign: 'left',
+          paddingLeft: 6,
+          fontSize: '14px'
+        }}>Locums Costs</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
+          <input
+            type="range"
+            min={0}
+            max={240000}
+            step={1000}
+            value={locumCosts}
+            onChange={(e) => onLocumCostsChange(Number(e.target.value))}
+            disabled={readOnly}
+            style={{ 
+              width: '100%',
+              ['--fill-percent' as any]: `${(locumCosts / 240000) * 100}%`
+            }}
+          />
+          <input
+            type="text"
+            value={currency(Math.round(locumCosts))}
+            readOnly
+            style={{ 
+              width: 100, 
+              height: 20, 
+              padding: '2px 8px', 
+              border: '1px solid #ccc',
+              borderRadius: 3,
+              fontSize: 12
+            }}
+          />
+        </div>
+        <div></div> {/* Empty benefits column */}
+        <div 
+          style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+          onMouseEnter={(e) => {
+            const existing = document.getElementById('locums-tooltip')
+            if (existing) existing.remove()
+            const tooltip = document.createElement('div')
+            tooltip.id = 'locums-tooltip'
+            tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+            tooltip.textContent = '~$2,000 per day'
+            document.body.appendChild(tooltip)
+            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+            tooltip.style.left = `${rect.right + 10}px`
+            tooltip.style.top = `${rect.top + window.scrollY}px`
+          }}
+          onMouseLeave={() => { const t = document.getElementById('locums-tooltip'); if (t) t.remove() }}
+        >
+          <span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span>
+        </div>
+        <div></div> {/* Empty delete column */}
+      </div>
+
+      {!readOnly && (
         <button
           onClick={() => {
             const nextIndex = fy.physicians.length
-            const type: PhysicianType = 'employee'
+            const type: PhysicianType = 'newEmployee'
             store.upsertPhysician(scenario, year, {
               id: `${year}-${nextIndex}`,
               name: `Physician ${nextIndex + 1}`,
               type,
               salary: 500000,
+              startPortionOfYear: 0, // Default to starting Jan 1
               weeksVacation: undefined,
+              receivesBenefits: true,  // Default new employees to receive benefits
+              receivesBonuses: false,  // Default new employees to not receive bonuses
+              bonusAmount: 0, // Default bonus amount
             })
           }}
           style={{
@@ -1479,43 +3810,135 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
     </div>
   )
 }
-
 function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
   const state = useDashboardStore.getState()
   const sc = scenario === 'A' ? state.scenarioA : state.scenarioB!
   // Try to find the future year; if not found and year is 2025, build a synthetic year from historic actuals
   let fy = sc.future.find((f) => f.year === year) as FutureYear | undefined
   if (!fy && year === 2025) {
-    const last2025 = state.historic.find((h) => h.year === 2025)!
-    fy = {
-      year: 2025,
-      totalIncome: last2025.totalIncome,
-      nonEmploymentCosts: last2025.nonEmploymentCosts,
-      nonMdEmploymentCosts: DEFAULT_NON_MD_EMPLOYMENT_COSTS_BASE,
-      locumDays: 30,
-      miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-      physicians: scenarioADefaultsByYear(2025),
+    const last2024 = state.historic.find((h) => h.year === 2024)
+    const last2025 = state.historic.find((h) => h.year === 2025)
+    const dataMode = scenario === 'A' ? state.scenarioA.dataMode : state.scenarioB?.dataMode
+    
+    if (dataMode === '2024 Data' && last2024) {
+      fy = {
+        year: 2025,
+        totalIncome: last2024.totalIncome,
+        nonEmploymentCosts: last2024.nonEmploymentCosts,
+        nonMdEmploymentCosts: 164677.44, // 2024 actual staff employment costs
+        locumCosts: 113400, // 2024 actual locums costs
+        miscEmploymentCosts: 18182.56, // 2024 actual misc employment
+        physicians: scenario2024Defaults(),
+      }
+    } else if (last2025) {
+      fy = {
+        year: 2025,
+        totalIncome: last2025.totalIncome,
+        nonEmploymentCosts: last2025.nonEmploymentCosts,
+        nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+        locumCosts: 54600,
+        miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+        physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
+      }
+    }
+  }
+  // If a 2025 entry exists but the baseline mode is not Custom, override it with the proper baseline
+  if (year === 2025) {
+    const dataMode = scenario === 'A' ? state.scenarioA.dataMode : state.scenarioB?.dataMode
+    if (dataMode !== 'Custom') {
+      const last2024 = state.historic.find((h) => h.year === 2024)
+      const last2025 = state.historic.find((h) => h.year === 2025)
+      fy = dataMode === '2024 Data' && last2024
+        ? {
+            year: 2025,
+            totalIncome: last2024.totalIncome,
+            nonEmploymentCosts: last2024.nonEmploymentCosts,
+            nonMdEmploymentCosts: 164677.44,
+            locumCosts: 113400,
+            miscEmploymentCosts: 18182.56,
+            physicians: scenario2024Defaults(),
+          }
+        : last2025
+        ? {
+            year: 2025,
+            totalIncome: last2025.totalIncome,
+            nonEmploymentCosts: last2025.nonEmploymentCosts,
+            nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+            locumCosts: 54600,
+            miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+            physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
+          }
+        : fy
     }
   }
   if (!fy) return [] as { id: string; name: string; type: PhysicianType; comp: number }[]
-  const partners = fy!.physicians.filter((p) => p.type === 'partner' || p.type === 'employeeToPartner')
-  const employees = fy!.physicians.filter((p) => p.type === 'employee' || p.type === 'employeeToPartner')
+  const partners = fy!.physicians.filter((p) => p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire')
+  const employees = fy!.physicians.filter((p) => p.type === 'employee' || p.type === 'employeeToPartner' || p.type === 'newEmployee' || p.type === 'employeeToTerminate')
 
   const totalEmployeeCosts = employees.reduce((sum, e) => {
-    const portion = e.type === 'employeeToPartner' ? getEmployeePortionOfYear(e) : (e.type === 'employee' ? 1 : 0)
+    const portion = e.type === 'employeeToPartner' ? getEmployeePortionOfYear(e) : 
+                   (e.type === 'employee' ? 1 : 
+                   (e.type === 'newEmployee' ? getEmployeePortionOfYear(e) :
+                   (e.type === 'employeeToTerminate' ? getEmployeePortionOfYear(e) : 0)))
     if (portion <= 0) return sum
-    // For pool calculation, only reduce by W2 salary portion (benefits/taxes handled elsewhere/visualized)
-    const salaryPortion = (e.salary ?? 0) * portion
-    return sum + salaryPortion
+    
+    // Calculate full employee cost including benefits and payroll taxes
+    if (e.type === 'newEmployee') {
+      // For new employees, calculate prorated total cost
+      const proratedEmployee = { ...e, salary: (e.salary ?? 0) * portion }
+      return sum + calculateEmployeeTotalCost(proratedEmployee, year, sc.projection.benefitCostsGrowthPct)
+    } else if (e.type === 'employeeToTerminate') {
+      // For terminating employees, calculate prorated total cost
+      const proratedEmployee = { ...e, salary: (e.salary ?? 0) * portion }
+      return sum + calculateEmployeeTotalCost(proratedEmployee, year, sc.projection.benefitCostsGrowthPct)
+    } else if (e.type === 'employeeToPartner') {
+      // For mixed types, only count the employee portion of their total cost
+      const employeePortionSalary = (e.salary ?? 0) * portion
+      const employeePortionPhysician = { ...e, salary: employeePortionSalary }
+      return sum + calculateEmployeeTotalCost(employeePortionPhysician, year, sc.projection.benefitCostsGrowthPct)
+    } else {
+      // For regular employees, calculate full cost
+      return sum + calculateEmployeeTotalCost(e, year, sc.projection.benefitCostsGrowthPct)
+    }
+  }, 0)
+
+  const totalBuyoutCosts = fy!.physicians.reduce((sum, p) => {
+    return sum + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0)
+  }, 0)
+
+  // Calculate delayed W2 payments for employeeToPartner physicians
+  const totalDelayedW2Costs = fy!.physicians.reduce((sum, p) => {
+    if (p.type === 'employeeToPartner') {
+      const delayed = calculateDelayedW2Payment(p, year)
+      return sum + delayed.amount + delayed.taxes
+    }
+    return sum
   }, 0)
 
   const pool = year === 2025
-    ? NET_PARTNER_POOL_2025
-    : Math.max(0, fy!.totalIncome - (fy!.nonEmploymentCosts + fy!.nonMdEmploymentCosts + fy!.miscEmploymentCosts + (fy!.locumDays * LOCUM_DAY_RATE) + totalEmployeeCosts))
+    ? (() => {
+        // For baseline year, use different partner pools based on data mode
+        const dataMode = scenario === 'A' ? state.scenarioA.dataMode : state.scenarioB?.dataMode
+        if (dataMode === '2024 Data') {
+          // Calculate 2024-based partner pool: Net Income from 2024 was $2,032,099.02 (from image)
+          return 2032099.02 - totalBuyoutCosts - totalDelayedW2Costs
+        } else {
+          // Use 2025 baseline or custom (default behavior)
+          return NET_PARTNER_POOL_2025 - totalBuyoutCosts - totalDelayedW2Costs
+        }
+      })()
+    : Math.max(0, fy!.totalIncome - (fy!.nonEmploymentCosts + fy!.nonMdEmploymentCosts + fy!.miscEmploymentCosts + fy!.locumCosts + totalEmployeeCosts + totalBuyoutCosts + totalDelayedW2Costs))
 
   const parts = partners.map((p) => ({ p, weight: getPartnerFTEWeight(p) }))
-  const totalWeight = parts.reduce((s, x) => s + x.weight, 0) || 1
-  const partnerShares = parts.map(({ p, weight }) => ({ id: p.id, name: p.name, type: 'partner' as const, baseShare: (weight / totalWeight) * pool, physician: p }))
+  const workingPartners = parts.filter(({ weight }) => weight > 0)
+  const totalWeight = workingPartners.reduce((s, x) => s + x.weight, 0) || 1
+  const partnerShares = parts.map(({ p, weight }) => ({ 
+    id: p.id, 
+    name: p.name, 
+    type: 'partner' as const, 
+    baseShare: weight > 0 ? (weight / totalWeight) * pool : 0, 
+    physician: p 
+  }))
 
   // Compose final list per physician (ensure each physician appears once with combined comp if mixed)
   const results: { id: string; name: string; type: PhysicianType; comp: number }[] = []
@@ -1524,114 +3947,352 @@ function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
     let comp = s.baseShare
     if (s.physician.type === 'employeeToPartner') {
       const salaryPortion = (s.physician.salary ?? 0) * getEmployeePortionOfYear(s.physician)
-      comp += salaryPortion
+      // Add delayed W2 payments for employeeToPartner physicians
+      const delayedW2 = calculateDelayedW2Payment(s.physician, year)
+      comp += salaryPortion + delayedW2.amount
+    }
+    if (s.physician.type === 'partnerToRetire') {
+      // Add buyout cost back to retiring partner's total compensation
+      comp += s.physician.buyoutCost ?? 0
     }
     results.push({ id: s.id, name: s.name, type: 'partner', comp })
   }
   // Add pure employees (exclude mixed already included)
-  for (const e of fy!.physicians.filter((p) => p.type === 'employee')) {
-    results.push({ id: e.id, name: e.name, type: 'employee', comp: e.salary ?? 0 })
+  for (const e of fy!.physicians.filter((p) => p.type === 'employee' || p.type === 'newEmployee' || p.type === 'employeeToTerminate')) {
+    const comp = e.type === 'newEmployee' ? (e.salary ?? 0) * getEmployeePortionOfYear(e) :
+                 e.type === 'employeeToTerminate' ? (e.salary ?? 0) * getEmployeePortionOfYear(e) :
+                 (e.salary ?? 0)
+    results.push({ id: e.id, name: e.name, type: 'employee', comp })
   }
   return results
 }
 
-function YearOnYearControls({ scenario }: { scenario: ScenarioKey }) {
+function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
   const store = useDashboardStore()
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB
   const isMobile = useIsMobile()
   
   if (!sc) return null
+
+  // Default values for reset functionality
+  const defaultValues = {
+    incomeGrowthPct: 3.7,
+    nonEmploymentCostsPct: 7.8,
+    nonMdEmploymentCostsPct: 6.0,
+    locumsCosts: 120000,
+    miscEmploymentCostsPct: 6.7,
+    benefitCostsGrowthPct: 5.0
+  }
+
+  // Helper function to create a slider with number input and reset button
+  const createSlider = (
+    label: string,
+    field: keyof Projection,
+    value: number,
+    min: number,
+    max: number,
+    step: number,
+    suffix: string = '%',
+    isDollar: boolean = false,
+    glowType: 'income' | 'cost' = 'cost',
+    resetTooltip: string = 'Reset to 2016-2024 Trend'
+  ) => (
+    <div style={{ 
+      padding: 8,
+      backgroundColor: '#ffffff',
+      borderRadius: 8,
+      border: glowType === 'income' 
+        ? '1px solid rgba(16, 185, 129, 0.4)' 
+        : '1px solid rgba(239, 68, 68, 0.4)',
+      boxShadow: glowType === 'income'
+        ? '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)'
+        : '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+        <label style={{ fontSize: 14, fontWeight: 500 }}>{label}</label>
+        <button
+          onClick={() => {
+            store.setProjectionField(scenario, field, defaultValues[field])
+          }}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: 12,
+            color: '#6b7280',
+            padding: '2px 4px',
+            borderRadius: 3,
+            display: 'flex',
+            alignItems: 'center',
+            opacity: 0.7,
+            transition: 'opacity 0.2s'
+          }}
+          onMouseEnter={(e) => { 
+            e.currentTarget.style.opacity = '1'
+            createTooltip('reset-tooltip', resetTooltip, e)
+          }}
+          onMouseLeave={(e) => { 
+            e.currentTarget.style.opacity = '0.7'
+            removeTooltip('reset-tooltip')
+          }}
+        >
+          ↺
+        </button>
+      </div>
+      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', height: 32 }}>
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={(e) => {
+              store.setProjectionField(scenario, field, Number(e.target.value))
+            }}
+            style={{ 
+              width: '100%', margin: 0,
+              ['--fill-start' as any]: value >= 0 ? `${((0 - min) / (max - min)) * 100}%` : `${((value - min) / (max - min)) * 100}%`,
+              ['--fill-end' as any]: value >= 0 ? `${((value - min) / (max - min)) * 100}%` : `${((0 - min) / (max - min)) * 100}%`,
+            }}
+            className="growth-slider"
+          />
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: `${((0 - min) / (max - min)) * 100}%`,
+            transform: 'translate(-50%, -50%)',
+            width: '2px',
+            height: '8px',
+            backgroundColor: '#374151',
+            pointerEvents: 'none'
+          }} />
+        </div>
+        {isDollar ? (
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: isMobile ? 100 : 120, height: 23 }}>
+            <input
+              type="text"
+              value={currency(value)}
+              onChange={(e) => {
+                // Parse currency input - remove $ and commas
+                const numericValue = e.target.value.replace(/[$,]/g, '')
+                const parsed = Number(numericValue)
+                if (!isNaN(parsed) && parsed >= min && parsed <= max) {
+                  store.setProjectionField(scenario, field, parsed)
+                }
+              }}
+              onBlur={(e) => {
+                // Ensure valid value on blur
+                const numericValue = e.target.value.replace(/[$,]/g, '')
+                const parsed = Number(numericValue)
+                if (isNaN(parsed) || parsed < min || parsed > max) {
+                  store.setProjectionField(scenario, field, Math.max(min, Math.min(max, parsed || 0)))
+                }
+              }}
+              style={{ 
+                width: '100%', 
+                height: 23, 
+                padding: '2px 18px 2px 4px', 
+                border: '1px solid #ccc',
+                borderRadius: 3,
+                fontSize: 14 
+              }}
+              readOnly={true}
+            />
+            <div style={{ 
+              position: 'absolute', 
+              right: 1, 
+              top: 1, 
+              display: 'flex', 
+              flexDirection: 'column',
+              height: 21
+            }}>
+              <button
+                onClick={() => {
+                  const increment = step >= 1 ? step : 1000
+                  const newValue = Math.min(max, value + increment)
+                  store.setProjectionField(scenario, field, newValue)
+                }}
+                style={{
+                  width: 16,
+                  height: 10.5,
+                  border: '1px solid #ccc',
+                  borderBottom: 'none',
+                  borderRadius: '2px 2px 0 0',
+                  background: '#f8f9fa',
+                  cursor: 'pointer',
+                  fontSize: 8,
+                  lineHeight: '8px',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseDown={(e) => e.preventDefault()}
+                title="Increase value"
+              >
+                ▲
+              </button>
+              <button
+                onClick={() => {
+                  const decrement = step >= 1 ? step : 1000
+                  const newValue = Math.max(min, value - decrement)
+                  store.setProjectionField(scenario, field, newValue)
+                }}
+                style={{
+                  width: 16,
+                  height: 10.5,
+                  border: '1px solid #ccc',
+                  borderRadius: '0 0 2px 2px',
+                  background: '#f8f9fa',
+                  cursor: 'pointer',
+                  fontSize: 8,
+                  lineHeight: '8px',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseDown={(e) => e.preventDefault()}
+                title="Decrease value"
+              >
+                ▼
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: isMobile ? 60 : 70, height: 23 }}>
+            <input
+              type="number"
+              min={min}
+              max={max}
+              step={step}
+              value={value}
+              onChange={(e) => {
+                store.setProjectionField(scenario, field, Number(e.target.value))
+              }}
+              style={{ 
+                width: '100%', 
+                height: 23, 
+                padding: '2px 18px 2px 4px', 
+                border: '1px solid #ccc',
+                borderRadius: 3,
+                fontSize: 14 
+              }}
+              readOnly={true}
+            />
+            <div style={{ 
+              position: 'absolute', 
+              right: 1, 
+              top: 1, 
+              display: 'flex', 
+              flexDirection: 'column',
+              height: 21
+            }}>
+              <button
+                onClick={() => {
+                  const newValue = Math.min(max, value + step)
+                  store.setProjectionField(scenario, field, newValue)
+                }}
+                style={{
+                  width: 16,
+                  height: 10.5,
+                  border: '1px solid #ccc',
+                  borderBottom: 'none',
+                  borderRadius: '2px 2px 0 0',
+                  background: '#f8f9fa',
+                  cursor: 'pointer',
+                  fontSize: 8,
+                  lineHeight: '8px',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseDown={(e) => e.preventDefault()}
+                title="Increase value"
+              >
+                ▲
+              </button>
+              <button
+                onClick={() => {
+                  const newValue = Math.max(min, value - step)
+                  store.setProjectionField(scenario, field, newValue)
+                }}
+                style={{
+                  width: 16,
+                  height: 10.5,
+                  border: '1px solid #ccc',
+                  borderRadius: '0 0 2px 2px',
+                  background: '#f8f9fa',
+                  cursor: 'pointer',
+                  fontSize: 8,
+                  lineHeight: '8px',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseDown={(e) => e.preventDefault()}
+                title="Decrease value"
+              >
+                ▼
+              </button>
+            </div>
+          </div>
+        )}
+        <span style={{ fontSize: 14, color: '#666', minWidth: isDollar ? 0 : 12 }}>
+          {isDollar ? '' : suffix}
+        </span>
+      </div>
+    </div>
+  )
   
   return (
-    <div style={{ marginBottom: 12, padding: 8, backgroundColor: '#f8f9fa', borderRadius: 4, border: '1px solid #e5e7eb' }}>
-      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, textAlign: 'center' }}>Year-over-Year Growth</div>
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
-        <div>
-          <label style={{ display: 'block', fontSize: 14, marginBottom: 4 }}>Income Growth %</label>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', height: 32 }}>
-              <input
-                type="range"
-                min={-10}
-                max={10}
-                step={1}
-                value={sc.projection.incomeGrowthPct}
-                onChange={(e) => {
-                  store.setProjectionGrowthPct(scenario, 'income', Number(e.target.value))
-                }}
-                style={{ 
-                  width: '100%', margin: 0,
-                  ['--fill-start' as any]: sc.projection.incomeGrowthPct >= 0 ? '50%' : `${((sc.projection.incomeGrowthPct + 10) / 20) * 100}%`,
-                  ['--fill-end' as any]: sc.projection.incomeGrowthPct >= 0 ? `${((sc.projection.incomeGrowthPct + 10) / 20) * 100}%` : '50%',
-                }}
-                className="growth-slider"
-              />
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: '2px',
-                height: '8px',
-                backgroundColor: '#374151',
-                pointerEvents: 'none'
-              }} />
-            </div>
-            <input
-              type="number"
-              min={-10}
-              max={10}
-              value={sc.projection.incomeGrowthPct}
-              onChange={(e) => {
-                store.setProjectionGrowthPct(scenario, 'income', Number(e.target.value))
-              }}
-              style={{ width: isMobile ? 48 : 56, fontSize: 14 }}
-            />
-          </div>
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 14, marginBottom: 4 }}>Cost Growth %</label>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', height: 32 }}>
-              <input
-                type="range"
-                min={-10}
-                max={10}
-                step={1}
-                value={sc.projection.costGrowthPct}
-                onChange={(e) => {
-                  store.setProjectionGrowthPct(scenario, 'cost', Number(e.target.value))
-                }}
-                style={{ 
-                  width: '100%', margin: 0,
-                  ['--fill-start' as any]: sc.projection.costGrowthPct >= 0 ? '50%' : `${((sc.projection.costGrowthPct + 10) / 20) * 100}%`,
-                  ['--fill-end' as any]: sc.projection.costGrowthPct >= 0 ? `${((sc.projection.costGrowthPct + 10) / 20) * 100}%` : '50%',
-                }}
-                className="growth-slider"
-              />
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: '2px',
-                height: '8px',
-                backgroundColor: '#374151',
-                pointerEvents: 'none'
-              }} />
-            </div>
-            <input
-              type="number"
-              min={-10}
-              max={10}
-              value={sc.projection.costGrowthPct}
-              onChange={(e) => {
-                store.setProjectionGrowthPct(scenario, 'cost', Number(e.target.value))
-              }}
-              style={{ width: isMobile ? 48 : 56, fontSize: 14 }}
-            />
-          </div>
-        </div>
+    <div style={{ marginBottom: 12, padding: 16, backgroundColor: '#f3f4f6', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12 }}>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>Projection Settings</div>
+        <button
+          onClick={() => {
+            Object.keys(defaultValues).forEach((field) => {
+              store.setProjectionField(scenario, field as keyof Projection, defaultValues[field as keyof typeof defaultValues])
+            })
+          }}
+          style={{
+            background: '#ffffff',
+            border: '1px solid #d1d5db',
+            borderRadius: 4,
+            cursor: 'pointer',
+            fontSize: 11,
+            color: '#6b7280',
+            padding: '3px 6px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 3,
+            opacity: 0.8,
+            transition: 'opacity 0.2s, background-color 0.2s'
+          }}
+          onMouseEnter={(e) => { 
+            e.currentTarget.style.opacity = '1'
+            e.currentTarget.style.backgroundColor = '#f3f4f6'
+            createTooltip('reset-all-tooltip', 'Reset All to 2016-2024 Trend', e)
+          }}
+          onMouseLeave={(e) => { 
+            e.currentTarget.style.opacity = '0.8'
+            e.currentTarget.style.backgroundColor = '#ffffff'
+            removeTooltip('reset-all-tooltip')
+          }}
+        >
+          ↺ Reset All
+        </button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 16 }}>
+        {createSlider('Total Income Growth', 'incomeGrowthPct', sc.projection.incomeGrowthPct ?? 3.7, -10, 20, 0.1, '%', false, 'income')}
+        {createSlider('Non-Employment Costs Growth', 'nonEmploymentCostsPct', sc.projection.nonEmploymentCostsPct ?? 7.8, -10, 20, 0.1, '%', false, 'cost')}
+        {createSlider('Staff Employment Costs Growth', 'nonMdEmploymentCostsPct', sc.projection.nonMdEmploymentCostsPct ?? 6.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Default')}
+        {createSlider('Benefit Costs Growth', 'benefitCostsGrowthPct', sc.projection.benefitCostsGrowthPct ?? 5.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Default')}
+        {createSlider('Misc Employment Costs Growth', 'miscEmploymentCostsPct', sc.projection.miscEmploymentCostsPct ?? 6.7, -10, 20, 0.1, '%', false, 'cost')}
+        {createSlider('Locums Costs (Annual Override)', 'locumsCosts', sc.projection.locumsCosts ?? 120000, 0, 500000, 1000, '', true, 'cost', 'Reset to Default')}
       </div>
     </div>
   )
@@ -1647,42 +4308,85 @@ function HistoricAndProjectionChart() {
   const employmentHistoric = store.historic.map((h) => h.employeePayroll ?? 0)
   const lastActual = store.historic[store.historic.length - 1]
 
+  // Marker fill: make 2025 points solid white to match plot background
+  const plotBackgroundColor = '#ffffff'
+  const markerColorsFor2025 = (seriesColor: string) =>
+    historicYears.map(y => (y === 2025 ? plotBackgroundColor : seriesColor))
+
   // Calculate max Y value from all data
   const scAIncome = store.scenarioA.future.map(f => f.totalIncome)
   const scACosts = store.scenarioA.future.map(f => f.nonEmploymentCosts)
   const scAEmployment = store.scenarioA.future.map(f => {
     const md = f.physicians.reduce((s, e) => {
       if (e.type === 'employee') return s + (e.salary ?? 0)
+      if (e.type === 'newEmployee') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
       if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+      if (e.type === 'partnerToRetire') return s + (e.buyoutCost ?? 0)
       return s
     }, 0)
-    return md + f.nonMdEmploymentCosts
+    // Add delayed W2 payments for employeeToPartner physicians
+    const delayedW2 = f.physicians.reduce((s, p) => {
+      if (p.type === 'employeeToPartner') {
+        const delayed = calculateDelayedW2Payment(p, f.year)
+        return s + delayed.amount + delayed.taxes
+      }
+      return s
+    }, 0)
+    return md + f.nonMdEmploymentCosts + delayedW2
   })
   const scBIncome = store.scenarioB?.future.map(f => f.totalIncome) || []
   const scBCosts = store.scenarioB?.future.map(f => f.nonEmploymentCosts) || []
   const scBEmployment = store.scenarioB?.future.map(f => {
     const md = f.physicians.reduce((s, e) => {
       if (e.type === 'employee') return s + (e.salary ?? 0)
+      if (e.type === 'newEmployee') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
       if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+      if (e.type === 'partnerToRetire') return s + (e.buyoutCost ?? 0)
       return s
     }, 0)
-    return md + f.nonMdEmploymentCosts
+    // Add delayed W2 payments for employeeToPartner physicians
+    const delayedW2 = f.physicians.reduce((s, p) => {
+      if (p.type === 'employeeToPartner') {
+        const delayed = calculateDelayedW2Payment(p, f.year)
+        return s + delayed.amount + delayed.taxes
+      }
+      return s
+    }, 0)
+    return md + f.nonMdEmploymentCosts + delayedW2
   }) || []
   const scANet = store.scenarioA.future.map(f => {
     const md = f.physicians.reduce((s, e) => {
       if (e.type === 'employee') return s + (e.salary ?? 0)
+      if (e.type === 'newEmployee') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
       if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
       return s
     }, 0)
-    return f.totalIncome - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - (f.locumDays * LOCUM_DAY_RATE) - md
+    const buyouts = f.physicians.reduce((s, p) => s + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0), 0)
+    const delayedW2 = f.physicians.reduce((s, p) => {
+      if (p.type === 'employeeToPartner') {
+        const delayed = calculateDelayedW2Payment(p, f.year)
+        return s + delayed.amount + delayed.taxes
+      }
+      return s
+    }, 0)
+    return f.totalIncome - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - f.locumCosts - md - buyouts - delayedW2
   })
   const scBNet = store.scenarioB?.future.map(f => {
     const md = f.physicians.reduce((s, e) => {
       if (e.type === 'employee') return s + (e.salary ?? 0)
+      if (e.type === 'newEmployee') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
       if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
       return s
     }, 0)
-    return f.totalIncome - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - (f.locumDays * LOCUM_DAY_RATE) - md
+    const buyouts = f.physicians.reduce((s, p) => s + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0), 0)
+    const delayedW2 = f.physicians.reduce((s, p) => {
+      if (p.type === 'employeeToPartner') {
+        const delayed = calculateDelayedW2Payment(p, f.year)
+        return s + delayed.amount + delayed.taxes
+      }
+      return s
+    }, 0)
+    return f.totalIncome - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - f.locumCosts - md - buyouts - delayedW2
   }) || []
   
   const yMax = Math.max(
@@ -1713,33 +4417,40 @@ function HistoricAndProjectionChart() {
         padding: 12,
       }}
     >
+      <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#ffffff', padding: 4 }}>
       <Plot
         data={(() => {
           const traces: any[] = []
           // Group: Income
-          traces.push({ x: historicYears, y: incomeHistoric, type: 'scatter', mode: 'lines+markers', name: 'Total Income', line: { color: '#1976d2', width: 3 }, legendgroup: 'income', legendrank: 1 })
+          traces.push({ x: historicYears, y: incomeHistoric, type: 'scatter', mode: 'lines+markers', name: 'Total Income', line: { color: '#1976d2', width: 3 }, marker: { symbol: 'circle', color: markerColorsFor2025('#1976d2'), line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}', legendgroup: 'income', legendrank: 1 })
           traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [lastActual.totalIncome, ...store.scenarioA.future.map(f => f.totalIncome)], type: 'scatter', mode: 'lines', name: 'Income projection A', line: { dash: 'dot', color: '#1976d2', width: 2 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 2 })
           if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [lastActual.totalIncome, ...store.scenarioB.future.map(f => f.totalIncome)], type: 'scatter', mode: 'lines', name: 'Income projection B', line: { dash: 'dash', color: '#1976d2', width: 2 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 3 })
 
           // Group: Non-employment costs
-          traces.push({ x: historicYears, y: costHistoric, type: 'scatter', mode: 'lines+markers', name: 'Non-Employment Costs', line: { color: '#e65100', width: 3 }, legendgroup: 'cost', legendrank: 1 })
+          traces.push({ x: historicYears, y: costHistoric, type: 'scatter', mode: 'lines+markers', name: 'Non-Employment Costs', line: { color: '#e65100', width: 3 }, marker: { symbol: 'circle', color: markerColorsFor2025('#e65100'), line: { color: '#e65100', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}', legendgroup: 'cost', legendrank: 1 })
           traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [lastActual.nonEmploymentCosts, ...store.scenarioA.future.map(f => f.nonEmploymentCosts)], type: 'scatter', mode: 'lines', name: 'Cost projection A', line: { dash: 'dot', color: '#e65100', width: 2 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'cost', legendrank: 2 })
           if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [lastActual.nonEmploymentCosts, ...store.scenarioB.future.map(f => f.nonEmploymentCosts)], type: 'scatter', mode: 'lines', name: 'Cost projection B', line: { dash: 'dash', color: '#e65100', width: 2 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'cost', legendrank: 3 })
 
           // Group: Net income
-          traces.push({ x: historicYears, y: netHistoric, type: 'scatter', mode: 'lines+markers', name: 'Net Income (Historic)', line: { color: '#2e7d32', width: 3 }, legendgroup: 'net', legendrank: 1 })
+          traces.push({ x: historicYears, y: netHistoric, type: 'scatter', mode: 'lines+markers', name: 'Net Income (Historic)', line: { color: '#2e7d32', width: 3 }, marker: { symbol: 'circle', color: markerColorsFor2025('#2e7d32'), line: { color: '#2e7d32', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}', legendgroup: 'net', legendrank: 1 })
           traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [NET_PARTNER_POOL_2025, ...scANet], type: 'scatter', mode: 'lines', name: 'Net projection A', line: { dash: 'dot', color: '#2e7d32', width: 2 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'net', legendrank: 2 })
           if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [NET_PARTNER_POOL_2025, ...scBNet], type: 'scatter', mode: 'lines', name: 'Net projection B', line: { dash: 'dash', color: '#2e7d32', width: 2 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'net', legendrank: 3 })
 
           // Group: Employment
-          traces.push({ x: historicYears, y: employmentHistoric, type: 'scatter', mode: 'lines+markers', name: 'Employment Costs (Historic)', line: { color: '#6b7280', width: 3 }, legendgroup: 'employment', legendrank: 1 })
+          traces.push({ x: historicYears, y: employmentHistoric, type: 'scatter', mode: 'lines+markers', name: 'Employment Costs (Historic)', line: { color: '#6b7280', width: 3 }, marker: { symbol: 'circle', color: markerColorsFor2025('#6b7280'), line: { color: '#6b7280', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}', legendgroup: 'employment', legendrank: 1 })
           traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [lastActual.employeePayroll ?? 0, ...scAEmployment], type: 'scatter', mode: 'lines', name: 'Employment projection A', line: { dash: 'dot', color: '#6b7280', width: 2 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'employment', legendrank: 2 })
           if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [lastActual.employeePayroll ?? 0, ...scBEmployment], type: 'scatter', mode: 'lines', name: 'Employment projection B', line: { dash: 'dash', color: '#6b7280', width: 2 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'employment', legendrank: 3 })
+
+          // Overlay 2025 markers on top of dotted projection lines so nothing shows through
+          traces.push({ x: [lastActual.year], y: [lastActual.totalIncome], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#1976d2', width: 2 }, size: 8 }, hoverinfo: 'skip' })
+          traces.push({ x: [lastActual.year], y: [lastActual.nonEmploymentCosts], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#e65100', width: 2 }, size: 8 }, hoverinfo: 'skip' })
+          traces.push({ x: [lastActual.year], y: [netHistoric[netHistoric.length - 1]], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#2e7d32', width: 2 }, size: 8 }, hoverinfo: 'skip' })
+          traces.push({ x: [lastActual.year], y: [lastActual.employeePayroll ?? 0], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#6b7280', width: 2 }, size: 8 }, hoverinfo: 'skip' })
 
           return traces
         })() as any}
         layout={{
-          title: { text: 'RadiantCare: Historic and Projected Totals' },
+          title: { text: 'Historic and Projected Totals' },
           dragmode: false as any,
           legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.1, yanchor: 'top', traceorder: 'grouped' },
           margin: { l: 60, r: 20, t: 40, b: 64 },
@@ -1763,6 +4474,7 @@ function HistoricAndProjectionChart() {
         useResizeHandler={true}
         style={{ width: '100%', height: isMobile ? 320 : 480 }}
       />
+      </div>
     </div>
   )
 }
@@ -1811,8 +4523,11 @@ export function Dashboard() {
 
   return (
     <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16, maxWidth: store.scenarioBEnabled ? 1400 : 1000, margin: '0 auto' }}>
-      <h2 style={{ marginTop: 0 }}>RadiantCare Physician Compensation</h2>
-      <div style={{ display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end', flexWrap: 'wrap', marginBottom: 8, gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: isMobile ? '8px 0' : '0 0 4px', justifyContent: 'center' }}>
+        <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 60, width: 'auto', display: 'block' }} />
+        <h2 style={{ margin: 0, fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif', color: '#7c2a83', fontWeight: 900, fontSize: 36, lineHeight: 1.05 }}>Compensation Dashboard</h2>
+      </div>
+      <div style={{ marginTop: 20, display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end', flexWrap: 'wrap', marginBottom: 8, gap: 8 }}>
         <button onClick={() => { store.resetToDefaults(); window.location.hash = '' }} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Reset to defaults</button>
         <button onClick={copyShareLink} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Copy shareable link</button>
       </div>
@@ -1847,9 +4562,9 @@ export function Dashboard() {
           {/* Scenario A column */}
           <div>
             <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario A</div>
-            <YearOnYearControls scenario={'A'} />
+            <ProjectionSettingsControls scenario={'A'} />
             <div className="year-buttons" style={{ display: 'flex', gap: 8, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal' }}>
-              {[2025, ...store.scenarioA.future.map((f) => f.year)].map((yr) => (
+              {[2025, ...store.scenarioA.future.filter((f) => f.year !== 2025).map((f) => f.year)].map((yr) => (
                 <button
                   key={`A-${yr}`}
                   onClick={() => store.setSelectedYear('A', yr)}
@@ -1862,7 +4577,7 @@ export function Dashboard() {
                     cursor: 'pointer',
                   }}
                 >
-                  {yr}
+                  {yr === 2025 ? 'Baseline' : yr}
                 </button>
               ))}
             </div>
@@ -1875,9 +4590,9 @@ export function Dashboard() {
           {store.scenarioBEnabled && store.scenarioB && (
             <div>
               <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario B</div>
-              <YearOnYearControls scenario={'B'} />
+              <ProjectionSettingsControls scenario={'B'} />
               <div className="year-buttons" style={{ display: 'flex', gap: 8, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal' }}>
-                {[2025, ...store.scenarioB.future.map((f) => f.year)].map((yr) => (
+                {[2025, ...store.scenarioB.future.filter((f) => f.year !== 2025).map((f) => f.year)].map((yr) => (
                 <button
                     key={`B-${yr}`}
                     onClick={() => store.setSelectedYear('B', yr)}
@@ -1890,7 +4605,7 @@ export function Dashboard() {
                       cursor: 'pointer',
                     }}
                   >
-                    {yr}
+                    {yr === 2025 ? 'Baseline' : yr}
                   </button>
                 ))}
               </div>
@@ -1908,11 +4623,10 @@ export function Dashboard() {
     </div>
   )
 }
-
 function OverallCompensationSummary() {
   const store = useDashboardStore()
   const isMobile = useIsMobile()
-  const years = [2025, ...store.scenarioA.future.map((f) => f.year)]
+  const years = Array.from(new Set([2025, ...store.scenarioA.future.map((f) => f.year)]))
   const perYearA = years.map((y) => ({ year: y, comps: computeAllCompensationsForYear(y, 'A') }))
   const perYearB = store.scenarioBEnabled && store.scenarioB
     ? years.map((y) => ({ year: y, comps: computeAllCompensationsForYear(y, 'B') }))
@@ -1947,16 +4661,16 @@ function OverallCompensationSummary() {
   // Calculate locums data for both scenarios
   const locumsSeriesA = years.map((y) => {
     const fy = y === 2025 
-      ? { locumDays: 30 } // 2025 default
+      ? { locumCosts: 54600 } // 2025 default
       : store.scenarioA.future.find(f => f.year === y)
-    return (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+    return fy?.locumCosts ?? 0
   })
   const locumsSeriesB = store.scenarioBEnabled && store.scenarioB
     ? years.map((y) => {
         const fy = y === 2025 
-          ? { locumDays: 30 } // 2025 default
+          ? { locumCosts: 54600 } // 2025 default
           : store.scenarioB!.future.find(f => f.year === y)
-        return (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+        return fy?.locumCosts ?? 0
       })
     : []
 
@@ -1975,6 +4689,7 @@ function OverallCompensationSummary() {
     <div style={{ marginTop: 16, border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, background: '#f9fafb' }}>
       <h3 style={{ margin: '12px 0' }}>Multi-Year Compensation Summary (2025–2030)</h3>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+        <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#ffffff', padding: 4 }}>
         <Plot
           data={(() => {
             const rows: any[] = []
@@ -2036,7 +4751,7 @@ function OverallCompensationSummary() {
             return rows
           })() as any}
           layout={{
-            title: { text: 'Compensation per Physician (by year)', font: { size: 14 } },
+            title: { text: 'Compensation per Physician (By Year)', font: { size: 14 } },
             margin: { l: 48, r: 8, t: 28, b: 72 },
             yaxis: { tickprefix: '$', separatethousands: true },
             xaxis: { dtick: 1 },
@@ -2046,120 +4761,12 @@ function OverallCompensationSummary() {
           useResizeHandler={true}
           style={{ width: '100%', height: isMobile ? 360 : 420 }}
         />
-      </div>
-
-      {/* Locums Override Controls */}
-      <div style={{ marginTop: 8, marginBottom: 12, padding: 8, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fffbeb' }}>
-        <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>Locums Cost Override (All Years)</div>
-        <div style={{ fontSize: 12, color: '#d97706', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span>⚠️</span>
-          <span>These sliders override individual per-year locum day settings</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: store.scenarioBEnabled && !isMobile ? '1fr 1fr' : '1fr', gap: 16 }}>
-          {/* Scenario A Locums Slider */}
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Scenario A</div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center' }}>
-              {(() => {
-                const firstFuture = store.scenarioA.future[0]
-                const currentDays = firstFuture?.locumDays ?? 90
-                const currentCost = currentDays * LOCUM_DAY_RATE
-                const fillPercent = (currentCost / 400000) * 100
-                
-                return (
-                  <>
-                    <input
-                      type="range"
-                      min={0}
-                      max={400000}
-                      step={2000}
-                      value={currentCost}
-                      onChange={(e) => {
-                        const cost = Number(e.target.value)
-                        const days = Math.round(cost / LOCUM_DAY_RATE)
-                        // Update all years in scenario A
-                        store.scenarioA.future.forEach(fy => {
-                          store.setFutureValue('A', fy.year, 'locumDays', days)
-                        })
-                      }}
-                      style={{ 
-                        width: '100%',
-                        ['--fill-percent' as any]: `${fillPercent}%`
-                      }}
-                    />
-                    <input
-                      type="text"
-                      value={`${currency(currentCost)} (${currentDays} d)`}
-                      readOnly
-                      style={{ width: isMobile ? 120 : 140, fontSize: 12, justifySelf: isMobile ? 'end' : undefined }}
-                    />
-                    <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 12, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-                      onMouseEnter={(e) => createTooltip('locums-a-tooltip', 'Sets locum cost for all years in Scenario A\nCost is converted to days at $2,000 per day', e)}
-                      onMouseLeave={() => removeTooltip('locums-a-tooltip')}
-                      onTouchStart={(e) => createTooltip('locums-a-tooltip', 'Sets locum cost for all years in Scenario A\nCost is converted to days at $2,000 per day', e)}
-                      onClick={(e) => createTooltip('locums-a-tooltip', 'Sets locum cost for all years in Scenario A\nCost is converted to days at $2,000 per day', e)}
-                    >ℹ</div>
-                  </>
-                )
-              })()}
-            </div>
-          </div>
-
-          {/* Scenario B Locums Slider */}
-          {store.scenarioBEnabled && store.scenarioB && (
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Scenario B</div>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center' }}>
-                {(() => {
-                  const firstFuture = store.scenarioB!.future[0]
-                  const currentDays = firstFuture?.locumDays ?? 90
-                  const currentCost = currentDays * LOCUM_DAY_RATE
-                  const fillPercent = (currentCost / 400000) * 100
-                  
-                  return (
-                    <>
-                      <input
-                        type="range"
-                        min={0}
-                        max={400000}
-                        step={2000}
-                        value={currentCost}
-                        onChange={(e) => {
-                          const cost = Number(e.target.value)
-                          const days = Math.round(cost / LOCUM_DAY_RATE)
-                          // Update all years in scenario B
-                          store.scenarioB!.future.forEach(fy => {
-                            store.setFutureValue('B', fy.year, 'locumDays', days)
-                          })
-                        }}
-                        style={{ 
-                          width: '100%',
-                          ['--fill-percent' as any]: `${fillPercent}%`
-                        }}
-                      />
-                      <input
-                        type="text"
-                        value={`${currency(currentCost)} (${currentDays} d)`}
-                        readOnly
-                        style={{ width: isMobile ? 120 : 140, fontSize: 12, justifySelf: isMobile ? 'end' : undefined }}
-                      />
-                      <div style={{ position: 'relative', display: 'inline-block', cursor: 'help', fontSize: 12, color: '#666', width: 16, height: 16, textAlign: 'center', lineHeight: '16px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-                        onMouseEnter={(e) => createTooltip('locums-b-tooltip', 'Sets locum cost for all years in Scenario B\nCost is converted to days at $2,000 per day', e)}
-                        onMouseLeave={() => removeTooltip('locums-b-tooltip')}
-                        onTouchStart={(e) => createTooltip('locums-b-tooltip', 'Sets locum cost for all years in Scenario B\nCost is converted to days at $2,000 per day', e)}
-                        onClick={(e) => createTooltip('locums-b-tooltip', 'Sets locum cost for all years in Scenario B\nCost is converted to days at $2,000 per day', e)}
-                      >ℹ</div>
-                    </>
-                  )
-                })()}
-              </div>
-            </div>
-          )}
         </div>
       </div>
+
 
       <div style={{ marginTop: 8, overflowX: isMobile ? 'auto' : 'visible' }}>
-        <div style={{ fontWeight: 600, marginBottom: 2 }}>Per Physician by year</div>
+        <div style={{ fontWeight: 600, marginBottom: 2 }}>Per Physician By Year</div>
         <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 2, fontWeight: 600 }}>
           <div>Name</div>
           {years.map((y) => (
@@ -2174,7 +4781,7 @@ function OverallCompensationSummary() {
               onMouseEnter={() => setHighlight({ scenario: 'A', name })}
               onMouseLeave={() => setHighlight(null)}
             >
-              <div>{`${name} (Scenario A)`}</div>
+              <div>{store.scenarioBEnabled ? `${name} (Scenario A)` : name}</div>
               {years.map((y, idx) => (
                 <div key={`A-${name}-${y}`} style={{ textAlign: 'right' }}>
                   {currency(seriesA.find((s) => s.name === name)!.values[idx])}
@@ -2212,20 +4819,20 @@ function OverallCompensationSummary() {
 
         {/* Locums rows */}
         <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '2px solid #e5e7eb', background: '#f8f9fa', fontSize: '14px', color: '#6b7280' }}>
-          <div style={{ paddingLeft: '8px' }}>+ Locums (Scenario A)</div>
+          <div style={{ paddingLeft: '8px' }}>{store.scenarioBEnabled ? '+ Locums (Scenario A)' : '+ Locums'}</div>
           {years.map((y, i) => {
             const fy = y === 2025 
-              ? { locumDays: 30 } // 2025 default
+              ? { locumCosts: 54600 } // 2025 default
               : store.scenarioA.future.find(f => f.year === y)
-            const locumCost = (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+            const locumCost = fy?.locumCosts ?? 0
             return <div key={`LA-${i}`} style={{ textAlign: 'right' }}>{currency(locumCost)}</div>
           })}
           <div style={{ textAlign: 'right' }}>
             {currency(years.reduce((total, y) => {
               const fy = y === 2025 
-                ? { locumDays: 30 } // 2025 default
+                ? { locumCosts: 54600 } // 2025 default
                 : store.scenarioA.future.find(f => f.year === y)
-              return total + ((fy?.locumDays ?? 0) * LOCUM_DAY_RATE)
+              return total + (fy?.locumCosts ?? 0)
             }, 0))}
           </div>
         </div>
@@ -2234,17 +4841,17 @@ function OverallCompensationSummary() {
             <div style={{ paddingLeft: '8px' }}>+ Locums (Scenario B)</div>
             {years.map((y, i) => {
               const fy = y === 2025 
-                ? { locumDays: 30 } // 2025 default
+                ? { locumCosts: 54600 } // 2025 default
                 : store.scenarioB!.future.find(f => f.year === y)
-              const locumCost = (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+              const locumCost = fy?.locumCosts ?? 0
               return <div key={`LB-${i}`} style={{ textAlign: 'right' }}>{currency(locumCost)}</div>
             })}
             <div style={{ textAlign: 'right' }}>
               {currency(years.reduce((total, y) => {
                 const fy = y === 2025 
-                  ? { locumDays: 30 } // 2025 default
+                  ? { locumCosts: 54600 } // 2025 default
                   : store.scenarioB!.future.find(f => f.year === y)
-                return total + ((fy?.locumDays ?? 0) * LOCUM_DAY_RATE)
+                return total + (fy?.locumCosts ?? 0)
               }, 0))}
             </div>
           </div>
@@ -2252,13 +4859,13 @@ function OverallCompensationSummary() {
 
         {/* Scenario A Total row */}
         <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '2px solid #e5e7eb', background: '#eef7ff', fontWeight: 700 }}>
-          <div>Scenario A (Total)</div>
+          <div>{store.scenarioBEnabled ? 'Scenario A (Total)' : 'Total'}</div>
           {years.map((y) => {
             const totalComp = perYearA.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
             const fy = y === 2025 
-              ? { locumDays: 30 } // 2025 default
+              ? { locumCosts: 54600 } // 2025 default
               : store.scenarioA.future.find(f => f.year === y)
-            const locumCost = (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+            const locumCost = fy?.locumCosts ?? 0
             return <div key={`SAT-${y}`} style={{ textAlign: 'right' }}>{currency(totalComp + locumCost)}</div>
           })}
           <div style={{ textAlign: 'right' }}>
@@ -2266,9 +4873,9 @@ function OverallCompensationSummary() {
               perYearA.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
               years.reduce((total, y) => {
                 const fy = y === 2025 
-                  ? { locumDays: 30 } // 2025 default
+                  ? { locumCosts: 54600 } // 2025 default
                   : store.scenarioA.future.find(f => f.year === y)
-                return total + ((fy?.locumDays ?? 0) * LOCUM_DAY_RATE)
+                return total + (fy?.locumCosts ?? 0)
               }, 0)
             )}
           </div>
@@ -2281,9 +4888,9 @@ function OverallCompensationSummary() {
             {years.map((y) => {
               const totalComp = perYearB.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
               const fy = y === 2025 
-                ? { locumDays: 30 } // 2025 default
+                ? { locumCosts: 54600 } // 2025 default
                 : store.scenarioB!.future.find(f => f.year === y)
-              const locumCost = (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+              const locumCost = fy?.locumCosts ?? 0
               return <div key={`SBT-${y}`} style={{ textAlign: 'right' }}>{currency(totalComp + locumCost)}</div>
             })}
             <div style={{ textAlign: 'right' }}>
@@ -2291,9 +4898,9 @@ function OverallCompensationSummary() {
                 perYearB.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
                 years.reduce((total, y) => {
                   const fy = y === 2025 
-                    ? { locumDays: 30 } // 2025 default
+                    ? { locumCosts: 54600 } // 2025 default
                     : store.scenarioB!.future.find(f => f.year === y)
-                  return total + ((fy?.locumDays ?? 0) * LOCUM_DAY_RATE)
+                  return total + (fy?.locumCosts ?? 0)
                 }, 0)
               )}
             </div>
@@ -2301,9 +4908,10 @@ function OverallCompensationSummary() {
         )}
       </div>
 
-      {/* Per Scenario by Year table */}
-      <div style={{ marginTop: 16, overflowX: isMobile ? 'auto' : 'visible' }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>Per Scenario by Year</div>
+      {/* Per Scenario by Year table - only show when Scenario B is enabled */}
+      {store.scenarioBEnabled && (
+        <div style={{ marginTop: 16, overflowX: isMobile ? 'auto' : 'visible' }}>
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>Per Scenario by Year</div>
         <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 2, fontWeight: 600 }}>
           <div>Scenario</div>
           {years.map((y) => (
@@ -2333,17 +4941,17 @@ function OverallCompensationSummary() {
           <div style={{ paddingLeft: '16px' }}>+ Locums (A)</div>
           {years.map((y, i) => {
             const fy = y === 2025 
-              ? { locumDays: 30 } // 2025 default
+              ? { locumCosts: 54600 } // 2025 default
               : store.scenarioA.future.find(f => f.year === y)
-            const locumCost = (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+            const locumCost = fy?.locumCosts ?? 0
             return <div key={`SAL-${i}`} style={{ textAlign: 'right' }}>{currency(locumCost)}</div>
           })}
           <div style={{ textAlign: 'right' }}>
             {currency(years.reduce((total, y) => {
               const fy = y === 2025 
-                ? { locumDays: 30 } // 2025 default
+                ? { locumCosts: 54600 } // 2025 default
                 : store.scenarioA.future.find(f => f.year === y)
-              return total + ((fy?.locumDays ?? 0) * LOCUM_DAY_RATE)
+              return total + (fy?.locumCosts ?? 0)
             }, 0))}
           </div>
         </div>
@@ -2354,9 +4962,9 @@ function OverallCompensationSummary() {
           {years.map((y) => {
             const totalComp = perYearA.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
             const fy = y === 2025 
-              ? { locumDays: 30 } // 2025 default
+              ? { locumCosts: 54600 } // 2025 default
               : store.scenarioA.future.find(f => f.year === y)
-            const locumCost = (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+            const locumCost = fy?.locumCosts ?? 0
             return <div key={`SAT-${y}`} style={{ textAlign: 'right' }}>{currency(totalComp + locumCost)}</div>
           })}
           <div style={{ textAlign: 'right' }}>
@@ -2364,9 +4972,9 @@ function OverallCompensationSummary() {
               perYearA.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
               years.reduce((total, y) => {
                 const fy = y === 2025 
-                  ? { locumDays: 30 } // 2025 default
+                  ? { locumCosts: 54600 } // 2025 default
                   : store.scenarioA.future.find(f => f.year === y)
-                return total + ((fy?.locumDays ?? 0) * LOCUM_DAY_RATE)
+                return total + (fy?.locumCosts ?? 0)
               }, 0)
             )}
           </div>
@@ -2396,17 +5004,17 @@ function OverallCompensationSummary() {
               <div style={{ paddingLeft: '16px' }}>+ Locums (B)</div>
               {years.map((y, i) => {
                 const fy = y === 2025 
-                  ? { locumDays: 30 } // 2025 default
+                  ? { locumCosts: 54600 } // 2025 default
                   : store.scenarioB!.future.find(f => f.year === y)
-                const locumCost = (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+                const locumCost = fy?.locumCosts ?? 0
                 return <div key={`SBL-${i}`} style={{ textAlign: 'right' }}>{currency(locumCost)}</div>
               })}
               <div style={{ textAlign: 'right' }}>
                 {currency(years.reduce((total, y) => {
                   const fy = y === 2025 
-                    ? { locumDays: 30 } // 2025 default
+                    ? { locumCosts: 54600 } // 2025 default
                     : store.scenarioB!.future.find(f => f.year === y)
-                  return total + ((fy?.locumDays ?? 0) * LOCUM_DAY_RATE)
+                  return total + (fy?.locumCosts ?? 0)
                 }, 0))}
               </div>
             </div>
@@ -2417,9 +5025,9 @@ function OverallCompensationSummary() {
               {years.map((y) => {
                 const totalComp = perYearB.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
                 const fy = y === 2025 
-                  ? { locumDays: 30 } // 2025 default
+                  ? { locumCosts: 54600 } // 2025 default
                   : store.scenarioB!.future.find(f => f.year === y)
-                const locumCost = (fy?.locumDays ?? 0) * LOCUM_DAY_RATE
+                const locumCost = fy?.locumCosts ?? 0
                 return <div key={`SBT-${y}`} style={{ textAlign: 'right' }}>{currency(totalComp + locumCost)}</div>
               })}
               <div style={{ textAlign: 'right' }}>
@@ -2427,16 +5035,17 @@ function OverallCompensationSummary() {
                   perYearB.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
                   years.reduce((total, y) => {
                     const fy = y === 2025 
-                      ? { locumDays: 30 } // 2025 default
+                      ? { locumCosts: 54600 } // 2025 default
                       : store.scenarioB!.future.find(f => f.year === y)
-                    return total + ((fy?.locumDays ?? 0) * LOCUM_DAY_RATE)
+                    return total + (fy?.locumCosts ?? 0)
                   }, 0)
                 )}
               </div>
             </div>
           </>
         )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -2450,17 +5059,17 @@ function ParametersSummary() {
   const buildYearData = (scenario: 'A' | 'B') => {
     const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
     const historic2025 = store.historic.find((h) => h.year === 2025)!
-    const years = [2025, ...sc.future.map((f) => f.year)]
+    const years = Array.from(new Set([2025, ...sc.future.map((f) => f.year)]))
     return years.map((year) => {
       if (year === 2025) {
         return {
           year,
-          totalIncome: historic2025.totalIncome,
-          nonEmploymentCosts: historic2025.nonEmploymentCosts,
-          nonMdEmploymentCosts: DEFAULT_NON_MD_EMPLOYMENT_COSTS_BASE,
-          locumDays: 30,
-          miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-          physicians: scenarioADefaultsByYear(2025),
+        totalIncome: historic2025.totalIncome,
+        nonEmploymentCosts: historic2025.nonEmploymentCosts,
+        nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+        locumCosts: 54600,
+        miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+        physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
         } as FutureYear
       }
       return sc.future.find((f) => f.year === year) as FutureYear
@@ -2471,75 +5080,200 @@ function ParametersSummary() {
     const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
     const data = buildYearData(scenario)
     const maxPhysicians = Math.max(...data.map((d) => d.physicians.length))
-    const labelColWidth = 150
-    const yearColWidth = 135
-    const columnGap = 4
+    const baselineMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+    const baselineLabel = baselineMode === '2025 Data' ? null : `Baseline (${baselineMode === 'Custom' ? 'Custom' : (baselineMode?.match(/\d{4}/)?.[0] || baselineMode || 'Unknown')})`
+    const hasExtraBaselineCol = Boolean(baselineLabel)
+    // Narrow columns slightly when we include the extra Baseline column so everything fits without overflow
+    const labelColWidth = hasExtraBaselineCol ? 120 : 150
+    const yearColWidth = hasExtraBaselineCol ? 120 : 135
+    const columnGap = hasExtraBaselineCol ? 3 : 4
+    const baselineDataObj = (() => {
+      if (!baselineLabel) return null
+      if (baselineMode === 'Custom') {
+        const custom = sc.future.find((f) => f.year === 2025)
+        return custom ? { ...custom, year: 2025 } : null
+      }
+      if (baselineMode === '2024 Data') {
+        const h2024 = store.historic.find((h) => h.year === 2024)
+        if (!h2024) return null
+        return {
+          year: 2024,
+          totalIncome: h2024.totalIncome,
+          nonEmploymentCosts: h2024.nonEmploymentCosts,
+          nonMdEmploymentCosts: 164677.44,
+          locumCosts: 113400,
+          miscEmploymentCosts: 18182.56,
+          physicians: scenario2024Defaults(),
+        } as FutureYear
+      }
+      return null
+    })()
     return (
       <div style={{ marginTop: 12, border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, background: '#f9fafb', maxWidth: 1000, marginLeft: 'auto', marginRight: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>Scenario {scenario} Parameters</div>
           <div style={{ fontSize: 13, color: '#374151' }}>
-            Growth — Income: {sc.projection.incomeGrowthPct}% · Cost: {sc.projection.costGrowthPct}%
+            Growth — Income: {sc.projection.incomeGrowthPct}% · Non-Emp: {sc.projection.nonEmploymentCostsPct}% · Staff: {sc.projection.nonMdEmploymentCostsPct}% · Misc: {sc.projection.miscEmploymentCostsPct}%
           </div>
         </div>
 
         <div style={{ marginTop: 6, overflowX: isMobile ? 'auto' : 'visible' }}>
           <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>Per-year core values</div>
-          <div style={{ display: 'grid', gridTemplateColumns: `${labelColWidth}px repeat(${data.length}, ${yearColWidth}px)`, columnGap: columnGap, rowGap: 2, alignItems: 'start', fontSize: 13, fontVariantNumeric: 'tabular-nums' as any }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `${labelColWidth}px ${baselineLabel ? `${yearColWidth}px ` : ''}repeat(${data.length}, ${yearColWidth}px)`, columnGap: columnGap, rowGap: 2, alignItems: 'start', fontSize: 13, fontVariantNumeric: 'tabular-nums' as any }}>
             <div style={{ fontWeight: 600, whiteSpace: 'nowrap', textAlign: 'left' }}>Metric</div>
+            {baselineLabel && <div style={{ fontWeight: 600, textAlign: 'left' }}>{baselineLabel}</div>}
             {data.map((d) => (
               <div key={`hdr-${scenario}-${d.year}`} style={{ fontWeight: 600, textAlign: 'left' }}>{d.year}</div>
             ))}
             <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Income</div>
+            {baselineLabel && <div style={{ textAlign: 'left' }}>{baselineDataObj ? currency(Math.round(baselineDataObj.totalIncome)) : ''}</div>}
             {data.map((d) => (
               <div key={`inc-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{currency(Math.round(d.totalIncome))}</div>
             ))}
             <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Non-Employment</div>
+            {baselineLabel && <div style={{ textAlign: 'left' }}>{baselineDataObj ? currency(Math.round(baselineDataObj.nonEmploymentCosts)) : ''}</div>}
             {data.map((d) => (
               <div key={`nec-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{currency(Math.round(d.nonEmploymentCosts))}</div>
             ))}
-            <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Non‑MD Employment</div>
+            <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Staff Employment</div>
+            {baselineLabel && <div style={{ textAlign: 'left' }}>{baselineDataObj ? currency(Math.round(baselineDataObj.nonMdEmploymentCosts)) : ''}</div>}
             {data.map((d) => (
               <div key={`nmd-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{currency(Math.round(d.nonMdEmploymentCosts))}</div>
             ))}
-            <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Locums</div>
-            {data.map((d) => (
-              <div key={`loc-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{`${d.locumDays} d (${currencyShort(d.locumDays * LOCUM_DAY_RATE)})`}</div>
-            ))}
             <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Misc Employment</div>
+            {baselineLabel && <div style={{ textAlign: 'left' }}>{baselineDataObj ? currency(Math.round(baselineDataObj.miscEmploymentCosts)) : ''}</div>}
             {data.map((d) => (
               <div key={`msc-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{currency(Math.round(d.miscEmploymentCosts))}</div>
+            ))}
+            <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Locums</div>
+            {baselineLabel && <div style={{ textAlign: 'left' }}>{baselineDataObj ? currency(Math.round(baselineDataObj.locumCosts)) : ''}</div>}
+            {data.map((d) => (
+              <div key={`loc-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{currency(Math.round(d.locumCosts))}</div>
             ))}
           </div>
         </div>
 
         <div style={{ marginTop: 8, overflowX: isMobile ? 'auto' : 'visible' }}>
           <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>Physicians per year</div>
-          <div style={{ display: 'grid', gridTemplateColumns: `${labelColWidth}px repeat(${data.length}, ${yearColWidth}px)`, columnGap: columnGap, rowGap: 3, fontSize: 13, alignItems: 'center', fontVariantNumeric: 'tabular-nums' as any }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `${labelColWidth}px ${baselineLabel ? `${yearColWidth}px ` : ''}repeat(${data.length}, ${yearColWidth}px)`, columnGap: columnGap, rowGap: 3, fontSize: 13, alignItems: 'center', fontVariantNumeric: 'tabular-nums' as any }}>
             <div style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>Slot</div>
+            {baselineLabel && <div style={{ textAlign: 'left', fontWeight: 600 }}>{baselineLabel}</div>}
             {data.map((d) => (
               <div key={`ph-h-${scenario}-${d.year}`} style={{ textAlign: 'left', fontWeight: 600 }}>{d.year}</div>
             ))}
             {Array.from({ length: maxPhysicians }).map((_, rowIdx) => (
               <Fragment key={`row-${scenario}-${rowIdx}`}>
                 <div style={{ color: '#4b5563', whiteSpace: 'nowrap' }}>#{rowIdx + 1}</div>
+                {baselineLabel && (
+                  <div style={{ textAlign: 'left' }}>
+                    {(() => {
+                      const p = baselineDataObj?.physicians[rowIdx]
+                      if (!p) return ''
+                      const role = p.type === 'partner' ? 'P' : p.type === 'employee' ? 'E' : p.type === 'newEmployee' ? 'N' : p.type === 'employeeToTerminate' ? 'T' : p.type === 'employeeToPartner' ? 'M' : 'R'
+                      const tokens: string[] = [abbreviatePhysicianName(p.name), role]
+                      if (p.type === 'employeeToPartner') {
+                        const transitionDay = employeePortionToTransitionDay(p.employeePortionOfYear ?? 0.5, baselineDataObj!.year)
+                        const { month, day } = dayOfYearToDate(transitionDay, baselineDataObj!.year)
+                        const wk = typeof p.weeksVacation === 'number' ? `${p.weeksVacation}w` : ''
+                        const sal = typeof p.salary === 'number' ? currencyShort(p.salary).toUpperCase() : ''
+                        const dateLabel = `→${month}/${day}`
+                        const payTime = sal && wk ? `${sal}/${wk}` : sal || wk
+                        const detail = payTime ? `${dateLabel} ${payTime}` : dateLabel
+                        tokens.push(detail)
+                      } else if (p.type === 'partnerToRetire') {
+                        const retirementDay = partnerPortionToRetirementDay(p.partnerPortionOfYear ?? 0.5, baselineDataObj!.year)
+                        const wk = typeof p.weeksVacation === 'number' ? `${p.weeksVacation}w` : ''
+                        const buyout = typeof p.buyoutCost === 'number' ? currencyShort(p.buyoutCost).toUpperCase() : ''
+                        if (retirementDay === 0) {
+                          const workTime = wk && buyout ? `${wk}/${buyout}` : wk || buyout
+                          if (workTime) tokens.push(workTime)
+                        } else {
+                          const { month, day } = dayOfYearToDate(retirementDay, baselineDataObj!.year)
+                          const dateLabel = `${month}/${day}`
+                          const workTime = wk && buyout ? `${wk}/${buyout}` : wk || buyout
+                          const detail = workTime ? `${dateLabel} ${workTime}` : dateLabel
+                          tokens.push(detail)
+                        }
+                      } else if (p.type === 'employee') {
+                        const sal = typeof p.salary === 'number' ? currencyShort(p.salary).toUpperCase() : ''
+                        if (sal) tokens.push(sal)
+                      } else if (p.type === 'newEmployee') {
+                        const startDay = startPortionToStartDay(p.startPortionOfYear ?? 0, baselineDataObj!.year)
+                        const { month, day } = dayOfYearToDate(startDay, baselineDataObj!.year)
+                        const sal = typeof p.salary === 'number' ? currencyShort(p.salary).toUpperCase() : ''
+                        const dateLabel = `${month}/${day}`
+                        const detail = sal ? `${dateLabel} ${sal}` : dateLabel
+                        tokens.push(detail)
+                      } else if (p.type === 'employeeToTerminate') {
+                        const terminateDay = startPortionToStartDay(p.terminatePortionOfYear ?? 1, baselineDataObj!.year)
+                        const { month, day } = dayOfYearToDate(terminateDay, baselineDataObj!.year)
+                        const sal = typeof p.salary === 'number' ? currencyShort(p.salary).toUpperCase() : ''
+                        const dateLabel = `${month}/${day}`
+                        const detail = sal ? `${dateLabel} ${sal}` : dateLabel
+                        tokens.push(detail)
+                      } else if (p.type === 'partner') {
+                        const wk = typeof p.weeksVacation === 'number' ? `${p.weeksVacation}w` : ''
+                        if (wk) tokens.push(wk)
+                      }
+                      return (
+                        <div style={{ display: 'grid', gridTemplateColumns: '24px 12px 1fr', gap: 2, whiteSpace: 'nowrap', overflow: 'hidden', textAlign: 'left', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 500 }}>{tokens[0]}</span>
+                          <span style={{ color: '#6b7280', fontSize: '10px' }}>{tokens[1] || ''}</span>
+                          <span style={{ color: '#6b7280', fontSize: '10px' }}>{tokens[2] || ''}</span>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )}
                 {data.map((d) => {
                   const p = d.physicians[rowIdx]
                   if (!p) return <div key={`cell-${scenario}-${d.year}-${rowIdx}`} />
-                  const role = p.type === 'partner' ? 'P' : p.type === 'employee' ? 'E' : 'M'
+                  const role = p.type === 'partner' ? 'P' : p.type === 'employee' ? 'E' : p.type === 'newEmployee' ? 'N' : p.type === 'employeeToTerminate' ? 'T' : p.type === 'employeeToPartner' ? 'M' : 'R'
                   const tokens: string[] = [abbreviatePhysicianName(p.name), role]
                   
                   if (p.type === 'employeeToPartner') {
-                    const empPct = Math.round((p.employeePortionOfYear ?? 0.5) * 100)
+                    const transitionDay = employeePortionToTransitionDay(p.employeePortionOfYear ?? 0.5, d.year)
+                    const { month, day } = dayOfYearToDate(transitionDay, d.year)
                     const wk = typeof p.weeksVacation === 'number' ? `${p.weeksVacation}w` : ''
                     const sal = typeof p.salary === 'number' ? currencyShort(p.salary).toUpperCase() : ''
-                    const pctLabel = empPct === 50 ? '50/50' : `${empPct}%E`
+                    const dateLabel = `${month}/${day}`
                     const payTime = sal && wk ? `${sal}/${wk}` : sal || wk
-                    const detail = payTime ? `${pctLabel} ${payTime}` : pctLabel
+                    const detail = payTime ? `${dateLabel} ${payTime}` : dateLabel
                     tokens.push(detail)
+                  } else if (p.type === 'partnerToRetire') {
+                    const retirementDay = partnerPortionToRetirementDay(p.partnerPortionOfYear ?? 0.5, d.year)
+                    const wk = typeof p.weeksVacation === 'number' ? `${p.weeksVacation}w` : ''
+                    const buyout = typeof p.buyoutCost === 'number' ? currencyShort(p.buyoutCost).toUpperCase() : ''
+                    
+                    if (retirementDay === 0) {
+                      // Retired in prior year - omit date, show only costs
+                      const workTime = wk && buyout ? `${wk}/${buyout}` : wk || buyout
+                      if (workTime) tokens.push(workTime)
+                    } else {
+                      // Normal retirement in current year - show date and costs
+                      const { month, day } = dayOfYearToDate(retirementDay, d.year)
+                      const dateLabel = `${month}/${day}`
+                      const workTime = wk && buyout ? `${wk}/${buyout}` : wk || buyout
+                      const detail = workTime ? `${dateLabel} ${workTime}` : dateLabel
+                      tokens.push(detail)
+                    }
                   } else if (p.type === 'employee') {
                     const sal = typeof p.salary === 'number' ? currencyShort(p.salary).toUpperCase() : ''
                     if (sal) tokens.push(sal)
+                  } else if (p.type === 'newEmployee') {
+                    const startDay = startPortionToStartDay(p.startPortionOfYear ?? 0, d.year)
+                    const { month, day } = dayOfYearToDate(startDay, d.year)
+                    const sal = typeof p.salary === 'number' ? currencyShort(p.salary).toUpperCase() : ''
+                    const dateLabel = `${month}/${day}`
+                    const detail = sal ? `${dateLabel} ${sal}` : dateLabel
+                    tokens.push(detail)
+                  } else if (p.type === 'employeeToTerminate') {
+                    const terminateDay = startPortionToStartDay(p.terminatePortionOfYear ?? 1, d.year)
+                    const { month, day } = dayOfYearToDate(terminateDay, d.year)
+                    const sal = typeof p.salary === 'number' ? currencyShort(p.salary).toUpperCase() : ''
+                    const dateLabel = `${month}/${day}`
+                    const detail = sal ? `${dateLabel} ${sal}` : dateLabel
+                    tokens.push(detail)
                   } else if (p.type === 'partner') {
                     const wk = typeof p.weeksVacation === 'number' ? `${p.weeksVacation}w` : ''
                     if (wk) tokens.push(wk)
@@ -2547,7 +5281,7 @@ function ParametersSummary() {
                   return (
                     <div key={`cell-${scenario}-${d.year}-${rowIdx}`} style={{ display: 'grid', gridTemplateColumns: '24px 12px 1fr', gap: 2, whiteSpace: 'nowrap', overflow: 'hidden', textAlign: 'left', alignItems: 'center' }}>
                       <span style={{ fontWeight: 500 }}>{tokens[0]}</span>
-                      <span style={{ color: '#6b7280' }}>{tokens[1] || ''}</span>
+                      <span style={{ color: '#6b7280', fontSize: '11px' }}>{tokens[1] || ''}</span>
                       <span style={{ color: '#6b7280', fontSize: '11px' }}>{tokens[2] || ''}</span>
                     </div>
                   )
@@ -2555,6 +5289,16 @@ function ParametersSummary() {
               </Fragment>
             ))}
           </div>
+        </div>
+
+        {/* Legend / key for role abbreviations */}
+        <div style={{ marginTop: 16, color: '#6b7280', fontSize: 11, display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', textAlign: 'center', width: '100%' }}>
+          <span>N: New Employee</span>
+          <span>E: Employee</span>
+          <span>T: Employee Termination</span>
+          <span>M: Mixed (Employee to Partner)</span>
+          <span>P: Partner</span>
+          <span>R: Partner to Retire</span>
         </div>
       </div>
     )

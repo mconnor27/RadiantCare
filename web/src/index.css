@@ -183,6 +183,41 @@ input[type="range"]:active::-moz-range-thumb {
   background: #bfdbfe;
 }
 
+/* Read-only (disabled) sliders: gray thumb and no hover/active reactions */
+input[type="range"][disabled]::-webkit-slider-thumb {
+  background: #e5e7eb !important; /* gray-200 */
+  border-color: #d1d5db !important; /* gray-300 */
+  box-shadow: none !important;
+  transform: none !important;
+}
+input[type="range"][disabled]:hover::-webkit-slider-thumb,
+input[type="range"][disabled]:active::-webkit-slider-thumb {
+  box-shadow: none !important;
+  transform: none !important;
+}
+/* Firefox */
+input[type="range"][disabled]::-moz-range-thumb {
+  background: #e5e7eb !important;
+  border-color: #d1d5db !important;
+  box-shadow: none !important;
+}
+input[type="range"][disabled]:hover::-moz-range-thumb,
+input[type="range"][disabled]:active::-moz-range-thumb {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* Also dim the growth-slider track when disabled */
+input[type="range"].growth-slider:disabled::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, #f0f1f3 0%, #f0f1f3 var(--fill-start, 50%), #d1d5db var(--fill-start, 50%), #d1d5db var(--fill-end, 50%), #f0f1f3 var(--fill-end, 50%), #f0f1f3 100%) !important;
+}
+input[type="range"].growth-slider:disabled::-moz-range-track {
+  background: #f0f1f3 !important;
+}
+input[type="range"].growth-slider:disabled::-moz-range-progress {
+  background: transparent !important;
+}
+
 /* Removed dark mode support - app is always light mode
 @media (prefers-color-scheme: light) {
   :root {
@@ -429,5 +464,29 @@ input, select, textarea, button {
   .dashboard-container {
     padding: 12px !important;
     max-width: 100% !important;
+  }
+}
+
+/* Remove native number input spinners */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Animation for data source buttons flowing from baseline */
+@keyframes fadeInSlideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
