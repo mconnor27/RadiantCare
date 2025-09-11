@@ -4831,9 +4831,62 @@ function OverallCompensationSummary() {
     : undefined
   // const totalPerYear = perYear.map(({ year, comps }) => ({ year, total: comps.reduce((s, c) => s + c.comp, 0) }))
 
-  // Collect all physician names from both scenarios
-  const allNamesFromA = perYearA.flatMap((y) => y.comps.map((c) => c.name))
-  const allNamesFromB = perYearB ? perYearB.flatMap((y) => y.comps.map((c) => c.name)) : []
+  // For the "Per Physician By Year" table, we want to include retired partners
+  // Create a modified version that includes all partners
+  const computeAllCompensationsForYearWithRetired = (year: number, scenario: ScenarioKey) => {
+    const regularComps = computeAllCompensationsForYear(year, scenario)
+    const state = useDashboardStore.getState()
+    const sc = scenario === 'A' ? state.scenarioA : state.scenarioB!
+    let fy = sc.future.find((f) => f.year === year) as FutureYear | undefined
+    if (!fy && year === 2025) {
+      const last2024 = state.historic.find((h) => h.year === 2024)
+      const last2025 = state.historic.find((h) => h.year === 2025)
+      const dataMode = scenario === 'A' ? state.scenarioA.dataMode : state.scenarioB?.dataMode
+      
+      if (dataMode === '2024 Data' && last2024) {
+        fy = {
+          year: 2025,
+          totalIncome: last2024.totalIncome,
+          nonEmploymentCosts: last2024.nonEmploymentCosts,
+          nonMdEmploymentCosts: 164677.44,
+          locumCosts: 113400,
+          miscEmploymentCosts: 18182.56,
+          physicians: scenario2024Defaults(),
+        }
+      } else if (last2025) {
+        fy = {
+          year: 2025,
+          totalIncome: last2025.totalIncome,
+          nonEmploymentCosts: last2025.nonEmploymentCosts,
+          nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+          locumCosts: 54600,
+          miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+          physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
+        }
+      }
+    }
+    if (!fy) return regularComps
+    
+    // Add any retired partners that were excluded
+    const retiredPartners = fy.physicians.filter(p => p.type === 'partnerToRetire' && getPartnerFTEWeight(p) === 0)
+    const retiredComps = retiredPartners.map(p => ({
+      id: p.id,
+      name: p.name,
+      type: 'partner' as const,
+      comp: p.buyoutCost ?? 0 // Show buyout amount as their compensation
+    }))
+    
+    return [...regularComps, ...retiredComps]
+  }
+  
+  const perYearAWithRetired = years.map((y) => ({ year: y, comps: computeAllCompensationsForYearWithRetired(y, 'A') }))
+  const perYearBWithRetired = store.scenarioBEnabled && store.scenarioB
+    ? years.map((y) => ({ year: y, comps: computeAllCompensationsForYearWithRetired(y, 'B') }))
+    : undefined
+
+  // Collect all physician names from both scenarios (including retired)
+  const allNamesFromA = perYearAWithRetired.flatMap((y) => y.comps.map((c) => c.name))
+  const allNamesFromB = perYearBWithRetired ? perYearBWithRetired.flatMap((y) => y.comps.map((c) => c.name)) : []
   const allNames = Array.from(new Set([...allNamesFromA, ...allNamesFromB]))
   // Assign a consistent color per person for both scenarios
   const colorPalette = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
@@ -4842,15 +4895,15 @@ function OverallCompensationSummary() {
   const seriesA = allNames.map((name) => ({
     name,
     values: years.map((y) => {
-      const found = perYearA.find((py) => py.year === y)?.comps.find((c) => c.name === name)
+      const found = perYearAWithRetired.find((py) => py.year === y)?.comps.find((c) => c.name === name)
       return found ? found.comp : 0
     }),
   }))
-  const seriesB = perYearB
+  const seriesB = perYearBWithRetired
     ? allNames.map((name) => ({
         name,
         values: years.map((y) => {
-          const found = perYearB!.find((py) => py.year === y)?.comps.find((c) => c.name === name)
+          const found = perYearBWithRetired.find((py) => py.year === y)?.comps.find((c) => c.name === name)
           return found ? found.comp : 0
         }),
       }))
@@ -4963,7 +5016,7 @@ function OverallCompensationSummary() {
       </div>
 
 
-      <div style={{ marginTop: 8, overflowX: isMobile ? 'auto' : 'visible' }}>
+      <div style={{ marginTop: 8, overflowX: isMobile ? 'auto' : 'visible', border: '1px solid #e5e7eb', borderRadius: 6, padding: 8, background: '#ffffff' }}>
         <div style={{ fontWeight: 600, marginBottom: 2 }}>Per Physician By Year</div>
         <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 2, fontWeight: 600 }}>
           <div>Name</div>
@@ -4975,7 +5028,7 @@ function OverallCompensationSummary() {
         {allNames.map((name, idx) => (
           <div key={name} style={{ display: 'contents' }}>
             <div
-              style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '1px 0', borderTop: '1px solid #f0f0f0', background: idx % 2 === 0 ? '#f3f4f6' : 'transparent' }}
+              style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '1px 0', borderTop: '1px solid #f0f0f0', background: idx % 2 === 0 ? '#f9fafb' : 'transparent' }}
               onMouseEnter={() => setHighlight({ scenario: 'A', name })}
               onMouseLeave={() => setHighlight(null)}
             >
@@ -4995,7 +5048,7 @@ function OverallCompensationSummary() {
             </div>
             {store.scenarioBEnabled && (
               <div
-                style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '1px 0', borderTop: '1px solid #f0f0f0', background: idx % 2 === 0 ? '#f3f4f6' : 'transparent' }}
+                style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '1px 0', borderTop: '1px solid #f0f0f0', background: idx % 2 === 0 ? '#f9fafb' : 'transparent' }}
                 onMouseEnter={() => setHighlight({ scenario: 'B', name })}
                 onMouseLeave={() => setHighlight(null)}
               >
@@ -5059,7 +5112,7 @@ function OverallCompensationSummary() {
         <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '2px solid #e5e7eb', background: '#eef7ff', fontWeight: 700 }}>
           <div>{store.scenarioBEnabled ? 'Scenario A (Total)' : 'Total'}</div>
           {years.map((y) => {
-            const totalComp = perYearA.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
+            const totalComp = perYearAWithRetired.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
             const fy = y === 2025 
               ? { locumCosts: 54600 } // 2025 default
               : store.scenarioA.future.find(f => f.year === y)
@@ -5068,7 +5121,7 @@ function OverallCompensationSummary() {
           })}
           <div style={{ textAlign: 'right' }}>
             {currency(
-              perYearA.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
+              perYearAWithRetired.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
               years.reduce((total, y) => {
                 const fy = y === 2025 
                   ? { locumCosts: 54600 } // 2025 default
@@ -5080,11 +5133,11 @@ function OverallCompensationSummary() {
         </div>
 
         {/* Scenario B Total row */}
-        {store.scenarioBEnabled && store.scenarioB && perYearB && (
+        {store.scenarioBEnabled && store.scenarioB && perYearBWithRetired && (
           <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '1px solid #e5e7eb', background: '#eef7ff', fontWeight: 700 }}>
             <div>Scenario B (Total)</div>
             {years.map((y) => {
-              const totalComp = perYearB.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
+              const totalComp = perYearBWithRetired.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
               const fy = y === 2025 
                 ? { locumCosts: 54600 } // 2025 default
                 : store.scenarioB!.future.find(f => f.year === y)
@@ -5093,7 +5146,7 @@ function OverallCompensationSummary() {
             })}
             <div style={{ textAlign: 'right' }}>
               {currency(
-                perYearB.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
+                perYearBWithRetired.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
                 years.reduce((total, y) => {
                   const fy = y === 2025 
                     ? { locumCosts: 54600 } // 2025 default
@@ -5123,7 +5176,7 @@ function OverallCompensationSummary() {
           <div key={`SA-${name}`} style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: idx === 0 ? '1px solid #f0f0f0' : '1px solid #f8f8f8', background: '#f9fafb' }}>
             <div style={{ paddingLeft: '8px' }}>{name} (A)</div>
             {years.map((y) => {
-              const found = perYearA.find((py) => py.year === y)?.comps.find((c) => c.name === name)
+              const found = perYearAWithRetired.find((py) => py.year === y)?.comps.find((c) => c.name === name)
               return <div key={`SA-${name}-${y}`} style={{ textAlign: 'right' }}>{currency(found ? found.comp : 0)}</div>
             })}
             <div style={{ textAlign: 'right' }}>
@@ -5186,7 +5239,7 @@ function OverallCompensationSummary() {
               <div key={`SB-${name}`} style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: idx === 0 ? '2px solid #e5e7eb' : '1px solid #f8f8f8', background: '#faf9f7' }}>
                 <div style={{ paddingLeft: '8px' }}>{name} (B)</div>
                 {years.map((y) => {
-                  const found = perYearB.find((py) => py.year === y)?.comps.find((c) => c.name === name)
+                  const found = perYearBWithRetired.find((py) => py.year === y)?.comps.find((c) => c.name === name)
                   return <div key={`SB-${name}-${y}`} style={{ textAlign: 'right' }}>{currency(found ? found.comp : 0)}</div>
                 })}
                 <div style={{ textAlign: 'right' }}>
@@ -5310,57 +5363,55 @@ function ParametersSummary() {
       <div style={{ marginTop: 12, border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, background: '#f9fafb', maxWidth: 1000, marginLeft: 'auto', marginRight: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>Scenario {scenario} Parameters</div>
-          <div style={{ fontSize: 13, color: '#374151' }}>
+          <div style={{ fontSize: 13, color: '#374151', border: '1px solid #e5e7eb', borderRadius: 6, padding: 5, background: '#ffffff' }}>
             Growth — Income: {sc.projection.incomeGrowthPct}% · Non-Emp: {sc.projection.nonEmploymentCostsPct}% · Staff: {sc.projection.nonMdEmploymentCostsPct}% · Misc: {sc.projection.miscEmploymentCostsPct}%
           </div>
         </div>
 
-        <div style={{ marginTop: 6, overflowX: isMobile ? 'auto' : 'visible' }}>
-          <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>Per-year core values</div>
-          <div style={{ display: 'grid', gridTemplateColumns: `${labelColWidth}px ${baselineLabel ? `${yearColWidth}px ` : ''}repeat(${data.length}, ${yearColWidth}px)`, columnGap: columnGap, rowGap: 2, alignItems: 'start', fontSize: 13, fontVariantNumeric: 'tabular-nums' as any }}>
-            <div style={{ fontWeight: 600, whiteSpace: 'nowrap', textAlign: 'left' }}>Metric</div>
-            {baselineLabel && <div style={{ fontWeight: 600, textAlign: 'left' }}>{baselineLabel}</div>}
-            {data.map((d) => (
-              <div key={`hdr-${scenario}-${d.year}`} style={{ fontWeight: 600, textAlign: 'left' }}>{d.year}</div>
-            ))}
-            <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Income</div>
-            {baselineLabel && <div style={{ textAlign: 'left' }}>{baselineDataObj ? currency(Math.round(baselineDataObj.totalIncome)) : ''}</div>}
-            {data.map((d) => (
-              <div key={`inc-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{currency(Math.round(d.totalIncome))}</div>
-            ))}
-            <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Non-Employment</div>
-            {baselineLabel && <div style={{ textAlign: 'left' }}>{baselineDataObj ? currency(Math.round(baselineDataObj.nonEmploymentCosts)) : ''}</div>}
-            {data.map((d) => (
-              <div key={`nec-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{currency(Math.round(d.nonEmploymentCosts))}</div>
-            ))}
-            <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Staff Employment</div>
-            {baselineLabel && <div style={{ textAlign: 'left' }}>{baselineDataObj ? currency(Math.round(baselineDataObj.nonMdEmploymentCosts)) : ''}</div>}
-            {data.map((d) => (
-              <div key={`nmd-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{currency(Math.round(d.nonMdEmploymentCosts))}</div>
-            ))}
-            <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Misc Employment</div>
-            {baselineLabel && <div style={{ textAlign: 'left' }}>{baselineDataObj ? currency(Math.round(baselineDataObj.miscEmploymentCosts)) : ''}</div>}
-            {data.map((d) => (
-              <div key={`msc-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{currency(Math.round(d.miscEmploymentCosts))}</div>
-            ))}
-            <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Locums</div>
-            {baselineLabel && <div style={{ textAlign: 'left' }}>{baselineDataObj ? currency(Math.round(baselineDataObj.locumCosts)) : ''}</div>}
-            {data.map((d) => (
-              <div key={`loc-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{currency(Math.round(d.locumCosts))}</div>
+        <div style={{ marginTop: 6, marginBottom: 12, overflowX: isMobile ? 'auto' : 'visible', border: '1px solid #e5e7eb', borderRadius: 6, padding: 8, background: '#ffffff' }}>
+          <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>Per Year Core Values</div>
+          <div style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' as any }}>
+            {/* Header row */}
+            <div style={{ display: 'grid', gridTemplateColumns: `${labelColWidth}px ${baselineLabel ? `${yearColWidth}px ` : ''}repeat(${data.length}, ${yearColWidth}px)`, columnGap: columnGap, padding: '4px 0', fontWeight: 600 }}>
+              <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>Metric</div>
+              {baselineLabel && <div style={{ textAlign: 'left' }}>{baselineLabel}</div>}
+              {data.map((d) => (
+                <div key={`hdr-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{d.year}</div>
+              ))}
+            </div>
+            {/* Data rows with alternating backgrounds */}
+            {[
+              { label: 'Income', baseline: baselineDataObj?.totalIncome, values: data.map(d => d.totalIncome), key: 'inc' },
+              { label: 'Non-Employment', baseline: baselineDataObj?.nonEmploymentCosts, values: data.map(d => d.nonEmploymentCosts), key: 'nec' },
+              { label: 'Staff Employment', baseline: baselineDataObj?.nonMdEmploymentCosts, values: data.map(d => d.nonMdEmploymentCosts), key: 'nmd' },
+              { label: 'Misc Employment', baseline: baselineDataObj?.miscEmploymentCosts, values: data.map(d => d.miscEmploymentCosts), key: 'msc' },
+              { label: 'Locums', baseline: baselineDataObj?.locumCosts, values: data.map(d => d.locumCosts), key: 'loc' }
+            ].map((row, idx) => (
+              <div key={row.key} style={{ display: 'grid', gridTemplateColumns: `${labelColWidth}px ${baselineLabel ? `${yearColWidth}px ` : ''}repeat(${data.length}, ${yearColWidth}px)`, columnGap: columnGap, padding: '4px 0', background: idx % 2 === 0 ? '#f9fafb' : 'transparent', alignItems: 'center' }}>
+                <div style={{ whiteSpace: 'nowrap', textAlign: 'left' }}>{row.label}</div>
+                {baselineLabel && <div style={{ textAlign: 'left' }}>{row.baseline ? currency(Math.round(row.baseline)) : ''}</div>}
+                {row.values.map((value, valueIdx) => (
+                  <div key={`${row.key}-${scenario}-${data[valueIdx].year}`} style={{ textAlign: 'left' }}>{currency(Math.round(value))}</div>
+                ))}
+              </div>
             ))}
           </div>
         </div>
 
-        <div style={{ marginTop: 8, overflowX: isMobile ? 'auto' : 'visible' }}>
-          <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>Physicians per year</div>
-          <div style={{ display: 'grid', gridTemplateColumns: `${labelColWidth}px ${baselineLabel ? `${yearColWidth}px ` : ''}repeat(${data.length}, ${yearColWidth}px)`, columnGap: columnGap, rowGap: 3, fontSize: 13, alignItems: 'center', fontVariantNumeric: 'tabular-nums' as any }}>
-            <div style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>Slot</div>
-            {baselineLabel && <div style={{ textAlign: 'left', fontWeight: 600 }}>{baselineLabel}</div>}
-            {data.map((d) => (
-              <div key={`ph-h-${scenario}-${d.year}`} style={{ textAlign: 'left', fontWeight: 600 }}>{d.year}</div>
-            ))}
+        <div style={{ marginTop: 8, overflowX: isMobile ? 'auto' : 'visible', border: '1px solid #e5e7eb', borderRadius: 6, padding: 8, background: '#ffffff' }}>
+          <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>Physicians Per Year</div>
+          <div style={{ fontSize: 13, alignItems: 'center', fontVariantNumeric: 'tabular-nums' as any }}>
+            {/* Header row */}
+            <div style={{ display: 'grid', gridTemplateColumns: `${labelColWidth}px ${baselineLabel ? `${yearColWidth}px ` : ''}repeat(${data.length}, ${yearColWidth}px)`, columnGap: columnGap, padding: '4px 0', fontWeight: 600 }}>
+              <div style={{ whiteSpace: 'nowrap' }}>Slot</div>
+              {baselineLabel && <div style={{ textAlign: 'left' }}>{baselineLabel}</div>}
+              {data.map((d) => (
+                <div key={`ph-h-${scenario}-${d.year}`} style={{ textAlign: 'left' }}>{d.year}</div>
+              ))}
+            </div>
+            {/* Physician rows with alternating backgrounds */}
             {Array.from({ length: maxPhysicians }).map((_, rowIdx) => (
-              <Fragment key={`row-${scenario}-${rowIdx}`}>
+              <div key={`row-${scenario}-${rowIdx}`} style={{ display: 'grid', gridTemplateColumns: `${labelColWidth}px ${baselineLabel ? `${yearColWidth}px ` : ''}repeat(${data.length}, ${yearColWidth}px)`, columnGap: columnGap, padding: '4px 0', background: rowIdx % 2 === 0 ? '#f9fafb' : 'transparent', alignItems: 'center' }}>
                 <div style={{ color: '#4b5563', whiteSpace: 'nowrap' }}>#{rowIdx + 1}</div>
                 {baselineLabel && (
                   <div style={{ textAlign: 'left' }}>
@@ -5484,19 +5535,21 @@ function ParametersSummary() {
                     </div>
                   )
                 })}
-              </Fragment>
+              </div>
             ))}
           </div>
         </div>
 
         {/* Legend / key for role abbreviations */}
-        <div style={{ marginTop: 16, color: '#6b7280', fontSize: 11, display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', textAlign: 'center', width: '100%' }}>
+        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center', width: '100%' }}>
+          <div style={{ color: '#6b7280', fontSize: 11, display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', textAlign: 'center', border: '1px solid #e5e7eb', borderRadius: 6, padding: 5, background: '#ffffff' }}>
           <span>N: New Employee</span>
           <span>E: Employee</span>
           <span>T: Employee Termination</span>
           <span>M: Mixed (Employee to Partner)</span>
           <span>P: Partner</span>
           <span>R: Partner to Retire</span>
+          </div>
         </div>
       </div>
     )
