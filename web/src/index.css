@@ -549,3 +549,21 @@ input[type=number] {
   padding: 8px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
+
+/* Drag handle cursor styles */
+[data-drag-handle] {
+  cursor: grab !important;
+}
+
+[data-drag-handle]:hover {
+  cursor: grab !important;
+}
+
+[data-drag-handle]:active {
+  cursor: grabbing !important;
+}
+
+/* Ensure cursor stays consistent during dragging */
+body.dragging [data-drag-handle] {
+  cursor: grabbing !important;
+}

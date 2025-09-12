@@ -86,7 +86,14 @@ export function DragDropPhysicians({ children, physicians, onReorder }: DragDrop
     if (!isDragging) {
       setItems(physicians)
     }
-  }, [physicians, isDragging])
+  }, [physicians]) // Remove isDragging dependency to avoid immediate reset
+
+  // Cleanup: remove dragging class on unmount or if dragging state gets out of sync
+  React.useEffect(() => {
+    return () => {
+      document.body.classList.remove('dragging')
+    }
+  }, [])
 
   const sensors = useSensors(
     useSensor(DragHandleSensor, {
@@ -98,6 +105,7 @@ export function DragDropPhysicians({ children, physicians, onReorder }: DragDrop
 
   function handleDragStart() {
     setIsDragging(true)
+    document.body.classList.add('dragging')
   }
 
   function handleDragOver(event: DragOverEvent) {
@@ -116,11 +124,16 @@ export function DragDropPhysicians({ children, physicians, onReorder }: DragDrop
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     setIsDragging(false)
+    document.body.classList.remove('dragging')
 
     if (active.id !== over?.id && over) {
+      // Find indices in original physicians array
       const oldIndex = physicians.findIndex((p) => p.id === active.id)
       const newIndex = physicians.findIndex((p) => p.id === over.id)
-      onReorder(oldIndex, newIndex)
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        onReorder(oldIndex, newIndex)
+      }
     }
   }
 
