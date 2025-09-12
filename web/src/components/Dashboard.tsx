@@ -1728,7 +1728,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
       )}
       <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#f3f4f6', padding: 8 }}>
 
-      <div style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)' }}>
+      <div className="panel-green" style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)' }}>
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Total Income</div>
       <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
@@ -1772,7 +1772,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
       </div>
       </div>
 
-      <div style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)' }}>
+      <div className="panel-red" style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)' }}>
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Non-Employment Costs</div>
       <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
@@ -1826,7 +1826,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
       </div>
       </div>
 
-      <div style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)' }}>
+      <div className="panel-red" style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)' }}>
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Staff Employment Costs</div>
       <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
@@ -3879,7 +3879,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
   return (
     <div style={{ marginTop: 8, border: '1px solid #e5e7eb', borderRadius: 8, padding: 8, background: '#f3f4f6' }}>
       <div style={{ fontWeight: 600, marginBottom: 6 }}>Physicians)</div>
-      <div style={{
+      <div className="panel-purple" style={{
         background: '#ffffff',
         borderRadius: 8,
         border: '1px solid rgba(126, 34, 206, 0.4)',
@@ -4002,21 +4002,11 @@ function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
   // Try to find the future year; if not found and year is 2025, build a synthetic year from historic actuals
   let fy = sc.future.find((f) => f.year === year) as FutureYear | undefined
   if (!fy && year === 2025) {
-    const last2024 = state.historic.find((h) => h.year === 2024)
     const last2025 = state.historic.find((h) => h.year === 2025)
-    const dataMode = scenario === 'A' ? state.scenarioA.dataMode : state.scenarioB?.dataMode
     
-    if (dataMode === '2024 Data' && last2024) {
-      fy = {
-        year: 2025,
-        totalIncome: last2024.totalIncome,
-        nonEmploymentCosts: last2024.nonEmploymentCosts,
-        nonMdEmploymentCosts: 164677.44, // 2024 actual staff employment costs
-        locumCosts: 113400, // 2024 actual locums costs
-        miscEmploymentCosts: 18182.56, // 2024 actual misc employment
-        physicians: scenario2024Defaults(),
-      }
-    } else if (last2025) {
+    // For the multi-year compensation summary, 2025 should always show 2025 actual values
+    // regardless of the baseline data mode selection
+    if (last2025) {
       fy = {
         year: 2025,
         totalIncome: last2025.totalIncome,
@@ -4194,7 +4184,7 @@ function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
     glowType: 'income' | 'cost' = 'cost',
     resetTooltip: string = 'Reset to 2016-2024 Trend'
   ) => (
-    <div style={{ 
+    <div className={glowType === 'income' ? 'panel-green' : 'panel-red'} style={{ 
       padding: 8,
       backgroundColor: '#ffffff',
       borderRadius: 8,
@@ -4655,6 +4645,7 @@ function HistoricAndProjectionChart() {
           yaxis: {
             tickprefix: '$',
             separatethousands: true,
+            tickformat: ',.0f',
             rangemode: 'tozero',
             range: [0, Math.ceil((yMax * 1.1) / 10000) * 10000],
             automargin: true,
@@ -4839,21 +4830,11 @@ function OverallCompensationSummary() {
     const sc = scenario === 'A' ? state.scenarioA : state.scenarioB!
     let fy = sc.future.find((f) => f.year === year) as FutureYear | undefined
     if (!fy && year === 2025) {
-      const last2024 = state.historic.find((h) => h.year === 2024)
       const last2025 = state.historic.find((h) => h.year === 2025)
-      const dataMode = scenario === 'A' ? state.scenarioA.dataMode : state.scenarioB?.dataMode
       
-      if (dataMode === '2024 Data' && last2024) {
-        fy = {
-          year: 2025,
-          totalIncome: last2024.totalIncome,
-          nonEmploymentCosts: last2024.nonEmploymentCosts,
-          nonMdEmploymentCosts: 164677.44,
-          locumCosts: 113400,
-          miscEmploymentCosts: 18182.56,
-          physicians: scenario2024Defaults(),
-        }
-      } else if (last2025) {
+      // For the multi-year compensation summary, 2025 should always show 2025 actual values
+      // regardless of the baseline data mode selection
+      if (last2025) {
         fy = {
           year: 2025,
           totalIncome: last2025.totalIncome,
@@ -4926,8 +4907,35 @@ function OverallCompensationSummary() {
     : []
 
   const [highlight, setHighlight] = useState<null | { scenario: 'A' | 'B'; name: string }>(null)
-  const isHighlighted = (scenario: 'A' | 'B', name: string) =>
-    highlight ? highlight.scenario === scenario && highlight.name === name : true
+  const [isolated, setIsolated] = useState<null | { scenario: 'A' | 'B'; name: string }>(null)
+  
+  const isHighlighted = (scenario: 'A' | 'B', name: string) => {
+    // If something is isolated, only highlight the isolated item
+    if (isolated) {
+      return isolated.scenario === scenario && isolated.name === name
+    }
+    // Otherwise, use hover highlighting
+    return highlight ? highlight.scenario === scenario && highlight.name === name : true
+  }
+
+  const isIsolated = (scenario: 'A' | 'B', name: string) =>
+    isolated ? isolated.scenario === scenario && isolated.name === name : false
+
+  const handleRowClick = (scenario: 'A' | 'B', name: string) => {
+    if (isolated?.scenario === scenario && isolated?.name === name) {
+      // Clicking the already isolated row - clear isolation
+      setIsolated(null)
+      setHighlight(null) // Also clear any hover highlight for immediate refresh
+    } else {
+      // Isolate this row
+      setIsolated({ scenario, name })
+    }
+  }
+
+  const clearIsolation = () => {
+    setIsolated(null)
+    setHighlight(null) // Also clear any hover highlight to ensure clean state
+  }
 
 
 
@@ -4940,8 +4948,9 @@ function OverallCompensationSummary() {
     <div style={{ marginTop: 16, border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, background: '#f9fafb' }}>
       <h3 style={{ margin: '12px 0' }}>Multi-Year Compensation Summary (2025–2030)</h3>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#ffffff', padding: 4 }}>
+        <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#ffffff', padding: 4, position: 'relative' }}>
         <Plot
+          key={`plot-${isolated?.scenario}-${isolated?.name}-${highlight?.scenario}-${highlight?.name}`}
           data={(() => {
             const rows: any[] = []
             for (const name of allNames) {
@@ -4953,7 +4962,7 @@ function OverallCompensationSummary() {
                 x: years,
                 y: a.values,
                 line: { color: colorByName[name], width: isHighlighted('A', name) ? 3 : 1.2 },
-                opacity: highlight ? (isHighlighted('A', name) ? 1 : 0.2) : 1,
+                opacity: (highlight || isolated) ? (isHighlighted('A', name) ? 1 : 0.2) : 1,
                 legendgroup: name, // Group by physician name
                 legendrank: 1, // A scenario appears first in each group
               })
@@ -4966,7 +4975,7 @@ function OverallCompensationSummary() {
                   x: years,
                   y: b.values,
                   line: { color: colorByName[name], dash: 'dot', width: isHighlighted('B', name) ? 3 : 1.2 },
-                  opacity: highlight ? (isHighlighted('B', name) ? 1 : 0.2) : 1,
+                  opacity: (highlight || isolated) ? (isHighlighted('B', name) ? 1 : 0.2) : 1,
                   legendgroup: name, // Same group as the A scenario
                   legendrank: 2, // B scenario appears second in each group
                 })
@@ -4981,7 +4990,7 @@ function OverallCompensationSummary() {
               x: years,
               y: locumsSeriesA,
               line: { color: '#888888', width: isHighlighted('A', 'Locums') ? 3 : 1.2 },
-              opacity: highlight ? (isHighlighted('A', 'Locums') ? 1 : 0.2) : 1,
+              opacity: (highlight || isolated) ? (isHighlighted('A', 'Locums') ? 1 : 0.2) : 1,
               legendgroup: 'Locums', // Group by itself
               legendrank: 999, // Put at end
             })
@@ -4993,7 +5002,7 @@ function OverallCompensationSummary() {
                 x: years,
                 y: locumsSeriesB,
                 line: { color: '#888888', dash: 'dot', width: isHighlighted('B', 'Locums') ? 3 : 1.2 },
-                opacity: highlight ? (isHighlighted('B', 'Locums') ? 1 : 0.2) : 1,
+                opacity: (highlight || isolated) ? (isHighlighted('B', 'Locums') ? 1 : 0.2) : 1,
                 legendgroup: 'Locums', // Same group as A scenario
                 legendrank: 1000, // Put at end after A
               })
@@ -5004,7 +5013,7 @@ function OverallCompensationSummary() {
           layout={{
             title: { text: 'Compensation per Physician (By Year)', font: { size: 14 } },
             margin: { l: 48, r: 8, t: 28, b: 72 },
-            yaxis: { tickprefix: '$', separatethousands: true },
+            yaxis: { tickprefix: '$', separatethousands: true, tickformat: ',.0f' },
             xaxis: { dtick: 1 },
             legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.08, yanchor: 'top', traceorder: 'grouped' },
           }}
@@ -5012,6 +5021,34 @@ function OverallCompensationSummary() {
           useResizeHandler={true}
           style={{ width: '100%', height: isMobile ? 360 : 420 }}
         />
+        {/* Reset button for clearing isolation */}
+        {isolated && (
+          <button
+            onClick={clearIsolation}
+            style={{
+              position: 'absolute',
+              top: 10,
+              right: 10,
+              background: 'rgba(0, 0, 0, 0.7)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              padding: '6px 8px',
+              fontSize: '12px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              zIndex: 1000,
+              transition: 'background-color 0.2s ease'
+            }}
+            onMouseEnter={(e) => (e.target as HTMLButtonElement).style.background = 'rgba(0, 0, 0, 0.9)'}
+            onMouseLeave={(e) => (e.target as HTMLButtonElement).style.background = 'rgba(0, 0, 0, 0.7)'}
+            title="Clear isolation"
+          >
+            ↻ Reset
+          </button>
+        )}
         </div>
       </div>
 
@@ -5028,9 +5065,11 @@ function OverallCompensationSummary() {
         {allNames.map((name, idx) => (
           <div key={name} style={{ display: 'contents' }}>
             <div
-              style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '1px 0', borderTop: '1px solid #f0f0f0', background: idx % 2 === 0 ? '#f9fafb' : 'transparent' }}
-              onMouseEnter={() => setHighlight({ scenario: 'A', name })}
-              onMouseLeave={() => setHighlight(null)}
+              className="table-row-hover"
+              style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '1px 0', borderTop: '1px solid #f0f0f0', background: isIsolated('A', name) ? 'rgba(59, 130, 246, 0.08)' : (idx % 2 === 0 ? '#f9fafb' : 'transparent') }}
+              onMouseEnter={() => !isolated && setHighlight({ scenario: 'A', name })}
+              onMouseLeave={() => !isolated && setHighlight(null)}
+              onClick={() => handleRowClick('A', name)}
             >
               <div>{store.scenarioBEnabled ? `${name} (Scenario A)` : name}</div>
               {years.map((y, idx) => (
@@ -5048,9 +5087,11 @@ function OverallCompensationSummary() {
             </div>
             {store.scenarioBEnabled && (
               <div
-                style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '1px 0', borderTop: '1px solid #f0f0f0', background: idx % 2 === 0 ? '#f9fafb' : 'transparent' }}
-                onMouseEnter={() => setHighlight({ scenario: 'B', name })}
-                onMouseLeave={() => setHighlight(null)}
+                className="table-row-hover"
+                style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '1px 0', borderTop: '1px solid #f0f0f0', background: isIsolated('B', name) ? 'rgba(59, 130, 246, 0.08)' : (idx % 2 === 0 ? '#f9fafb' : 'transparent') }}
+                onMouseEnter={() => !isolated && setHighlight({ scenario: 'B', name })}
+                onMouseLeave={() => !isolated && setHighlight(null)}
+                onClick={() => handleRowClick('B', name)}
               >
                 <div>{`${name} (Scenario B)`}</div>
                 {years.map((y, idx) => (
@@ -5069,7 +5110,10 @@ function OverallCompensationSummary() {
         ))}
 
         {/* Locums rows */}
-        <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '2px solid #e5e7eb', background: '#f8f9fa', fontSize: '14px', color: '#6b7280' }}>
+        <div className="table-row-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '2px solid #e5e7eb', background: isIsolated('A', 'Locums') ? 'rgba(59, 130, 246, 0.08)' : '#f8f9fa', fontSize: '14px', color: '#6b7280' }}
+        onMouseEnter={() => !isolated && setHighlight({ scenario: 'A', name: 'Locums' })}
+        onMouseLeave={() => !isolated && setHighlight(null)}
+        onClick={() => handleRowClick('A', 'Locums')}>
           <div style={{ paddingLeft: '8px' }}>{store.scenarioBEnabled ? 'Locums (Scenario A)' : 'Locums'}</div>
           {years.map((y, i) => {
             const fy = y === 2025 
@@ -5088,7 +5132,10 @@ function OverallCompensationSummary() {
           </div>
         </div>
         {store.scenarioBEnabled && store.scenarioB && (
-          <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #e5e7eb', background: '#f8f9fa', fontSize: '14px', color: '#6b7280' }}>
+          <div className="table-row-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #e5e7eb', background: isIsolated('B', 'Locums') ? 'rgba(59, 130, 246, 0.08)' : '#f8f9fa', fontSize: '14px', color: '#6b7280' }}
+          onMouseEnter={() => !isolated && setHighlight({ scenario: 'B', name: 'Locums' })}
+          onMouseLeave={() => !isolated && setHighlight(null)}
+          onClick={() => handleRowClick('B', 'Locums')}>
             <div style={{ paddingLeft: '8px' }}>Locums (Scenario B)</div>
             {years.map((y, i) => {
               const fy = y === 2025 
@@ -5109,8 +5156,8 @@ function OverallCompensationSummary() {
         )}
 
         {/* Scenario A Total row */}
-        <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '2px solid #e5e7eb', background: '#eef7ff', fontWeight: 700 }}>
-          <div>{store.scenarioBEnabled ? 'Scenario A (Total)' : 'Total'}</div>
+        <div className="table-row-total-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '2px solid #e5e7eb', background: '#eef7ff', fontWeight: 700 }}>
+          <div>{store.scenarioBEnabled ? 'Scenario A (Net Income for MDs)' : 'Net Income for MDs'}</div>
           {years.map((y) => {
             const totalComp = perYearAWithRetired.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
             const fy = y === 2025 
@@ -5134,7 +5181,7 @@ function OverallCompensationSummary() {
 
         {/* Scenario B Total row */}
         {store.scenarioBEnabled && store.scenarioB && perYearBWithRetired && (
-          <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '1px solid #e5e7eb', background: '#eef7ff', fontWeight: 700 }}>
+          <div className="table-row-total-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '1px solid #e5e7eb', background: '#eef7ff', fontWeight: 700 }}>
             <div>Scenario B (Total)</div>
             {years.map((y) => {
               const totalComp = perYearBWithRetired.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
@@ -5173,7 +5220,7 @@ function OverallCompensationSummary() {
 
         {/* Scenario A - Individual physicians */}
         {allNames.map((name, idx) => (
-          <div key={`SA-${name}`} style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: idx === 0 ? '1px solid #f0f0f0' : '1px solid #f8f8f8', background: '#f9fafb' }}>
+          <div key={`SA-${name}`} className="table-row-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: idx === 0 ? '1px solid #f0f0f0' : '1px solid #f8f8f8', background: '#f9fafb' }}>
             <div style={{ paddingLeft: '8px' }}>{name} (A)</div>
             {years.map((y) => {
               const found = perYearAWithRetired.find((py) => py.year === y)?.comps.find((c) => c.name === name)
@@ -5188,7 +5235,7 @@ function OverallCompensationSummary() {
         ))}
 
         {/* Scenario A - Locums */}
-        <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #f0f0f0', background: '#f9fafb', fontSize: '14px', color: '#6b7280' }}>
+        <div className="table-row-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #f0f0f0', background: '#f9fafb', fontSize: '14px', color: '#6b7280' }}>
           <div style={{ paddingLeft: '16px' }}>Locums (A)</div>
           {years.map((y, i) => {
             const fy = y === 2025 
@@ -5208,7 +5255,7 @@ function OverallCompensationSummary() {
         </div>
 
         {/* Scenario A - Total including locums */}
-        <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '1px solid #e5e7eb', background: '#eef7ff', fontWeight: 700 }}>
+        <div className="table-row-total-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '1px solid #e5e7eb', background: '#eef7ff', fontWeight: 700 }}>
           <div>Scenario A (Total)</div>
           {years.map((y) => {
             const totalComp = perYearA.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
@@ -5236,7 +5283,7 @@ function OverallCompensationSummary() {
           <>
             {/* Scenario B - Individual physicians */}
             {allNames.map((name, idx) => (
-              <div key={`SB-${name}`} style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: idx === 0 ? '2px solid #e5e7eb' : '1px solid #f8f8f8', background: '#faf9f7' }}>
+              <div key={`SB-${name}`} className="table-row-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: idx === 0 ? '2px solid #e5e7eb' : '1px solid #f8f8f8', background: '#faf9f7' }}>
                 <div style={{ paddingLeft: '8px' }}>{name} (B)</div>
                 {years.map((y) => {
                   const found = perYearBWithRetired.find((py) => py.year === y)?.comps.find((c) => c.name === name)
@@ -5251,7 +5298,7 @@ function OverallCompensationSummary() {
             ))}
 
             {/* Scenario B - Locums */}
-            <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #f0f0f0', background: '#faf9f7', fontSize: '14px', color: '#6b7280' }}>
+            <div className="table-row-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #f0f0f0', background: '#faf9f7', fontSize: '14px', color: '#6b7280' }}>
               <div style={{ paddingLeft: '16px' }}>Locums (B)</div>
               {years.map((y, i) => {
                 const fy = y === 2025 
@@ -5271,8 +5318,8 @@ function OverallCompensationSummary() {
             </div>
 
             {/* Scenario B - Total including locums */}
-            <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '1px solid #e5e7eb', background: '#eef7ff', fontWeight: 700 }}>
-              <div>Scenario B (Total)</div>
+            <div className="table-row-total-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '4px 0', borderTop: '1px solid #e5e7eb', background: '#eef7ff', fontWeight: 700 }}>
+              <div>Scenario B (Net Income for MDs)</div>
               {years.map((y) => {
                 const totalComp = perYearB.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
                 const fy = y === 2025 
@@ -5307,6 +5354,87 @@ function ParametersSummary() {
   const store = useDashboardStore()
   const isMobile = useIsMobile()
 
+  // Helper function to detect if values have been manually overridden
+  const detectCustomOverrides = (scenario: 'A' | 'B') => {
+    const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
+    const dataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+    
+    // Get baseline data (same logic as applyProjectionFromLastActual)
+    let baselineData
+    const last2024 = store.historic.find((h) => h.year === 2024)
+    const last2025 = store.historic.find((h) => h.year === 2025)
+    
+    if (dataMode === '2024 Data' && last2024) {
+      baselineData = {
+        totalIncome: last2024.totalIncome,
+        nonEmploymentCosts: last2024.nonEmploymentCosts,
+        miscEmploymentCosts: 24623.49,
+        nonMdEmploymentCosts: 164677.44,
+      }
+    } else if (last2025) {
+      baselineData = {
+        totalIncome: last2025.totalIncome,
+        nonEmploymentCosts: last2025.nonEmploymentCosts,
+        miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+        nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+      }
+    } else {
+      baselineData = {
+        totalIncome: 3344068.19,
+        nonEmploymentCosts: 229713.57,
+        miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+        nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+      }
+    }
+
+    const overrides = {
+      incomeGrowthPct: false,
+      nonEmploymentCostsPct: false,
+      nonMdEmploymentCostsPct: false,
+      miscEmploymentCostsPct: false,
+    }
+
+    // Convert percentage growth rates to decimal multipliers
+    const incomeGpct = sc.projection.incomeGrowthPct / 100
+    const nonEmploymentGpct = sc.projection.nonEmploymentCostsPct / 100
+    const nonMdEmploymentGpct = sc.projection.nonMdEmploymentCostsPct / 100
+    const miscEmploymentGpct = sc.projection.miscEmploymentCostsPct / 100
+
+    // Starting values from the selected baseline
+    let expectedIncome = baselineData.totalIncome
+    let expectedNonEmploymentCosts = baselineData.nonEmploymentCosts
+    let expectedNonMdEmploymentCosts = baselineData.nonMdEmploymentCosts
+    let expectedMiscEmploymentCosts = baselineData.miscEmploymentCosts
+
+    // Check each future year for deviations from expected values
+    for (const fy of sc.future) {
+      if (fy.year === 2025) continue // Skip baseline year
+      
+      // Calculate expected values for this year
+      expectedIncome = expectedIncome * (1 + incomeGpct)
+      expectedNonEmploymentCosts = expectedNonEmploymentCosts * (1 + nonEmploymentGpct)
+      expectedNonMdEmploymentCosts = expectedNonMdEmploymentCosts * (1 + nonMdEmploymentGpct)
+      expectedMiscEmploymentCosts = expectedMiscEmploymentCosts * (1 + miscEmploymentGpct)
+
+      // Compare with actual values (with 1% tolerance for floating point differences)
+      const tolerance = 0.01
+      if (Math.abs(fy.totalIncome - expectedIncome) / expectedIncome > tolerance) {
+        overrides.incomeGrowthPct = true
+      }
+      if (Math.abs(fy.nonEmploymentCosts - expectedNonEmploymentCosts) / expectedNonEmploymentCosts > tolerance) {
+        overrides.nonEmploymentCostsPct = true
+      }
+      if (Math.abs(fy.nonMdEmploymentCosts - expectedNonMdEmploymentCosts) / expectedNonMdEmploymentCosts > tolerance) {
+        overrides.nonMdEmploymentCostsPct = true
+      }
+      if (Math.abs(fy.miscEmploymentCosts - expectedMiscEmploymentCosts) / expectedMiscEmploymentCosts > tolerance) {
+        overrides.miscEmploymentCostsPct = true
+      }
+    }
+
+    return overrides
+  }
+
   const buildYearData = (scenario: 'A' | 'B') => {
     const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
     const historic2025 = store.historic.find((h) => h.year === 2025)!
@@ -5330,6 +5458,7 @@ function ParametersSummary() {
     const renderScenario = (scenario: 'A' | 'B') => {
     const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
     const data = buildYearData(scenario)
+    const overrides = detectCustomOverrides(scenario)
     const maxPhysicians = Math.max(...data.map((d) => d.physicians.length))
     const baselineMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
     const baselineLabel = baselineMode === '2025 Data' ? null : `Baseline (${baselineMode === 'Custom' ? 'Custom' : (baselineMode?.match(/\d{4}/)?.[0] || baselineMode || 'Unknown')})`
@@ -5364,7 +5493,7 @@ function ParametersSummary() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>Scenario {scenario} Parameters</div>
           <div style={{ fontSize: 13, color: '#374151', border: '1px solid #e5e7eb', borderRadius: 6, padding: 5, background: '#ffffff' }}>
-            Growth — Income: {sc.projection.incomeGrowthPct}% · Non-Emp: {sc.projection.nonEmploymentCostsPct}% · Staff: {sc.projection.nonMdEmploymentCostsPct}% · Misc: {sc.projection.miscEmploymentCostsPct}%
+            Growth — Income: {overrides.incomeGrowthPct ? 'Custom' : `${sc.projection.incomeGrowthPct}%`} · Non-Emp: {overrides.nonEmploymentCostsPct ? 'Custom' : `${sc.projection.nonEmploymentCostsPct}%`} · Staff: {overrides.nonMdEmploymentCostsPct ? 'Custom' : `${sc.projection.nonMdEmploymentCostsPct}%`} · Benefits: {sc.projection.benefitCostsGrowthPct}% · Misc: {overrides.miscEmploymentCostsPct ? 'Custom' : `${sc.projection.miscEmploymentCostsPct}%`}
           </div>
         </div>
 

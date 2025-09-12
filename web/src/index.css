@@ -490,3 +490,53 @@ input[type=number] {
     transform: translateY(0);
   }
 }
+
+/* Subtle hover effects for table rows in multi-year compensation summary */
+.table-row-hover {
+  transition: background-color 0.05s ease;
+  cursor: pointer;
+}
+
+.table-row-hover:hover {
+  background-color: rgba(59, 130, 246, 0.08) !important; /* Very subtle blue highlight */
+}
+
+.table-row-total-hover {
+  transition: background-color 0.05s ease;
+  cursor: pointer;
+}
+
+.table-row-total-hover:hover {
+  background-color: rgba(16, 185, 129, 0.08) !important; /* Subtle green highlight for totals */
+}
+
+/* Enhanced hover effects for colored panels */
+.panel-green {
+  transition: all 0.2s ease;
+}
+
+.panel-green:hover {
+  border: 1px solid rgba(16, 185, 129, 0.6) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.08), 0 0 15px rgba(16, 185, 129, 0.12), 0 0 8px rgba(16, 185, 129, 0.6) !important;
+  transform: scale(1.002);
+}
+
+.panel-red {
+  transition: all 0.2s ease;
+}
+
+.panel-red:hover {
+  border: 1px solid rgba(239, 68, 68, 0.6) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.08), 0 0 15px rgba(239, 68, 68, 0.12), 0 0 8px rgba(239, 68, 68, 0.6) !important;
+  transform: scale(1.002);
+}
+
+.panel-purple {
+  transition: all 0.2s ease;
+}
+
+.panel-purple:hover {
+  border: 1px solid rgba(126, 34, 206, 0.6) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(126, 34, 206, 0.08), 0 0 15px rgba(126, 34, 206, 0.12), 0 0 8px rgba(126, 34, 206, 0.6) !important;
+  transform: scale(1.002);
+}
