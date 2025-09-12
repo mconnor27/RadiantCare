@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import Plot from 'react-plotly.js'
+import { DragDropPhysicians } from './DragDropPhysicians'
 
 export type YearRow = {
   year: number
@@ -1620,6 +1621,128 @@ function usePartnerComp(year: number, scenario: ScenarioKey) {
   }, [fy, sc, dataMode])
 }
 
+// Helper function to check if physicians have been changed from defaults
+function arePhysiciansChanged(
+  scenario: ScenarioKey,
+  year: number,
+  currentPhysicians: Physician[],
+  _store: any
+): boolean {
+  // Get default physicians for this year and scenario
+  const defaultPhysicians = scenario === 'A' 
+    ? scenarioADefaultsByYear(year) 
+    : scenarioBDefaultsByYear(year)
+  
+  // If different number of physicians, it's changed
+  if (currentPhysicians.length !== defaultPhysicians.length) {
+    return true
+  }
+  
+  // Compare each physician's properties
+  for (let i = 0; i < currentPhysicians.length; i++) {
+    const current = currentPhysicians[i]
+    const defaultPhysician = defaultPhysicians[i]
+    
+    // Compare all relevant properties
+    if (
+      current.name !== defaultPhysician.name ||
+      current.type !== defaultPhysician.type ||
+      current.salary !== defaultPhysician.salary ||
+      current.weeksVacation !== defaultPhysician.weeksVacation ||
+      current.employeePortionOfYear !== defaultPhysician.employeePortionOfYear ||
+      current.partnerPortionOfYear !== defaultPhysician.partnerPortionOfYear ||
+      current.startPortionOfYear !== defaultPhysician.startPortionOfYear ||
+      current.terminatePortionOfYear !== defaultPhysician.terminatePortionOfYear ||
+      current.receivesBenefits !== defaultPhysician.receivesBenefits ||
+      current.receivesBonuses !== defaultPhysician.receivesBonuses ||
+      current.bonusAmount !== defaultPhysician.bonusAmount ||
+      current.buyoutCost !== defaultPhysician.buyoutCost
+    ) {
+      return true
+    }
+  }
+  
+  return false
+}
+
+// Helper function to calculate projected value for a specific year and field
+function calculateProjectedValue(
+  scenario: ScenarioKey,
+  year: number,
+  field: 'totalIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'miscEmploymentCosts',
+  store: any
+): number {
+  const sc = scenario === 'A' ? store.scenarioA : store.scenarioB
+  if (!sc || year === 2025) return 0 // No projections for baseline year
+
+  // Get baseline data based on data mode
+  let baselineData
+  if (sc.dataMode === 'Custom') {
+    const customBaseline = sc.baseline?.find((b: any) => b.year === 2025)
+    if (customBaseline) {
+      baselineData = {
+        totalIncome: customBaseline.totalIncome,
+        nonEmploymentCosts: customBaseline.nonEmploymentCosts,
+        miscEmploymentCosts: customBaseline.miscEmploymentCosts,
+        nonMdEmploymentCosts: customBaseline.nonMdEmploymentCosts,
+      }
+    } else {
+      const last2025 = store.historic.find((h: any) => h.year === 2025)
+      baselineData = {
+        totalIncome: last2025?.totalIncome || 3344068.19,
+        nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
+        miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+        nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+      }
+    }
+  } else if (sc.dataMode === '2024 Data') {
+    const last2024 = store.historic.find((h: any) => h.year === 2024)!
+    baselineData = {
+      totalIncome: last2024.totalIncome,
+      nonEmploymentCosts: last2024.nonEmploymentCosts,
+      miscEmploymentCosts: 24623.49,
+      nonMdEmploymentCosts: 164677.44,
+    }
+  } else if (sc.dataMode === '2025 Data') {
+    const last2025 = store.historic.find((h: any) => h.year === 2025)!
+    baselineData = {
+      totalIncome: last2025.totalIncome,
+      nonEmploymentCosts: last2025.nonEmploymentCosts,
+      miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+      nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+    }
+  } else {
+    baselineData = {
+      totalIncome: 3344068.19,
+      nonEmploymentCosts: 229713.57,
+      miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+      nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+    }
+  }
+
+  // Convert percentage growth rates to decimal multipliers
+  const incomeGpct = sc.projection.incomeGrowthPct / 100
+  const nonEmploymentGpct = sc.projection.nonEmploymentCostsPct / 100
+  const nonMdEmploymentGpct = sc.projection.nonMdEmploymentCostsPct / 100
+  const miscEmploymentGpct = sc.projection.miscEmploymentCostsPct / 100
+
+  // Calculate projected value for the specific year
+  let value = baselineData[field]
+  const yearsSinceBaseline = year - 2025
+  
+  if (field === 'totalIncome') {
+    value = value * Math.pow(1 + incomeGpct, yearsSinceBaseline)
+  } else if (field === 'nonEmploymentCosts') {
+    value = value * Math.pow(1 + nonEmploymentGpct, yearsSinceBaseline)
+  } else if (field === 'nonMdEmploymentCosts') {
+    value = value * Math.pow(1 + nonMdEmploymentGpct, yearsSinceBaseline)
+  } else if (field === 'miscEmploymentCosts') {
+    value = value * Math.pow(1 + miscEmploymentGpct, yearsSinceBaseline)
+  }
+
+  return value
+}
+
 function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) {
   const store = useDashboardStore()
   const isMobile = useIsMobile()
@@ -1729,7 +1852,45 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
       <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#f3f4f6', padding: 8 }}>
 
       <div className="panel-green" style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)' }}>
-      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Total Income</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>Total Income</div>
+        {(() => {
+          const projectedValue = calculateProjectedValue(scenario, year, 'totalIncome', store)
+          const currentValue = fy.totalIncome || 0
+          const isChanged = projectedValue > 0 && Math.abs(currentValue - projectedValue) > 1000 // $1000 threshold for dollar amounts
+          return isChanged && !isReadOnly ? (
+            <button
+              onClick={() => {
+                removeTooltip('income-reset-tooltip')
+                store.setFutureValue(scenario, year, 'totalIncome', projectedValue)
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 12,
+                color: '#6b7280',
+                padding: '2px 4px',
+                borderRadius: 3,
+                display: 'flex',
+                alignItems: 'center',
+                opacity: 0.7,
+                transition: 'opacity 0.2s'
+              }}
+              onMouseEnter={(e) => { 
+                e.currentTarget.style.opacity = '1'
+                createTooltip('income-reset-tooltip', 'Reset to Projected Value', e)
+              }}
+              onMouseLeave={(e) => { 
+                e.currentTarget.style.opacity = '0.7'
+                removeTooltip('income-reset-tooltip')
+              }}
+            >
+              ↺
+            </button>
+          ) : null
+        })()}
+      </div>
       <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
@@ -1773,7 +1934,45 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
       </div>
 
       <div className="panel-red" style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)' }}>
-      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Non-Employment Costs</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>Non-Employment Costs</div>
+        {(() => {
+          const projectedValue = calculateProjectedValue(scenario, year, 'nonEmploymentCosts', store)
+          const currentValue = fy.nonEmploymentCosts || 0
+          const isChanged = projectedValue > 0 && Math.abs(currentValue - projectedValue) > 1000 // $1000 threshold for dollar amounts
+          return isChanged && !isReadOnly ? (
+            <button
+              onClick={() => {
+                removeTooltip('non-employment-reset-tooltip')
+                store.setFutureValue(scenario, year, 'nonEmploymentCosts', projectedValue)
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 12,
+                color: '#6b7280',
+                padding: '2px 4px',
+                borderRadius: 3,
+                display: 'flex',
+                alignItems: 'center',
+                opacity: 0.7,
+                transition: 'opacity 0.2s'
+              }}
+              onMouseEnter={(e) => { 
+                e.currentTarget.style.opacity = '1'
+                createTooltip('non-employment-reset-tooltip', 'Reset to Projected Value', e)
+              }}
+              onMouseLeave={(e) => { 
+                e.currentTarget.style.opacity = '0.7'
+                removeTooltip('non-employment-reset-tooltip')
+              }}
+            >
+              ↺
+            </button>
+          ) : null
+        })()}
+      </div>
       <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
@@ -1827,7 +2026,45 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
       </div>
 
       <div className="panel-red" style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)' }}>
-      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Staff Employment Costs</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>Staff Employment Costs</div>
+        {(() => {
+          const projectedValue = calculateProjectedValue(scenario, year, 'nonMdEmploymentCosts', store)
+          const currentValue = fy.nonMdEmploymentCosts || 0
+          const isChanged = projectedValue > 0 && Math.abs(currentValue - projectedValue) > 1000 // $1000 threshold for dollar amounts
+          return isChanged && !isReadOnly ? (
+            <button
+              onClick={() => {
+                removeTooltip('staff-employment-reset-tooltip')
+                store.setFutureValue(scenario, year, 'nonMdEmploymentCosts', projectedValue)
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 12,
+                color: '#6b7280',
+                padding: '2px 4px',
+                borderRadius: 3,
+                display: 'flex',
+                alignItems: 'center',
+                opacity: 0.7,
+                transition: 'opacity 0.2s'
+              }}
+              onMouseEnter={(e) => { 
+                e.currentTarget.style.opacity = '1'
+                createTooltip('staff-employment-reset-tooltip', 'Reset to Projected Value', e)
+              }}
+              onMouseLeave={(e) => { 
+                e.currentTarget.style.opacity = '0.7'
+                removeTooltip('staff-employment-reset-tooltip')
+              }}
+            >
+              ↺
+            </button>
+          ) : null
+        })()}
+      </div>
       <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
@@ -1891,7 +2128,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
               box-shadow: 0 2px 8px rgba(0,0,0,0.2);
               pointer-events: none;
             `
-            tooltip.textContent = `Includes:\nRG: Full-time, $31.25 per hour, Medical/Dental/Vision\nAL: Part-time: $27 per hour, 32 hours per week\nMW: Part-time: $23 per hour, 20 hours per week`
+            tooltip.textContent = `Includes: Practice Manager, Billing\n\nBaseline 2025:\nRG: Full-time, $31.25 per hour, Medical/Dental/Vision\nAL: Part-time: $27 per hour, 32 hours per week\nMW: Part-time: $23 per hour, 20 hours per week`
             document.body.appendChild(tooltip)
             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
             tooltip.style.left = `${rect.right + 10}px`
@@ -1907,7 +2144,45 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
       </div>
 
 
-      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2, marginTop: 8 }}>Misc Employment Costs</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2, marginTop: 8 }}>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>Misc Employment Costs</div>
+        {(() => {
+          const projectedValue = calculateProjectedValue(scenario, year, 'miscEmploymentCosts', store)
+          const currentValue = fy.miscEmploymentCosts || 0
+          const isChanged = projectedValue > 0 && Math.abs(currentValue - projectedValue) > 100 // $100 threshold for smaller amounts
+          return isChanged && !isReadOnly ? (
+            <button
+              onClick={() => {
+                removeTooltip('misc-employment-reset-tooltip')
+                store.setFutureValue(scenario, year, 'miscEmploymentCosts', projectedValue)
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 12,
+                color: '#6b7280',
+                padding: '2px 4px',
+                borderRadius: 3,
+                display: 'flex',
+                alignItems: 'center',
+                opacity: 0.7,
+                transition: 'opacity 0.2s'
+              }}
+              onMouseEnter={(e) => { 
+                e.currentTarget.style.opacity = '1'
+                createTooltip('misc-employment-reset-tooltip', 'Reset to Projected Value', e)
+              }}
+              onMouseLeave={(e) => { 
+                e.currentTarget.style.opacity = '0.7'
+                removeTooltip('misc-employment-reset-tooltip')
+              }}
+            >
+              ↺
+            </button>
+          ) : null
+        })()}
+      </div>
       <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
@@ -2060,38 +2335,21 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
   const fy = sc.future.find((f) => f.year === year)!
   const physicians = physiciansOverride ?? fy.physicians
 
-  const rows = physicians.map((p, index) => {
+  const handleReorder = (fromIndex: number, toIndex: number) => {
+    store.reorderPhysicians(scenario, year, fromIndex, toIndex)
+  }
+
+  const rows = physicians.map((p) => {
     const canDelete = !readOnly && physicians.length > 3
     return (
       <div
         key={p.id}
-        onDragOver={(e) => {
-          e.preventDefault()
-          e.dataTransfer.dropEffect = 'move'
-          // Add visual feedback for drop zone
-          e.currentTarget.style.backgroundColor = '#f0f9ff'
-        }}
-        onDragLeave={(e) => {
-          // Remove visual feedback when leaving drop zone
-          e.currentTarget.style.backgroundColor = 'transparent'
-        }}
-        onDrop={(e) => {
-          if (readOnly) return
-          e.preventDefault()
-          // Reset visual feedback
-          e.currentTarget.style.backgroundColor = 'transparent'
-          const fromIndex = parseInt(e.dataTransfer.getData('text/plain'))
-          const toIndex = index
-          if (fromIndex !== toIndex) {
-            store.reorderPhysicians(scenario, year, fromIndex, toIndex)
-          }
-        }}
         style={{
           borderTop: '1px solid #d1d5db',
           paddingTop: 10,
           marginTop: 10,
           display: 'grid',
-          gridTemplateColumns: '20px 120px 150px 1fr 20px 20px 20px', // Drag handle + existing layout
+          gridTemplateColumns: '20px 120px 150px 1fr 20px 20px 20px',
           gap: 8,
           alignItems: 'center',
           cursor: 'default',
@@ -2100,37 +2358,17 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
       >
         {/* Drag Handle */}
         <div
-          draggable={!readOnly}
-          onDragStart={(e) => {
-            if (readOnly) return
-            e.dataTransfer.setData('text/plain', index.toString())
-            e.dataTransfer.effectAllowed = 'move'
-            // Add a subtle drag effect to the entire row
-            e.currentTarget.parentElement!.style.opacity = '0.5'
-          }}
-          onDragEnd={(e) => {
-            // Reset the entire row opacity
-            e.currentTarget.parentElement!.style.opacity = '1'
-          }}
+          data-drag-handle
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: readOnly ? '#ccc' : '#333', // Made darker
+            color: readOnly ? '#ccc' : '#333',
             fontSize: '14px',
             cursor: readOnly ? 'default' : 'grab',
             userSelect: 'none',
-            opacity: readOnly ? 0.3 : 1.0, // Made fully opaque when active
-          }}
-          onMouseDown={(e) => {
-            if (!readOnly) {
-              e.currentTarget.style.cursor = 'grabbing'
-            }
-          }}
-          onMouseUp={(e) => {
-            if (!readOnly) {
-              e.currentTarget.style.cursor = 'grab'
-            }
+            opacity: readOnly ? 0.3 : 1.0,
+            touchAction: 'none',
           }}
           title={readOnly ? '' : 'Drag to reorder'}
         >
@@ -2180,7 +2418,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
         {p.type === 'newEmployee' ? (
           // newEmployee
           <>
-            <div style={{ display: 'grid', gridTemplateRows: 'auto auto', gap: 8 }}>
+            <div className="control-panel" style={{ display: 'grid', gridTemplateRows: 'auto auto', gap: 8 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 20 }}>
                   <input
@@ -2247,7 +2485,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                     style={{ 
                       width: '100%', 
                       height: 20, 
-                      padding: readOnly ? '2px 2px' : '2px 18px 2px 2px', // Right padding for buttons when not readOnly
+                      padding: readOnly ? '2px 8px' : '2px 18px 2px 8px', // Left padding matches other inputs
                       border: '1px solid #ccc',
                       borderRadius: 3,
                       fontSize: 12
@@ -2531,7 +2769,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
         ) : p.type === 'employeeToTerminate' ? (
           // employeeToTerminate
           <>
-            <div style={{ display: 'grid', gridTemplateRows: 'auto auto', gap: 8 }}>
+            <div className="control-panel" style={{ display: 'grid', gridTemplateRows: 'auto auto', gap: 8 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 20 }}>
                   <input
@@ -2598,7 +2836,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                     style={{ 
                       width: '100%', 
                       height: 20, 
-                      padding: readOnly ? '2px 2px' : '2px 18px 2px 2px', // Right padding for buttons when not readOnly
+                      padding: readOnly ? '2px 8px' : '2px 18px 2px 8px', // Left padding matches other inputs
                       border: '1px solid #ccc',
                       borderRadius: 3,
                       fontSize: 12
@@ -2881,7 +3119,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
           </>
         ) : p.type === 'employee' ? (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+            <div className="control-panel" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
               <input
                 type="range"
                 min={350000}
@@ -3026,7 +3264,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
         ) : p.type === 'partnerToRetire' ? (
           // partnerToRetire
           <>
-            <div style={{ display: 'grid', gridTemplateRows: (p.partnerPortionOfYear ?? 0.5) > 0 ? 'auto auto auto' : 'auto auto', gap: 8 }}>
+            <div className="control-panel" style={{ display: 'grid', gridTemplateRows: (p.partnerPortionOfYear ?? 0.5) > 0 ? 'auto auto auto' : 'auto auto', gap: 8 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 20 }}>
                   <input
@@ -3105,7 +3343,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                     style={{ 
                       width: '100%', 
                       height: 20, 
-                      padding: readOnly ? '2px 2px' : '2px 18px 2px 2px', // Right padding for buttons when not readOnly
+                      padding: readOnly ? '2px 8px' : '2px 18px 2px 8px', // Left padding matches other inputs
                       border: '1px solid #ccc',
                       borderRadius: 3,
                       fontSize: 12
@@ -3373,7 +3611,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
         ) : p.type === 'partner' ? (
           // partner
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+            <div className="control-panel" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
               <input
                 type="range"
                 min={2}
@@ -3522,7 +3760,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
         ) : (
           // employeeToPartner
           <>
-            <div style={{ display: 'grid', gridTemplateRows: 'auto auto auto', gap: 8 }}>
+            <div className="control-panel" style={{ display: 'grid', gridTemplateRows: 'auto auto auto', gap: 8 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 20 }}>
                   <input
@@ -3589,7 +3827,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                     style={{ 
                       width: '100%', 
                       height: 20, 
-                      padding: readOnly ? '2px 2px' : '2px 18px 2px 2px', // Right padding for buttons when not readOnly
+                      padding: readOnly ? '2px 8px' : '2px 18px 2px 8px', // Left padding matches other inputs
                       border: '1px solid #ccc',
                       borderRadius: 3,
                       fontSize: 12
@@ -3878,7 +4116,61 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
 
   return (
     <div style={{ marginTop: 8, border: '1px solid #e5e7eb', borderRadius: 8, padding: 8, background: '#f3f4f6' }}>
-      <div style={{ fontWeight: 600, marginBottom: 6 }}>Physicians)</div>
+      <div style={{ position: 'relative', textAlign: 'center', marginBottom: 6 }}>
+        <div style={{ fontWeight: 600 }}>Physicians</div>
+        {(() => {
+          const isChanged = arePhysiciansChanged(scenario, year, physicians, store)
+          return isChanged && !readOnly ? (
+            <button
+              onClick={() => {
+                removeTooltip('physicians-reset-tooltip')
+                // Reset physicians to defaults
+                const defaultPhysicians = scenario === 'A' 
+                  ? scenarioADefaultsByYear(year) 
+                  : scenarioBDefaultsByYear(year)
+                
+                // Remove all current physicians first
+                const currentPhysicians = [...physicians]
+                currentPhysicians.forEach(p => {
+                  store.removePhysician(scenario, year, p.id)
+                })
+                
+                // Add all default physicians
+                defaultPhysicians.forEach(defaultPhysician => {
+                  store.upsertPhysician(scenario, year, defaultPhysician)
+                })
+              }}
+              style={{
+                position: 'absolute',
+                left: 'calc(50% + 43px)', // 50% (center) + half the width of "Physicians" text + small gap
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 12,
+                color: '#6b7280',
+                padding: '2px 4px',
+                borderRadius: 3,
+                display: 'flex',
+                alignItems: 'center',
+                opacity: 0.7,
+                transition: 'opacity 0.2s'
+              }}
+              onMouseEnter={(e) => { 
+                e.currentTarget.style.opacity = '1'
+                createTooltip('physicians-reset-tooltip', 'Reset to Default', e)
+              }}
+              onMouseLeave={(e) => { 
+                e.currentTarget.style.opacity = '0.7'
+                removeTooltip('physicians-reset-tooltip')
+              }}
+            >
+              ↺
+            </button>
+          ) : null
+        })()}
+      </div>
       <div className="panel-purple" style={{
         background: '#ffffff',
         borderRadius: 8,
@@ -3886,7 +4178,16 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(126, 34, 206, 0.05), 0 0 10px rgba(126, 34, 206, 0.08), 0 0 6px rgba(126, 34, 206, 0.4)',
         padding: 8
       }}>
-        {rows}
+        {readOnly ? (
+          rows
+        ) : (
+          <DragDropPhysicians
+            physicians={physicians}
+            onReorder={handleReorder}
+          >
+            {rows}
+          </DragDropPhysicians>
+        )}
         
         {/* Locums costs row - always last row in purple panel */}
         <div
@@ -3912,7 +4213,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
             paddingLeft: 6,
             fontSize: '14px'
           }}>Locums Costs</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
+          <div className="control-panel" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
             <input
               type="range"
               min={0}
@@ -4183,7 +4484,11 @@ function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
     isDollar: boolean = false,
     glowType: 'income' | 'cost' = 'cost',
     resetTooltip: string = 'Reset to 2016-2024 Trend'
-  ) => (
+  ) => {
+    const defaultValue = defaultValues[field]
+    const isChanged = Math.abs(value - defaultValue) > 0.001 // Account for floating point precision
+    
+    return (
     <div className={glowType === 'income' ? 'panel-green' : 'panel-red'} style={{ 
       padding: 8,
       backgroundColor: '#ffffff',
@@ -4197,34 +4502,36 @@ function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
         <label style={{ fontSize: 14, fontWeight: 500 }}>{label}</label>
-        <button
-          onClick={() => {
-            store.setProjectionField(scenario, field, defaultValues[field])
-          }}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 12,
-            color: '#6b7280',
-            padding: '2px 4px',
-            borderRadius: 3,
-            display: 'flex',
-            alignItems: 'center',
-            opacity: 0.7,
-            transition: 'opacity 0.2s'
-          }}
-          onMouseEnter={(e) => { 
-            e.currentTarget.style.opacity = '1'
-            createTooltip('reset-tooltip', resetTooltip, e)
-          }}
-          onMouseLeave={(e) => { 
-            e.currentTarget.style.opacity = '0.7'
-            removeTooltip('reset-tooltip')
-          }}
-        >
-          ↺
-        </button>
+        {isChanged && (
+          <button
+            onClick={() => {
+              store.setProjectionField(scenario, field, defaultValues[field])
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 12,
+              color: '#6b7280',
+              padding: '2px 4px',
+              borderRadius: 3,
+              display: 'flex',
+              alignItems: 'center',
+              opacity: 0.7,
+              transition: 'opacity 0.2s'
+            }}
+            onMouseEnter={(e) => { 
+              e.currentTarget.style.opacity = '1'
+              createTooltip('reset-tooltip', resetTooltip, e)
+            }}
+            onMouseLeave={(e) => { 
+              e.currentTarget.style.opacity = '0.7'
+              removeTooltip('reset-tooltip')
+            }}
+          >
+            ↺
+          </button>
+        )}
       </div>
       <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', height: 32 }}>
@@ -4433,7 +4740,8 @@ function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
         </span>
       </div>
     </div>
-  )
+    )
+  }
   
   return (
     <div style={{ marginBottom: 12, padding: 16, backgroundColor: '#f3f4f6', borderRadius: 8, border: '1px solid #e5e7eb' }}>
@@ -4711,7 +5019,7 @@ export function Dashboard() {
   }
 
   return (
-    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16, maxWidth: store.scenarioBEnabled ? 1400 : 1000, margin: '0 auto' }}>
+    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16, maxWidth: store.scenarioBEnabled ? 1610 : 1000, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: isMobile ? '8px 0' : '0 0 4px', justifyContent: 'center' }}>
         <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 60, width: 'auto', display: 'block' }} />
         <h2 style={{ margin: 0, fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif', color: '#7c2a83', fontWeight: 900, fontSize: 36, lineHeight: 1.05 }}>Compensation Dashboard</h2>
@@ -4993,6 +5301,8 @@ function OverallCompensationSummary() {
               opacity: (highlight || isolated) ? (isHighlighted('A', 'Locums') ? 1 : 0.2) : 1,
               legendgroup: 'Locums', // Group by itself
               legendrank: 999, // Put at end
+              hovertemplate: store.scenarioBEnabled ? 'A: %{y:$,.0f}<extra></extra>' : '%{y:$,.0f}',
+              hoverlabel: { bgcolor: '#888888', font: { color: 'white' } },
             })
             if (store.scenarioBEnabled) {
               rows.push({
@@ -5005,6 +5315,8 @@ function OverallCompensationSummary() {
                 opacity: (highlight || isolated) ? (isHighlighted('B', 'Locums') ? 1 : 0.2) : 1,
                 legendgroup: 'Locums', // Same group as A scenario
                 legendrank: 1000, // Put at end after A
+                hovertemplate: 'B: %{y:$,.0f}<extra></extra>',
+                hoverlabel: { bgcolor: '#888888', font: { color: 'white' } },
               })
             }
             
@@ -5012,10 +5324,10 @@ function OverallCompensationSummary() {
           })() as any}
           layout={{
             title: { text: 'Compensation per Physician (By Year)', font: { size: 14 } },
-            margin: { l: 48, r: 8, t: 28, b: 72 },
+            margin: { l: 80, r: 8, t: 28, b: 60 },
             yaxis: { tickprefix: '$', separatethousands: true, tickformat: ',.0f' },
             xaxis: { dtick: 1 },
-            legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.08, yanchor: 'top', traceorder: 'grouped' },
+            legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.05, yanchor: 'top', traceorder: 'grouped' },
           }}
           config={{ responsive: true, displayModeBar: false }}
           useResizeHandler={true}
@@ -5054,7 +5366,7 @@ function OverallCompensationSummary() {
 
 
       <div style={{ marginTop: 8, overflowX: isMobile ? 'auto' : 'visible', border: '1px solid #e5e7eb', borderRadius: 6, padding: 8, background: '#ffffff' }}>
-        <div style={{ fontWeight: 600, marginBottom: 2 }}>Per Physician By Year</div>
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>Per Physician By Year</div>
         <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 2, fontWeight: 600 }}>
           <div>Name</div>
           {years.map((y) => (

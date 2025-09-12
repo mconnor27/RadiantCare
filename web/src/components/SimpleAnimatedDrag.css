@@ -1,0 +1,47 @@
+/* Alternative: Simple CSS animations for HTML5 drag-and-drop */
+.physician-row {
+  transition: all 0.2s ease;
+  transform-origin: center;
+}
+
+.physician-row:hover {
+  background-color: rgba(126, 34, 206, 0.02);
+}
+
+.physician-row.dragging {
+  opacity: 0.6;
+  transform: scale(1.02) rotate(1deg);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  background-color: white;
+  border-radius: 8px;
+}
+
+.physician-row.drag-over {
+  background-color: #f0f9ff;
+  border-top: 2px solid #3b82f6;
+  transform: translateY(2px);
+}
+
+/* Prevent slider interference */
+.physician-row input[type="range"],
+.physician-row input[type="text"],
+.physician-row input[type="number"],
+.physician-row select,
+.physician-row button {
+  pointer-events: auto;
+}
+
+.physician-row input[type="range"]:active,
+.physician-row input[type="range"]:focus {
+  z-index: 1001;
+}
+
+/* Smooth transitions for reordering */
+.physicians-container {
+  position: relative;
+}
+
+.physician-row {
+  transition: transform 0.3s cubic-bezier(0.2, 0, 0.2, 1);
+}

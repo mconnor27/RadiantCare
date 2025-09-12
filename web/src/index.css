@@ -540,3 +540,12 @@ input[type=number] {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(126, 34, 206, 0.08), 0 0 15px rgba(126, 34, 206, 0.12), 0 0 8px rgba(126, 34, 206, 0.6) !important;
   transform: scale(1.002);
 }
+
+/* Subtle panels for grouping sliders and text inputs */
+.control-panel {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
