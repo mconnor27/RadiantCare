@@ -517,7 +517,7 @@ export const useDashboardStore = create<Store>()(
                   benefitCostsGrowthPct: 5.0
                 },
                 selectedYear: state.scenarioA.selectedYear,
-                dataMode: '2025 Data',
+                dataMode: '2024 Data',
               }
             } else {
               state.scenarioB = undefined
@@ -3569,7 +3569,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                     const tooltip = document.createElement('div')
                     tooltip.id = 'buyout-tooltip'
                     tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
-                    tooltip.textContent = `Buyout Cost Breakdown:\nBuyout Payment: ${currency(p.buyoutCost ?? 0)}\n\nThis is a one-time cost that reduces the partner compensation pool for the year.`
+                    tooltip.textContent = `Buyout Payment: ${currency(p.buyoutCost ?? 0)}\n\nThis is a one-time cost that reduces the partner compensation pool for the year.`
                     document.body.appendChild(tooltip)
                     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
                     tooltip.style.left = `${rect.right + 10}px`
@@ -4291,11 +4291,9 @@ function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
   const sc = scenario === 'A' ? state.scenarioA : state.scenarioB!
   // Try to find the future year; if not found and year is 2025, build a synthetic year from historic actuals
   let fy = sc.future.find((f) => f.year === year) as FutureYear | undefined
-  if (!fy && year === 2025) {
+  // For the multi-year summary tables, ALWAYS use true 2025 actuals for the 2025 column
+  if (year === 2025) {
     const last2025 = state.historic.find((h) => h.year === 2025)
-    
-    // For the multi-year compensation summary, 2025 should always show 2025 actual values
-    // regardless of the baseline data mode selection
     if (last2025) {
       fy = {
         year: 2025,
@@ -4306,35 +4304,6 @@ function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
         miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
         physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
       }
-    }
-  }
-  // If a 2025 entry exists but the baseline mode is not Custom, override it with the proper baseline
-  if (year === 2025) {
-    const dataMode = scenario === 'A' ? state.scenarioA.dataMode : state.scenarioB?.dataMode
-    if (dataMode !== 'Custom') {
-      const last2024 = state.historic.find((h) => h.year === 2024)
-      const last2025 = state.historic.find((h) => h.year === 2025)
-      fy = dataMode === '2024 Data' && last2024
-        ? {
-            year: 2025,
-            totalIncome: last2024.totalIncome,
-            nonEmploymentCosts: last2024.nonEmploymentCosts,
-            nonMdEmploymentCosts: 164677.44,
-            locumCosts: 113400,
-            miscEmploymentCosts: 18182.56,
-            physicians: scenario2024Defaults(),
-          }
-        : last2025
-        ? {
-            year: 2025,
-            totalIncome: last2025.totalIncome,
-            nonEmploymentCosts: last2025.nonEmploymentCosts,
-            nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
-            locumCosts: 54600,
-            miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-            physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
-          }
-        : fy
     }
   }
   if (!fy) return [] as { id: string; name: string; type: PhysicianType; comp: number }[]
@@ -4387,18 +4356,7 @@ function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
   }, 0)
 
   const pool = year === 2025
-    ? (() => {
-        // For baseline year, use different partner pools based on data mode
-        const dataMode = scenario === 'A' ? state.scenarioA.dataMode : state.scenarioB?.dataMode
-        if (dataMode === '2024 Data') {
-          // Calculate 2024-based partner pool: Net Income from 2024 was $2,032,099.02 (from image)
-          return 2032099.02 - totalBuyoutCosts - totalDelayedW2Costs
-        } else {
-          // Use 2025 baseline or custom (default behavior)
-          // NET_PARTNER_POOL_2025 is already net of all costs, so only subtract buyouts
-          return NET_PARTNER_POOL_2025 - totalBuyoutCosts
-        }
-      })()
+    ? (NET_PARTNER_POOL_2025 - totalBuyoutCosts)
     : Math.max(0, fy!.totalIncome - (fy!.nonEmploymentCosts + fy!.nonMdEmploymentCosts + fy!.miscEmploymentCosts + fy!.locumCosts + totalEmployeeCosts + totalBuyoutCosts + totalDelayedW2Costs))
 
   const parts = partners.map((p) => ({ p, weight: getPartnerFTEWeight(p) }))
