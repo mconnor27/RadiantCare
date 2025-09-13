@@ -1059,6 +1059,20 @@ function currency(value: number): string {
   })
 }
 
+// Currency formatter that shows dash for zero values (for tables)
+function currencyOrDash(value: number): string {
+  // Handle undefined/null values gracefully
+  if (value == null || isNaN(value) || value === 0) {
+    return '-'
+  }
+  return value.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
+}
+
 // Abbreviated currency for compact displays (e.g., $525k)
 function currencyShort(value: number): string {
   const thousands = Math.round(value / 1000)
@@ -5536,7 +5550,7 @@ function OverallCompensationSummary() {
               <div>{store.scenarioBEnabled ? `${name} (Scenario A)` : name}</div>
               {years.map((y, idx) => (
                 <div key={`A-${name}-${y}`} style={{ textAlign: 'right' }}>
-                  {currency(seriesA.find((s) => s.name === name)!.values[idx])}
+                  {currencyOrDash(seriesA.find((s) => s.name === name)!.values[idx])}
                 </div>
               ))}
               <div style={{ textAlign: 'right' }}>
@@ -5558,7 +5572,7 @@ function OverallCompensationSummary() {
                 <div>{`${name} (Scenario B)`}</div>
                 {years.map((y, idx) => (
                   <div key={`B-${name}-${y}`} style={{ textAlign: 'right' }}>
-                    {currency((seriesB.find((s) => s.name === name)?.values[idx]) ?? 0)}
+                    {currencyOrDash((seriesB.find((s) => s.name === name)?.values[idx]) ?? 0)}
                   </div>
                 ))}
                 <div style={{ textAlign: 'right' }}>
@@ -5582,7 +5596,7 @@ function OverallCompensationSummary() {
               ? { locumCosts: 54600 } // 2025 default
               : store.scenarioA.future.find(f => f.year === y)
             const locumCost = fy?.locumCosts ?? 0
-            return <div key={`LA-${i}`} style={{ textAlign: 'right' }}>{currency(locumCost)}</div>
+            return <div key={`LA-${i}`} style={{ textAlign: 'right' }}>{currencyOrDash(locumCost)}</div>
           })}
           <div style={{ textAlign: 'right' }}>
             {currency(years.reduce((total, y) => {
@@ -5604,7 +5618,7 @@ function OverallCompensationSummary() {
                 ? { locumCosts: 54600 } // 2025 default
                 : store.scenarioB!.future.find(f => f.year === y)
               const locumCost = fy?.locumCosts ?? 0
-              return <div key={`LB-${i}`} style={{ textAlign: 'right' }}>{currency(locumCost)}</div>
+              return <div key={`LB-${i}`} style={{ textAlign: 'right' }}>{currencyOrDash(locumCost)}</div>
             })}
             <div style={{ textAlign: 'right' }}>
               {currency(years.reduce((total, y) => {
@@ -5690,7 +5704,7 @@ function OverallCompensationSummary() {
             <div style={{ paddingLeft: '8px' }}>{name} (A)</div>
             {years.map((y) => {
               const found = perYearAWithRetired.find((py) => py.year === y)?.comps.find((c) => c.name === name)
-              return <div key={`SA-${name}-${y}`} style={{ textAlign: 'right' }}>{currency(found ? found.comp : 0)}</div>
+              return <div key={`SA-${name}-${y}`} style={{ textAlign: 'right' }}>{currencyOrDash(found ? found.comp : 0)}</div>
             })}
             <div style={{ textAlign: 'right' }}>
               {currency(
@@ -5712,7 +5726,7 @@ function OverallCompensationSummary() {
               ? { locumCosts: 54600 } // 2025 default
               : store.scenarioA.future.find(f => f.year === y)
             const locumCost = fy?.locumCosts ?? 0
-            return <div key={`SAL-${i}`} style={{ textAlign: 'right' }}>{currency(locumCost)}</div>
+            return <div key={`SAL-${i}`} style={{ textAlign: 'right' }}>{currencyOrDash(locumCost)}</div>
           })}
           <div style={{ textAlign: 'right' }}>
             {currency(years.reduce((total, y) => {
@@ -5761,7 +5775,7 @@ function OverallCompensationSummary() {
                 <div style={{ paddingLeft: '8px' }}>{name} (B)</div>
                 {years.map((y) => {
                   const found = perYearBWithRetired.find((py) => py.year === y)?.comps.find((c) => c.name === name)
-                  return <div key={`SB-${name}-${y}`} style={{ textAlign: 'right' }}>{currency(found ? found.comp : 0)}</div>
+                  return <div key={`SB-${name}-${y}`} style={{ textAlign: 'right' }}>{currencyOrDash(found ? found.comp : 0)}</div>
                 })}
                 <div style={{ textAlign: 'right' }}>
                   {currency(
@@ -5783,7 +5797,7 @@ function OverallCompensationSummary() {
                   ? { locumCosts: 54600 } // 2025 default
                   : store.scenarioB!.future.find(f => f.year === y)
                 const locumCost = fy?.locumCosts ?? 0
-                return <div key={`SBL-${i}`} style={{ textAlign: 'right' }}>{currency(locumCost)}</div>
+                return <div key={`SBL-${i}`} style={{ textAlign: 'right' }}>{currencyOrDash(locumCost)}</div>
               })}
               <div style={{ textAlign: 'right' }}>
                 {currency(years.reduce((total, y) => {
