@@ -499,20 +499,8 @@ export const useDashboardStore = create<Store>()(
           selectedYear: 2025, // Default to Baseline tab
           dataMode: '2025 Data',
         },
-        scenarioB: {
-          future: INITIAL_FUTURE_YEARS_B,
-          projection: { 
-            incomeGrowthPct: 3.7, 
-            nonEmploymentCostsPct: 7.8, 
-            nonMdEmploymentCostsPct: 6.0, 
-            locumsCosts: 0, 
-            miscEmploymentCostsPct: 6.7,
-            benefitCostsGrowthPct: 5.0
-          },
-          selectedYear: 2025, // Default to Baseline tab
-          dataMode: '2025 Data',
-        },
-        scenarioBEnabled: true,
+        scenarioB: undefined,
+        scenarioBEnabled: false,
         setScenarioEnabled: (enabled) => {
           set((state) => {
             state.scenarioBEnabled = enabled
@@ -1006,19 +994,8 @@ export const useDashboardStore = create<Store>()(
             }
             state.scenarioA.selectedYear = 2025 // Reset to Baseline tab
             
-            state.scenarioBEnabled = true
-            
-            if (state.scenarioB) {
-              state.scenarioB.projection = { 
-                incomeGrowthPct: 3.7, 
-                nonEmploymentCostsPct: 7.8, 
-                nonMdEmploymentCostsPct: 6.0, 
-                locumsCosts: 0, 
-                miscEmploymentCostsPct: 6.7,
-                benefitCostsGrowthPct: 5.0
-              }
-              state.scenarioB.selectedYear = 2025 // Reset to Baseline tab
-            }
+            state.scenarioBEnabled = false
+            state.scenarioB = undefined
           }, false)
           // Recalculate future years from existing baseline data using reset projection parameters
           const store = useDashboardStore.getState()
@@ -1043,7 +1020,7 @@ export const useDashboardStore = create<Store>()(
 setTimeout(() => {
   const store = useDashboardStore.getState()
   store.applyProjectionFromLastActual('A')
-  store.applyProjectionFromLastActual('B')
+  if (store.scenarioB) store.applyProjectionFromLastActual('B')
 }, 0)
 
 function currency(value: number): string {

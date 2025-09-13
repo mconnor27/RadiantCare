@@ -88,6 +88,10 @@ export function DragDropPhysicians({ children, physicians, onReorder }: DragDrop
     }
   }, [physicians]) // Remove isDragging dependency to avoid immediate reset
 
+  // When not dragging, render the latest physicians prop directly to avoid
+  // any transient mismatch during year switches (prevents flash of empty list).
+  const renderItems = isDragging ? items : physicians
+
   // Cleanup: remove dragging class on unmount or if dragging state gets out of sync
   React.useEffect(() => {
     return () => {
@@ -137,7 +141,7 @@ export function DragDropPhysicians({ children, physicians, onReorder }: DragDrop
     }
   }
 
-  const physicianIds = items.map(p => p.id)
+  const physicianIds = renderItems.map(p => p.id)
 
   // Create a mapping of physician ID to child component
   const childrenArray = React.Children.toArray(children)
@@ -157,7 +161,7 @@ export function DragDropPhysicians({ children, physicians, onReorder }: DragDrop
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={physicianIds} strategy={verticalListSortingStrategy}>
-        {items.map((physician) => {
+        {renderItems.map((physician) => {
           const child = childrenMap[physician.id]
           if (child) {
             return (
