@@ -34,6 +34,10 @@ export type Physician = {
   receivesBonuses?: boolean
   // Relocation/Signing bonus amount
   bonusAmount?: number
+  // Whether this partner has Medical Director Hours
+  hasMedicalDirectorHours?: boolean
+  // Medical Director Hours dollar amount
+  medicalDirectorHoursAmount?: number
   // Buyout cost for retiring partners
   buyoutCost?: number
 }
@@ -179,6 +183,106 @@ function createBonusTooltip(
   setTimeout(() => document.addEventListener('click', clickOutsideHandler), 100)
   
   // Auto-hide tooltip on mobile after 8 seconds (longer since it's interactive)
+  if (isMobileTooltip) {
+    setTimeout(() => removeTooltip(tooltipId), 8000)
+  }
+}
+
+// Helper function for creating interactive Medical Director Hours tooltip (0–100K)
+function createHoursTooltip(
+  physicianId: string,
+  currentAmount: number,
+  e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>,
+  onUpdate: (physicianId: string, amount: number) => void
+) {
+  const tooltipId = `hours-slider-${physicianId}`
+  const existing = document.getElementById(tooltipId)
+  if (existing) existing.remove()
+
+  const tooltip = document.createElement('div')
+  tooltip.id = tooltipId
+  const isMobileTooltip = window.innerWidth <= 768
+
+  if (isMobileTooltip) {
+    tooltip.className = 'tooltip-mobile'
+    tooltip.style.cssText = `position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 9999; max-width: calc(100vw - 40px); box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
+  } else {
+    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
+  }
+
+  const minValue = 0
+  const maxValue = 100000
+  const title = 'Medical Director Hours'
+  const displayAmount = `$${(currentAmount || 0).toLocaleString()}`
+
+  tooltip.innerHTML = `
+    <div style="margin-bottom: 6px; font-weight: 600; white-space: nowrap;">${title}</div>
+    <div style="padding: 2px 0;">
+      <input type="range" min="${minValue}" max="${maxValue}" step="100" value="${currentAmount}" 
+        style="width: 180px; margin-bottom: 8px; cursor: pointer;" class="growth-slider" id="${tooltipId}-slider" />
+      <div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+        <input type="text" value="${displayAmount}" 
+          style="width: 80px; padding: 2px 6px; border: 1px solid #555; border-radius: 3px; background: #444; color: white; font-size: 12px; text-align: center;" 
+          id="${tooltipId}-input" />
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(tooltip)
+
+  if (!isMobileTooltip) {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    tooltip.style.left = `${rect.right + 10}px`
+    tooltip.style.top = `${rect.top + window.scrollY}px`
+  }
+
+  const slider = document.getElementById(`${tooltipId}-slider`) as HTMLInputElement
+  const textInput = document.getElementById(`${tooltipId}-input`) as HTMLInputElement
+  
+  if (slider && textInput) {
+    // Update from slider
+    slider.addEventListener('input', (event) => {
+      const target = event.target as HTMLInputElement
+      const newAmount = Number(target.value)
+      const displayText = `$${(newAmount || 0).toLocaleString()}`
+      textInput.value = displayText
+      onUpdate(physicianId, newAmount)
+    })
+    
+    // Update from text input
+    textInput.addEventListener('input', (event) => {
+      const target = event.target as HTMLInputElement
+      const numericValue = Number(target.value.replace(/[^0-9]/g, ''))
+      const clampedValue = Math.min(Math.max(numericValue, minValue), maxValue)
+      slider.value = clampedValue.toString()
+      onUpdate(physicianId, clampedValue)
+    })
+    
+    // Format text input on blur
+    textInput.addEventListener('blur', (event) => {
+      const target = event.target as HTMLInputElement
+      const numericValue = Number(target.value.replace(/[^0-9]/g, ''))
+      const clampedValue = Math.min(Math.max(numericValue, minValue), maxValue)
+      target.value = `$${clampedValue.toLocaleString()}`
+    })
+  }
+
+  tooltip.addEventListener('mouseenter', () => {
+    clearTimeout((tooltip as any).hideTimeout)
+  })
+  tooltip.addEventListener('mouseleave', () => {
+    removeTooltip(tooltipId)
+  })
+
+  const clickOutsideHandler = (event: MouseEvent) => {
+    if (!tooltip.contains(event.target as Node) &&
+        !document.querySelector(`[data-hours-id="${physicianId}"]`)?.contains(event.target as Node)) {
+      removeTooltip(tooltipId)
+      document.removeEventListener('click', clickOutsideHandler)
+    }
+  }
+  setTimeout(() => document.addEventListener('click', clickOutsideHandler), 100)
+
   if (isMobileTooltip) {
     setTimeout(() => removeTooltip(tooltipId), 8000)
   }
@@ -1663,6 +1767,8 @@ function arePhysiciansChanged(
       current.receivesBenefits !== defaultPhysician.receivesBenefits ||
       current.receivesBonuses !== defaultPhysician.receivesBonuses ||
       current.bonusAmount !== defaultPhysician.bonusAmount ||
+      current.hasMedicalDirectorHours !== (defaultPhysician as any).hasMedicalDirectorHours ||
+      current.medicalDirectorHoursAmount !== (defaultPhysician as any).medicalDirectorHoursAmount ||
       current.buyoutCost !== defaultPhysician.buyoutCost
     ) {
       return true
@@ -3234,10 +3340,12 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                         ...p,
                         partnerPortionOfYear: partnerPortion,
                       }
-                      // If changing to Prior Year (partnerPortion === 0), remove weeksVacation
+                      // If changing to Prior Year (partnerPortion === 0), remove weeksVacation and zero-out hours
                       // If changing away from Prior Year, set default weeksVacation if not present
                       if (partnerPortion === 0) {
                         updatedPhysician.weeksVacation = undefined
+                        updatedPhysician.medicalDirectorHoursAmount = 0
+                        updatedPhysician.hasMedicalDirectorHours = false
                       } else if (p.partnerPortionOfYear === 0 && partnerPortion > 0) {
                         // Changing from Prior Year to actual working days, set default weeks
                         updatedPhysician.weeksVacation = updatedPhysician.weeksVacation ?? 8
@@ -3322,10 +3430,12 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                             ...p,
                             partnerPortionOfYear: partnerPortion,
                           }
-                          // If changing to Prior Year, remove weeksVacation
+                          // If changing to Prior Year, remove weeksVacation and zero-out hours
                           // If changing away from Prior Year, set default weeksVacation if not present
                           if (partnerPortion === 0) {
                             updatedPhysician.weeksVacation = undefined
+                            updatedPhysician.medicalDirectorHoursAmount = 0
+                            updatedPhysician.hasMedicalDirectorHours = false
                           } else if (p.partnerPortionOfYear === 0 && partnerPortion > 0) {
                             updatedPhysician.weeksVacation = updatedPhysician.weeksVacation ?? 8
                           }
@@ -3360,10 +3470,12 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                             ...p,
                             partnerPortionOfYear: partnerPortion,
                           }
-                          // If changing to Prior Year, remove weeksVacation
+                          // If changing to Prior Year, remove weeksVacation and zero-out hours
                           // If changing away from Prior Year, set default weeksVacation if not present
                           if (partnerPortion === 0) {
                             updatedPhysician.weeksVacation = undefined
+                            updatedPhysician.medicalDirectorHoursAmount = 0
+                            updatedPhysician.hasMedicalDirectorHours = false
                           } else if (p.partnerPortionOfYear === 0 && partnerPortion > 0) {
                             updatedPhysician.weeksVacation = updatedPhysician.weeksVacation ?? 8
                           }
@@ -3481,7 +3593,73 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                 />
               </div>
             </div>
-            <div></div> {/* Empty benefits column for retiring partners */}
+            {/* Medical Director Hours icon aligned with the slider/info column (hide if Prior Year) */}
+            {(p.partnerPortionOfYear ?? 0.5) > 0 ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <img
+                  src={(p.medicalDirectorHoursAmount ?? 0) > 0 ? '/hours_selected.png' : '/hours_unselected.png'}
+                  alt={`Medical Director Hours ${((p.medicalDirectorHoursAmount ?? 0) > 0) ? 'enabled' : 'disabled'}`}
+                  data-hours-id={p.id}
+                  style={{
+                    width: '20px',
+                    height: 'auto',
+                    maxHeight: '20px',
+                    cursor: readOnly ? 'default' : 'pointer',
+                    opacity: readOnly ? 0.6 : 1,
+                    objectFit: 'contain'
+                  }}
+                  onClick={(e) => {
+                    if (!readOnly) {
+                      createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
+                        store.upsertPhysician(scenario, year, {
+                          ...p,
+                          medicalDirectorHoursAmount: amount,
+                          hasMedicalDirectorHours: amount !== 0
+                        })
+                      })
+                    }
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!readOnly) {
+                      createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
+                        store.upsertPhysician(scenario, year, {
+                          ...p,
+                          medicalDirectorHoursAmount: amount,
+                          hasMedicalDirectorHours: amount !== 0
+                        })
+                      })
+                      e.currentTarget.style.opacity = '0.8'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!readOnly) {
+                      const tooltip = document.getElementById(`hours-slider-${p.id}`)
+                      if (tooltip) {
+                        (tooltip as any).hideTimeout = setTimeout(() => {
+                          if (tooltip && !tooltip.matches(':hover')) {
+                            removeTooltip(`hours-slider-${p.id}`)
+                          }
+                        }, 150)
+                      }
+                      e.currentTarget.style.opacity = '1'
+                    }
+                  }}
+                  onTouchStart={(e) => {
+                    if (!readOnly) {
+                      createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
+                        store.upsertPhysician(scenario, year, {
+                          ...p,
+                          medicalDirectorHoursAmount: amount,
+                          hasMedicalDirectorHours: amount !== 0
+                        })
+                      })
+                    }
+                  }}
+                />
+              </div>
+            ) : (
+              <div></div>
+            )}
               <div style={{ display: 'grid', gridTemplateRows: (p.partnerPortionOfYear ?? 0.5) > 0 ? '19px 19px 19px' : '19px 19px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
                 <div 
                   style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
@@ -3625,10 +3803,64 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
               />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div
+              <img
+                src={(p.medicalDirectorHoursAmount ?? 0) > 0 ? '/hours_selected.png' : '/hours_unselected.png'}
+                alt={`Medical Director Hours ${((p.medicalDirectorHoursAmount ?? 0) > 0) ? 'enabled' : 'disabled'}`}
+                data-hours-id={p.id}
                 style={{
                   width: '20px',
-                  height: '20px'
+                  height: 'auto',
+                  maxHeight: '20px',
+                  cursor: readOnly ? 'default' : 'pointer',
+                  opacity: readOnly ? 0.6 : 1,
+                  objectFit: 'contain'
+                }}
+                onClick={(e) => {
+                  if (!readOnly) {
+                    createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        medicalDirectorHoursAmount: amount,
+                        hasMedicalDirectorHours: amount !== 0
+                      })
+                    })
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  if (!readOnly) {
+                    createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        medicalDirectorHoursAmount: amount,
+                        hasMedicalDirectorHours: amount !== 0
+                      })
+                    })
+                    e.currentTarget.style.opacity = '0.8'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!readOnly) {
+                    const tooltip = document.getElementById(`hours-slider-${p.id}`)
+                    if (tooltip) {
+                      (tooltip as any).hideTimeout = setTimeout(() => {
+                        if (tooltip && !tooltip.matches(':hover')) {
+                          removeTooltip(`hours-slider-${p.id}`)
+                        }
+                      }, 150)
+                    }
+                    e.currentTarget.style.opacity = '1'
+                  }
+                }}
+                onTouchStart={(e) => {
+                  if (!readOnly) {
+                    createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        medicalDirectorHoursAmount: amount,
+                        hasMedicalDirectorHours: amount !== 0
+                      })
+                    })
+                  }
                 }}
               />
             </div>
@@ -3911,45 +4143,108 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                 />
               </div>
             </div>
-            <img 
-              src={p.receivesBenefits ? '/benefit_selected.png?v=2' : '/benefit_unselected.png'}
-              alt={`Benefits ${p.receivesBenefits ? 'enabled' : 'disabled'}`}
-              style={{ 
-                width: '20px',
-                height: '20px',
-                cursor: readOnly ? 'default' : 'pointer',
-                opacity: readOnly ? 0.6 : 1,
-                justifySelf: 'center'
-              }}
-              onClick={() => {
-                if (!readOnly) {
-                  const newBenefitsState = !p.receivesBenefits
-                  store.upsertPhysician(scenario, year, { 
-                    ...p, 
-                    receivesBenefits: newBenefitsState
-                  })
-                  // Update tooltip in real-time if it's currently visible
-                  const tooltip = document.getElementById('benefits-tooltip-split')
-                  if (tooltip) {
-                    tooltip.innerHTML = `Benefits: ${newBenefitsState ? 'Enabled' : 'Disabled'}`
+            {/* First icon column: blank (aligns with date), then Benefits (salary), then Hours (vacation) */}
+            <div style={{ display: 'grid', gridTemplateRows: '20px 20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+              <div style={{ width: '20px', height: '20px' }} />
+              <img 
+                src={p.receivesBenefits ? '/benefit_selected.png?v=2' : '/benefit_unselected.png'}
+                alt={`Benefits ${p.receivesBenefits ? 'enabled' : 'disabled'}`}
+                style={{ 
+                  width: '20px',
+                  height: '20px',
+                  cursor: readOnly ? 'default' : 'pointer',
+                  opacity: readOnly ? 0.6 : 1
+                }}
+                onClick={() => {
+                  if (!readOnly) {
+                    const newBenefitsState = !p.receivesBenefits
+                    store.upsertPhysician(scenario, year, { 
+                      ...p, 
+                      receivesBenefits: newBenefitsState
+                    })
+                    const tooltip = document.getElementById('benefits-tooltip-split')
+                    if (tooltip) {
+                      tooltip.innerHTML = `Benefits: ${newBenefitsState ? 'Enabled' : 'Disabled'}`
+                    }
                   }
-                }
-              }}
-              onMouseEnter={(e) => {
-                createTooltip('benefits-tooltip-split', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)
-                if (!readOnly) {
-                  e.currentTarget.style.opacity = '0.8'
-                }
-              }}
-              onMouseLeave={(e) => {
-                removeTooltip('benefits-tooltip-split')
-                if (!readOnly) {
-                  e.currentTarget.style.opacity = '1'
-                }
-              }}
-              onTouchStart={(e) => createTooltip('benefits-tooltip-split', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)}
-            />
+                }}
+                onMouseEnter={(e) => {
+                  createTooltip('benefits-tooltip-split', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)
+                  if (!readOnly) {
+                    e.currentTarget.style.opacity = '0.8'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  removeTooltip('benefits-tooltip-split')
+                  if (!readOnly) {
+                    e.currentTarget.style.opacity = '1'
+                  }
+                }}
+                onTouchStart={(e) => createTooltip('benefits-tooltip-split', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)}
+              />
+              <img
+                src={(p.medicalDirectorHoursAmount ?? 0) > 0 ? '/hours_selected.png' : '/hours_unselected.png'}
+                alt={`Medical Director Hours ${((p.medicalDirectorHoursAmount ?? 0) > 0) ? 'enabled' : 'disabled'}`}
+                data-hours-id={p.id}
+                style={{
+                  width: '20px',
+                  height: 'auto',
+                  maxHeight: '20px',
+                  cursor: readOnly ? 'default' : 'pointer',
+                  opacity: readOnly ? 0.6 : 1,
+                  objectFit: 'contain'
+                }}
+                onClick={(e) => {
+                  if (!readOnly) {
+                    createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        medicalDirectorHoursAmount: amount,
+                        hasMedicalDirectorHours: amount !== 0
+                      })
+                    })
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  if (!readOnly) {
+                    createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        medicalDirectorHoursAmount: amount,
+                        hasMedicalDirectorHours: amount !== 0
+                      })
+                    })
+                    e.currentTarget.style.opacity = '0.8'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!readOnly) {
+                    const tooltip = document.getElementById(`hours-slider-${p.id}`)
+                    if (tooltip) {
+                      (tooltip as any).hideTimeout = setTimeout(() => {
+                        if (tooltip && !tooltip.matches(':hover')) {
+                          removeTooltip(`hours-slider-${p.id}`)
+                        }
+                      }, 150)
+                    }
+                    e.currentTarget.style.opacity = '1'
+                  }
+                }}
+                onTouchStart={(e) => {
+                  if (!readOnly) {
+                    createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        medicalDirectorHoursAmount: amount,
+                        hasMedicalDirectorHours: amount !== 0
+                      })
+                    })
+                  }
+                }}
+              />
+            </div>
               <div style={{ display: 'grid', gridTemplateRows: '19px 19px 19px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+                {/* 1) Transition info */}
                 <div 
                   style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
                   onMouseEnter={(e) => {
@@ -3964,7 +4259,6 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                     let extra = ''
                     if (Math.abs(transitionDay - 183) <= 1) extra = `\n(Mid-year transition)`
                     
-                    // Calculate delayed W2 payments
                     const delayedW2 = calculateDelayedW2Payment(p, year)
                     let delayedW2Info = ''
                     if (delayedW2.amount > 0) {
@@ -3979,6 +4273,33 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   }}
                   onMouseLeave={() => { const t = document.getElementById('employee-partner-tooltip'); if (t) t.remove() }}
                 ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+                {/* 2) Partner weeks info (middle slot) */}
+                <div 
+                  style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                  onMouseEnter={(e) => {
+                    const tooltip = document.createElement('div')
+                    tooltip.id = 'partner-weeks-tooltip'
+                    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                    
+                    const allPartners = fy!.physicians.filter((ph) => ph.type === 'partner' || ph.type === 'employeeToPartner' || ph.type === 'partnerToRetire')
+                    const partnerWeights = allPartners.map(ph => getPartnerFTEWeightProper(ph))
+                    const maxWeight = Math.max(...partnerWeights, 0.01)
+                    const currentWeight = getPartnerFTEWeightProper(p)
+                    const relativeFTE = currentWeight / maxWeight
+                    
+                    const weeks = p.weeksVacation ?? 8
+                    const partnerPortion = getPartnerPortionOfYear(p)
+                    const partnerWeeksInYear = partnerPortion * 52
+                    const effectivePartnerWeeks = Math.max(0, partnerWeeksInYear - weeks)
+                    tooltip.textContent = `Partner (during partner period):\nWeeks off: ${weeks}\nPartner weeks available: ${partnerWeeksInYear.toFixed(1)}\nEffective working weeks: ${effectivePartnerWeeks.toFixed(1)}\nRelative FTE: ${(relativeFTE * 100).toFixed(1)}%\nPartner portion of year: ${(partnerPortion * 100).toFixed(1)}%`
+                    document.body.appendChild(tooltip)
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    tooltip.style.left = `${rect.right + 10}px`
+                    tooltip.style.top = `${rect.top + window.scrollY}px`
+                  }}
+                  onMouseLeave={() => { const t = document.getElementById('partner-weeks-tooltip'); if (t) t.remove() }}
+                ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+                {/* 3) Employee cost info (last slot) */}
                 <div 
                   style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
                   onMouseEnter={(e) => {
@@ -4005,32 +4326,6 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                     tooltip.style.top = `${rect.top + window.scrollY}px`
                   }}
                   onMouseLeave={() => { const t = document.getElementById('employee-tooltip'); if (t) t.remove() }}
-                ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
-                <div 
-                  style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-                  onMouseEnter={(e) => {
-                    const tooltip = document.createElement('div')
-                    tooltip.id = 'partner-weeks-tooltip'
-                    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
-                    
-                    // Calculate relative FTE based on maximum FTE partner (accounting for vacation during partner period)
-                    const allPartners = fy!.physicians.filter((ph) => ph.type === 'partner' || ph.type === 'employeeToPartner' || ph.type === 'partnerToRetire')
-                    const partnerWeights = allPartners.map(ph => getPartnerFTEWeightProper(ph))
-                    const maxWeight = Math.max(...partnerWeights, 0.01) // Avoid division by zero
-                    const currentWeight = getPartnerFTEWeightProper(p)
-                    const relativeFTE = currentWeight / maxWeight
-                    
-                      const weeks = p.weeksVacation ?? 8
-                      const partnerPortion = getPartnerPortionOfYear(p)
-                      const partnerWeeksInYear = partnerPortion * 52
-                      const effectivePartnerWeeks = Math.max(0, partnerWeeksInYear - weeks)
-                      tooltip.textContent = `Partner (during partner period):\nWeeks off: ${weeks}\nPartner weeks available: ${partnerWeeksInYear.toFixed(1)}\nEffective working weeks: ${effectivePartnerWeeks.toFixed(1)}\nRelative FTE: ${(relativeFTE * 100).toFixed(1)}%\nPartner portion of year: ${(partnerPortion * 100).toFixed(1)}%`
-                    document.body.appendChild(tooltip)
-                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                    tooltip.style.left = `${rect.right + 10}px`
-                    tooltip.style.top = `${rect.top + window.scrollY}px`
-                  }}
-                  onMouseLeave={() => { const t = document.getElementById('partner-weeks-tooltip'); if (t) t.remove() }}
                 ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
               </div>
             <button
