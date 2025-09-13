@@ -1185,6 +1185,21 @@ function getPartnerFTEWeight(physician: Physician): number {
   return baseFte * getPartnerPortionOfYear(physician)
 }
 
+// Calculate FTE weight properly accounting for vacation during partner working period
+function getPartnerFTEWeightProper(physician: Physician): number {
+  const partnerPortion = getPartnerPortionOfYear(physician)
+  if (partnerPortion === 0) return 0
+  
+  const weeksVacation = clamp(physician.weeksVacation ?? 0, 0, 24)
+  const partnerWeeksInYear = partnerPortion * 52
+  
+  // Vacation is taken during the partner working period
+  const effectivePartnerWeeks = Math.max(0, partnerWeeksInYear - weeksVacation)
+  
+  // Return as fraction of full year for comparison
+  return effectivePartnerWeeks / 52
+}
+
 
 // Helper functions for date-based employee->partner transition
 function isLeapYear(year: number): boolean {
@@ -3501,7 +3516,19 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                       const tooltip = document.createElement('div')
                       tooltip.id = 'weeks-off-tooltip'
                       tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
-                      tooltip.textContent = `Weeks Off During Working Period:\n\nThis represents the actual number of weeks off taken during the portion of the year the partner was actively working.\n\nNot prorated - these are full weeks of vacation/time off.`
+                      
+                      // Calculate relative FTE based on maximum FTE partner (accounting for vacation during partner period)
+                      const allPartners = fy!.physicians.filter((ph) => ph.type === 'partner' || ph.type === 'employeeToPartner' || ph.type === 'partnerToRetire')
+                      const partnerWeights = allPartners.map(ph => getPartnerFTEWeightProper(ph))
+                      const maxWeight = Math.max(...partnerWeights, 0.01) // Avoid division by zero
+                      const currentWeight = getPartnerFTEWeightProper(p)
+                      const relativeFTE = currentWeight / maxWeight
+                      
+                      const weeks = p.weeksVacation ?? 8
+                      const partnerPortion = getPartnerPortionOfYear(p)
+                      const partnerWeeksInYear = partnerPortion * 52
+                      const effectivePartnerWeeks = Math.max(0, partnerWeeksInYear - weeks)
+                      tooltip.textContent = `Weeks Off During Working Period:\n\nWeeks off: ${weeks}\nPartner weeks available: ${partnerWeeksInYear.toFixed(1)}\nEffective working weeks: ${effectivePartnerWeeks.toFixed(1)}\nRelative FTE: ${(relativeFTE * 100).toFixed(1)}%\nPartner portion of year: ${(partnerPortion * 100).toFixed(1)}%\n\nThis represents the actual number of weeks off taken during the portion of the year the partner was actively working.\n\nVacation is subtracted from available partner working weeks.`
                       document.body.appendChild(tooltip)
                       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
                       tooltip.style.left = `${rect.right + 10}px`
@@ -3611,9 +3638,17 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                 const tooltip = document.createElement('div')
                 tooltip.id = 'partner-tooltip'
                 tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
-                const weeks = p.weeksVacation ?? 8
-                const fte = 1 - weeks / 52
-                tooltip.textContent = `Partner:\nWeeks off: ${weeks}\nFTE: ${(fte * 100).toFixed(1)}%`
+                
+                // Calculate relative FTE based on maximum FTE partner (accounting for vacation during partner period)
+                const allPartners = fy!.physicians.filter((ph) => ph.type === 'partner' || ph.type === 'employeeToPartner' || ph.type === 'partnerToRetire')
+                const partnerWeights = allPartners.map(ph => getPartnerFTEWeightProper(ph))
+                const maxWeight = Math.max(...partnerWeights, 0.01) // Avoid division by zero
+                const currentWeight = getPartnerFTEWeightProper(p)
+                const relativeFTE = currentWeight / maxWeight
+                
+                  const weeks = p.weeksVacation ?? 8
+                  const effectiveWeeks = 52 - weeks
+                  tooltip.textContent = `Partner:\nWeeks off: ${weeks}\nWorking weeks: ${effectiveWeeks}\nRelative FTE: ${(relativeFTE * 100).toFixed(1)}%`
                 document.body.appendChild(tooltip)
                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
                 tooltip.style.left = `${rect.right + 10}px`
@@ -3971,7 +4006,32 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   }}
                   onMouseLeave={() => { const t = document.getElementById('employee-tooltip'); if (t) t.remove() }}
                 ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
-                <div></div> {/* Empty space for vacation row */}
+                <div 
+                  style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                  onMouseEnter={(e) => {
+                    const tooltip = document.createElement('div')
+                    tooltip.id = 'partner-weeks-tooltip'
+                    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                    
+                    // Calculate relative FTE based on maximum FTE partner (accounting for vacation during partner period)
+                    const allPartners = fy!.physicians.filter((ph) => ph.type === 'partner' || ph.type === 'employeeToPartner' || ph.type === 'partnerToRetire')
+                    const partnerWeights = allPartners.map(ph => getPartnerFTEWeightProper(ph))
+                    const maxWeight = Math.max(...partnerWeights, 0.01) // Avoid division by zero
+                    const currentWeight = getPartnerFTEWeightProper(p)
+                    const relativeFTE = currentWeight / maxWeight
+                    
+                      const weeks = p.weeksVacation ?? 8
+                      const partnerPortion = getPartnerPortionOfYear(p)
+                      const partnerWeeksInYear = partnerPortion * 52
+                      const effectivePartnerWeeks = Math.max(0, partnerWeeksInYear - weeks)
+                      tooltip.textContent = `Partner (during partner period):\nWeeks off: ${weeks}\nPartner weeks available: ${partnerWeeksInYear.toFixed(1)}\nEffective working weeks: ${effectivePartnerWeeks.toFixed(1)}\nRelative FTE: ${(relativeFTE * 100).toFixed(1)}%\nPartner portion of year: ${(partnerPortion * 100).toFixed(1)}%`
+                    document.body.appendChild(tooltip)
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    tooltip.style.left = `${rect.right + 10}px`
+                    tooltip.style.top = `${rect.top + window.scrollY}px`
+                  }}
+                  onMouseLeave={() => { const t = document.getElementById('partner-weeks-tooltip'); if (t) t.remove() }}
+                ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
               </div>
             <button
               onClick={() => store.removePhysician(scenario, year, p.id)}
