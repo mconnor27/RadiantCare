@@ -264,12 +264,12 @@ function defaultPhysiciansGeneric(year: number): Physician[] {
 
 function scenario2024Defaults(): Physician[] {
   return [
-    { id: `2024-CD`, name: 'CD', type: 'employeeToTerminate', terminatePortionOfYear: 30/365, salary: 318640, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Jan 31 termination
-    { id: `2024-MC`, name: 'MC', type: 'employee', salary: 341323.02, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
-    { id: `2024-BT`, name: 'BT', type: 'newEmployee', startPortionOfYear: 279/365, salary: 407196, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Oct 7 start
     { id: `2024-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
     { id: `2024-GA`, name: 'GA', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0 },
     { id: `2024-HW`, name: 'HW', type: 'partner', weeksVacation: 19, receivesBonuses: false, bonusAmount: 0 },
+    { id: `2024-MC`, name: 'MC', type: 'employee', salary: 341323.02, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
+    { id: `2024-CD`, name: 'CD', type: 'employeeToTerminate', terminatePortionOfYear: 30/365, salary: 318640, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Jan 31 termination
+    { id: `2024-BT`, name: 'BT', type: 'newEmployee', startPortionOfYear: 279/365, salary: 407196, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Oct 7 start
   ]
 }
 
@@ -279,8 +279,8 @@ function scenarioADefaultsByYear(year: number): Physician[] {
       { id: `${year}-MC`, name: 'MC', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 328840, weeksVacation: 9, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-GA`, name: 'GA', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-BT`, name: 'BT', type: 'employee', salary: 430760, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-HW`, name: 'HW', type: 'partnerToRetire', partnerPortionOfYear: 0, buyoutCost: 51666.58, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-BT`, name: 'BT', type: 'employee', salary: 430760, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
     ]
   }
   if (year === 2026) {
@@ -305,7 +305,7 @@ function scenarioADefaultsByYear(year: number): Physician[] {
     { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
     { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
-      { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 }, // First year as partner
+      { id: `${year}-LK`, name: 'LK', type: 'employeeToPartner', employeePortionOfYear: 150/365, salary: 600000, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Becomes partner exactly 2 years after hire
     ]
   }
   if (year === 2029) {
@@ -402,7 +402,7 @@ function computeDefaultNonMdEmploymentCosts(year: number = 2025): number {
 
 
 const FUTURE_YEARS_BASE: Omit<FutureYear, 'physicians'>[] = Array.from({ length: 5 }).map((_, idx) => {
-  const startYear = HISTORIC_DATA[HISTORIC_DATA.length - 1].year + 1 // start after last actual (2026)
+  const startYear = HISTORIC_DATA[HISTORIC_DATA.length - 1].year + 1 // start after last actual (2025)
   const year = startYear + idx
   return {
     year,
@@ -410,7 +410,7 @@ const FUTURE_YEARS_BASE: Omit<FutureYear, 'physicians'>[] = Array.from({ length:
     nonEmploymentCosts:
       HISTORIC_DATA[HISTORIC_DATA.length - 1].nonEmploymentCosts,
     nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(year),
-    locumCosts: 120000,
+    locumCosts: year === 2026 ? 60000 : 120000,
     miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
   }
 })
@@ -426,9 +426,8 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
       { id: `${year}-MC`, name: 'MC', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 328840, weeksVacation: 9, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-GA`, name: 'GA', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-BT`, name: 'BT', type: 'employee', salary: 430760, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-HW`, name: 'HW', type: 'partnerToRetire', partnerPortionOfYear: 0, buyoutCost: 51666.58, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-P5`, name: 'Physician 5', type: 'employee', salary: 600000, receivesBenefits: true, receivesBonuses: false, bonusAmount: 0 }, // 5th physician
+      { id: `${year}-BT`, name: 'BT', type: 'employee', salary: 430760, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
     ]
   }
   if (year === 2026) {
@@ -438,7 +437,7 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
       { id: `${year}-GA`, name: 'GA', type: 'partnerToRetire', partnerPortionOfYear: 182/365, weeksVacation: 8, buyoutCost: 50000, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-BT`, name: 'BT', type: 'employeeToPartner', employeePortionOfYear: 181/365, salary: 507240, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-LK`, name: 'LK', type: 'newEmployee', startPortionOfYear: 151/365, salary: 600000, receivesBenefits: true, receivesBonuses: true, bonusAmount: 20000 },
-      { id: `${year}-P5`, name: 'Physician 5', type: 'employee', salary: 600000, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-P5`, name: 'Potential Hire', type: 'newEmployee', startPortionOfYear: 0, salary: 500000, receivesBenefits: true, receivesBonuses: true, bonusAmount: 20000 },
     ]
   }
   if (year === 2027) {
@@ -447,7 +446,7 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 }, // First year as partner
       { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 600000, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-P5`, name: 'Physician 5', type: 'employee', salary: 600000, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-P5`, name: 'Potential Hire', type: 'employee', salary: 500000, receivesBenefits: true, receivesBonuses: false, bonusAmount: 0 },
     ]
   }
   if (year === 2028) {
@@ -455,8 +454,8 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
     { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
     { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
-      { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 }, // First year as partner
-      { id: `${year}-P5`, name: 'Physician 5', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 }, // First year as partner
+      { id: `${year}-LK`, name: 'LK', type: 'employeeToPartner', employeePortionOfYear: 150/365, salary: 600000, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Becomes partner exactly 2 years after hire
+      { id: `${year}-P5`, name: 'Potential Hire', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 500000, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Transition year - handles delayed W2
     ]
   }
   if (year === 2029) {
@@ -465,7 +464,7 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 }, // Third year as partner
       { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
-      { id: `${year}-P5`, name: 'Physician 5', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
+      { id: `${year}-P5`, name: 'Potential Hire', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
     ]
   }
   // 2030+
@@ -474,7 +473,7 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
     { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
     { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2027)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
     { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
-    { id: `${year}-P5`, name: 'Physician 5', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
+    { id: `${year}-P5`, name: 'Potential Hire', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
   ]
 }
 
@@ -507,7 +506,7 @@ export const useDashboardStore = create<Store>()(
             incomeGrowthPct: 3.7, 
             nonEmploymentCostsPct: 7.8, 
             nonMdEmploymentCostsPct: 6.0, 
-            locumsCosts: 120000, 
+            locumsCosts: 0, 
             miscEmploymentCostsPct: 6.7,
             benefitCostsGrowthPct: 5.0
           },
@@ -526,7 +525,7 @@ export const useDashboardStore = create<Store>()(
                   incomeGrowthPct: 3.7, 
                   nonEmploymentCostsPct: 7.8, 
                   nonMdEmploymentCostsPct: 6.0, 
-                  locumsCosts: 120000, 
+                  locumsCosts: 0, 
                   miscEmploymentCostsPct: 6.7,
                   benefitCostsGrowthPct: 5.0
                 },
@@ -839,7 +838,7 @@ export const useDashboardStore = create<Store>()(
               fy.nonEmploymentCosts = nonEmploymentCosts
               fy.nonMdEmploymentCosts = nonMdEmploymentCosts
               fy.miscEmploymentCosts = miscEmploymentCosts
-              fy.locumCosts = sc.projection.locumsCosts
+              fy.locumCosts = fy.year === 2026 ? 60000 : sc.projection.locumsCosts
             }
           }),
         applyProjectionFromLastActual: (scenario) =>
@@ -923,8 +922,8 @@ export const useDashboardStore = create<Store>()(
               fy.nonMdEmploymentCosts = nonMdEmploymentCosts
               fy.miscEmploymentCosts = miscEmploymentCosts
               
-              // Set locums costs from the global override
-              fy.locumCosts = sc.projection.locumsCosts
+              // Set locums costs from the global override (except 2026 which defaults to 60K)
+              fy.locumCosts = fy.year === 2026 ? 60000 : sc.projection.locumsCosts
             }
           }),
         setSelectedYear: (scenario, year) =>
@@ -1015,7 +1014,7 @@ export const useDashboardStore = create<Store>()(
                 incomeGrowthPct: 3.7, 
                 nonEmploymentCostsPct: 7.8, 
                 nonMdEmploymentCostsPct: 6.0, 
-                locumsCosts: 120000, 
+                locumsCosts: 0, 
                 miscEmploymentCostsPct: 6.7,
                 benefitCostsGrowthPct: 5.0
               }
@@ -2358,7 +2357,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
       >
         {/* Drag Handle */}
         <div
-          data-drag-handle
+          {...(!readOnly && { 'data-drag-handle': true })}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -2368,7 +2367,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
             cursor: readOnly ? 'default' : 'grab',
             userSelect: 'none',
             opacity: readOnly ? 0.3 : 1.0,
-            touchAction: 'none',
+            touchAction: readOnly ? 'auto' : 'none',
           }}
           title={readOnly ? '' : 'Drag to reorder'}
         >
@@ -4551,16 +4550,18 @@ function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
             }}
             className="growth-slider"
           />
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: `${((0 - min) / (max - min)) * 100}%`,
-            transform: 'translate(-50%, -50%)',
-            width: '2px',
-            height: '8px',
-            backgroundColor: '#374151',
-            pointerEvents: 'none'
-          }} />
+          {suffix === '%' && (
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: `${((0 - min) / (max - min)) * 100}%`,
+              transform: 'translate(-50%, -50%)',
+              width: '2px',
+              height: '8px',
+              backgroundColor: '#374151',
+              pointerEvents: 'none'
+            }} />
+          )}
         </div>
         {isDollar ? (
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: isMobile ? 100 : 120, height: 23 }}>
@@ -4801,7 +4802,48 @@ function HistoricAndProjectionChart() {
   const costHistoric = store.historic.map((h) => h.nonEmploymentCosts)
   const netHistoric = store.historic.map((h) => h.totalIncome - h.nonEmploymentCosts - (h.employeePayroll ?? 0))
   const employmentHistoric = store.historic.map((h) => h.employeePayroll ?? 0)
-  const lastActual = store.historic[store.historic.length - 1]
+
+  // Helper function to get 2025 baseline values for each scenario based on their dataMode
+  const getScenarioBaseline = (scenario: 'A' | 'B') => {
+    const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
+    const dataMode = sc.dataMode
+    const last2024 = store.historic.find((h) => h.year === 2024)
+    const last2025 = store.historic.find((h) => h.year === 2025)
+    
+    if (dataMode === 'Custom') {
+      // For Custom mode, use the existing baseline data from year 2025 in future array
+      const customBaseline = sc.future.find(f => f.year === 2025)
+      if (customBaseline) {
+        return {
+          totalIncome: customBaseline.totalIncome,
+          nonEmploymentCosts: customBaseline.nonEmploymentCosts,
+          employeePayroll: customBaseline.nonMdEmploymentCosts + customBaseline.miscEmploymentCosts
+        }
+      }
+    } else if (dataMode === '2024 Data' && last2024) {
+      return {
+        totalIncome: last2024.totalIncome,
+        nonEmploymentCosts: last2024.nonEmploymentCosts,
+        employeePayroll: last2024.employeePayroll ?? (164677.44 + 24623.49) // 2024 actual values
+      }
+    } else if (dataMode === '2025 Data' && last2025) {
+      return {
+        totalIncome: last2025.totalIncome,
+        nonEmploymentCosts: last2025.nonEmploymentCosts,
+        employeePayroll: last2025.employeePayroll ?? (computeDefaultNonMdEmploymentCosts(2025) + DEFAULT_MISC_EMPLOYMENT_COSTS)
+      }
+    }
+    
+    // Fallback to 2025 defaults - use actual 2025 historic data if available
+    return {
+      totalIncome: last2025?.totalIncome || 2700000,
+      nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
+      employeePayroll: last2025?.employeePayroll ?? (computeDefaultNonMdEmploymentCosts(2025) + DEFAULT_MISC_EMPLOYMENT_COSTS)
+    }
+  }
+
+  const baselineA = getScenarioBaseline('A')
+  const baselineB = store.scenarioBEnabled && store.scenarioB ? getScenarioBaseline('B') : null
 
   // Marker fill: make 2025 points solid white to match plot background
   const plotBackgroundColor = '#ffffff'
@@ -4918,30 +4960,34 @@ function HistoricAndProjectionChart() {
           const traces: any[] = []
           // Group: Income
           traces.push({ x: historicYears, y: incomeHistoric, type: 'scatter', mode: 'lines+markers', name: 'Total Income', line: { color: '#1976d2', width: 3 }, marker: { symbol: 'circle', color: markerColorsFor2025('#1976d2'), line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}', legendgroup: 'income', legendrank: 1 })
-          traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [lastActual.totalIncome, ...store.scenarioA.future.map(f => f.totalIncome)], type: 'scatter', mode: 'lines+markers', name: 'Income projection A', line: { dash: 'dot', color: '#1976d2', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 2 })
-          if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [lastActual.totalIncome, ...store.scenarioB.future.map(f => f.totalIncome)], type: 'scatter', mode: 'lines+markers', name: 'Income projection B', line: { dash: 'dash', color: '#1976d2', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 3 })
+          traces.push({ x: [2025, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => f.year)], y: [baselineA.totalIncome, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => f.totalIncome)], type: 'scatter', mode: 'lines+markers', name: 'Income projection A', line: { dash: 'dot', color: '#1976d2', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 2 })
+          if (store.scenarioBEnabled && store.scenarioB && baselineB) traces.push({ x: [2025, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.year)], y: [baselineB.totalIncome, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.totalIncome)], type: 'scatter', mode: 'lines+markers', name: 'Income projection B', line: { dash: 'dash', color: '#1976d2', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 3 })
 
           // Group: Non-employment costs
           traces.push({ x: historicYears, y: costHistoric, type: 'scatter', mode: 'lines+markers', name: 'Non-Employment Costs', line: { color: '#e65100', width: 3 }, marker: { symbol: 'circle', color: markerColorsFor2025('#e65100'), line: { color: '#e65100', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}', legendgroup: 'cost', legendrank: 1 })
-          traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [lastActual.nonEmploymentCosts, ...store.scenarioA.future.map(f => f.nonEmploymentCosts)], type: 'scatter', mode: 'lines+markers', name: 'Cost projection A', line: { dash: 'dot', color: '#e65100', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#e65100', width: 2 }, size: 8 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'cost', legendrank: 2 })
-          if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [lastActual.nonEmploymentCosts, ...store.scenarioB.future.map(f => f.nonEmploymentCosts)], type: 'scatter', mode: 'lines+markers', name: 'Cost projection B', line: { dash: 'dash', color: '#e65100', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#e65100', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'cost', legendrank: 3 })
+          traces.push({ x: [2025, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => f.year)], y: [baselineA.nonEmploymentCosts, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => f.nonEmploymentCosts)], type: 'scatter', mode: 'lines+markers', name: 'Cost projection A', line: { dash: 'dot', color: '#e65100', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#e65100', width: 2 }, size: 8 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'cost', legendrank: 2 })
+          if (store.scenarioBEnabled && store.scenarioB && baselineB) traces.push({ x: [2025, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.year)], y: [baselineB.nonEmploymentCosts, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.nonEmploymentCosts)], type: 'scatter', mode: 'lines+markers', name: 'Cost projection B', line: { dash: 'dash', color: '#e65100', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#e65100', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'cost', legendrank: 3 })
 
           // Group: Net income
           traces.push({ x: historicYears, y: netHistoric, type: 'scatter', mode: 'lines+markers', name: 'Net Income (Historic)', line: { color: '#2e7d32', width: 3 }, marker: { symbol: 'circle', color: markerColorsFor2025('#2e7d32'), line: { color: '#2e7d32', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}', legendgroup: 'net', legendrank: 1 })
-          traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [NET_PARTNER_POOL_2025, ...scANet], type: 'scatter', mode: 'lines+markers', name: 'Net projection A', line: { dash: 'dot', color: '#2e7d32', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#2e7d32', width: 2 }, size: 8 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'net', legendrank: 2 })
-          if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [NET_PARTNER_POOL_2025, ...scBNet], type: 'scatter', mode: 'lines+markers', name: 'Net projection B', line: { dash: 'dash', color: '#2e7d32', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#2e7d32', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'net', legendrank: 3 })
+          traces.push({ x: [2025, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => f.year)], y: [NET_PARTNER_POOL_2025, ...scANet.slice(1)], type: 'scatter', mode: 'lines+markers', name: 'Net projection A', line: { dash: 'dot', color: '#2e7d32', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#2e7d32', width: 2 }, size: 8 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'net', legendrank: 2 })
+          if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [2025, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.year)], y: [NET_PARTNER_POOL_2025, ...scBNet.slice(1)], type: 'scatter', mode: 'lines+markers', name: 'Net projection B', line: { dash: 'dash', color: '#2e7d32', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#2e7d32', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'net', legendrank: 3 })
 
           // Group: Employment
           traces.push({ x: historicYears, y: employmentHistoric, type: 'scatter', mode: 'lines+markers', name: 'Employment Costs (Historic)', line: { color: '#6b7280', width: 3 }, marker: { symbol: 'circle', color: markerColorsFor2025('#6b7280'), line: { color: '#6b7280', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}', legendgroup: 'employment', legendrank: 1 })
-          traces.push({ x: [lastActual.year, ...store.scenarioA.future.map(f => f.year)], y: [lastActual.employeePayroll ?? 0, ...scAEmployment], type: 'scatter', mode: 'lines+markers', name: 'Employment projection A', line: { dash: 'dot', color: '#6b7280', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#6b7280', width: 2 }, size: 8 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'employment', legendrank: 2 })
-          if (store.scenarioBEnabled && store.scenarioB) traces.push({ x: [lastActual.year, ...store.scenarioB.future.map(f => f.year)], y: [lastActual.employeePayroll ?? 0, ...scBEmployment], type: 'scatter', mode: 'lines+markers', name: 'Employment projection B', line: { dash: 'dash', color: '#6b7280', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#6b7280', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'employment', legendrank: 3 })
+          traces.push({ x: [2025, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => f.year)], y: [baselineA.employeePayroll, ...scAEmployment.slice(1)], type: 'scatter', mode: 'lines+markers', name: 'Employment projection A', line: { dash: 'dot', color: '#6b7280', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#6b7280', width: 2 }, size: 8 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'employment', legendrank: 2 })
+          if (store.scenarioBEnabled && store.scenarioB && baselineB) traces.push({ x: [2025, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.year)], y: [baselineB.employeePayroll, ...scBEmployment.slice(1)], type: 'scatter', mode: 'lines+markers', name: 'Employment projection B', line: { dash: 'dash', color: '#6b7280', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#6b7280', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'employment', legendrank: 3 })
 
           // Overlay 2025 markers on top of dotted projection lines with proper tooltips
           // These are linked to their respective legend groups so they toggle together
-          traces.push({ x: [lastActual.year], y: [lastActual.totalIncome], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}<extra></extra>', legendgroup: 'income' })
-          traces.push({ x: [lastActual.year], y: [lastActual.nonEmploymentCosts], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#e65100', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}<extra></extra>', legendgroup: 'cost' })
-          traces.push({ x: [lastActual.year], y: [netHistoric[netHistoric.length - 1]], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#2e7d32', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}<extra></extra>', legendgroup: 'net' })
-          traces.push({ x: [lastActual.year], y: [lastActual.employeePayroll ?? 0], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#6b7280', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}<extra></extra>', legendgroup: 'employment' })
+          // Now use the same 2025 baseline values for consistency across scenarios
+          const historic2025 = store.historic.find(h => h.year === 2025)
+          if (historic2025) {
+            traces.push({ x: [2025], y: [historic2025.totalIncome], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}<extra></extra>', legendgroup: 'income' })
+            traces.push({ x: [2025], y: [historic2025.nonEmploymentCosts], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#e65100', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}<extra></extra>', legendgroup: 'cost' })
+            traces.push({ x: [2025], y: [netHistoric[netHistoric.length - 1]], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#2e7d32', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}<extra></extra>', legendgroup: 'net' })
+            traces.push({ x: [2025], y: [historic2025.employeePayroll ?? 0], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#6b7280', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}<extra></extra>', legendgroup: 'employment' })
+          }
 
           return traces
         })() as any}
@@ -5217,32 +5263,110 @@ function OverallCompensationSummary() {
   const [highlight, setHighlight] = useState<null | { scenario: 'A' | 'B'; name: string }>(null)
   const [isolated, setIsolated] = useState<null | { scenario: 'A' | 'B'; name: string }>(null)
   
+  // Separate state for scenario table highlighting/isolation
+  const [scenarioHighlight, setScenarioHighlight] = useState<null | { scenario: 'A' | 'B'; name: string }>(null)
+  const [scenarioIsolated, setScenarioIsolated] = useState<null | { scenario: 'A' | 'B'; name: string }>(null)
+  
   const isHighlighted = (scenario: 'A' | 'B', name: string) => {
-    // If something is isolated, only highlight the isolated item
-    if (isolated) {
-      return isolated.scenario === scenario && isolated.name === name
+    // Check isolation from either table (physician table or scenario table)
+    if (isolated || scenarioIsolated) {
+      const activeIsolated = isolated || scenarioIsolated
+      // For physician table isolation: when both scenarios are enabled, highlight both A and B for the same physician
+      if (isolated && store.scenarioBEnabled) {
+        return isolated.name === name
+      }
+      // For scenario table isolation or single scenario: exact match only
+      return activeIsolated!.scenario === scenario && activeIsolated!.name === name
     }
-    // Otherwise, use hover highlighting
-    return highlight ? highlight.scenario === scenario && highlight.name === name : true
+    
+    // Check highlighting from either table (physician table or scenario table)
+    if (highlight || scenarioHighlight) {
+      const activeHighlight = highlight || scenarioHighlight
+      // For physician table highlighting: when both scenarios are enabled, highlight both A and B for the same physician  
+      if (highlight && store.scenarioBEnabled) {
+        return highlight.name === name
+      }
+      // For scenario table highlighting or single scenario: exact match only
+      return activeHighlight!.scenario === scenario && activeHighlight!.name === name
+    }
+    return true
   }
 
-  const isIsolated = (scenario: 'A' | 'B', name: string) =>
-    isolated ? isolated.scenario === scenario && isolated.name === name : false
+  const isIsolated = (scenario: 'A' | 'B', name: string) => {
+    const activeIsolated = isolated || scenarioIsolated
+    if (!activeIsolated) return false
+    
+    // For physician table isolation: when both scenarios are enabled, isolate both A and B for the same physician
+    if (isolated && store.scenarioBEnabled) {
+      return isolated.name === name
+    }
+    // For scenario table isolation or single scenario: exact match only
+    return activeIsolated.scenario === scenario && activeIsolated.name === name
+  }
+
+  const isRowHighlighted = (scenario: 'A' | 'B', name: string) => {
+    // If something is isolated (from either table), show blue background for the isolated rows
+    if (isolated || scenarioIsolated) {
+      return isIsolated(scenario, name)
+    }
+    // If hovering (and nothing isolated), show blue background for the highlighted rows
+    if (highlight || scenarioHighlight) {
+      return isHighlighted(scenario, name)
+    }
+    return false
+  }
 
   const handleRowClick = (scenario: 'A' | 'B', name: string) => {
-    if (isolated?.scenario === scenario && isolated?.name === name) {
-      // Clicking the already isolated row - clear isolation
-      setIsolated(null)
-      setHighlight(null) // Also clear any hover highlight for immediate refresh
+    // When both scenarios are enabled, check if the physician name is already isolated
+    const isPhysicianIsolated = isolated?.name === name
+    
+    if (isPhysicianIsolated) {
+      // Clicking any row for the already isolated physician - clear all isolation
+      clearAllIsolation()
     } else {
-      // Isolate this row
+      // Clear any scenario table isolation first, then isolate this physician
+      clearAllIsolation()
       setIsolated({ scenario, name })
     }
   }
 
+  const handleScenarioRowClick = (scenario: 'A' | 'B', name: string) => {
+    // Check if this row is already isolated in scenario table
+    const isRowIsolated = scenarioIsolated?.scenario === scenario && scenarioIsolated?.name === name
+    
+    if (isRowIsolated) {
+      // Clicking the already isolated row - clear all isolation
+      clearAllIsolation()
+    } else {
+      // Isolate this specific scenario row (only one at a time)
+      clearAllIsolation() // Clear any existing isolation first
+      setScenarioIsolated({ scenario, name })
+    }
+  }
+
+  const clearAllIsolation = () => {
+    setIsolated(null)
+    setScenarioIsolated(null)
+    setHighlight(null)
+    setScenarioHighlight(null)
+  }
+  
   const clearIsolation = () => {
     setIsolated(null)
     setHighlight(null) // Also clear any hover highlight to ensure clean state
+  }
+
+  // Cross-table highlighting functions
+  const handleScenarioRowHover = (scenario: 'A' | 'B', name: string) => {
+    if (!isolated && !scenarioIsolated) {
+      setScenarioHighlight({ scenario, name })
+    }
+  }
+  
+  const handleScenarioRowLeave = () => {
+    if (!isolated && !scenarioIsolated) {
+      setScenarioHighlight(null)
+    }
   }
 
 
@@ -5258,7 +5382,7 @@ function OverallCompensationSummary() {
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#ffffff', padding: 4, position: 'relative' }}>
         <Plot
-          key={`plot-${isolated?.scenario}-${isolated?.name}-${highlight?.scenario}-${highlight?.name}`}
+          key={`plot-${isolated?.scenario}-${isolated?.name}-${highlight?.scenario}-${highlight?.name}-${scenarioIsolated?.scenario}-${scenarioIsolated?.name}-${scenarioHighlight?.scenario}-${scenarioHighlight?.name}`}
           data={(() => {
             const rows: any[] = []
             for (const name of allNames) {
@@ -5270,7 +5394,7 @@ function OverallCompensationSummary() {
                 x: years,
                 y: a.values,
                 line: { color: colorByName[name], width: isHighlighted('A', name) ? 3 : 1.2 },
-                opacity: (highlight || isolated) ? (isHighlighted('A', name) ? 1 : 0.2) : 1,
+                opacity: (highlight || isolated || scenarioHighlight || scenarioIsolated) ? (isHighlighted('A', name) ? 1 : 0.2) : 1,
                 legendgroup: name, // Group by physician name
                 legendrank: 1, // A scenario appears first in each group
               })
@@ -5283,7 +5407,7 @@ function OverallCompensationSummary() {
                   x: years,
                   y: b.values,
                   line: { color: colorByName[name], dash: 'dot', width: isHighlighted('B', name) ? 3 : 1.2 },
-                  opacity: (highlight || isolated) ? (isHighlighted('B', name) ? 1 : 0.2) : 1,
+                  opacity: (highlight || isolated || scenarioHighlight || scenarioIsolated) ? (isHighlighted('B', name) ? 1 : 0.2) : 1,
                   legendgroup: name, // Same group as the A scenario
                   legendrank: 2, // B scenario appears second in each group
                 })
@@ -5298,7 +5422,7 @@ function OverallCompensationSummary() {
               x: years,
               y: locumsSeriesA,
               line: { color: '#888888', width: isHighlighted('A', 'Locums') ? 3 : 1.2 },
-              opacity: (highlight || isolated) ? (isHighlighted('A', 'Locums') ? 1 : 0.2) : 1,
+              opacity: (highlight || isolated || scenarioHighlight || scenarioIsolated) ? (isHighlighted('A', 'Locums') ? 1 : 0.2) : 1,
               legendgroup: 'Locums', // Group by itself
               legendrank: 999, // Put at end
               hovertemplate: store.scenarioBEnabled ? 'A: %{y:$,.0f}<extra></extra>' : '%{y:$,.0f}',
@@ -5312,7 +5436,7 @@ function OverallCompensationSummary() {
                 x: years,
                 y: locumsSeriesB,
                 line: { color: '#888888', dash: 'dot', width: isHighlighted('B', 'Locums') ? 3 : 1.2 },
-                opacity: (highlight || isolated) ? (isHighlighted('B', 'Locums') ? 1 : 0.2) : 1,
+                opacity: (highlight || isolated || scenarioHighlight || scenarioIsolated) ? (isHighlighted('B', 'Locums') ? 1 : 0.2) : 1,
                 legendgroup: 'Locums', // Same group as A scenario
                 legendrank: 1000, // Put at end after A
                 hovertemplate: 'B: %{y:$,.0f}<extra></extra>',
@@ -5334,9 +5458,9 @@ function OverallCompensationSummary() {
           style={{ width: '100%', height: isMobile ? 360 : 420 }}
         />
         {/* Reset button for clearing isolation */}
-        {isolated && (
+        {(isolated || scenarioIsolated) && (
           <button
-            onClick={clearIsolation}
+            onClick={clearAllIsolation}
             style={{
               position: 'absolute',
               top: 10,
@@ -5378,9 +5502,9 @@ function OverallCompensationSummary() {
           <div key={name} style={{ display: 'contents' }}>
             <div
               className="table-row-hover"
-              style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '1px 0', borderTop: '1px solid #f0f0f0', background: isIsolated('A', name) ? 'rgba(59, 130, 246, 0.08)' : (idx % 2 === 0 ? '#f9fafb' : 'transparent') }}
-              onMouseEnter={() => !isolated && setHighlight({ scenario: 'A', name })}
-              onMouseLeave={() => !isolated && setHighlight(null)}
+              style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '1px 0', borderTop: '1px solid #f0f0f0', background: isRowHighlighted('A', name) ? 'rgba(59, 130, 246, 0.08)' : (idx % 2 === 0 ? '#f9fafb' : 'transparent') }}
+              onMouseEnter={() => !isolated && !scenarioIsolated && setHighlight({ scenario: 'A', name })}
+              onMouseLeave={() => !isolated && !scenarioIsolated && setHighlight(null)}
               onClick={() => handleRowClick('A', name)}
             >
               <div>{store.scenarioBEnabled ? `${name} (Scenario A)` : name}</div>
@@ -5400,9 +5524,9 @@ function OverallCompensationSummary() {
             {store.scenarioBEnabled && (
               <div
                 className="table-row-hover"
-                style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '1px 0', borderTop: '1px solid #f0f0f0', background: isIsolated('B', name) ? 'rgba(59, 130, 246, 0.08)' : (idx % 2 === 0 ? '#f9fafb' : 'transparent') }}
-                onMouseEnter={() => !isolated && setHighlight({ scenario: 'B', name })}
-                onMouseLeave={() => !isolated && setHighlight(null)}
+                style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '1px 0', borderTop: '1px solid #f0f0f0', background: isRowHighlighted('B', name) ? 'rgba(59, 130, 246, 0.08)' : (idx % 2 === 0 ? '#f9fafb' : 'transparent') }}
+                onMouseEnter={() => !isolated && !scenarioIsolated && setHighlight({ scenario: 'B', name })}
+                onMouseLeave={() => !isolated && !scenarioIsolated && setHighlight(null)}
                 onClick={() => handleRowClick('B', name)}
               >
                 <div>{`${name} (Scenario B)`}</div>
@@ -5422,9 +5546,9 @@ function OverallCompensationSummary() {
         ))}
 
         {/* Locums rows */}
-        <div className="table-row-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '2px solid #e5e7eb', background: isIsolated('A', 'Locums') ? 'rgba(59, 130, 246, 0.08)' : '#f8f9fa', fontSize: '14px', color: '#6b7280' }}
-        onMouseEnter={() => !isolated && setHighlight({ scenario: 'A', name: 'Locums' })}
-        onMouseLeave={() => !isolated && setHighlight(null)}
+        <div className="table-row-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '2px solid #e5e7eb', background: isRowHighlighted('A', 'Locums') ? 'rgba(59, 130, 246, 0.08)' : '#f8f9fa', fontSize: '14px', color: '#6b7280' }}
+        onMouseEnter={() => !isolated && !scenarioIsolated && setHighlight({ scenario: 'A', name: 'Locums' })}
+        onMouseLeave={() => !isolated && !scenarioIsolated && setHighlight(null)}
         onClick={() => handleRowClick('A', 'Locums')}>
           <div style={{ paddingLeft: '8px' }}>{store.scenarioBEnabled ? 'Locums (Scenario A)' : 'Locums'}</div>
           {years.map((y, i) => {
@@ -5444,9 +5568,9 @@ function OverallCompensationSummary() {
           </div>
         </div>
         {store.scenarioBEnabled && store.scenarioB && (
-          <div className="table-row-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #e5e7eb', background: isIsolated('B', 'Locums') ? 'rgba(59, 130, 246, 0.08)' : '#f8f9fa', fontSize: '14px', color: '#6b7280' }}
-          onMouseEnter={() => !isolated && setHighlight({ scenario: 'B', name: 'Locums' })}
-          onMouseLeave={() => !isolated && setHighlight(null)}
+          <div className="table-row-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #e5e7eb', background: isRowHighlighted('B', 'Locums') ? 'rgba(59, 130, 246, 0.08)' : '#f8f9fa', fontSize: '14px', color: '#6b7280' }}
+          onMouseEnter={() => !isolated && !scenarioIsolated && setHighlight({ scenario: 'B', name: 'Locums' })}
+          onMouseLeave={() => !isolated && !scenarioIsolated && setHighlight(null)}
           onClick={() => handleRowClick('B', 'Locums')}>
             <div style={{ paddingLeft: '8px' }}>Locums (Scenario B)</div>
             {years.map((y, i) => {
@@ -5532,7 +5656,11 @@ function OverallCompensationSummary() {
 
         {/* Scenario A - Individual physicians */}
         {allNames.map((name, idx) => (
-          <div key={`SA-${name}`} className="table-row-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: idx === 0 ? '1px solid #f0f0f0' : '1px solid #f8f8f8', background: '#f9fafb' }}>
+          <div key={`SA-${name}`} className="table-row-hover" 
+            style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: idx === 0 ? '1px solid #f0f0f0' : '1px solid #f8f8f8', background: isRowHighlighted('A', name) ? 'rgba(59, 130, 246, 0.08)' : '#f9fafb' }}
+            onMouseEnter={() => handleScenarioRowHover('A', name)}
+            onMouseLeave={handleScenarioRowLeave}
+            onClick={() => handleScenarioRowClick('A', name)}>
             <div style={{ paddingLeft: '8px' }}>{name} (A)</div>
             {years.map((y) => {
               const found = perYearAWithRetired.find((py) => py.year === y)?.comps.find((c) => c.name === name)
@@ -5547,7 +5675,11 @@ function OverallCompensationSummary() {
         ))}
 
         {/* Scenario A - Locums */}
-        <div className="table-row-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #f0f0f0', background: '#f9fafb', fontSize: '14px', color: '#6b7280' }}>
+        <div className="table-row-hover" 
+          style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #f0f0f0', background: isRowHighlighted('A', 'Locums') ? 'rgba(59, 130, 246, 0.08)' : '#f9fafb', fontSize: '14px', color: '#6b7280' }}
+          onMouseEnter={() => handleScenarioRowHover('A', 'Locums')}
+          onMouseLeave={handleScenarioRowLeave}
+          onClick={() => handleScenarioRowClick('A', 'Locums')}>
           <div style={{ paddingLeft: '16px' }}>Locums (A)</div>
           {years.map((y, i) => {
             const fy = y === 2025 
@@ -5595,7 +5727,11 @@ function OverallCompensationSummary() {
           <>
             {/* Scenario B - Individual physicians */}
             {allNames.map((name, idx) => (
-              <div key={`SB-${name}`} className="table-row-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: idx === 0 ? '2px solid #e5e7eb' : '1px solid #f8f8f8', background: '#faf9f7' }}>
+              <div key={`SB-${name}`} className="table-row-hover" 
+                style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: idx === 0 ? '2px solid #e5e7eb' : '1px solid #f8f8f8', background: isRowHighlighted('B', name) ? 'rgba(59, 130, 246, 0.08)' : '#faf9f7' }}
+                onMouseEnter={() => handleScenarioRowHover('B', name)}
+                onMouseLeave={handleScenarioRowLeave}
+                onClick={() => handleScenarioRowClick('B', name)}>
                 <div style={{ paddingLeft: '8px' }}>{name} (B)</div>
                 {years.map((y) => {
                   const found = perYearBWithRetired.find((py) => py.year === y)?.comps.find((c) => c.name === name)
@@ -5610,7 +5746,11 @@ function OverallCompensationSummary() {
             ))}
 
             {/* Scenario B - Locums */}
-            <div className="table-row-hover" style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #f0f0f0', background: '#faf9f7', fontSize: '14px', color: '#6b7280' }}>
+            <div className="table-row-hover" 
+              style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '2px 0', borderTop: '1px solid #f0f0f0', background: isRowHighlighted('B', 'Locums') ? 'rgba(59, 130, 246, 0.08)' : '#faf9f7', fontSize: '14px', color: '#6b7280' }}
+              onMouseEnter={() => handleScenarioRowHover('B', 'Locums')}
+              onMouseLeave={handleScenarioRowLeave}
+              onClick={() => handleScenarioRowClick('B', 'Locums')}>
               <div style={{ paddingLeft: '16px' }}>Locums (B)</div>
               {years.map((y, i) => {
                 const fy = y === 2025 
