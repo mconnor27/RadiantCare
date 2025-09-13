@@ -983,24 +983,27 @@ export const useDashboardStore = create<Store>()(
           }),
         resetToDefaults: () => {
           set((state) => {
-            // ONLY reset projection parameters - NEVER touch baseline data or future years
-            state.scenarioA.projection = { 
-              incomeGrowthPct: 3.7, 
-              nonEmploymentCostsPct: 7.8, 
-              nonMdEmploymentCostsPct: 6.0, 
-              locumsCosts: 120000, 
-              miscEmploymentCostsPct: 6.7,
-              benefitCostsGrowthPct: 5.0
+            // Reset EVERYTHING to initial defaults
+            state.scenarioA = {
+              future: INITIAL_FUTURE_YEARS_A.map((f) => ({ 
+                ...f, 
+                physicians: [...f.physicians.map(p => ({ ...p }))] 
+              })),
+              projection: { 
+                incomeGrowthPct: 3.7, 
+                nonEmploymentCostsPct: 7.8, 
+                nonMdEmploymentCostsPct: 6.0, 
+                locumsCosts: 120000, 
+                miscEmploymentCostsPct: 6.7,
+                benefitCostsGrowthPct: 5.0
+              },
+              selectedYear: 2025, // Reset to Baseline tab
+              dataMode: '2025 Data',
             }
-            state.scenarioA.selectedYear = 2025 // Reset to Baseline tab
             
             state.scenarioBEnabled = false
             state.scenarioB = undefined
           }, false)
-          // Recalculate future years from existing baseline data using reset projection parameters
-          const store = useDashboardStore.getState()
-          store.applyProjectionFromLastActual('A')
-          if (store.scenarioB) store.applyProjectionFromLastActual('B')
         },
       }
     }),
@@ -2946,65 +2949,11 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateRows: '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
-              <img
-                src={p.receivesBonuses ? '/bonus_selected.png' : '/bonus_unselected.png'}
-                alt={`Bonus ${p.receivesBonuses ? 'enabled' : 'disabled'}`}
-                data-bonus-id={p.id}
+              <div
                 style={{
                   width: '20px',
-                  height: 'auto',
-                  maxHeight: '20px',
-                  cursor: readOnly ? 'default' : 'pointer',
-                  opacity: readOnly ? 0.6 : 1,
-                  objectFit: 'contain'
-                }}
-                onClick={(e) => {
-                  if (!readOnly) {
-                    createBonusTooltip(p.id, p.bonusAmount ?? 0, e, (_, amount) => {
-                      store.upsertPhysician(scenario, year, {
-                        ...p,
-                        bonusAmount: amount,
-                        receivesBonuses: amount !== 0
-                      })
-                    }, p.type === 'employeeToTerminate')
-                  }
-                }}
-                onMouseEnter={(e) => {
-                  if (!readOnly) {
-                    createBonusTooltip(p.id, p.bonusAmount ?? 0, e, (_, amount) => {
-                      store.upsertPhysician(scenario, year, {
-                        ...p,
-                        bonusAmount: amount,
-                        receivesBonuses: amount !== 0
-                      })
-                    }, p.type === 'employeeToTerminate')
-                    e.currentTarget.style.opacity = '0.8'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!readOnly) {
-                    // Add a delay before hiding to allow mouse to move to tooltip
-                    const tooltip = document.getElementById(`bonus-slider-${p.id}`)
-                    if (tooltip) {
-                      (tooltip as any).hideTimeout = setTimeout(() => {
-                        if (tooltip && !tooltip.matches(':hover')) {
-                          removeTooltip(`bonus-slider-${p.id}`)
-                        }
-                      }, 150)
-                    }
-                    e.currentTarget.style.opacity = '1'
-                  }
-                }}
-                onTouchStart={(e) => {
-                  if (!readOnly) {
-                    createBonusTooltip(p.id, p.bonusAmount ?? 0, e, (_, amount) => {
-                      store.upsertPhysician(scenario, year, {
-                        ...p,
-                        bonusAmount: amount,
-                        receivesBonuses: amount !== 0
-                      })
-                    }, p.type === 'employeeToTerminate')
-                  }
+                  height: '20px',
+                  maxHeight: '20px'
                 }}
               />
               <img
@@ -3649,65 +3598,10 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
               />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <img
-                src={p.receivesBonuses ? '/bonus_selected.png' : '/bonus_unselected.png'}
-                alt={`Bonus ${p.receivesBonuses ? 'enabled' : 'disabled'}`}
-                data-bonus-id={p.id}
+              <div
                 style={{
                   width: '20px',
-                  height: '20px',
-                  objectFit: 'contain',
-                  cursor: readOnly ? 'default' : 'pointer',
-                  opacity: readOnly ? 0.5 : 1
-                }}
-                onClick={(e) => {
-                  if (readOnly) return
-                  const newBonusState = !p.receivesBonuses
-                  store.upsertPhysician(scenario, year, {
-                    ...p,
-                    receivesBonuses: newBonusState,
-                    bonusAmount: newBonusState ? (p.bonusAmount ?? 0) : 0,
-                  })
-                  // Update tooltip in real-time if it's currently visible
-                  const tooltip = document.getElementById('benefits-tooltip-partner')
-                  if (tooltip) {
-                    tooltip.innerHTML = `Bonuses: ${newBonusState ? 'Enabled' : 'Disabled'}`
-                  }
-                }}
-                onMouseEnter={(e) => {
-                  if (!readOnly) {
-                    createBonusTooltip(p.id, p.bonusAmount ?? 0, e, (_, amount) => {
-                      store.upsertPhysician(scenario, year, {
-                        ...p,
-                        bonusAmount: amount,
-                      })
-                    })
-                    e.currentTarget.style.opacity = '0.8'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!readOnly) {
-                    // Add a delay before hiding to allow mouse to move to tooltip
-                    const tooltip = document.getElementById(`bonus-slider-${p.id}`)
-                    if (tooltip) {
-                      (tooltip as any).hideTimeout = setTimeout(() => {
-                        if (tooltip && !tooltip.matches(':hover')) {
-                          removeTooltip(`bonus-slider-${p.id}`)
-                        }
-                      }, 150)
-                    }
-                    e.currentTarget.style.opacity = '1'
-                  }
-                }}
-                onTouchStart={(e) => {
-                  if (!readOnly) {
-                    createBonusTooltip(p.id, p.bonusAmount ?? 0, e, (_, amount) => {
-                      store.upsertPhysician(scenario, year, {
-                        ...p,
-                        bonusAmount: amount,
-                      })
-                    })
-                  }
+                  height: '20px'
                 }}
               />
             </div>
