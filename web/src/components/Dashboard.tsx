@@ -1641,13 +1641,6 @@ function usePartnerComp(year: number, scenario: ScenarioKey) {
         }
         return sum
       }, 0)
-      const delayedW2Costs = partners.reduce((sum, p) => {
-        if (p.type === 'employeeToPartner') {
-          const delayed = calculateDelayedW2Payment(p, year)
-          return sum + delayed.amount + delayed.taxes
-        }
-        return sum
-      }, 0)
       
       // Use different partner pools based on data mode
       const basePool = dataMode === '2024 Data' ? 2032099.02 : NET_PARTNER_POOL_2025
@@ -5207,7 +5200,7 @@ function HistoricAndProjectionChart() {
           return traces
         })() as any}
         layout={{
-          title: { text: 'Historic and Projected Totals', font: { weight: 'bold' } },
+          title: { text: 'Historic and Projected Totals', font: { weight: 700 } },
           dragmode: false as any,
           legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.1, yanchor: 'top', traceorder: 'grouped' },
           margin: { l: 60, r: 20, t: 40, b: 64 },
@@ -5566,10 +5559,6 @@ function OverallCompensationSummary() {
     setScenarioHighlight(null)
   }
   
-  const clearIsolation = () => {
-    setIsolated(null)
-    setHighlight(null) // Also clear any hover highlight to ensure clean state
-  }
 
   // Cross-table highlighting functions
   const handleScenarioRowHover = (scenario: 'A' | 'B', name: string) => {
@@ -5949,7 +5938,7 @@ function OverallCompensationSummary() {
                 onClick={() => handleScenarioRowClick('B', name)}>
                 <div style={{ paddingLeft: '8px' }}>{name} (B)</div>
                 {years.map((y) => {
-                  const found = perYearBWithRetired.find((py) => py.year === y)?.comps.find((c) => c.name === name)
+                  const found = perYearBWithRetired?.find((py) => py.year === y)?.comps.find((c) => c.name === name)
                   return <div key={`SB-${name}-${y}`} style={{ textAlign: 'right' }}>{currencyOrDash(found ? found.comp : 0)}</div>
                 })}
                 <div style={{ textAlign: 'right' }}>
