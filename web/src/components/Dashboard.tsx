@@ -2818,7 +2818,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                 onTouchStart={(e) => createTooltip('benefits-tooltip-new', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)}
               />
             </div>
-            <div style={{ display: 'grid', gridTemplateRows: '19px 19px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateRows: '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
               <div 
                 style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
                 onMouseEnter={(e) => {
@@ -3115,7 +3115,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                 onTouchStart={(e) => createTooltip('benefits-tooltip-terminate', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)}
               />
             </div>
-            <div style={{ display: 'grid', gridTemplateRows: '19px 19px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateRows: '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
               <div 
                 style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
                 onMouseEnter={(e) => {
@@ -3660,7 +3660,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
             ) : (
               <div></div>
             )}
-              <div style={{ display: 'grid', gridTemplateRows: (p.partnerPortionOfYear ?? 0.5) > 0 ? '19px 19px 19px' : '19px 19px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateRows: (p.partnerPortionOfYear ?? 0.5) > 0 ? '20px 20px 20px' : '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
                 <div 
                   style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
                   onMouseEnter={(e) => {
@@ -4243,7 +4243,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                 }}
               />
             </div>
-              <div style={{ display: 'grid', gridTemplateRows: '19px 19px 19px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateRows: '20px 20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
                 {/* 1) Transition info */}
                 <div 
                   style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
