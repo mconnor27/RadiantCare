@@ -213,7 +213,7 @@ function createHoursTooltip(
 
   const minValue = 0
   const maxValue = 100
-  const title = 'Medical Director Hours'
+  const title = 'Medical Director Hours (Shared)'
   const displayPercentage = `${(currentPercentage || 0).toFixed(1)}%`
   const displayAmount = totalBudget > 0 ? `$${Math.round((currentPercentage || 0) * totalBudget / 100).toLocaleString()}` : '$0'
 
@@ -226,7 +226,10 @@ function createHoursTooltip(
         <input type="text" value="${displayPercentage}" 
           style="width: 60px; padding: 2px 6px; border: 1px solid #555; border-radius: 3px; background: #444; color: white; font-size: 12px; text-align: center;" 
           id="${tooltipId}-input" />
-        <div style="color: #ccc; font-size: 11px;">${displayAmount}</div>
+        <input type="text" value="${displayAmount}"
+          ${totalBudget > 0 ? '' : 'disabled'}
+          style="width: 90px; padding: 2px 6px; border: 1px solid #555; border-radius: 3px; background: #444; color: white; font-size: 12px; text-align: center;" 
+          id="${tooltipId}-amount" />
       </div>
     </div>
   `
@@ -241,6 +244,7 @@ function createHoursTooltip(
 
   const slider = document.getElementById(`${tooltipId}-slider`) as HTMLInputElement
   const textInput = document.getElementById(`${tooltipId}-input`) as HTMLInputElement
+  const amountInput = document.getElementById(`${tooltipId}-amount`) as HTMLInputElement
   
   if (slider && textInput) {
     // Update from slider
@@ -250,8 +254,7 @@ function createHoursTooltip(
       const displayText = `${newPercentage.toFixed(1)}%`
       const amountText = totalBudget > 0 ? `$${Math.round(newPercentage * totalBudget / 100).toLocaleString()}` : '$0'
       textInput.value = displayText
-      const amountDiv = tooltip.querySelector('div[style*="color: #ccc"]') as HTMLElement
-      if (amountDiv) amountDiv.textContent = amountText
+      if (amountInput) amountInput.value = amountText
       onUpdate(physicianId, newPercentage)
     })
     
@@ -262,8 +265,7 @@ function createHoursTooltip(
       const clampedValue = Math.min(Math.max(numericValue, minValue), maxValue)
       slider.value = clampedValue.toString()
       const amountText = totalBudget > 0 ? `$${Math.round(clampedValue * totalBudget / 100).toLocaleString()}` : '$0'
-      const amountDiv = tooltip.querySelector('div[style*="color: #ccc"]') as HTMLElement
-      if (amountDiv) amountDiv.textContent = amountText
+      if (amountInput) amountInput.value = amountText
       onUpdate(physicianId, clampedValue)
     })
     
@@ -274,6 +276,29 @@ function createHoursTooltip(
       const clampedValue = Math.min(Math.max(numericValue, minValue), maxValue)
       target.value = `${clampedValue.toFixed(1)}%`
     })
+
+    // Update from dollar amount input
+    if (amountInput) {
+      amountInput.addEventListener('input', (event) => {
+        if (totalBudget <= 0) return
+        const target = event.target as HTMLInputElement
+        const numericValue = Number(target.value.replace(/[^0-9]/g, ''))
+        const clampedAmount = Math.max(0, Math.min(totalBudget, numericValue))
+        const newPercentage = totalBudget > 0 ? (clampedAmount / totalBudget) * 100 : 0
+        slider.value = newPercentage.toFixed(1)
+        textInput.value = `${Number(slider.value).toFixed(1)}%`
+        target.value = `$${Math.round(clampedAmount).toLocaleString()}`
+        onUpdate(physicianId, Number(slider.value))
+      })
+
+      amountInput.addEventListener('blur', (event) => {
+        if (totalBudget <= 0) return
+        const target = event.target as HTMLInputElement
+        const numericValue = Number(target.value.replace(/[^0-9]/g, ''))
+        const clampedAmount = Math.max(0, Math.min(totalBudget, numericValue))
+        target.value = `$${Math.round(clampedAmount).toLocaleString()}`
+      })
+    }
   }
 
   tooltip.addEventListener('mouseenter', () => {
@@ -980,6 +1005,14 @@ export const useDashboardStore = create<Store>()(
               // Also round to 1 decimal place to avoid floating point artifacts (e.g., 5.700001)
               const clamped = Math.max(-10, Math.min(20, value))
               sc.projection[field] = Math.round(clamped * 10) / 10
+            }
+            
+            // When changing Medical Director override sliders, force-sync the per-year values so
+            // the yearly sliders necessarily move with the projection override.
+            if (field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours') {
+              for (const fy of sc.future) {
+                ;(fy as any)[field] = sc.projection[field]
+              }
             }
             
             // Apply the updated projections to all future years immediately within the same state update
