@@ -2332,10 +2332,10 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
           }}
         />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-          onMouseEnter={(e) => createTooltip('prcs-medical-director-tooltip', 'PRCS contract terms: $250/hr up to $90,000 maximum annual.', e)}
+          onMouseEnter={(e) => createTooltip('prcs-medical-director-tooltip', 'PRCS contract terms: $250/hr up to $90,000 maximum annual. Applies if a PRCS Medical Director is specified in the Physicians section.', e)}
           onMouseLeave={() => removeTooltip('prcs-medical-director-tooltip')}
-          onTouchStart={(e) => createTooltip('prcs-medical-director-tooltip', 'PRCS contract terms: $250/hr up to $90,000 maximum annual.', e)}
-          onClick={(e) => createTooltip('prcs-medical-director-tooltip', 'PRCS contract terms: $250/hr up to $90,000 maximum annual.', e)}
+          onTouchStart={(e) => createTooltip('prcs-medical-director-tooltip', 'PRCS contract terms: $250/hr up to $90,000 maximum annual. Applies if a PRCS Medical Director is specified in the Physicians section.', e)}
+          onClick={(e) => createTooltip('prcs-medical-director-tooltip', 'PRCS contract terms: $250/hr up to $90,000 maximum annual. Applies if a PRCS Medical Director is specified in the Physicians section.', e)}
         ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
       </div>
 
@@ -5220,10 +5220,10 @@ function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {(field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours') && (
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-                  onMouseEnter={(e) => createTooltip('md-projection-tooltip', field === 'medicalDirectorHours' ? 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.' : 'PRCS contract terms: $250/hr up to $90,000 maximum annual.', e)}
+                  onMouseEnter={(e) => createTooltip('md-projection-tooltip', field === 'medicalDirectorHours' ? 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.' : 'PRCS contract terms: $250/hr up to $90,000 maximum annual. Applies if a PRCS Medical Director is specified in the Physicians section.', e)}
                   onMouseLeave={() => removeTooltip('md-projection-tooltip')}
-                  onTouchStart={(e) => createTooltip('md-projection-tooltip', field === 'medicalDirectorHours' ? 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.' : 'PRCS contract terms: $250/hr up to $90,000 maximum annual.', e)}
-                  onClick={(e) => createTooltip('md-projection-tooltip', field === 'medicalDirectorHours' ? 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.' : 'PRCS contract terms: $250/hr up to $90,000 maximum annual.', e)}
+                  onTouchStart={(e) => createTooltip('md-projection-tooltip', field === 'medicalDirectorHours' ? 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.' : 'PRCS contract terms: $250/hr up to $90,000 maximum annual. Applies if a PRCS Medical Director is specified in the Physicians section.', e)}
+                  onClick={(e) => createTooltip('md-projection-tooltip', field === 'medicalDirectorHours' ? 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.' : 'PRCS contract terms: $250/hr up to $90,000 maximum annual. Applies if a PRCS Medical Director is specified in the Physicians section.', e)}
                 ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
               )}
             </div>
