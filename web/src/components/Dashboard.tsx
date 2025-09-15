@@ -36,8 +36,8 @@ export type Physician = {
   bonusAmount?: number
   // Whether this partner has Medical Director Hours
   hasMedicalDirectorHours?: boolean
-  // Medical Director Hours dollar amount
-  medicalDirectorHoursAmount?: number
+  // Medical Director Hours percentage (0-100)
+  medicalDirectorHoursPercentage?: number
   // Buyout cost for retiring partners
   buyoutCost?: number
 }
@@ -188,12 +188,13 @@ function createBonusTooltip(
   }
 }
 
-// Helper function for creating interactive Medical Director Hours tooltip (0–100K)
+// Helper function for creating interactive Medical Director Hours tooltip (0–100%)
 function createHoursTooltip(
   physicianId: string,
-  currentAmount: number,
+  currentPercentage: number,
   e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>,
-  onUpdate: (physicianId: string, amount: number) => void
+  onUpdate: (physicianId: string, percentage: number) => void,
+  totalBudget: number = 0
 ) {
   const tooltipId = `hours-slider-${physicianId}`
   const existing = document.getElementById(tooltipId)
@@ -211,19 +212,21 @@ function createHoursTooltip(
   }
 
   const minValue = 0
-  const maxValue = 100000
+  const maxValue = 100
   const title = 'Medical Director Hours'
-  const displayAmount = `$${(currentAmount || 0).toLocaleString()}`
+  const displayPercentage = `${(currentPercentage || 0).toFixed(1)}%`
+  const displayAmount = totalBudget > 0 ? `$${Math.round((currentPercentage || 0) * totalBudget / 100).toLocaleString()}` : '$0'
 
   tooltip.innerHTML = `
     <div style="margin-bottom: 6px; font-weight: 600; white-space: nowrap;">${title}</div>
     <div style="padding: 2px 0;">
-      <input type="range" min="${minValue}" max="${maxValue}" step="100" value="${currentAmount}" 
+      <input type="range" min="${minValue}" max="${maxValue}" step="0.5" value="${currentPercentage}" 
         style="width: 180px; margin-bottom: 8px; cursor: pointer;" class="growth-slider" id="${tooltipId}-slider" />
       <div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-        <input type="text" value="${displayAmount}" 
-          style="width: 80px; padding: 2px 6px; border: 1px solid #555; border-radius: 3px; background: #444; color: white; font-size: 12px; text-align: center;" 
+        <input type="text" value="${displayPercentage}" 
+          style="width: 60px; padding: 2px 6px; border: 1px solid #555; border-radius: 3px; background: #444; color: white; font-size: 12px; text-align: center;" 
           id="${tooltipId}-input" />
+        <div style="color: #ccc; font-size: 11px;">${displayAmount}</div>
       </div>
     </div>
   `
@@ -243,27 +246,33 @@ function createHoursTooltip(
     // Update from slider
     slider.addEventListener('input', (event) => {
       const target = event.target as HTMLInputElement
-      const newAmount = Number(target.value)
-      const displayText = `$${(newAmount || 0).toLocaleString()}`
+      const newPercentage = Number(target.value)
+      const displayText = `${newPercentage.toFixed(1)}%`
+      const amountText = totalBudget > 0 ? `$${Math.round(newPercentage * totalBudget / 100).toLocaleString()}` : '$0'
       textInput.value = displayText
-      onUpdate(physicianId, newAmount)
+      const amountDiv = tooltip.querySelector('div[style*="color: #ccc"]') as HTMLElement
+      if (amountDiv) amountDiv.textContent = amountText
+      onUpdate(physicianId, newPercentage)
     })
     
     // Update from text input
     textInput.addEventListener('input', (event) => {
       const target = event.target as HTMLInputElement
-      const numericValue = Number(target.value.replace(/[^0-9]/g, ''))
+      const numericValue = Number(target.value.replace(/[^0-9.]/g, ''))
       const clampedValue = Math.min(Math.max(numericValue, minValue), maxValue)
       slider.value = clampedValue.toString()
+      const amountText = totalBudget > 0 ? `$${Math.round(clampedValue * totalBudget / 100).toLocaleString()}` : '$0'
+      const amountDiv = tooltip.querySelector('div[style*="color: #ccc"]') as HTMLElement
+      if (amountDiv) amountDiv.textContent = amountText
       onUpdate(physicianId, clampedValue)
     })
     
     // Format text input on blur
     textInput.addEventListener('blur', (event) => {
       const target = event.target as HTMLInputElement
-      const numericValue = Number(target.value.replace(/[^0-9]/g, ''))
+      const numericValue = Number(target.value.replace(/[^0-9.]/g, ''))
       const clampedValue = Math.min(Math.max(numericValue, minValue), maxValue)
-      target.value = `$${clampedValue.toLocaleString()}`
+      target.value = `${clampedValue.toFixed(1)}%`
     })
   }
 
@@ -296,11 +305,15 @@ export type FutureYear = {
   nonMdEmploymentCosts: number
   locumCosts: number
   miscEmploymentCosts: number
+  medicalDirectorHours?: number
+  prcsMedicalDirectorHours?: number
   physicians: Physician[]
 }
 
 type Projection = {
   incomeGrowthPct: number // Total income growth percentage
+  medicalDirectorHours: number // Medical Director Hours annual amount (0-250K)
+  prcsMedicalDirectorHours: number // PRCS Medical Director Hours annual amount (0-90K)
   nonEmploymentCostsPct: number // Non-Employment Costs growth percentage
   nonMdEmploymentCostsPct: number // Staff Employment Costs growth percentage
   locumsCosts: number // Locums costs in dollars (global override)
@@ -326,7 +339,7 @@ type Store = {
   setFutureValue: (
     scenario: ScenarioKey,
     year: number,
-    field: 'totalIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'locumCosts' | 'miscEmploymentCosts',
+    field: 'totalIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'locumCosts' | 'miscEmploymentCosts' | 'medicalDirectorHours' | 'prcsMedicalDirectorHours',
     value: number
   ) => void
   upsertPhysician: (scenario: ScenarioKey, year: number, physician: Physician) => void
@@ -366,20 +379,52 @@ function defaultPhysiciansGeneric(year: number): Physician[] {
 }
 /* eslint-enable @typescript-eslint/no-unused-vars */
 
+// Helper function to calculate even medical director hour percentages among partners
+function calculateMedicalDirectorHourPercentages(physicians: Physician[]): Physician[] {
+  // Calculate total partner work time (sum of partner portions, ignoring vacation as requested)
+  const totalPartnerPortions = physicians.reduce((sum, physician) => {
+    return sum + getPartnerPortionOfYear(physician)
+  }, 0)
+  
+  // If no partners, return physicians as-is
+  if (totalPartnerPortions === 0) {
+    return physicians.map(p => ({
+      ...p,
+      medicalDirectorHoursPercentage: 0,
+      hasMedicalDirectorHours: false
+    }))
+  }
+  
+  // Distribute percentages evenly among partners based on their portion of year
+  return physicians.map(physician => {
+    const partnerPortion = getPartnerPortionOfYear(physician)
+    const percentage = partnerPortion > 0 ? (partnerPortion / totalPartnerPortions) * 100 : 0
+    
+    return {
+      ...physician,
+      medicalDirectorHoursPercentage: percentage,
+      hasMedicalDirectorHours: percentage > 0
+    }
+  })
+}
+
 function scenario2024Defaults(): Physician[] {
-  return [
-    { id: `2024-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
-    { id: `2024-GA`, name: 'GA', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0 },
-    { id: `2024-HW`, name: 'HW', type: 'partner', weeksVacation: 19, receivesBonuses: false, bonusAmount: 0 },
-    { id: `2024-MC`, name: 'MC', type: 'employee', salary: 341323.02, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
-    { id: `2024-CD`, name: 'CD', type: 'employeeToTerminate', terminatePortionOfYear: 30/365, salary: 318640, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Jan 31 termination
-    { id: `2024-BT`, name: 'BT', type: 'newEmployee', startPortionOfYear: 279/365, salary: 407196, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Oct 7 start
+  const physicians: Physician[] = [
+    { id: `2024-JS`, name: 'JS', type: 'partner' as PhysicianType, weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
+    { id: `2024-GA`, name: 'GA', type: 'partner' as PhysicianType, weeksVacation: 16, receivesBonuses: false, bonusAmount: 0 },
+    { id: `2024-HW`, name: 'HW', type: 'partner' as PhysicianType, weeksVacation: 19, receivesBonuses: false, bonusAmount: 0 },
+    { id: `2024-MC`, name: 'MC', type: 'employee' as PhysicianType, salary: 341323.02, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
+    { id: `2024-CD`, name: 'CD', type: 'employeeToTerminate' as PhysicianType, terminatePortionOfYear: 30/365, salary: 318640, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Jan 31 termination
+    { id: `2024-BT`, name: 'BT', type: 'newEmployee' as PhysicianType, startPortionOfYear: 279/365, salary: 407196, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Oct 7 start
   ]
+  return calculateMedicalDirectorHourPercentages(physicians)
 }
 
 function scenarioADefaultsByYear(year: number): Physician[] {
+  let physicians: Physician[] = []
+  
   if (year === 2025) {
-    return [
+    physicians = [
       { id: `${year}-MC`, name: 'MC', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 328840, weeksVacation: 9, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-GA`, name: 'GA', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0 },
@@ -387,8 +432,8 @@ function scenarioADefaultsByYear(year: number): Physician[] {
       { id: `${year}-BT`, name: 'BT', type: 'employee', salary: 430760, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
     ]
   }
-  if (year === 2026) {
-    return [
+  else if (year === 2026) {
+    physicians = [
       { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-GA`, name: 'GA', type: 'partnerToRetire', partnerPortionOfYear: 182/365, weeksVacation: 8, buyoutCost: 50000, receivesBonuses: false, bonusAmount: 0 },
@@ -396,37 +441,41 @@ function scenarioADefaultsByYear(year: number): Physician[] {
       { id: `${year}-LK`, name: 'LK', type: 'newEmployee', startPortionOfYear: 151/365, salary: 600000, receivesBenefits: true, receivesBonuses: true, bonusAmount: 20000 },
     ]
   }
-  if (year === 2027) {
-    return [
+  else if (year === 2027) {
+    physicians = [
       { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 }, // First year as partner
       { id: `${year}-LK`, name: 'LK', type: 'employee', salary: 600000, receivesBonuses: false, bonusAmount: 0 },
     ]
   }
-  if (year === 2028) {
-  return [
-    { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
-    { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
+  else if (year === 2028) {
+    physicians = [
+      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
       { id: `${year}-LK`, name: 'LK', type: 'employeeToPartner', employeePortionOfYear: 150/365, salary: 600000, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Becomes partner exactly 2 years after hire
     ]
   }
-  if (year === 2029) {
-    return [
+  else if (year === 2029) {
+    physicians = [
       { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 }, // Third year as partner
       { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
     ]
   }
-  // 2030+
-  return [
-    { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
-    { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
-    { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2027)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
-    { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
-  ]
+  else {
+    // 2030+
+    physicians = [
+      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2027)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
+      { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
+    ]
+  }
+  
+  return calculateMedicalDirectorHourPercentages(physicians)
 }
 
 // Helper: Get Social Security wage base limit for a given year
@@ -525,8 +574,10 @@ const INITIAL_FUTURE_YEARS_A: FutureYear[] = FUTURE_YEARS_BASE.map((b) => ({
 }))
 
 function scenarioBDefaultsByYear(year: number): Physician[] {
+  let physicians: Physician[] = []
+  
   if (year === 2025) {
-    return [
+    physicians = [
       { id: `${year}-MC`, name: 'MC', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 328840, weeksVacation: 9, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-GA`, name: 'GA', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0 },
@@ -534,8 +585,8 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
       { id: `${year}-BT`, name: 'BT', type: 'employee', salary: 430760, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
     ]
   }
-  if (year === 2026) {
-    return [
+  else if (year === 2026) {
+    physicians = [
       { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-GA`, name: 'GA', type: 'partnerToRetire', partnerPortionOfYear: 182/365, weeksVacation: 8, buyoutCost: 50000, receivesBonuses: false, bonusAmount: 0 },
@@ -543,8 +594,8 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
       { id: `${year}-LK`, name: 'LK', type: 'newEmployee', startPortionOfYear: 151/365, salary: 600000, receivesBenefits: true, receivesBonuses: true, bonusAmount: 20000 },
     ]
   }
-  if (year === 2027) {
-    return [
+  else if (year === 2027) {
+    physicians = [
       { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 }, // First year as partner
@@ -552,17 +603,17 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
       { id: `${year}-P5`, name: 'Potential Hire', type: 'newEmployee', startPortionOfYear: 0, salary: 500000, receivesBenefits: true, receivesBonuses: true, bonusAmount: 20000 },
     ]
   }
-  if (year === 2028) {
-  return [
-    { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
-    { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
+  else if (year === 2028) {
+    physicians = [
+      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
       { id: `${year}-LK`, name: 'LK', type: 'employeeToPartner', employeePortionOfYear: 150/365, salary: 600000, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Becomes partner exactly 2 years after hire
       { id: `${year}-P5`, name: 'Potential Hire', type: 'employee', salary: 500000, receivesBenefits: true, receivesBonuses: false, bonusAmount: 0 }, // Second year as employee
     ]
   }
-  if (year === 2029) {
-    return [
+  else if (year === 2029) {
+    physicians = [
       { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 }, // Third year as partner
@@ -570,14 +621,18 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
       { id: `${year}-P5`, name: 'Potential Hire', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 500000, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Transition year - becomes partner
     ]
   }
-  // 2030+
-  return [
-    { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
-    { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
-    { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2027)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
-    { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
-    { id: `${year}-P5`, name: 'Potential Hire', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2029)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly from 2030, max 12
-  ]
+  else {
+    // 2030+
+    physicians = [
+      { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2027)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
+      { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
+      { id: `${year}-P5`, name: 'Potential Hire', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2029)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly from 2030, max 12
+    ]
+  }
+  
+  return calculateMedicalDirectorHourPercentages(physicians)
 }
 
 const INITIAL_FUTURE_YEARS_B: FutureYear[] = FUTURE_YEARS_BASE.map((b) => ({
@@ -594,11 +649,13 @@ export const useDashboardStore = create<Store>()(
           future: INITIAL_FUTURE_YEARS_A,
           projection: { 
             incomeGrowthPct: 3.7, 
+            medicalDirectorHours: 80000,
+            prcsMedicalDirectorHours: 80000,
             nonEmploymentCostsPct: 7.8, 
             nonMdEmploymentCostsPct: 6.0, 
             locumsCosts: 120000, 
-            miscEmploymentCostsPct: 6.7,
-            benefitCostsGrowthPct: 5.0
+            miscEmploymentCostsPct: 6.7, 
+            benefitCostsGrowthPct: 5.0 
           },
           selectedYear: 2025, // Default to Baseline tab
           dataMode: '2025 Data',
@@ -614,6 +671,8 @@ export const useDashboardStore = create<Store>()(
                 future: INITIAL_FUTURE_YEARS_B.map((f) => ({ ...f, physicians: [...f.physicians] })),
                 projection: { 
                   incomeGrowthPct: 3.7, 
+                  medicalDirectorHours: 80000,
+                  prcsMedicalDirectorHours: 80000,
                   nonEmploymentCostsPct: 7.8, 
                   nonMdEmploymentCostsPct: 6.0, 
                   locumsCosts: 0, 
@@ -654,8 +713,71 @@ export const useDashboardStore = create<Store>()(
             const isNewInYear = idx < 0
             const previousInYear = idx >= 0 ? fy.physicians[idx] : undefined
             const oldName = previousInYear?.name
+            // Track previous for change detection
+            const prev = previousInYear
+
             if (idx >= 0) fy.physicians[idx] = physician
             else fy.physicians.push(physician)
+
+            // Determine if this edit was a manual MD percentage adjustment
+            const mdPctChanged = !!prev && prev.medicalDirectorHoursPercentage !== physician.medicalDirectorHoursPercentage
+            // Determine if partner mix/portion changed requiring auto redistribution
+            const prevPartnerPortion = prev ? getPartnerPortionOfYear(prev) : 0
+            const newPartnerPortion = getPartnerPortionOfYear(physician)
+            const typeChanged = !!prev && prev.type !== physician.type
+            const partnerMixChanged = isNewInYear
+              ? newPartnerPortion > 0
+              : (typeChanged || prevPartnerPortion !== newPartnerPortion)
+
+            if (mdPctChanged) {
+              // Proportionally scale other eligible partners to keep total at 100
+              const targetId = physician.id
+              const eligibles = fy.physicians.filter(p => getPartnerPortionOfYear(p) > 0)
+              const target = eligibles.find(p => p.id === targetId)
+              if (target) {
+                const others = eligibles.filter(p => p.id !== targetId)
+                const desiredTargetPct = Math.max(0, Math.min(100, physician.medicalDirectorHoursPercentage ?? 0))
+                if (others.length === 0) {
+                  target.medicalDirectorHoursPercentage = 100
+                  target.hasMedicalDirectorHours = true
+                } else {
+                  const remaining = Math.max(0, 100 - desiredTargetPct)
+                  const sumOtherCurrent = others.reduce((s, p) => s + (p.medicalDirectorHoursPercentage ?? 0), 0)
+                  if (sumOtherCurrent > 0) {
+                    // Scale by current proportions
+                    for (let i = 0; i < others.length; i++) {
+                      const p = others[i]
+                      const scaled = (p.medicalDirectorHoursPercentage ?? 0) / sumOtherCurrent * remaining
+                      p.medicalDirectorHoursPercentage = scaled
+                      p.hasMedicalDirectorHours = scaled > 0
+                    }
+                  } else {
+                    // Distribute by partner portion weights; fallback to equal
+                    const weights = others.map(p => ({ p, w: getPartnerPortionOfYear(p) }))
+                    const sumW = weights.reduce((s, x) => s + x.w, 0)
+                    if (sumW > 0) {
+                      for (const { p, w } of weights) {
+                        const scaled = w / sumW * remaining
+                        p.medicalDirectorHoursPercentage = scaled
+                        p.hasMedicalDirectorHours = scaled > 0
+                      }
+                    } else {
+                      const even = remaining / others.length
+                      for (const p of others) {
+                        p.medicalDirectorHoursPercentage = even
+                        p.hasMedicalDirectorHours = even > 0
+                      }
+                    }
+                  }
+                  // Set target last to the requested value
+                  target.medicalDirectorHoursPercentage = desiredTargetPct
+                  target.hasMedicalDirectorHours = desiredTargetPct > 0
+                }
+              }
+            } else if (partnerMixChanged) {
+              // Only auto-redistribute when partner mix/portion changes
+              fy.physicians = calculateMedicalDirectorHourPercentages(fy.physicians)
+            }
 
             // If the physician's name changed, propagate the new name across ALL years
             if (oldName && oldName !== physician.name) {
@@ -801,6 +923,10 @@ export const useDashboardStore = create<Store>()(
               }
 
               fut.physicians[j] = updated
+              // Re-apply distribution in future years only when partner mix/portion changed in base year
+              if (partnerMixChanged) {
+                fut.physicians = calculateMedicalDirectorHourPercentages(fut.physicians)
+              }
             }
           }),
         removePhysician: (scenario, year, physicianId) =>
@@ -820,6 +946,8 @@ export const useDashboardStore = create<Store>()(
                 if (nameKey && p.name === nameKey) return false
                 return true
               })
+              // Re-distribute medical director hours after removal
+              fut.physicians = calculateMedicalDirectorHourPercentages(fut.physicians)
             }
           }),
         reorderPhysicians: (scenario, year, fromIndex, toIndex) =>
@@ -843,9 +971,10 @@ export const useDashboardStore = create<Store>()(
             if (!sc) return
             
             // Apply appropriate limits based on field type
-            if (field === 'locumsCosts') {
-              // Locums costs are in dollars, so use reasonable range (0 to 1M)
-              sc.projection[field] = Math.max(0, Math.min(1000000, value))
+            if (field === 'locumsCosts' || field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours') {
+              // Dollar amount fields should use reasonable range (0 to 1M for locums, 0 to 97.2K for medical director hours)
+              const maxValue = field === 'medicalDirectorHours' ? 97200 : (field === 'prcsMedicalDirectorHours' ? 90000 : 1000000)
+              sc.projection[field] = Math.max(0, Math.min(maxValue, value))
             } else {
               // Percentage fields should be limited to reasonable range (-10% to +20%)
               // Also round to 1 decimal place to avoid floating point artifacts (e.g., 5.700001)
@@ -1095,11 +1224,13 @@ export const useDashboardStore = create<Store>()(
               })),
               projection: { 
                 incomeGrowthPct: 3.7, 
+                medicalDirectorHours: 80000,
+                prcsMedicalDirectorHours: 80000,
                 nonEmploymentCostsPct: 7.8, 
                 nonMdEmploymentCostsPct: 6.0, 
                 locumsCosts: 120000, 
-                miscEmploymentCostsPct: 6.7,
-                benefitCostsGrowthPct: 5.0
+                miscEmploymentCostsPct: 6.7, 
+                benefitCostsGrowthPct: 5.0 
               },
               selectedYear: 2025, // Reset to Baseline tab
               dataMode: '2025 Data',
@@ -1761,7 +1892,7 @@ function arePhysiciansChanged(
       current.receivesBonuses !== defaultPhysician.receivesBonuses ||
       current.bonusAmount !== defaultPhysician.bonusAmount ||
       current.hasMedicalDirectorHours !== (defaultPhysician as any).hasMedicalDirectorHours ||
-      current.medicalDirectorHoursAmount !== (defaultPhysician as any).medicalDirectorHoursAmount ||
+      current.medicalDirectorHoursPercentage !== (defaultPhysician as any).medicalDirectorHoursPercentage ||
       current.buyoutCost !== defaultPhysician.buyoutCost
     ) {
       return true
@@ -1959,7 +2090,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
 
       <div className="panel-green" style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-        <div style={{ fontSize: 14, fontWeight: 600 }}>Total Income</div>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>Therapy Income</div>
         {(() => {
           const projectedValue = calculateProjectedValue(scenario, year, 'totalIncome', store)
           const currentValue = fy.totalIncome || 0
@@ -2031,11 +2162,192 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
           }}
         />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-          onMouseEnter={(e) => createTooltip('income-tooltip', 'Gross (Therapy, Other Professional, Interest)', e)}
+          onMouseEnter={(e) => createTooltip('income-tooltip', 'Includes Interest Income', e)}
           onMouseLeave={() => removeTooltip('income-tooltip')}
-          onTouchStart={(e) => createTooltip('income-tooltip', 'Gross (Therapy, Other Professional, Interest)', e)}
-          onClick={(e) => createTooltip('income-tooltip', 'Gross (Therapy, Other Professional, Interest)', e)}
+          onTouchStart={(e) => createTooltip('income-tooltip', 'Includes Interest Income', e)}
+          onClick={(e) => createTooltip('income-tooltip', 'Includes Interest Income', e)}
         ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+      </div>
+
+      {/* Medical Director Hours Section */}
+      <div style={{ marginTop: 8, paddingTop: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>Medical Director Hours</div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 2 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', lineHeight: '19px', height: 19, display: 'inline-flex', alignItems: 'center' }}>Shared</div>
+        <div style={{ width: 20, display: 'inline-flex', justifyContent: 'center' }}>
+          {(() => {
+            const projectionValue = sc.projection.medicalDirectorHours ?? 80000
+            const currentValue = fy.medicalDirectorHours ?? projectionValue
+            const isChanged = Math.abs(currentValue - projectionValue) > 1000 // $1000 threshold
+            return isChanged && !isReadOnly ? (
+              <button
+                onClick={() => {
+                  removeTooltip('shared-medical-director-reset-tooltip')
+                  store.setFutureValue(scenario, year, 'medicalDirectorHours', projectionValue)
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  color: '#6b7280',
+                  padding: '2px 4px',
+                  borderRadius: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  opacity: 0.7,
+                  transition: 'opacity 0.2s'
+                }}
+                onMouseEnter={(e) => { 
+                  e.currentTarget.style.opacity = '1'
+                  createTooltip('shared-medical-director-reset-tooltip', 'Reset to Annual Override Value', e)
+                }}
+                onMouseLeave={(e) => { 
+                  e.currentTarget.style.opacity = '0.7'
+                  removeTooltip('shared-medical-director-reset-tooltip')
+                }}
+              >
+                ↺
+              </button>
+            ) : null
+          })()}
+        </div>
+      </div>
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+        <input
+          type="range"
+          min={0}
+          max={97200}
+          step={1000}
+          value={fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000}
+          onChange={(e) =>
+            store.setFutureValue(scenario, year, 'medicalDirectorHours', Number(e.target.value))
+          }
+          disabled={isReadOnly}
+          style={{ 
+            width: '100%',
+            ['--fill-percent' as any]: `${((fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000) / 97200) * 100}%`
+          }}
+        />
+        <input
+          type="text"
+          value={currency(Math.round(fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000))}
+          onChange={(e) =>
+            store.setFutureValue(scenario, year, 'medicalDirectorHours', Number(e.target.value.replace(/[^0-9]/g, '')))
+          }
+          disabled={isReadOnly}
+          style={{ 
+            width: isMobile ? 100 : 100, 
+            height: 20, 
+            padding: '2px 8px', 
+            border: '1px solid #ccc',
+            borderRadius: 3,
+            fontSize: 12,
+            justifySelf: isMobile ? 'end' : undefined
+          }}
+        />
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+          onMouseEnter={(e) => createTooltip('medical-director-tooltip', 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.', e)}
+          onMouseLeave={() => removeTooltip('medical-director-tooltip')}
+          onTouchStart={(e) => createTooltip('medical-director-tooltip', 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.', e)}
+          onClick={(e) => createTooltip('medical-director-tooltip', 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.', e)}
+        ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+      </div>
+
+      {/* PRCS Row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4, marginBottom: 2 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', lineHeight: '19px', height: 19, display: 'inline-flex', alignItems: 'center' }}>PRCS</div>
+        <div style={{ width: 20, display: 'inline-flex', justifyContent: 'center' }}>
+          {(() => {
+            const projectionValue = sc.projection.prcsMedicalDirectorHours ?? 80000
+            const currentValue = fy.prcsMedicalDirectorHours ?? projectionValue
+            const isChanged = Math.abs(currentValue - projectionValue) > 1000
+            return isChanged && !isReadOnly ? (
+              <button
+                onClick={() => {
+                  removeTooltip('prcs-medical-director-reset-tooltip')
+                  store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', projectionValue)
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  color: '#6b7280',
+                  padding: '2px 4px',
+                  borderRadius: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  opacity: 0.7,
+                  transition: 'opacity 0.2s'
+                }}
+                onMouseEnter={(e) => { 
+                  e.currentTarget.style.opacity = '1'
+                  createTooltip('prcs-medical-director-reset-tooltip', 'Reset to Annual Override Value', e)
+                }}
+                onMouseLeave={(e) => { 
+                  e.currentTarget.style.opacity = '0.7'
+                  removeTooltip('prcs-medical-director-reset-tooltip')
+                }}
+              >
+                ↺
+              </button>
+            ) : null
+          })()}
+        </div>
+      </div>
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+        <input
+          type="range"
+          min={0}
+          max={90000}
+          step={1000}
+          value={fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000}
+          onChange={(e) =>
+            store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Number(e.target.value))
+          }
+          disabled={isReadOnly}
+          style={{ 
+            width: '100%',
+            ['--fill-percent' as any]: `${((fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000) / 90000) * 100}%`
+          }}
+        />
+        <input
+          type="text"
+          value={currency(Math.round(fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000))}
+          onChange={(e) =>
+            store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Number(e.target.value.replace(/[^0-9]/g, '')))
+          }
+          disabled={isReadOnly}
+          style={{ 
+            width: isMobile ? 100 : 100, 
+            height: 20, 
+            padding: '2px 8px', 
+            border: '1px solid #ccc',
+            borderRadius: 3,
+            fontSize: 12,
+            justifySelf: isMobile ? 'end' : undefined
+          }}
+        />
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+          onMouseEnter={(e) => createTooltip('prcs-medical-director-tooltip', 'PRCS contract terms: $250/hr up to $90,000 maximum annual.', e)}
+          onMouseLeave={() => removeTooltip('prcs-medical-director-tooltip')}
+          onTouchStart={(e) => createTooltip('prcs-medical-director-tooltip', 'PRCS contract terms: $250/hr up to $90,000 maximum annual.', e)}
+          onClick={(e) => createTooltip('prcs-medical-director-tooltip', 'PRCS contract terms: $250/hr up to $90,000 maximum annual.', e)}
+        ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+      </div>
+
+      {/* Total Combined Income */}
+      <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(16, 185, 129, 0.15)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, fontSize: 13, color: '#374151', paddingRight: 48 }}>
+          <span style={{ fontWeight: 500 }}>Total Income:</span>
+          <span style={{ fontWeight: 600 }}>
+            {currency((fy.totalIncome || 0) + (fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000) + (fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000))}
+          </span>
+        </div>
+      </div>
       </div>
       </div>
 
@@ -2480,6 +2792,23 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
         >
           ⋮⋮
         </div>
+        <div style={{ position: 'relative', width: '100%' }}>
+          {getPartnerPortionOfYear(p) > 0 && (
+            <img
+              src="/meddir_unselected.png"
+              alt="Medical Director"
+              style={{
+                position: 'absolute',
+                left: '4px',
+                top: '58%',
+                transform: 'translateY(-50%)',
+                width: '15px',
+                height: '15px',
+                zIndex: 1,
+                pointerEvents: 'none'
+              }}
+            />
+          )}
         <input
           value={p.name}
           onChange={(e) =>
@@ -2489,12 +2818,13 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
           style={{ 
             width: '100%', 
             height: 20, 
-            padding: '2px 8px', 
+              padding: '2px 8px 2px 24px', 
             border: '1px solid #ccc',
             borderRadius: 3,
             fontSize: 12
           }}
         />
+        </div>
         <select
           value={p.type}
           onChange={(e) =>
@@ -3337,7 +3667,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                       // If changing away from Prior Year, set default weeksVacation if not present
                       if (partnerPortion === 0) {
                         updatedPhysician.weeksVacation = undefined
-                        updatedPhysician.medicalDirectorHoursAmount = 0
+                        updatedPhysician.medicalDirectorHoursPercentage = 0
                         updatedPhysician.hasMedicalDirectorHours = false
                       } else if (p.partnerPortionOfYear === 0 && partnerPortion > 0) {
                         // Changing from Prior Year to actual working days, set default weeks
@@ -3427,7 +3757,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                           // If changing away from Prior Year, set default weeksVacation if not present
                           if (partnerPortion === 0) {
                             updatedPhysician.weeksVacation = undefined
-                            updatedPhysician.medicalDirectorHoursAmount = 0
+                            updatedPhysician.medicalDirectorHoursPercentage = 0
                             updatedPhysician.hasMedicalDirectorHours = false
                           } else if (p.partnerPortionOfYear === 0 && partnerPortion > 0) {
                             updatedPhysician.weeksVacation = updatedPhysician.weeksVacation ?? 8
@@ -3467,7 +3797,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                           // If changing away from Prior Year, set default weeksVacation if not present
                           if (partnerPortion === 0) {
                             updatedPhysician.weeksVacation = undefined
-                            updatedPhysician.medicalDirectorHoursAmount = 0
+                            updatedPhysician.medicalDirectorHoursPercentage = 0
                             updatedPhysician.hasMedicalDirectorHours = false
                           } else if (p.partnerPortionOfYear === 0 && partnerPortion > 0) {
                             updatedPhysician.weeksVacation = updatedPhysician.weeksVacation ?? 8
@@ -3590,8 +3920,8 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
             {(p.partnerPortionOfYear ?? 0.5) > 0 ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <img
-                  src={(p.medicalDirectorHoursAmount ?? 0) > 0 ? '/hours_selected.png' : '/hours_unselected.png'}
-                  alt={`Medical Director Hours ${((p.medicalDirectorHoursAmount ?? 0) > 0) ? 'enabled' : 'disabled'}`}
+                  src={(p.medicalDirectorHoursPercentage ?? 0) > 0 ? '/hours_selected.png' : '/hours_unselected.png'}
+                  alt={`Medical Director Hours ${((p.medicalDirectorHoursPercentage ?? 0) > 0) ? 'enabled' : 'disabled'}`}
                   data-hours-id={p.id}
                   style={{
                     width: '20px',
@@ -3603,27 +3933,34 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   }}
                   onClick={(e) => {
                     if (!readOnly) {
-                      createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
+                      const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                      createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                         store.upsertPhysician(scenario, year, {
                           ...p,
-                          medicalDirectorHoursAmount: amount,
-                          hasMedicalDirectorHours: amount !== 0
+                          medicalDirectorHoursPercentage: percentage,
+                          hasMedicalDirectorHours: percentage !== 0
                         })
-                      })
+                      }, totalBudget)
                     }
                   }}
-                  onMouseEnter={(e) => {
-                    if (!readOnly) {
-                      createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
-                        store.upsertPhysician(scenario, year, {
-                          ...p,
-                          medicalDirectorHoursAmount: amount,
-                          hasMedicalDirectorHours: amount !== 0
-                        })
+                onMouseEnter={(e) => {
+                  const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                  if (!readOnly) {
+                    createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        medicalDirectorHoursPercentage: percentage,
+                        hasMedicalDirectorHours: percentage !== 0
                       })
-                      e.currentTarget.style.opacity = '0.8'
-                    }
-                  }}
+                    }, totalBudget)
+                    e.currentTarget.style.opacity = '0.8'
+                  } else {
+                    // Show read-only tooltip with current percentage and dollar amount
+                    const percentage = p.medicalDirectorHoursPercentage ?? 0
+                    const dollarAmount = Math.round(percentage * totalBudget / 100)
+                    createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${percentage.toFixed(1)}% (${currency(dollarAmount)})`, e)
+                  }
+                }}
                   onMouseLeave={(e) => {
                     if (!readOnly) {
                       const tooltip = document.getElementById(`hours-slider-${p.id}`)
@@ -3635,17 +3972,20 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                         }, 150)
                       }
                       e.currentTarget.style.opacity = '1'
+                    } else {
+                      removeTooltip(`hours-readonly-${p.id}`)
                     }
                   }}
                   onTouchStart={(e) => {
                     if (!readOnly) {
-                      createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
+                      const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                      createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                         store.upsertPhysician(scenario, year, {
                           ...p,
-                          medicalDirectorHoursAmount: amount,
-                          hasMedicalDirectorHours: amount !== 0
+                          medicalDirectorHoursPercentage: percentage,
+                          hasMedicalDirectorHours: percentage !== 0
                         })
-                      })
+                      }, totalBudget)
                     }
                   }}
                 />
@@ -3797,8 +4137,8 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <img
-                src={(p.medicalDirectorHoursAmount ?? 0) > 0 ? '/hours_selected.png' : '/hours_unselected.png'}
-                alt={`Medical Director Hours ${((p.medicalDirectorHoursAmount ?? 0) > 0) ? 'enabled' : 'disabled'}`}
+                src={(p.medicalDirectorHoursPercentage ?? 0) > 0 ? '/hours_selected.png' : '/hours_unselected.png'}
+                alt={`Medical Director Hours ${((p.medicalDirectorHoursPercentage ?? 0) > 0) ? 'enabled' : 'disabled'}`}
                 data-hours-id={p.id}
                 style={{
                   width: '20px',
@@ -3810,25 +4150,32 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                 }}
                 onClick={(e) => {
                   if (!readOnly) {
-                    createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
+                      const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                      createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                       store.upsertPhysician(scenario, year, {
                         ...p,
-                        medicalDirectorHoursAmount: amount,
-                        hasMedicalDirectorHours: amount !== 0
+                          medicalDirectorHoursPercentage: percentage,
+                          hasMedicalDirectorHours: percentage !== 0
                       })
-                    })
+                    }, totalBudget)
                   }
                 }}
                 onMouseEnter={(e) => {
+                  const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
                   if (!readOnly) {
-                    createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
+                      createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                       store.upsertPhysician(scenario, year, {
                         ...p,
-                        medicalDirectorHoursAmount: amount,
-                        hasMedicalDirectorHours: amount !== 0
+                          medicalDirectorHoursPercentage: percentage,
+                          hasMedicalDirectorHours: percentage !== 0
                       })
-                    })
+                    }, totalBudget)
                     e.currentTarget.style.opacity = '0.8'
+                  } else {
+                    // Show read-only tooltip with current percentage and dollar amount
+                    const percentage = p.medicalDirectorHoursPercentage ?? 0
+                    const dollarAmount = Math.round(percentage * totalBudget / 100)
+                    createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${percentage.toFixed(1)}% (${currency(dollarAmount)})`, e)
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -3842,17 +4189,25 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                       }, 150)
                     }
                     e.currentTarget.style.opacity = '1'
+                  } else {
+                    removeTooltip(`hours-readonly-${p.id}`)
                   }
                 }}
                 onTouchStart={(e) => {
+                  const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
                   if (!readOnly) {
-                    createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
+                      createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                       store.upsertPhysician(scenario, year, {
                         ...p,
-                        medicalDirectorHoursAmount: amount,
-                        hasMedicalDirectorHours: amount !== 0
+                          medicalDirectorHoursPercentage: percentage,
+                          hasMedicalDirectorHours: percentage !== 0
                       })
-                    })
+                    }, totalBudget)
+                  } else {
+                    // Show read-only tooltip with current percentage and dollar amount
+                    const percentage = p.medicalDirectorHoursPercentage ?? 0
+                    const dollarAmount = Math.round(percentage * totalBudget / 100)
+                    createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${percentage.toFixed(1)}% (${currency(dollarAmount)})`, e)
                   }
                 }}
               />
@@ -3865,15 +4220,15 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                 tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
                 
                 // Calculate relative FTE based on maximum FTE partner (accounting for vacation during partner period)
-                const allPartners = fy!.physicians.filter((ph) => ph.type === 'partner' || ph.type === 'employeeToPartner' || ph.type === 'partnerToRetire')
+                const allPartners = physicians.filter((ph) => ph.type === 'partner' || ph.type === 'employeeToPartner' || ph.type === 'partnerToRetire')
                 const partnerWeights = allPartners.map(ph => getPartnerFTEWeightProper(ph))
                 const maxWeight = Math.max(...partnerWeights, 0.01) // Avoid division by zero
                 const currentWeight = getPartnerFTEWeightProper(p)
                 const relativeFTE = currentWeight / maxWeight
                 
-                  const weeks = p.weeksVacation ?? 8
-                  const effectiveWeeks = 52 - weeks
-                  tooltip.textContent = `Partner:\nWeeks off: ${weeks}\nWorking weeks: ${effectiveWeeks}\nRelative FTE: ${(relativeFTE * 100).toFixed(1)}%`
+                const weeks = p.weeksVacation ?? 8
+                const effectiveWeeks = 52 - weeks
+                tooltip.textContent = `Partner:\nWeeks off: ${weeks}\nWorking weeks: ${effectiveWeeks}\nRelative FTE: ${(relativeFTE * 100).toFixed(1)}%`
                 document.body.appendChild(tooltip)
                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
                 tooltip.style.left = `${rect.right + 10}px`
@@ -4176,8 +4531,8 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                 onTouchStart={(e) => createTooltip('benefits-tooltip-split', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)}
               />
               <img
-                src={(p.medicalDirectorHoursAmount ?? 0) > 0 ? '/hours_selected.png' : '/hours_unselected.png'}
-                alt={`Medical Director Hours ${((p.medicalDirectorHoursAmount ?? 0) > 0) ? 'enabled' : 'disabled'}`}
+                src={(p.medicalDirectorHoursPercentage ?? 0) > 0 ? '/hours_selected.png' : '/hours_unselected.png'}
+                alt={`Medical Director Hours ${((p.medicalDirectorHoursPercentage ?? 0) > 0) ? 'enabled' : 'disabled'}`}
                 data-hours-id={p.id}
                 style={{
                   width: '20px',
@@ -4189,25 +4544,32 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                 }}
                 onClick={(e) => {
                   if (!readOnly) {
-                    createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
+                      const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                      createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                       store.upsertPhysician(scenario, year, {
                         ...p,
-                        medicalDirectorHoursAmount: amount,
-                        hasMedicalDirectorHours: amount !== 0
+                          medicalDirectorHoursPercentage: percentage,
+                          hasMedicalDirectorHours: percentage !== 0
                       })
-                    })
+                    }, totalBudget)
                   }
                 }}
                 onMouseEnter={(e) => {
+                  const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
                   if (!readOnly) {
-                    createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
+                      createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                       store.upsertPhysician(scenario, year, {
                         ...p,
-                        medicalDirectorHoursAmount: amount,
-                        hasMedicalDirectorHours: amount !== 0
+                          medicalDirectorHoursPercentage: percentage,
+                          hasMedicalDirectorHours: percentage !== 0
                       })
-                    })
+                    }, totalBudget)
                     e.currentTarget.style.opacity = '0.8'
+                  } else {
+                    // Show read-only tooltip with current percentage and dollar amount
+                    const percentage = p.medicalDirectorHoursPercentage ?? 0
+                    const dollarAmount = Math.round(percentage * totalBudget / 100)
+                    createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${percentage.toFixed(1)}% (${currency(dollarAmount)})`, e)
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -4221,17 +4583,25 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                       }, 150)
                     }
                     e.currentTarget.style.opacity = '1'
+                  } else {
+                    removeTooltip(`hours-readonly-${p.id}`)
                   }
                 }}
                 onTouchStart={(e) => {
+                  const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
                   if (!readOnly) {
-                    createHoursTooltip(p.id, p.medicalDirectorHoursAmount ?? 0, e, (_, amount) => {
+                      createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                       store.upsertPhysician(scenario, year, {
                         ...p,
-                        medicalDirectorHoursAmount: amount,
-                        hasMedicalDirectorHours: amount !== 0
+                          medicalDirectorHoursPercentage: percentage,
+                          hasMedicalDirectorHours: percentage !== 0
                       })
-                    })
+                    }, totalBudget)
+                  } else {
+                    // Show read-only tooltip with current percentage and dollar amount
+                    const percentage = p.medicalDirectorHoursPercentage ?? 0
+                    const dollarAmount = Math.round(percentage * totalBudget / 100)
+                    createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${percentage.toFixed(1)}% (${currency(dollarAmount)})`, e)
                   }
                 }}
               />
@@ -4266,33 +4636,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   }}
                   onMouseLeave={() => { const t = document.getElementById('employee-partner-tooltip'); if (t) t.remove() }}
                 ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
-                {/* 2) Partner weeks info (middle slot) */}
-                <div 
-                  style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-                  onMouseEnter={(e) => {
-                    const tooltip = document.createElement('div')
-                    tooltip.id = 'partner-weeks-tooltip'
-                    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
-                    
-                    const allPartners = fy!.physicians.filter((ph) => ph.type === 'partner' || ph.type === 'employeeToPartner' || ph.type === 'partnerToRetire')
-                    const partnerWeights = allPartners.map(ph => getPartnerFTEWeightProper(ph))
-                    const maxWeight = Math.max(...partnerWeights, 0.01)
-                    const currentWeight = getPartnerFTEWeightProper(p)
-                    const relativeFTE = currentWeight / maxWeight
-                    
-                    const weeks = p.weeksVacation ?? 8
-                    const partnerPortion = getPartnerPortionOfYear(p)
-                    const partnerWeeksInYear = partnerPortion * 52
-                    const effectivePartnerWeeks = Math.max(0, partnerWeeksInYear - weeks)
-                    tooltip.textContent = `Partner (during partner period):\nWeeks off: ${weeks}\nPartner weeks available: ${partnerWeeksInYear.toFixed(1)}\nEffective working weeks: ${effectivePartnerWeeks.toFixed(1)}\nRelative FTE: ${(relativeFTE * 100).toFixed(1)}%\nPartner portion of year: ${(partnerPortion * 100).toFixed(1)}%`
-                    document.body.appendChild(tooltip)
-                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                    tooltip.style.left = `${rect.right + 10}px`
-                    tooltip.style.top = `${rect.top + window.scrollY}px`
-                  }}
-                  onMouseLeave={() => { const t = document.getElementById('partner-weeks-tooltip'); if (t) t.remove() }}
-                ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
-                {/* 3) Employee cost info (last slot) */}
+                {/* 2) Employee cost info (middle slot - aligns with salary controls) */}
                 <div 
                   style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
                   onMouseEnter={(e) => {
@@ -4319,6 +4663,33 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                     tooltip.style.top = `${rect.top + window.scrollY}px`
                   }}
                   onMouseLeave={() => { const t = document.getElementById('employee-tooltip'); if (t) t.remove() }}
+                ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+                {/* 3) Partner weeks info (last slot - aligns with vacation controls) */}
+                <div 
+                  style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                  onMouseEnter={(e) => {
+                    const tooltip = document.createElement('div')
+                    tooltip.id = 'partner-weeks-tooltip'
+                    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                    
+                    const weeks = p.weeksVacation ?? 8
+                    const partnerPortion = getPartnerPortionOfYear(p)
+                    const partnerWeeksInYear = partnerPortion * 52
+                    const effectivePartnerWeeks = Math.max(0, partnerWeeksInYear - weeks)
+                    
+                    const allPartners = physicians.filter((ph) => ph.type === 'partner' || ph.type === 'employeeToPartner' || ph.type === 'partnerToRetire')
+                    const partnerWeights = allPartners.map(ph => getPartnerFTEWeightProper(ph))
+                    const maxWeight = Math.max(...partnerWeights, 0.01)
+                    const currentWeight = getPartnerFTEWeightProper(p)
+                    const relativeFTE = currentWeight / maxWeight
+                    
+                    tooltip.textContent = `Partner (during partner period):\nWeeks off: ${weeks}\nPartner weeks available: ${partnerWeeksInYear.toFixed(1)}\nEffective working weeks: ${effectivePartnerWeeks.toFixed(1)}\nRelative FTE: ${(relativeFTE * 100).toFixed(1)}%\nPartner portion of year: ${(partnerPortion * 100).toFixed(1)}%`
+                    document.body.appendChild(tooltip)
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    tooltip.style.left = `${rect.right + 10}px`
+                    tooltip.style.top = `${rect.top + window.scrollY}px`
+                  }}
+                  onMouseLeave={() => { const t = document.getElementById('partner-weeks-tooltip'); if (t) t.remove() }}
                 ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
               </div>
             <button
@@ -4654,6 +5025,8 @@ function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
   // Default values for reset functionality
   const defaultValues = {
     incomeGrowthPct: 3.7,
+    medicalDirectorHours: 80000,
+    prcsMedicalDirectorHours: 80000,
     nonEmploymentCostsPct: 7.8,
     nonMdEmploymentCostsPct: 6.0,
     locumsCosts: 120000,
@@ -4672,13 +5045,15 @@ function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
     suffix: string = '%',
     isDollar: boolean = false,
     glowType: 'income' | 'cost' = 'cost',
-    resetTooltip: string = 'Reset to 2016-2024 Trend'
+    resetTooltip: string = 'Reset to 2016-2024 Trend',
+    bare: boolean = false
   ) => {
     const defaultValue = defaultValues[field]
     const isChanged = Math.abs(value - defaultValue) > 0.001 // Account for floating point precision
     
-    return (
-    <div className={glowType === 'income' ? 'panel-green' : 'panel-red'} style={{ 
+    const wrapperStyle = bare
+      ? { padding: 0, backgroundColor: 'transparent', borderRadius: 0, border: 'none', boxShadow: 'none' as any }
+      : { 
       padding: 8,
       backgroundColor: '#ffffff',
       borderRadius: 8,
@@ -4688,12 +5063,191 @@ function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
       boxShadow: glowType === 'income'
         ? '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)'
         : '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)'
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+        }
+
+    if (bare) {
+      return (
+        <div style={wrapperStyle}>
+          <div style={{ display: 'grid', gridTemplateColumns: `${isMobile ? '96px' : '50px'} 19px 1fr auto 24px`, alignItems: 'center', gap: 2 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', justifyContent: 'flex-end' }}>
+              <label style={{ fontSize: 13, fontWeight: 500 }}>{label}</label>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
+              {isChanged && (
+                <button
+                  onClick={() => {
+                    removeTooltip('reset-tooltip')
+                    store.setProjectionField(scenario, field, defaultValues[field])
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    color: '#6b7280',
+                    padding: '2px 4px',
+                    borderRadius: 3,
+                    display: 'flex',
+                    alignItems: 'center',
+                    opacity: 0.7,
+                    transition: 'opacity 0.2s'
+                  }}
+                  onMouseEnter={(e) => { 
+                    e.currentTarget.style.opacity = '1'
+                    createTooltip('reset-tooltip', 'Reset to Default', e)
+                  }}
+                  onMouseLeave={(e) => { 
+                    e.currentTarget.style.opacity = '0.7'
+                    removeTooltip('reset-tooltip')
+                  }}
+                >
+                  ↺
+                </button>
+              )}
+            </div>
+
+            <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', height: 28 }}>
+              <input
+                type="range"
+                min={min}
+                max={max}
+                step={step}
+                value={value}
+                onChange={(e) => {
+                  store.setProjectionField(scenario, field, Number(e.target.value))
+                }}
+                style={{ 
+                  width: '100%', margin: 0,
+                  ['--fill-start' as any]: value >= 0 ? `${((0 - min) / (max - min)) * 100}%` : `${((value - min) / (max - min)) * 100}%`,
+                  ['--fill-end' as any]: value >= 0 ? `${((value - min) / (max - min)) * 100}%` : `${((0 - min) / (max - min)) * 100}%`,
+                }}
+                className="growth-slider"
+              />
+            </div>
+
+            {isDollar ? (
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: isMobile ? 88 : 100, height: 21 }}>
+                <input
+                  type="text"
+                  value={currency(value)}
+                  onChange={(e) => {
+                    const numericValue = e.target.value.replace(/[$,]/g, '')
+                    const parsed = Number(numericValue)
+                    if (!isNaN(parsed) && parsed >= min && parsed <= max) {
+                      store.setProjectionField(scenario, field, parsed)
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const numericValue = e.target.value.replace(/[$,]/g, '')
+                    const parsed = Number(numericValue)
+                    if (isNaN(parsed) || parsed < min || parsed > max) {
+                      store.setProjectionField(scenario, field, Math.max(min, Math.min(max, parsed || 0)))
+                    }
+                  }}
+                  style={{ 
+                    width: '100%', 
+                    height: 21, 
+                    padding: '2px 18px 2px 4px', 
+                    border: '1px solid #ccc',
+                    borderRadius: 3,
+                    fontSize: 14 
+                  }}
+                  readOnly={true}
+                />
+                <div style={{ 
+                  position: 'absolute', 
+                  right: 1, 
+                  top: 1, 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  height: 19
+                }}>
+                  <button
+                    onClick={() => {
+                      const newValue = Math.min(max, value + step)
+                      store.setProjectionField(scenario, field, newValue)
+                    }}
+                    style={{
+                      width: 16,
+                      height: 9.5,
+                      border: '1px solid #ccc',
+                      borderBottom: 'none',
+                      borderRadius: '2px 2px 0 0',
+                      background: '#f8f9fa',
+                      cursor: 'pointer',
+                      fontSize: 8,
+                      lineHeight: '8px',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    onMouseDown={(e) => e.preventDefault()}
+                    title="Increase value"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    onClick={() => {
+                      const newValue = Math.max(min, value - step)
+                      store.setProjectionField(scenario, field, newValue)
+                    }}
+                    style={{
+                      width: 16,
+                      height: 9.5,
+                      border: '1px solid #ccc',
+                      borderRadius: '0 0 2px 2px',
+                      background: '#f8f9fa',
+                      cursor: 'pointer',
+                      fontSize: 8,
+                      lineHeight: '8px',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    onMouseDown={(e) => e.preventDefault()}
+                    title="Decrease value"
+                  >
+                    ▼
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <span style={{ fontSize: 14, color: '#666' }}>{suffix}</span>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {(field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours') && (
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                  onMouseEnter={(e) => createTooltip('md-projection-tooltip', field === 'medicalDirectorHours' ? 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.' : 'PRCS contract terms: $250/hr up to $90,000 maximum annual.', e)}
+                  onMouseLeave={() => removeTooltip('md-projection-tooltip')}
+                  onTouchStart={(e) => createTooltip('md-projection-tooltip', field === 'medicalDirectorHours' ? 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.' : 'PRCS contract terms: $250/hr up to $90,000 maximum annual.', e)}
+                  onClick={(e) => createTooltip('md-projection-tooltip', field === 'medicalDirectorHours' ? 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.' : 'PRCS contract terms: $250/hr up to $90,000 maximum annual.', e)}
+                ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+              )}
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+    <div className={bare ? undefined : (glowType === 'income' ? 'panel-green' : 'panel-red')} style={wrapperStyle}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: bare ? 2 : 8 }}>
         <label style={{ fontSize: 14, fontWeight: 500 }}>{label}</label>
+        {(field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours') && (
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+            onMouseEnter={(e) => createTooltip('md-projection-tooltip', field === 'medicalDirectorHours' ? 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.' : 'PRCS contract terms: $250/hr up to $90,000 maximum annual.', e)}
+            onMouseLeave={() => removeTooltip('md-projection-tooltip')}
+            onTouchStart={(e) => createTooltip('md-projection-tooltip', field === 'medicalDirectorHours' ? 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.' : 'PRCS contract terms: $250/hr up to $90,000 maximum annual.', e)}
+            onClick={(e) => createTooltip('md-projection-tooltip', field === 'medicalDirectorHours' ? 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.' : 'PRCS contract terms: $250/hr up to $90,000 maximum annual.', e)}
+          ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+        )}
         {isChanged && (
           <button
             onClick={() => {
+              removeTooltip('reset-tooltip')
               store.setProjectionField(scenario, field, defaultValues[field])
             }}
             style={{
@@ -4723,7 +5277,7 @@ function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
         )}
       </div>
       <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', height: 32 }}>
+        <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', height: bare ? 28 : 32 }}>
           <input
             type="range"
             min={min}
@@ -4754,7 +5308,7 @@ function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
           )}
         </div>
         {isDollar ? (
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: isMobile ? 100 : 120, height: 23 }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: isMobile ? 100 : 120, height: bare ? 21 : 23 }}>
             <input
               type="text"
               value={currency(value)}
@@ -4940,6 +5494,7 @@ function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
         <div style={{ fontSize: 14, fontWeight: 600 }}>Projection Settings</div>
         <button
           onClick={() => {
+            removeTooltip('reset-all-tooltip')
             Object.keys(defaultValues).forEach((field) => {
               store.setProjectionField(scenario, field as keyof Projection, defaultValues[field as keyof typeof defaultValues])
             })
@@ -4973,12 +5528,23 @@ function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
         </button>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 16 }}>
-        {createSlider('Total Income Growth', 'incomeGrowthPct', sc.projection.incomeGrowthPct ?? 3.7, -10, 20, 0.1, '%', false, 'income')}
+        {createSlider('Therapy Income Growth', 'incomeGrowthPct', sc.projection.incomeGrowthPct ?? 3.7, -10, 20, 0.1, '%', false, 'income')}
+
+        <div className={'panel-green'} style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)' }}>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Medical Director Hours (Annual Overrides)</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
+            {createSlider('Shared', 'medicalDirectorHours', sc.projection.medicalDirectorHours ?? 80000, 0, 97200, 1000, '', true, 'income', 'Reset to Default', true)}
+            {createSlider('PRCS', 'prcsMedicalDirectorHours', sc.projection.prcsMedicalDirectorHours ?? 80000, 0, 90000, 1000, '', true, 'income', 'Reset to Default', true)}
+          </div>
+        </div>
+
         {createSlider('Non-Employment Costs Growth', 'nonEmploymentCostsPct', sc.projection.nonEmploymentCostsPct ?? 7.8, -10, 20, 0.1, '%', false, 'cost')}
         {createSlider('Staff Employment Costs Growth', 'nonMdEmploymentCostsPct', sc.projection.nonMdEmploymentCostsPct ?? 6.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Default')}
         {createSlider('Benefit Costs Growth', 'benefitCostsGrowthPct', sc.projection.benefitCostsGrowthPct ?? 5.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Default')}
         {createSlider('Misc Employment Costs Growth', 'miscEmploymentCostsPct', sc.projection.miscEmploymentCostsPct ?? 6.7, -10, 20, 0.1, '%', false, 'cost')}
+        <div style={{ gridColumn: isMobile ? '1' : '1 / -1' }}>
         {createSlider('Locums Costs (Annual Override)', 'locumsCosts', sc.projection.locumsCosts ?? 120000, 0, 500000, 1000, '', true, 'cost', 'Reset to Default')}
+        </div>
       </div>
     </div>
   )
@@ -5169,7 +5735,7 @@ function HistoricAndProjectionChart() {
           const traces: any[] = []
           const historic2025 = store.historic.find(h => h.year === 2025)
           // Group: Income
-          traces.push({ x: historicYears, y: incomeHistoric, type: 'scatter', mode: 'lines+markers', name: 'Total Income', line: { color: '#1976d2', width: 3 }, marker: { symbol: 'circle', color: markerColorsFor2025('#1976d2'), line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}', legendgroup: 'income', legendrank: 1 })
+          traces.push({ x: historicYears, y: incomeHistoric, type: 'scatter', mode: 'lines+markers', name: 'Therapy Income', line: { color: '#1976d2', width: 3 }, marker: { symbol: 'circle', color: markerColorsFor2025('#1976d2'), line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}', legendgroup: 'income', legendrank: 1 })
           traces.push({ x: [2025, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => f.year)], y: [historic2025?.totalIncome ?? baselineA.totalIncome, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => f.totalIncome)], type: 'scatter', mode: 'lines+markers', name: 'Income projection A', line: { dash: 'dot', color: '#1976d2', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 2 })
           if (store.scenarioBEnabled && store.scenarioB && baselineB) traces.push({ x: [2025, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.year)], y: [historic2025?.totalIncome ?? baselineB.totalIncome, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.totalIncome)], type: 'scatter', mode: 'lines+markers', name: 'Income projection B', line: { dash: 'dash', color: '#1976d2', width: 2 }, marker: { symbol: 'circle', color: getScenarioBMarkerColor('#1976d2'), line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 3 })
 
