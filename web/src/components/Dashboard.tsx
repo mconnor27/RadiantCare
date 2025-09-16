@@ -40,6 +40,8 @@ export type Physician = {
   medicalDirectorHoursPercentage?: number
   // Buyout cost for retiring partners
   buyoutCost?: number
+  // Trailing shared MD dollars for prior-year retirees
+  trailingSharedMdAmount?: number
 }
 
 // Responsive helper
@@ -322,6 +324,100 @@ function createHoursTooltip(
   }
 }
 
+// Helper function for creating interactive PRCS Medical Director $ override tooltip
+function createPrcsAmountTooltip(
+  physicianId: string,
+  currentAmount: number,
+  e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>,
+  onUpdate: (physicianId: string, amount: number) => void,
+  message: string,
+  maxValue: number = 90000
+) {
+  const tooltipId = `prcs-amount-slider-${physicianId}`
+  const existing = document.getElementById(tooltipId)
+  if (existing) existing.remove()
+
+  const tooltip = document.createElement('div')
+  tooltip.id = tooltipId
+  const isMobileTooltip = window.innerWidth <= 768
+
+  if (isMobileTooltip) {
+    tooltip.className = 'tooltip-mobile'
+    tooltip.style.cssText = `position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 9999; max-width: calc(100vw - 40px); box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
+  } else {
+    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
+  }
+
+  const minValue = 0
+  const displayAmount = `$${Math.round(currentAmount || 0).toLocaleString()}`
+  const title = 'PRCS Medical Director'
+
+  tooltip.innerHTML = `
+    <div style="margin-bottom: 6px; font-weight: 600; white-space: nowrap;">${title}</div>
+    <div style="margin-bottom: 6px; font-size: 12px; opacity: 0.9;">${message}</div>
+    <div style="padding: 2px 0;">
+      <input type="range" min="${minValue}" max="${maxValue}" step="1000" value="${currentAmount}" 
+        style="width: 200px; margin-bottom: 8px; cursor: pointer;" class="growth-slider" id="${tooltipId}-slider" />
+      <div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+        <input type="text" value="${displayAmount}" 
+          style="width: 110px; padding: 2px 6px; border: 1px solid #555; border-radius: 3px; background: #444; color: white; font-size: 12px; text-align: center;" 
+          id="${tooltipId}-amount" />
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(tooltip)
+
+  if (!isMobileTooltip) {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    tooltip.style.left = `${rect.right + 10}px`
+    tooltip.style.top = `${rect.top + window.scrollY}px`
+  }
+
+  const slider = document.getElementById(`${tooltipId}-slider`) as HTMLInputElement
+  const amountInput = document.getElementById(`${tooltipId}-amount`) as HTMLInputElement
+
+  if (slider && amountInput) {
+    // Update from slider
+    slider.addEventListener('input', (event) => {
+      const target = event.target as HTMLInputElement
+      const newAmount = Number(target.value)
+      amountInput.value = `$${Math.round(newAmount).toLocaleString()}`
+      onUpdate(physicianId, newAmount)
+    })
+
+    // Update from text input
+    amountInput.addEventListener('input', (event) => {
+      const target = event.target as HTMLInputElement
+      const numericValue = Number(target.value.replace(/[^0-9]/g, ''))
+      const clamped = Math.max(minValue, Math.min(maxValue, numericValue))
+      slider.value = String(clamped)
+      target.value = `$${Math.round(clamped).toLocaleString()}`
+      onUpdate(physicianId, clamped)
+    })
+  }
+
+  tooltip.addEventListener('mouseenter', () => {
+    clearTimeout((tooltip as any).hideTimeout)
+  })
+  tooltip.addEventListener('mouseleave', () => {
+    removeTooltip(tooltipId)
+  })
+
+  const clickOutsideHandler = (event: MouseEvent) => {
+    if (!tooltip.contains(event.target as Node) &&
+        !document.querySelector(`[data-prcs-id="${physicianId}"]`)?.contains(event.target as Node)) {
+      removeTooltip(tooltipId)
+      document.removeEventListener('click', clickOutsideHandler)
+    }
+  }
+  setTimeout(() => document.addEventListener('click', clickOutsideHandler), 100)
+
+  if (isMobileTooltip) {
+    setTimeout(() => removeTooltip(tooltipId), 8000)
+  }
+}
+
 // Extend FutureYear with nonMdEmploymentCosts
 export type FutureYear = {
   year: number
@@ -332,6 +428,7 @@ export type FutureYear = {
   miscEmploymentCosts: number
   medicalDirectorHours?: number
   prcsMedicalDirectorHours?: number
+  prcsDirectorPhysicianId?: string
   physicians: Physician[]
 }
 
@@ -376,6 +473,7 @@ type Store = {
   setDataMode: (scenario: ScenarioKey, mode: 'Custom' | '2024 Data' | '2025 Data') => void
   loadSnapshot: (snapshot: { scenarioA: ScenarioState; scenarioBEnabled: boolean; scenarioB?: ScenarioState }) => void
   resetToDefaults: () => void
+  setPrcsDirector: (scenario: ScenarioKey, year: number, physicianId?: string) => void
 }
 
 const HISTORIC_DATA: YearRow[] = [
@@ -593,10 +691,15 @@ const FUTURE_YEARS_BASE: Omit<FutureYear, 'physicians'>[] = Array.from({ length:
   }
 })
 
-const INITIAL_FUTURE_YEARS_A: FutureYear[] = FUTURE_YEARS_BASE.map((b) => ({
-  ...b,
-  physicians: scenarioADefaultsByYear(b.year),
-}))
+const INITIAL_FUTURE_YEARS_A: FutureYear[] = FUTURE_YEARS_BASE.map((b) => {
+  const physicians = scenarioADefaultsByYear(b.year)
+  const js = physicians.find((p) => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+  return {
+    ...b,
+    physicians,
+    prcsDirectorPhysicianId: b.year >= 2024 && js ? js.id : undefined,
+  }
+})
 
 function scenarioBDefaultsByYear(year: number): Physician[] {
   let physicians: Physician[] = []
@@ -660,10 +763,15 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
   return calculateMedicalDirectorHourPercentages(physicians)
 }
 
-const INITIAL_FUTURE_YEARS_B: FutureYear[] = FUTURE_YEARS_BASE.map((b) => ({
-  ...b,
-  physicians: scenarioBDefaultsByYear(b.year),
-}))
+const INITIAL_FUTURE_YEARS_B: FutureYear[] = FUTURE_YEARS_BASE.map((b) => {
+  const physicians = scenarioBDefaultsByYear(b.year)
+  const js = physicians.find((p) => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+  return {
+    ...b,
+    physicians,
+    prcsDirectorPhysicianId: b.year >= 2024 && js ? js.id : undefined,
+  }
+})
 export const useDashboardStore = create<Store>()(
   persist(
     immer<Store>((set, get) => {
@@ -674,8 +782,8 @@ export const useDashboardStore = create<Store>()(
           future: INITIAL_FUTURE_YEARS_A,
           projection: { 
             incomeGrowthPct: 3.7, 
-            medicalDirectorHours: 80000,
-            prcsMedicalDirectorHours: 80000,
+            medicalDirectorHours: 102870,
+            prcsMedicalDirectorHours: 25805,
             nonEmploymentCostsPct: 7.8, 
             nonMdEmploymentCostsPct: 6.0, 
             locumsCosts: 120000, 
@@ -696,8 +804,8 @@ export const useDashboardStore = create<Store>()(
                 future: INITIAL_FUTURE_YEARS_B.map((f) => ({ ...f, physicians: [...f.physicians] })),
                 projection: { 
                   incomeGrowthPct: 3.7, 
-                  medicalDirectorHours: 80000,
-                  prcsMedicalDirectorHours: 80000,
+                  medicalDirectorHours: 102870,
+                  prcsMedicalDirectorHours: 25805,
                   nonEmploymentCostsPct: 7.8, 
                   nonMdEmploymentCostsPct: 6.0, 
                   locumsCosts: 0, 
@@ -717,6 +825,16 @@ export const useDashboardStore = create<Store>()(
             if (store.scenarioB) store.applyProjectionFromLastActual('B')
           }
         },
+        
+        setPrcsDirector: (scenario, year, physicianId) =>
+          set((state) => {
+            const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
+            if (!sc) return
+            const fy = sc.future.find((f) => f.year === year)
+            if (!fy) return
+            // Single-select per year: setting undefined clears selection
+            fy.prcsDirectorPhysicianId = physicianId
+          }),
         setFutureValue: (scenario, year, field, value) =>
           set((state) => {
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
@@ -997,8 +1115,8 @@ export const useDashboardStore = create<Store>()(
             
             // Apply appropriate limits based on field type
             if (field === 'locumsCosts' || field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours') {
-              // Dollar amount fields should use reasonable range (0 to 1M for locums, 0 to 97.2K for medical director hours)
-              const maxValue = field === 'medicalDirectorHours' ? 97200 : (field === 'prcsMedicalDirectorHours' ? 90000 : 1000000)
+              // Dollar amount fields should use reasonable range (0 to 1M for locums, 0 to 120K for medical director amounts)
+              const maxValue = field === 'medicalDirectorHours' ? 120000 : (field === 'prcsMedicalDirectorHours' ? 120000 : 1000000)
               sc.projection[field] = Math.max(0, Math.min(maxValue, value))
             } else {
               // Percentage fields should be limited to reasonable range (-10% to +20%)
@@ -1178,6 +1296,8 @@ export const useDashboardStore = create<Store>()(
               // Set locums costs from the global override (except 2026 which defaults to 60K)
               fy.locumCosts = fy.year === 2026 ? 60000 : sc.projection.locumsCosts
             }
+
+            // Do not modify PRCS Director assignment during projection recalculation
           }),
         setSelectedYear: (scenario, year) =>
           set((state) => {
@@ -1257,8 +1377,8 @@ export const useDashboardStore = create<Store>()(
               })),
               projection: { 
                 incomeGrowthPct: 3.7, 
-                medicalDirectorHours: 80000,
-                prcsMedicalDirectorHours: 80000,
+                medicalDirectorHours: 102870,
+                prcsMedicalDirectorHours: 25805,
                 nonEmploymentCostsPct: 7.8, 
                 nonMdEmploymentCostsPct: 6.0, 
                 locumsCosts: 120000, 
@@ -1932,6 +2052,24 @@ function arePhysiciansChanged(
     }
   }
   
+  // Include PRCS director selection and PRCS amount override in change detection
+  try {
+    const sc = scenario === 'A' ? _store.scenarioA : _store.scenarioB
+    const fy = sc?.future.find((f: any) => f.year === year)
+    const projectionPrcs = sc?.projection?.prcsMedicalDirectorHours ?? 80000
+    const currentPrcs = fy?.prcsMedicalDirectorHours ?? projectionPrcs
+    const amountChanged = Math.abs(currentPrcs - projectionPrcs) > 100 // small threshold for $ changes
+
+    // Determine default PRCS director for this year (JS from 2024+ if present in defaults)
+    const jsDefault = year >= 2024
+      ? defaultPhysicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+      : undefined
+    const defaultDirectorId = jsDefault?.id
+    const selectionChanged = (fy?.prcsDirectorPhysicianId ?? undefined) !== (defaultDirectorId ?? undefined)
+
+    if (amountChanged || selectionChanged) return true
+  } catch {}
+
   return false
 }
 
@@ -2252,7 +2390,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
         <input
           type="range"
           min={0}
-          max={97200}
+          max={120000}
           step={1000}
           value={fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000}
           onChange={(e) =>
@@ -2261,7 +2399,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
           disabled={isReadOnly}
           style={{ 
             width: '100%',
-            ['--fill-percent' as any]: `${((fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000) / 97200) * 100}%`
+            ['--fill-percent' as any]: `${((fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000) / 120000) * 100}%`
           }}
         />
         <input
@@ -2335,7 +2473,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
         <input
           type="range"
           min={0}
-          max={90000}
+          max={120000}
           step={1000}
           value={fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000}
           onChange={(e) =>
@@ -2344,7 +2482,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
           disabled={isReadOnly}
           style={{ 
             width: '100%',
-            ['--fill-percent' as any]: `${((fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000) / 90000) * 100}%`
+            ['--fill-percent' as any]: `${((fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000) / 120000) * 100}%`
           }}
         />
         <input
@@ -2377,7 +2515,11 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, fontSize: 13, color: '#374151', paddingRight: 48 }}>
           <span style={{ fontWeight: 500 }}>Total Income:</span>
           <span style={{ fontWeight: 600 }}>
-            {currency((fy.totalIncome || 0) + (fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000) + (fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000))}
+            {currency(((fy.totalIncome || 0)
+              + (fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000)
+              + (((fy.prcsDirectorPhysicianId ?? (year >= 2024 ? (fy.physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))?.id) : undefined))
+                  ? (fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000)
+                  : 0))))}
           </span>
         </div>
       </div>
@@ -2783,8 +2925,24 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
 function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride, locumCosts, onLocumCostsChange }: { year: number; scenario: ScenarioKey; readOnly?: boolean; physiciansOverride?: Physician[]; locumCosts: number; onLocumCostsChange: (value: number) => void }) {
   const store = useDashboardStore()
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
-  const fy = sc.future.find((f) => f.year === year)!
+  const fyExisting = sc.future.find((f) => f.year === year)
+  const defaultPhysiciansIfNeeded = physiciansOverride ?? (scenario === 'A' ? scenarioADefaultsByYear(year) : scenarioBDefaultsByYear(year))
+  const jsDefault = year >= 2024 ? defaultPhysiciansIfNeeded.find((p) => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire')) : undefined
+  const fy: FutureYear = fyExisting ?? {
+    year,
+    totalIncome: 0,
+    nonEmploymentCosts: 0,
+    nonMdEmploymentCosts: 0,
+    locumCosts,
+    miscEmploymentCosts: 0,
+    medicalDirectorHours: undefined,
+    prcsMedicalDirectorHours: undefined,
+    prcsDirectorPhysicianId: jsDefault?.id,
+    physicians: defaultPhysiciansIfNeeded,
+  }
   const physicians = physiciansOverride ?? fy.physicians
+  const defaultPrcsDirectorId = jsDefault?.id
+  const prcsSelectedId = (fy.prcsDirectorPhysicianId ?? defaultPrcsDirectorId)
 
   const handleReorder = (fromIndex: number, toIndex: number) => {
     store.reorderPhysicians(scenario, year, fromIndex, toIndex)
@@ -2828,8 +2986,9 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
         <div style={{ position: 'relative', width: '100%' }}>
           {getPartnerPortionOfYear(p) > 0 && (
             <img
-              src="/meddir_unselected.png"
-              alt="Medical Director"
+              src={(prcsSelectedId === p.id) ? '/meddir_selected.png' : '/meddir_unselected.png'}
+              alt={(prcsSelectedId === p.id) ? 'PRCS Medical Director (selected)' : 'PRCS Medical Director (not selected)'}
+              data-prcs-id={p.id}
               style={{
                 position: 'absolute',
                 left: '4px',
@@ -2837,8 +2996,85 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                 transform: 'translateY(-50%)',
                 width: '15px',
                 height: '15px',
-                zIndex: 1,
-                pointerEvents: 'none'
+                zIndex: 2,
+                cursor: readOnly ? 'default' : 'pointer',
+                opacity: readOnly ? 0.6 : 1
+              }}
+              onMouseEnter={(e) => {
+                const isSelected = prcsSelectedId === p.id
+                if (readOnly) {
+                  // Read-only: show a non-interactive summary tooltip reflecting current selection state
+                  if (isSelected) {
+                    const amount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 0
+                    createTooltip(`prcs-readonly-${p.id}`, `PRCS Medical Director: ${currency(Math.round(amount))}`, e)
+                  } else {
+                    createTooltip(`prcs-readonly-${p.id}`, 'PRCS Medical Director: Not designated', e)
+                  }
+                } else {
+                  const msg = isSelected
+                    ? 'Double-click to deselect'
+                    : 'Double-click to select as PRCS Medical Director'
+                  createTooltip(`prcs-md-hover-${p.id}`, msg, e)
+                  // Only show the slider on hover if this physician is already selected
+                  if (isSelected) {
+                    const currentAmount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000
+                    createPrcsAmountTooltip(p.id, currentAmount, e, (_pid, amount) => {
+                      store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
+                    }, msg, 120000)
+                  }
+                }
+              }}
+              onMouseLeave={() => {
+                // Always remove hover tooltips immediately (both read-only and interactive text)
+                removeTooltip(`prcs-md-hover-${p.id}`)
+                removeTooltip(`prcs-readonly-${p.id}`)
+                // For the slider tooltip, delay removal so users can move into it
+                const tooltip = document.getElementById(`prcs-amount-slider-${p.id}`)
+                if (tooltip) {
+                  ;(tooltip as any).hideTimeout = setTimeout(() => {
+                    const t = document.getElementById(`prcs-amount-slider-${p.id}`)
+                    if (t && !t.matches(':hover')) {
+                      removeTooltip(`prcs-amount-slider-${p.id}`)
+                    }
+                  }, 150)
+                }
+              }}
+              onDoubleClick={(e) => {
+                if (readOnly) return
+                const wasSelected = prcsSelectedId === p.id
+                const prevSelectedId = prcsSelectedId
+                // Toggle selection
+                store.setPrcsDirector(scenario, year, wasSelected ? undefined : p.id)
+                // If selecting (none previously or selecting a new one), open the slider immediately
+                if (!wasSelected) {
+                  // Remove any tooltips from the previously selected physician
+                  if (prevSelectedId) {
+                    removeTooltip(`prcs-amount-slider-${prevSelectedId}`)
+                    removeTooltip(`prcs-md-hover-${prevSelectedId}`)
+                  }
+                  // Remove hover text on this new selection before showing the slider
+                  removeTooltip(`prcs-md-hover-${p.id}`)
+                  const msg = 'Double-click to deselect'
+                  const currentAmount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000
+                  createPrcsAmountTooltip(p.id, currentAmount, e as any, (_pid, amount) => {
+                    store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
+                  }, msg, 120000)
+                } else {
+                  // If deselecting, close any slider and show the basic unselected hover immediately
+                  removeTooltip(`prcs-amount-slider-${p.id}`)
+                  removeTooltip(`prcs-md-hover-${p.id}`)
+                  const msg = 'Double-click to select as PRCS Medical Director'
+                  createTooltip(`prcs-md-hover-${p.id}`, msg, e as any)
+                }
+              }}
+              onTouchStart={(e) => {
+                if (readOnly) return
+                const isSelected = prcsSelectedId === p.id
+                const msg = isSelected ? 'Double-click to deselect' : 'Double-click to select as PRCS Medical Director'
+                const currentAmount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000
+                createPrcsAmountTooltip(p.id, currentAmount, e, (_pid, amount) => {
+                  store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
+                }, msg, 120000)
               }}
             />
           )}
@@ -3950,10 +4186,21 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
               </div>
             </div>
             {/* Medical Director Hours icon aligned with the slider/info column (hide if Prior Year) */}
-            {(p.partnerPortionOfYear ?? 0.5) > 0 ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {(((p.partnerPortionOfYear ?? 0.5) > 0) || ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0)) ? (
+              <div style={{ display: 'grid', gridTemplateRows: ((p.partnerPortionOfYear ?? 0.5) > 0) ? '20px 20px 20px' : '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+                {/* Placeholder top row to align with adjacent column (weeks/retire info) */}
+                <div style={{ height: 20 }} />
                 <img
-                  src={(p.medicalDirectorHoursPercentage ?? 0) > 0 ? '/hours_selected.png' : '/hours_unselected.png'}
+                  src={(() => {
+                    // If any prior-year retiree, show selected icon if has positive trailing amount (default 0)
+                    if ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0) {
+                      const fixed2025: Record<string, number> = { GA: 29295.00, JS: 29295.00, MC: 20992.50, HW: 8302.50 }
+                      const defaultAmount = (year === 2025) ? (fixed2025[p.name as keyof typeof fixed2025] ?? 0) : 0
+                      const amount = p.trailingSharedMdAmount ?? defaultAmount
+                      return amount > 0 ? '/hours_selected.png' : '/hours_unselected.png'
+                    }
+                    return (p.medicalDirectorHoursPercentage ?? 0) > 0 ? '/hours_selected.png' : '/hours_unselected.png'
+                  })()}
                   alt={`Medical Director Hours ${((p.medicalDirectorHoursPercentage ?? 0) > 0) ? 'enabled' : 'disabled'}`}
                   data-hours-id={p.id}
                   style={{
@@ -3978,7 +4225,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   }}
                 onMouseEnter={(e) => {
                   const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
-                  if (!readOnly) {
+                  if (!readOnly && !((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0)) {
                     createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                       store.upsertPhysician(scenario, year, {
                         ...p,
@@ -3988,14 +4235,18 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                     }, totalBudget)
                     e.currentTarget.style.opacity = '0.8'
                   } else {
-                    // Show read-only tooltip with current percentage and dollar amount
-                    const percentage = p.medicalDirectorHoursPercentage ?? 0
-                    const dollarAmount = Math.round(percentage * totalBudget / 100)
-                    createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${percentage.toFixed(1)}% (${currency(dollarAmount)})`, e)
+                    // Read-only or Prior-Year retiree: show trailing fixed amount (from field if present; else default 0 except 2025 with fixed defaults)
+                    const fixed2025: Record<string, number> = { GA: 29295.00, JS: 29295.00, MC: 20992.50, HW: 8302.50 }
+                    const defaultAmount = (year === 2025) ? (fixed2025[p.name as keyof typeof fixed2025] ?? 0) : 0
+                    const amount = ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0) ? (p.trailingSharedMdAmount ?? defaultAmount) : Math.round((p.medicalDirectorHoursPercentage ?? 0) * totalBudget / 100)
+                    const text = ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0)
+                      ? `Medical Director Hours: ${amount > 0 ? currency(Math.round(amount)) : 'Not designated'}`
+                      : `Medical Director Hours: ${(p.medicalDirectorHoursPercentage ?? 0).toFixed(1)}% (${currency(amount)})`
+                    createTooltip(`hours-readonly-${p.id}`, text, e)
                   }
                 }}
                   onMouseLeave={(e) => {
-                    if (!readOnly) {
+                    if (!readOnly && !((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0)) {
                       const tooltip = document.getElementById(`hours-slider-${p.id}`)
                       if (tooltip) {
                         (tooltip as any).hideTimeout = setTimeout(() => {
@@ -4010,7 +4261,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                     }
                   }}
                   onTouchStart={(e) => {
-                    if (!readOnly) {
+                    if (!readOnly && !((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0)) {
                       const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                         store.upsertPhysician(scenario, year, {
@@ -4022,6 +4273,8 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                     }
                   }}
                 />
+                {/* Placeholder bottom row to keep consistent height when 3-row layout */}
+                {((p.partnerPortionOfYear ?? 0.5) > 0) && <div style={{ height: 20 }} />}
               </div>
             ) : (
               <div></div>
@@ -5058,8 +5311,8 @@ function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
   // Default values for reset functionality
   const defaultValues = {
     incomeGrowthPct: 3.7,
-    medicalDirectorHours: 80000,
-    prcsMedicalDirectorHours: 80000,
+    medicalDirectorHours: 102870,
+    prcsMedicalDirectorHours: 25805,
     nonEmploymentCostsPct: 7.8,
     nonMdEmploymentCostsPct: 6.0,
     locumsCosts: 120000,
@@ -5566,8 +5819,8 @@ function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
         <div className={'panel-green'} style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)' }}>
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Medical Director Hours (Annual Overrides)</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
-            {createSlider('Shared', 'medicalDirectorHours', sc.projection.medicalDirectorHours ?? 80000, 0, 97200, 1000, '', true, 'income', 'Reset to Default', true)}
-            {createSlider('PRCS', 'prcsMedicalDirectorHours', sc.projection.prcsMedicalDirectorHours ?? 80000, 0, 90000, 1000, '', true, 'income', 'Reset to Default', true)}
+            {createSlider('Shared', 'medicalDirectorHours', sc.projection.medicalDirectorHours ?? 102870, 0, 120000, 1000, '', true, 'income', 'Reset to Default', true)}
+            {createSlider('PRCS', 'prcsMedicalDirectorHours', sc.projection.prcsMedicalDirectorHours ?? 25805, 0, 120000, 1000, '', true, 'income', 'Reset to Default', true)}
           </div>
         </div>
 
