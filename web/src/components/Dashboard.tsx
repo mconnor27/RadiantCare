@@ -602,7 +602,7 @@ function getTotalIncome(yearData: YearRow | FutureYear): number {
   // For historic years (2024-2025), we need to estimate medical director income
   if ('employeePayroll' in yearData) {
     // Historic year - estimate medical director income based on defaults
-    const defaultMedicalDirectorIncome = 110000 // Default shared MD income
+    const defaultMedicalDirectorIncome = 119373.75 // Default shared MD income
     const defaultPrcsMedicalDirectorIncome = 60000 // Default PRCS MD income
     return therapyIncome + defaultMedicalDirectorIncome + defaultPrcsMedicalDirectorIncome
   }
@@ -673,10 +673,10 @@ function scenarioADefaultsByYear(year: number): Physician[] {
   
   if (year === 2025) {
     physicians = [
-      { id: `${year}-MC`, name: 'MC', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 328840, weeksVacation: 9, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-GA`, name: 'GA', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-HW`, name: 'HW', type: 'partnerToRetire', partnerPortionOfYear: 0, buyoutCost: 51666.58, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-MC`, name: 'MC', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 328840, weeksVacation: 9, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 26.39 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 33.33 },
+      { id: `${year}-GA`, name: 'GA', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 33.33 },
+      { id: `${year}-HW`, name: 'HW', type: 'partnerToRetire', partnerPortionOfYear: 0, buyoutCost: 51666.58, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 6.96, trailingSharedMdAmount: 8302.50 },
       { id: `${year}-BT`, name: 'BT', type: 'employee', salary: 430760, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
     ]
   }
@@ -721,6 +721,11 @@ function scenarioADefaultsByYear(year: number): Physician[] {
       { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2027)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
       { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
     ]
+  }
+  
+  // For 2025, medical director percentages are manually set, so return directly
+  if (year === 2025) {
+    return physicians
   }
   
   return calculateMedicalDirectorHourPercentages(physicians)
@@ -831,10 +836,10 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
   
   if (year === 2025) {
     physicians = [
-      { id: `${year}-MC`, name: 'MC', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 328840, weeksVacation: 9, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-GA`, name: 'GA', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-HW`, name: 'HW', type: 'partnerToRetire', partnerPortionOfYear: 0, buyoutCost: 51666.58, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-MC`, name: 'MC', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 328840, weeksVacation: 9, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 26.39 },
+      { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 33.33 },
+      { id: `${year}-GA`, name: 'GA', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 33.33 },
+      { id: `${year}-HW`, name: 'HW', type: 'partnerToRetire', partnerPortionOfYear: 0, buyoutCost: 51666.58, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 6.96, trailingSharedMdAmount: 8302.50 },
       { id: `${year}-BT`, name: 'BT', type: 'employee', salary: 430760, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
     ]
   }
@@ -883,6 +888,11 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
       { id: `${year}-LK`, name: 'LK', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
       { id: `${year}-P5`, name: 'Potential Hire', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2029)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly from 2030, max 12
     ]
+  }
+  
+  // For 2025, medical director percentages are manually set, so return directly
+  if (year === 2025) {
+    return physicians
   }
   
   return calculateMedicalDirectorHourPercentages(physicians)
@@ -1481,6 +1491,8 @@ export const useDashboardStore = create<Store>()(
                 }
               } else {
                 // Fallback to 2025 defaults
+                const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
+                const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
                 baselineData = {
                   year: 2025,
                   therapyIncome: last2025?.therapyIncome || 3344068.19,
@@ -1488,7 +1500,10 @@ export const useDashboardStore = create<Store>()(
                   nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
                   locumCosts: 54600,
                   miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-                  physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
+                  medicalDirectorHours: 119373.75, // 2025 shared medical director amount
+                  prcsMedicalDirectorHours: 37792.5, // 2025 PRCS medical director amount (JS)
+                  prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
+                  physicians,
                 }
               }
               
@@ -1519,7 +1534,7 @@ export const useDashboardStore = create<Store>()(
               })),
               projection: { 
                 incomeGrowthPct: 3.7, 
-                medicalDirectorHours: 110000,
+                medicalDirectorHours: 119373.75,
                 prcsMedicalDirectorHours: 60000,
                 nonEmploymentCostsPct: 7.8, 
                 nonMdEmploymentCostsPct: 6.0, 
@@ -2052,8 +2067,42 @@ function usePartnerComp(year: number, scenario: ScenarioKey) {
     // For baseline year (2025): always derive from the selected data mode unless in Custom.
     // This avoids stale Custom state (e.g., a persisted 2025 entry in future years) from skewing baseline.
     if (year === 2025 && dataMode !== 'Custom') {
-      const baselinePhysicians = dataMode === '2024 Data' ? scenario2024Defaults() : scenarioADefaultsByYear(2025)
-      const partners = baselinePhysicians.filter((p) => p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire')
+      // Get the baseline scenario data which includes PRCS director assignment
+      const baselineData = (() => {
+        const last2024 = store.historic.find(h => h.year === 2024)
+        const last2025 = store.historic.find(h => h.year === 2025)
+        
+        if (dataMode === '2024 Data' && last2024) {
+          const physicians = scenario2024Defaults()
+          const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+          return {
+            medicalDirectorHours: 102870,
+            prcsMedicalDirectorHours: 25805,
+            prcsDirectorPhysicianId: js?.id,
+            physicians,
+          }
+        } else if (dataMode === '2025 Data' && last2025) {
+          const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
+          const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+          return {
+            medicalDirectorHours: 119373.75,
+            prcsMedicalDirectorHours: 37792.5,
+            prcsDirectorPhysicianId: js?.id,
+            physicians,
+          }
+        } else {
+          const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
+          const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+          return {
+            medicalDirectorHours: 119373.75,
+            prcsMedicalDirectorHours: 37792.5,
+            prcsDirectorPhysicianId: js?.id,
+            physicians,
+          }
+        }
+      })()
+      
+      const partners = baselineData.physicians.filter((p) => p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire')
       const partnerFTEs = partners.map((p) => {
         // Allow up to 24 weeks for historical data compatibility
         const weeks = clamp(p.weeksVacation ?? 0, 0, 24)
@@ -2073,11 +2122,35 @@ function usePartnerComp(year: number, scenario: ScenarioKey) {
         return sum
       }, 0)
       
+      // Calculate Medical Director income allocations first for 2025 baseline
+      const medicalDirectorIncome = baselineData.medicalDirectorHours
+      const prcsMedicalDirectorIncome = baselineData.prcsMedicalDirectorHours
+      
+      // Calculate direct Medical Director allocations to partners
+      const partnerMedicalDirectorAllocations = new Map<string, number>()
+      
+      // Allocate shared Medical Director income based on percentages
+      for (const partner of partners) {
+        if (partner.hasMedicalDirectorHours && partner.medicalDirectorHoursPercentage) {
+          const allocation = (partner.medicalDirectorHoursPercentage / 100) * medicalDirectorIncome
+          partnerMedicalDirectorAllocations.set(partner.id, allocation)
+        }
+      }
+      
+      // Allocate PRCS Medical Director income directly to the assigned physician
+      if (baselineData.prcsDirectorPhysicianId && prcsMedicalDirectorIncome > 0) {
+        const currentPrcsAllocation = partnerMedicalDirectorAllocations.get(baselineData.prcsDirectorPhysicianId) ?? 0
+        partnerMedicalDirectorAllocations.set(baselineData.prcsDirectorPhysicianId, currentPrcsAllocation + prcsMedicalDirectorIncome)
+      }
+      
+      // Calculate total Medical Director allocations to subtract from pool
+      const totalMedicalDirectorAllocations = Array.from(partnerMedicalDirectorAllocations.values()).reduce((sum, allocation) => sum + allocation, 0)
+      
       // Use different partner pools based on data mode
       const basePool = dataMode === '2024 Data' ? 2032099.02 : NET_PARTNER_POOL_2025
-      // NET_PARTNER_POOL_2025 is already net of all costs, so only subtract buyouts
+      // NET_PARTNER_POOL_2025 is already net of all costs, so only subtract buyouts and MD allocations
       // delayedW2Costs are already accounted for in the net pool
-      const adjustedPool = basePool - buyoutCosts
+      const adjustedPool = Math.max(0, basePool - buyoutCosts - totalMedicalDirectorAllocations)
       
       return partnerFTEs
         .filter(({ p, weight }) => {
@@ -2090,7 +2163,7 @@ function usePartnerComp(year: number, scenario: ScenarioKey) {
         .map(({ p, weight }) => ({ 
           id: p.id, 
           name: p.name, 
-          comp: (weight / totalWeight) * adjustedPool + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0)
+          comp: (weight / totalWeight) * adjustedPool + (partnerMedicalDirectorAllocations.get(p.id) ?? 0) + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0)
         }))
     }
     if (!fy) return [] as { id: string; name: string; comp: number }[]
@@ -2135,8 +2208,36 @@ function usePartnerComp(year: number, scenario: ScenarioKey) {
       }
       return sum
     }, 0)
+    // Calculate Medical Director income allocations first
+    const medicalDirectorIncome = fy.medicalDirectorHours ?? 110000
+    const prcsMedicalDirectorIncome = fy.prcsDirectorPhysicianId ? (fy.prcsMedicalDirectorHours ?? 60000) : 0
+    
+    // Calculate direct Medical Director allocations to partners
+    const partnerMedicalDirectorAllocations = new Map<string, number>()
+    
+    // Allocate shared Medical Director income based on percentages
+    for (const partner of partners) {
+      if (partner.hasMedicalDirectorHours && partner.medicalDirectorHoursPercentage) {
+        const allocation = (partner.medicalDirectorHoursPercentage / 100) * medicalDirectorIncome
+        partnerMedicalDirectorAllocations.set(partner.id, allocation)
+      }
+    }
+    
+    // Allocate PRCS Medical Director income directly to the assigned physician
+    if (fy.prcsDirectorPhysicianId && prcsMedicalDirectorIncome > 0) {
+      const currentPrcsAllocation = partnerMedicalDirectorAllocations.get(fy.prcsDirectorPhysicianId) ?? 0
+      partnerMedicalDirectorAllocations.set(fy.prcsDirectorPhysicianId, currentPrcsAllocation + prcsMedicalDirectorIncome)
+    }
+    
+    // Calculate total Medical Director allocations to subtract from pool
+    const totalMedicalDirectorAllocations = Array.from(partnerMedicalDirectorAllocations.values()).reduce((sum, allocation) => sum + allocation, 0)
+    
     const totalCosts = fy.nonEmploymentCosts + fy.nonMdEmploymentCosts + fy.miscEmploymentCosts + fy.locumCosts + totalEmployeeCosts + totalBuyoutCosts + totalDelayedW2Costs
-    const pool = Math.max(0, fy.therapyIncome - totalCosts)
+    const basePool = Math.max(0, fy.therapyIncome - totalCosts)
+    
+    // Subtract Medical Director allocations from the pool to get the FTE-distributable pool
+    const pool = Math.max(0, basePool - totalMedicalDirectorAllocations)
+    
     if (partners.length === 0) return []
     const partnerFTEs = partners.map((p) => ({ p, weight: getPartnerFTEWeight(p) }))
     const totalWeight = partnerFTEs.reduce((s, x) => s + x.weight, 0) || 1
@@ -2151,7 +2252,7 @@ function usePartnerComp(year: number, scenario: ScenarioKey) {
       .map(({ p, weight }) => ({
         id: p.id,
         name: p.name,
-        comp: (weight / totalWeight) * pool + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0),
+        comp: (weight / totalWeight) * pool + (partnerMedicalDirectorAllocations.get(p.id) ?? 0) + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0),
       }))
   }, [fy, sc, dataMode])
 }
@@ -2326,6 +2427,8 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
         }
         // Determine baseline data based on selected data mode
         else if (dataMode === '2024 Data' && last2024) {
+          const physicians = scenario2024Defaults()
+          const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
           return {
             year: 2025,
             therapyIncome: last2024.therapyIncome,
@@ -2335,9 +2438,12 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             miscEmploymentCosts: 18182.56, // 2024 actual misc employment from image
             medicalDirectorHours: 102870, // 2024 shared medical director amount
             prcsMedicalDirectorHours: 25805, // 2024 PRCS medical director amount (JS)
-            physicians: scenario2024Defaults(),
+            prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
+            physicians,
           } as FutureYear
         } else if (dataMode === '2025 Data' && last2025) {
+          const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
+          const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
           return {
             year: 2025,
             therapyIncome: last2025.therapyIncome,
@@ -2345,12 +2451,15 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
             locumCosts: 54600,
             miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-            medicalDirectorHours: 111070, // 2025 shared medical director amount
+            medicalDirectorHours: 119373.75, // 2025 shared medical director amount
             prcsMedicalDirectorHours: 37792.5, // 2025 PRCS medical director amount (JS)
-            physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
+            prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
+            physicians,
           } as FutureYear
         } else {
           // Fallback 
+          const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
+          const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
           return {
             year: 2025,
             therapyIncome: last2025?.therapyIncome || 3344068.19,
@@ -2358,7 +2467,8 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
             nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
             locumCosts: 54600,
             miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-            physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
+            prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
+            physicians,
           } as FutureYear
         }
       })()
@@ -4399,7 +4509,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   if (year === 2025 && sc.dataMode === '2024 Data') {
                     totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
                   }
                         const trailingTotal = fy.physicians.reduce((s, ph) => {
                           const isPriorYearRetiree = (ph.type === 'partnerToRetire') && ((ph.partnerPortionOfYear ?? 0) === 0)
@@ -4422,7 +4532,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   if (year === 2025 && sc.dataMode === '2024 Data') {
                     totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
                   }
                   if (!readOnly) {
                     if ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0) {
@@ -4499,7 +4609,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   if (year === 2025 && sc.dataMode === '2024 Data') {
                     totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
                   }
                         const trailingTotal = fy.physicians.reduce((s, ph) => {
                           const isPriorYearRetiree = (ph.type === 'partnerToRetire') && ((ph.partnerPortionOfYear ?? 0) === 0)
@@ -4685,7 +4795,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   if (year === 2025 && sc.dataMode === '2024 Data') {
                     totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
                   }
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                       store.upsertPhysician(scenario, year, {
@@ -4702,7 +4812,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   if (year === 2025 && sc.dataMode === '2024 Data') {
                     totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
                   }
                   if (!readOnly) {
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
@@ -4741,7 +4851,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   if (year === 2025 && sc.dataMode === '2024 Data') {
                     totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
                   }
                   if (!readOnly) {
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
@@ -5097,7 +5207,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   if (year === 2025 && sc.dataMode === '2024 Data') {
                     totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
                   }
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                       store.upsertPhysician(scenario, year, {
@@ -5114,7 +5224,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   if (year === 2025 && sc.dataMode === '2024 Data') {
                     totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
                   }
                   if (!readOnly) {
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
@@ -5153,7 +5263,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   if (year === 2025 && sc.dataMode === '2024 Data') {
                     totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
                   }
                   if (!readOnly) {
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
@@ -5474,6 +5584,8 @@ function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
   if (year === 2025) {
     const last2025 = state.historic.find((h) => h.year === 2025)
     if (last2025) {
+      const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
+      const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
       fy = {
         year: 2025,
         therapyIncome: last2025.therapyIncome,
@@ -5481,7 +5593,10 @@ function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
         nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
         locumCosts: 54600,
         miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-        physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
+        medicalDirectorHours: 119373.75, // 2025 shared medical director amount
+        prcsMedicalDirectorHours: 37792.5, // 2025 PRCS medical director amount (JS)
+        prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
+        physicians,
       }
     }
   }
@@ -5534,9 +5649,37 @@ function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
     return sum
   }, 0)
 
-  const pool = year === 2025
+  // Calculate Medical Director income allocations first
+  const medicalDirectorIncome = fy!.medicalDirectorHours ?? 110000
+  const prcsMedicalDirectorIncome = fy!.prcsDirectorPhysicianId ? (fy!.prcsMedicalDirectorHours ?? 60000) : 0
+  
+  // Calculate direct Medical Director allocations to partners
+  const partnerMedicalDirectorAllocations = new Map<string, number>()
+  
+  // Allocate shared Medical Director income based on percentages
+  for (const partner of partners) {
+    if (partner.hasMedicalDirectorHours && partner.medicalDirectorHoursPercentage) {
+      const allocation = (partner.medicalDirectorHoursPercentage / 100) * medicalDirectorIncome
+      partnerMedicalDirectorAllocations.set(partner.id, allocation)
+    }
+  }
+  
+  // Allocate PRCS Medical Director income directly to the assigned physician
+  if (fy!.prcsDirectorPhysicianId && prcsMedicalDirectorIncome > 0) {
+    const currentPrcsAllocation = partnerMedicalDirectorAllocations.get(fy!.prcsDirectorPhysicianId) ?? 0
+    partnerMedicalDirectorAllocations.set(fy!.prcsDirectorPhysicianId, currentPrcsAllocation + prcsMedicalDirectorIncome)
+  }
+  
+  // Calculate total Medical Director allocations to subtract from pool
+  const totalMedicalDirectorAllocations = Array.from(partnerMedicalDirectorAllocations.values()).reduce((sum, allocation) => sum + allocation, 0)
+  
+  // Calculate partner pool excluding Medical Director income that's directly allocated
+  const basePool = year === 2025
     ? (NET_PARTNER_POOL_2025 - totalBuyoutCosts)
     : Math.max(0, fy!.therapyIncome - (fy!.nonEmploymentCosts + fy!.nonMdEmploymentCosts + fy!.miscEmploymentCosts + fy!.locumCosts + totalEmployeeCosts + totalBuyoutCosts + totalDelayedW2Costs))
+    
+  // Subtract Medical Director allocations from the pool to get the FTE-distributable pool
+  const pool = Math.max(0, basePool - totalMedicalDirectorAllocations)
 
   const parts = partners.map((p) => ({ p, weight: getPartnerFTEWeight(p) }))
   const workingPartners = parts.filter(({ weight }) => weight > 0)
@@ -5559,6 +5702,11 @@ function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
     }
     
     let comp = s.baseShare
+    
+    // Add Medical Director income allocation directly to the partner
+    const medicalDirectorAllocation = partnerMedicalDirectorAllocations.get(s.id) ?? 0
+    comp += medicalDirectorAllocation
+    
     if (s.physician.type === 'employeeToPartner') {
       const salaryPortion = (s.physician.salary ?? 0) * getEmployeePortionOfYear(s.physician)
       // Add delayed W2 payments for employeeToPartner physicians
@@ -6541,6 +6689,8 @@ function OverallCompensationSummary() {
       // For the multi-year compensation summary, 2025 should always show 2025 actual values
       // regardless of the baseline data mode selection
       if (last2025) {
+        const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
+        const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
         fy = {
           year: 2025,
           therapyIncome: last2025.therapyIncome,
@@ -6548,7 +6698,10 @@ function OverallCompensationSummary() {
           nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
           locumCosts: 54600,
           miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-          physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
+          medicalDirectorHours: 119373.75, // 2025 shared medical director amount
+          prcsMedicalDirectorHours: 37792.5, // 2025 PRCS medical director amount (JS)
+          prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
+          physicians,
         }
       }
     }
@@ -7241,6 +7394,8 @@ function ParametersSummary() {
     const years = Array.from(new Set([2025, ...sc.future.map((f) => f.year)]))
     return years.map((year) => {
       if (year === 2025) {
+        const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
+        const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
         return {
           year,
         therapyIncome: historic2025.therapyIncome,
@@ -7248,7 +7403,10 @@ function ParametersSummary() {
         nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
         locumCosts: 54600,
         miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-        physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
+        medicalDirectorHours: 119373.75, // 2025 shared medical director amount
+        prcsMedicalDirectorHours: 37792.5, // 2025 PRCS medical director amount (JS)
+        prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
+        physicians,
         } as FutureYear
       }
       return sc.future.find((f) => f.year === year) as FutureYear
