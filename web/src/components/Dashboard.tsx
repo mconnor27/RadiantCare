@@ -686,7 +686,7 @@ function scenarioADefaultsByYear(year: number): Physician[] {
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-GA`, name: 'GA', type: 'partnerToRetire', partnerPortionOfYear: 182/365, weeksVacation: 8, buyoutCost: 50000, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-BT`, name: 'BT', type: 'employeeToPartner', employeePortionOfYear: 181/365, salary: 507240, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-LK`, name: 'LK', type: 'newEmployee', startPortionOfYear: 151/365, salary: 600000, receivesBenefits: true, receivesBonuses: true, bonusAmount: 20000 },
+      { id: `${year}-LK`, name: 'LK', type: 'newEmployee', startPortionOfYear: calendarDateToPortion(6, 1, year), salary: 600000, receivesBenefits: true, receivesBonuses: true, bonusAmount: 20000 },
     ]
   }
   else if (year === 2027) {
@@ -702,7 +702,7 @@ function scenarioADefaultsByYear(year: number): Physician[] {
       { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
-      { id: `${year}-LK`, name: 'LK', type: 'employeeToPartner', employeePortionOfYear: 150/365, salary: 600000, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Becomes partner exactly 2 years after hire
+      { id: `${year}-LK`, name: 'LK', type: 'employeeToPartner', employeePortionOfYear: calendarDateToPortion(6, 1, year), salary: 600000, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Becomes partner exactly 2 years after hire
     ]
   }
   else if (year === 2029) {
@@ -849,7 +849,7 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-GA`, name: 'GA', type: 'partnerToRetire', partnerPortionOfYear: 182/365, weeksVacation: 8, buyoutCost: 50000, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-BT`, name: 'BT', type: 'employeeToPartner', employeePortionOfYear: 181/365, salary: 507240, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-LK`, name: 'LK', type: 'newEmployee', startPortionOfYear: 151/365, salary: 600000, receivesBenefits: true, receivesBonuses: true, bonusAmount: 20000 },
+      { id: `${year}-LK`, name: 'LK', type: 'newEmployee', startPortionOfYear: calendarDateToPortion(6, 1, year), salary: 600000, receivesBenefits: true, receivesBonuses: true, bonusAmount: 20000 },
     ]
   }
   else if (year === 2027) {
@@ -866,7 +866,7 @@ function scenarioBDefaultsByYear(year: number): Physician[] {
       { id: `${year}-MC`, name: 'MC', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-JS`, name: 'JS', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-BT`, name: 'BT', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
-      { id: `${year}-LK`, name: 'LK', type: 'employeeToPartner', employeePortionOfYear: 150/365, salary: 600000, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Becomes partner exactly 2 years after hire
+      { id: `${year}-LK`, name: 'LK', type: 'employeeToPartner', employeePortionOfYear: calendarDateToPortion(6, 1, year), salary: 600000, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Becomes partner exactly 2 years after hire
       { id: `${year}-P5`, name: 'Potential Hire', type: 'employee', salary: 500000, receivesBenefits: true, receivesBonuses: false, bonusAmount: 0 }, // Second year as employee
     ]
   }
@@ -1534,7 +1534,7 @@ export const useDashboardStore = create<Store>()(
               })),
               projection: { 
                 incomeGrowthPct: 3.7, 
-                medicalDirectorHours: 119373.75,
+                medicalDirectorHours: 110000,
                 prcsMedicalDirectorHours: 60000,
                 nonEmploymentCostsPct: 7.8, 
                 nonMdEmploymentCostsPct: 6.0, 
@@ -1770,6 +1770,23 @@ function dayOfYearToDate(dayOfYear: number, year: number): { month: number, day:
   }
   
   return { month: month + 1, day: remainingDays }
+}
+
+function calendarDateToPortion(month: number, day: number, year: number): number {
+  const daysInMonth = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  let dayOfYear = 0
+  
+  // Add days for all complete months before the target month
+  for (let i = 0; i < month - 1; i++) {
+    dayOfYear += daysInMonth[i]
+  }
+  
+  // Add the day within the target month
+  dayOfYear += day
+  
+  // Convert to portion of year (0 to 1)
+  const totalDays = daysInYear(year)
+  return (dayOfYear - 1) / totalDays
 }
 
 function dateToString(month: number, day: number): string {
