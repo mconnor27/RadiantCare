@@ -570,6 +570,11 @@ type Store = {
   setDataMode: (scenario: ScenarioKey, mode: 'Custom' | '2024 Data' | '2025 Data') => void
   loadSnapshot: (snapshot: { scenarioA: ScenarioState; scenarioBEnabled: boolean; scenarioB?: ScenarioState }) => void
   resetToDefaults: () => void
+  resetPhysicians: (scenario: ScenarioKey, year: number) => void
+  resetAllPhysicians: (scenario: ScenarioKey) => void
+  resetProjectionSettings: (scenario: ScenarioKey) => void
+  resetYearByYearValues: (scenario: ScenarioKey) => void
+  resetViewSettings: (scenario: ScenarioKey) => void
   setPrcsDirector: (scenario: ScenarioKey, year: number, physicianId?: string) => void
 }
 
@@ -1524,9 +1529,81 @@ export const useDashboardStore = create<Store>()(
             state.scenarioBEnabled = !!snapshot.scenarioBEnabled
             state.scenarioB = snapshot.scenarioBEnabled && snapshot.scenarioB ? snapshot.scenarioB : undefined
           }),
+        // Reset physicians for a specific scenario and year to defaults
+        resetPhysicians: (scenario: ScenarioKey, year: number) => {
+          const defaultPhysicians = scenario === 'A' 
+            ? scenarioADefaultsByYear(year) 
+            : scenarioBDefaultsByYear(year)
+          
+          set((state) => {
+            const scenarioState = scenario === 'A' ? state.scenarioA : state.scenarioB
+            if (!scenarioState) return
+            
+            const futureYear = scenarioState.future.find(f => f.year === year)
+            if (!futureYear) return
+            
+            // Reset to default physicians
+            futureYear.physicians = defaultPhysicians.map(p => ({ ...p }))
+          })
+        },
+
+        // Reset all physicians across all years for a scenario
+        resetAllPhysicians: (scenario: ScenarioKey) => {
+          set((state) => {
+            const scenarioState = scenario === 'A' ? state.scenarioA : state.scenarioB
+            if (!scenarioState) return
+            
+            scenarioState.future.forEach(fy => {
+              const defaultPhysicians = scenario === 'A' 
+                ? scenarioADefaultsByYear(fy.year) 
+                : scenarioBDefaultsByYear(fy.year)
+              fy.physicians = defaultPhysicians.map(p => ({ ...p }))
+            })
+          })
+        },
+
+        // Reset projection settings for a scenario to defaults
+        resetProjectionSettings: (scenario: ScenarioKey) => {
+          set((state) => {
+            const scenarioState = scenario === 'A' ? state.scenarioA : state.scenarioB
+            if (!scenarioState) return
+            
+            scenarioState.projection = {
+              incomeGrowthPct: 3.7, 
+              medicalDirectorHours: 110000,
+              prcsMedicalDirectorHours: 60000,
+              nonEmploymentCostsPct: 7.8, 
+              nonMdEmploymentCostsPct: 6.0, 
+              locumsCosts: 120000, 
+              miscEmploymentCostsPct: 6.7, 
+              benefitCostsGrowthPct: 5.0 
+            }
+          })
+          
+          // Recalculate projections after resetting settings
+          get().applyProjectionFromLastActual(scenario)
+        },
+
+        // Reset year-by-year income/cost values to projected values for a scenario
+        resetYearByYearValues: (scenario: ScenarioKey) => {
+          // This will reset all custom future values back to projected values
+          get().applyProjectionFromLastActual(scenario)
+        },
+
+        // Reset app-level view settings (which year selected, data mode, etc.)
+        resetViewSettings: (scenario: ScenarioKey) => {
+          set((state) => {
+            const scenarioState = scenario === 'A' ? state.scenarioA : state.scenarioB
+            if (!scenarioState) return
+            
+            scenarioState.selectedYear = 2025 // Reset to Baseline tab
+            scenarioState.dataMode = '2025 Data'
+          })
+        },
+
         resetToDefaults: () => {
           set((state) => {
-            // Reset EVERYTHING to initial defaults
+            // Initialize scenario A with basic structure
             state.scenarioA = {
               future: INITIAL_FUTURE_YEARS_A.map((f) => ({ 
                 ...f, 
@@ -1546,12 +1623,17 @@ export const useDashboardStore = create<Store>()(
               dataMode: '2025 Data',
             }
             
+            // Reset app-level state (not handled by section resets)
             state.scenarioBEnabled = false
             state.scenarioB = undefined
           }, false)
-          // Recalculate projections so future values are not left at baseline defaults
-          // This mirrors the initial store boot logic and the per-field reset behavior
-          get().applyProjectionFromLastActual('A')
+
+          // Use the dedicated reset functions to ensure consistency
+          const state = get()
+          state.resetAllPhysicians('A')
+          state.resetProjectionSettings('A')
+          state.resetYearByYearValues('A')
+          state.resetViewSettings('A')
         },
       }
     }),
@@ -5419,21 +5501,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
             <button
               onClick={() => {
                 removeTooltip('physicians-reset-tooltip')
-                // Reset physicians to defaults
-                const defaultPhysicians = scenario === 'A' 
-                  ? scenarioADefaultsByYear(year) 
-                  : scenarioBDefaultsByYear(year)
-                
-                // Remove all current physicians first
-                const currentPhysicians = [...physicians]
-                currentPhysicians.forEach(p => {
-                  store.removePhysician(scenario, year, p.id)
-                })
-                
-                // Add all default physicians
-                defaultPhysicians.forEach(defaultPhysician => {
-                  store.upsertPhysician(scenario, year, defaultPhysician)
-                })
+                store.resetPhysicians(scenario, year)
               }}
               style={{
                 position: 'absolute',
