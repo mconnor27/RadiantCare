@@ -7,7 +7,7 @@ import { DragDropPhysicians } from './DragDropPhysicians'
 
 export type YearRow = {
   year: number
-  totalIncome: number
+  therapyIncome: number // For 2024+, this represents only therapy income (not including medical director income)
   nonEmploymentCosts: number
   employeePayroll?: number
 }
@@ -418,10 +418,107 @@ function createPrcsAmountTooltip(
   }
 }
 
+// Default trailing shared MD amount for prior-year retirees
+function getDefaultTrailingSharedMdAmount(physician: Physician): number {
+  return physician.name === 'HW' ? 8302.5 : 2500
+}
+
+// Helper function for creating interactive Prior-Year Retiree Shared MD $ tooltip
+function createTrailingSharedMdAmountTooltip(
+  physicianId: string,
+  currentAmount: number,
+  e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>,
+  onUpdate: (physicianId: string, amount: number) => void,
+  message: string = 'Deducted before allocation to current partners.',
+  maxValue: number = 120000
+) {
+  const tooltipId = `trailing-md-amount-${physicianId}`
+  const existing = document.getElementById(tooltipId)
+  if (existing) existing.remove()
+
+  const tooltip = document.createElement('div')
+  tooltip.id = tooltipId
+  const isMobileTooltip = window.innerWidth <= 768
+
+  if (isMobileTooltip) {
+    tooltip.className = 'tooltip-mobile'
+    tooltip.style.cssText = `position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 9999; max-width: calc(100vw - 40px); box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
+  } else {
+    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
+  }
+
+  const minValue = 0
+  const displayAmount = `$${Math.round(currentAmount || 0).toLocaleString()}`
+  const title = 'Medical Director Hours (Prior Year Retiree)'
+
+  tooltip.innerHTML = `
+    <div style="margin-bottom: 6px; font-weight: 600; white-space: nowrap;">${title}</div>
+    <div style="margin-bottom: 6px; font-size: 12px; opacity: 0.9;">${message}</div>
+    <div style="padding: 2px 0;">
+      <input type="range" min="${minValue}" max="${maxValue}" step="100" value="${currentAmount}" 
+        style="width: 200px; margin-bottom: 8px; cursor: pointer;" class="growth-slider" id="${tooltipId}-slider" />
+      <div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+        <input type="text" value="${displayAmount}" 
+          style="width: 110px; padding: 2px 6px; border: 1px solid #555; border-radius: 3px; background: #444; color: white; font-size: 12px; text-align: center;" 
+          id="${tooltipId}-amount" />
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(tooltip)
+
+  if (!isMobileTooltip) {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    tooltip.style.left = `${rect.right + 10}px`
+    tooltip.style.top = `${rect.top + window.scrollY}px`
+  }
+
+  const slider = document.getElementById(`${tooltipId}-slider`) as HTMLInputElement
+  const amountInput = document.getElementById(`${tooltipId}-amount`) as HTMLInputElement
+
+  if (slider && amountInput) {
+    slider.addEventListener('input', (event) => {
+      const target = event.target as HTMLInputElement
+      const newAmount = Number(target.value)
+      amountInput.value = `$${Math.round(newAmount).toLocaleString()}`
+      onUpdate(physicianId, newAmount)
+    })
+
+    amountInput.addEventListener('input', (event) => {
+      const target = event.target as HTMLInputElement
+      const numericValue = Number(target.value.replace(/[^0-9]/g, ''))
+      const clamped = Math.max(minValue, Math.min(maxValue, numericValue))
+      slider.value = String(clamped)
+      target.value = `$${Math.round(clamped).toLocaleString()}`
+      onUpdate(physicianId, clamped)
+    })
+  }
+
+  tooltip.addEventListener('mouseenter', () => {
+    clearTimeout((tooltip as any).hideTimeout)
+  })
+  tooltip.addEventListener('mouseleave', () => {
+    removeTooltip(tooltipId)
+  })
+
+  const clickOutsideHandler = (event: MouseEvent) => {
+    if (!tooltip.contains(event.target as Node) &&
+        !(document.querySelector(`[data-hours-id="${physicianId}"]`) as HTMLElement)?.contains(event.target as Node)) {
+      removeTooltip(tooltipId)
+      document.removeEventListener('click', clickOutsideHandler)
+    }
+  }
+  setTimeout(() => document.addEventListener('click', clickOutsideHandler), 100)
+
+  if (isMobileTooltip) {
+    setTimeout(() => removeTooltip(tooltipId), 8000)
+  }
+}
+
 // Extend FutureYear with nonMdEmploymentCosts
 export type FutureYear = {
   year: number
-  totalIncome: number
+  therapyIncome: number // Therapy income only (not including medical director income)
   nonEmploymentCosts: number
   nonMdEmploymentCosts: number
   locumCosts: number
@@ -461,7 +558,7 @@ type Store = {
   setFutureValue: (
     scenario: ScenarioKey,
     year: number,
-    field: 'totalIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'locumCosts' | 'miscEmploymentCosts' | 'medicalDirectorHours' | 'prcsMedicalDirectorHours',
+    field: 'therapyIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'locumCosts' | 'miscEmploymentCosts' | 'medicalDirectorHours' | 'prcsMedicalDirectorHours',
     value: number
   ) => void
   upsertPhysician: (scenario: ScenarioKey, year: number, physician: Physician) => void
@@ -477,18 +574,46 @@ type Store = {
 }
 
 const HISTORIC_DATA: YearRow[] = [
-  { year: 2016, totalIncome: 2325241.84, nonEmploymentCosts: 167375.03, employeePayroll: 188151.97 },
-  { year: 2017, totalIncome: 2376068.79, nonEmploymentCosts: 170366.16, employeePayroll: 180060.96 },
-  { year: 2018, totalIncome: 2386310.08, nonEmploymentCosts: 162454.23, employeePayroll: 357360.09 },
-  { year: 2019, totalIncome: 2503463.49, nonEmploymentCosts: 170088.91, employeePayroll: 533175.95 },
-  { year: 2020, totalIncome: 2535944.52, nonEmploymentCosts: 171824.41, employeePayroll: 573277.22 },
-  { year: 2021, totalIncome: 2686843.84, nonEmploymentCosts: 176887.39, employeePayroll: 655524.05 },
-  { year: 2022, totalIncome: 2582916.38, nonEmploymentCosts: 269191.26, employeePayroll: 503812.98 },
-  { year: 2023, totalIncome: 2963164.73, nonEmploymentCosts: 201243.57, employeePayroll: 790092.00 },
-  { year: 2024, totalIncome: 3079138.54, nonEmploymentCosts: 261114.98, employeePayroll: 785924.54 },
+  // 2016-2023: therapyIncome represents total income (no separate medical director data available)
+  { year: 2016, therapyIncome: 2325241.84, nonEmploymentCosts: 167375.03, employeePayroll: 188151.97 },
+  { year: 2017, therapyIncome: 2376068.79, nonEmploymentCosts: 170366.16, employeePayroll: 180060.96 },
+  { year: 2018, therapyIncome: 2386310.08, nonEmploymentCosts: 162454.23, employeePayroll: 357360.09 },
+  { year: 2019, therapyIncome: 2503463.49, nonEmploymentCosts: 170088.91, employeePayroll: 533175.95 },
+  { year: 2020, therapyIncome: 2535944.52, nonEmploymentCosts: 171824.41, employeePayroll: 573277.22 },
+  { year: 2021, therapyIncome: 2686843.84, nonEmploymentCosts: 176887.39, employeePayroll: 655524.05 },
+  { year: 2022, therapyIncome: 2582916.38, nonEmploymentCosts: 269191.26, employeePayroll: 503812.98 },
+  { year: 2023, therapyIncome: 2963164.73, nonEmploymentCosts: 201243.57, employeePayroll: 790092.00 },
+  // 2024+: therapyIncome is now truly therapy income only (medical director income is separate)
+  { year: 2024, therapyIncome: 2934770.14, nonEmploymentCosts: 261114.98, employeePayroll: 785924.54 },
   // 2025 actuals per provided figures
-  { year: 2025, totalIncome: 3344068.19, nonEmploymentCosts: 229713.57, employeePayroll:  752155.73  },
+  { year: 2025, therapyIncome: 3164006.93, nonEmploymentCosts: 229713.57, employeePayroll:  752155.73  },
 ]
+
+// Helper function to calculate true total income for any year
+function getTotalIncome(yearData: YearRow | FutureYear): number {
+  // For historic years 2016-2023, therapyIncome represents total income (no separate MD data)
+  if ('year' in yearData && yearData.year <= 2023) {
+    return yearData.therapyIncome
+  }
+  
+  // For 2024+ (including historic 2024-2025), calculate therapy + medical director income
+  const therapyIncome = yearData.therapyIncome || 0
+  
+  // For historic years (2024-2025), we need to estimate medical director income
+  if ('employeePayroll' in yearData) {
+    // Historic year - estimate medical director income based on defaults
+    const defaultMedicalDirectorIncome = 110000 // Default shared MD income
+    const defaultPrcsMedicalDirectorIncome = 60000 // Default PRCS MD income
+    return therapyIncome + defaultMedicalDirectorIncome + defaultPrcsMedicalDirectorIncome
+  }
+  
+  // For future years, calculate from stored values
+  const futureYear = yearData as FutureYear
+  const medicalDirectorIncome = futureYear.medicalDirectorHours ?? 110000
+  const prcsMedicalDirectorIncome = futureYear.prcsDirectorPhysicianId ? (futureYear.prcsMedicalDirectorHours ?? 60000) : 0
+  
+  return therapyIncome + medicalDirectorIncome + prcsMedicalDirectorIncome
+}
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // @ts-ignore: kept for future use
@@ -682,7 +807,7 @@ const FUTURE_YEARS_BASE: Omit<FutureYear, 'physicians'>[] = Array.from({ length:
   const year = startYear + idx
   return {
     year,
-    totalIncome: HISTORIC_DATA[HISTORIC_DATA.length - 1].totalIncome,
+    therapyIncome: HISTORIC_DATA[HISTORIC_DATA.length - 1].therapyIncome,
     nonEmploymentCosts:
       HISTORIC_DATA[HISTORIC_DATA.length - 1].nonEmploymentCosts,
     nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(year),
@@ -768,6 +893,8 @@ const INITIAL_FUTURE_YEARS_B: FutureYear[] = FUTURE_YEARS_BASE.map((b) => {
   const js = physicians.find((p) => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
   return {
     ...b,
+    // Scenario B default: $0 locums except $60k in 2026
+    locumCosts: b.year === 2026 ? 60000 : 0,
     physicians,
     prcsDirectorPhysicianId: b.year >= 2024 && js ? js.id : undefined,
   }
@@ -782,8 +909,8 @@ export const useDashboardStore = create<Store>()(
           future: INITIAL_FUTURE_YEARS_A,
           projection: { 
             incomeGrowthPct: 3.7, 
-            medicalDirectorHours: 102870,
-            prcsMedicalDirectorHours: 25805,
+            medicalDirectorHours: 110000,
+            prcsMedicalDirectorHours: 60000,
             nonEmploymentCostsPct: 7.8, 
             nonMdEmploymentCostsPct: 6.0, 
             locumsCosts: 120000, 
@@ -804,8 +931,8 @@ export const useDashboardStore = create<Store>()(
                 future: INITIAL_FUTURE_YEARS_B.map((f) => ({ ...f, physicians: [...f.physicians] })),
                 projection: { 
                   incomeGrowthPct: 3.7, 
-                  medicalDirectorHours: 102870,
-                  prcsMedicalDirectorHours: 25805,
+                  medicalDirectorHours: 110000,
+                  prcsMedicalDirectorHours: 60000,
                   nonEmploymentCostsPct: 7.8, 
                   nonMdEmploymentCostsPct: 6.0, 
                   locumsCosts: 0, 
@@ -832,8 +959,23 @@ export const useDashboardStore = create<Store>()(
             if (!sc) return
             const fy = sc.future.find((f) => f.year === year)
             if (!fy) return
-            // Single-select per year: setting undefined clears selection
-            fy.prcsDirectorPhysicianId = physicianId
+            // Determine selected physician's name in the source year (for cross-year mapping)
+            const selectedName = physicianId
+              ? fy.physicians.find((p) => p.id === physicianId)?.name
+              : undefined
+
+            // Propagate the selection (or deselection) to this and all future years in the scenario
+            for (const f of sc.future) {
+              if (f.year < year) continue
+              if (!physicianId) {
+                // Deselect in future years
+                f.prcsDirectorPhysicianId = undefined
+                continue
+              }
+              // Map by name to each year's physician id, if present
+              const match = f.physicians.find((p) => p.name === selectedName && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+              f.prcsDirectorPhysicianId = match ? match.id : undefined
+            }
           }),
         setFutureValue: (scenario, year, field, value) =>
           set((state) => {
@@ -1146,7 +1288,7 @@ export const useDashboardStore = create<Store>()(
               const customBaseline = sc.future.find(f => f.year === 2025)
               if (customBaseline) {
                 baselineData = {
-                  totalIncome: customBaseline.totalIncome,
+                  therapyIncome: customBaseline.therapyIncome,
                   nonEmploymentCosts: customBaseline.nonEmploymentCosts,
                   miscEmploymentCosts: customBaseline.miscEmploymentCosts,
                   nonMdEmploymentCosts: customBaseline.nonMdEmploymentCosts,
@@ -1154,7 +1296,7 @@ export const useDashboardStore = create<Store>()(
               } else {
                 // Fallback if Custom baseline missing (shouldn't happen)
                 baselineData = {
-                  totalIncome: last2025?.totalIncome || 3344068.19,
+                  therapyIncome: last2025?.therapyIncome || 3344068.19,
                   nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
                   miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                   nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
@@ -1162,14 +1304,14 @@ export const useDashboardStore = create<Store>()(
               }
             } else if (dataMode === '2024 Data' && last2024) {
               baselineData = {
-                totalIncome: last2024.totalIncome,
+                therapyIncome: last2024.therapyIncome,
                 nonEmploymentCosts: last2024.nonEmploymentCosts,
                 miscEmploymentCosts: 24623.49, // 2024 actual misc employment from image
                 nonMdEmploymentCosts: 164677.44, // 2024 actual staff employment costs
               }
             } else if (last2025) {
               baselineData = {
-                totalIncome: last2025.totalIncome,
+                therapyIncome: last2025.therapyIncome,
                 nonEmploymentCosts: last2025.nonEmploymentCosts,
                 miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                 nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
@@ -1177,7 +1319,7 @@ export const useDashboardStore = create<Store>()(
             } else {
               // Fallback to 2025 hardcoded values
               baselineData = {
-                totalIncome: 3344068.19,
+                therapyIncome: 3344068.19,
                 nonEmploymentCosts: 229713.57,
                 miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                 nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
@@ -1191,7 +1333,7 @@ export const useDashboardStore = create<Store>()(
             const miscEmploymentGpct = sc.projection.miscEmploymentCostsPct / 100
             
             // Starting values from the selected baseline
-            let income = baselineData.totalIncome
+            let income = baselineData.therapyIncome
             let nonEmploymentCosts = baselineData.nonEmploymentCosts
             let nonMdEmploymentCosts = baselineData.nonMdEmploymentCosts
             let miscEmploymentCosts = baselineData.miscEmploymentCosts
@@ -1205,7 +1347,7 @@ export const useDashboardStore = create<Store>()(
               nonMdEmploymentCosts = nonMdEmploymentCosts * (1 + nonMdEmploymentGpct)
               miscEmploymentCosts = miscEmploymentCosts * (1 + miscEmploymentGpct)
               
-              fy.totalIncome = income
+              fy.therapyIncome = income
               fy.nonEmploymentCosts = nonEmploymentCosts
               fy.nonMdEmploymentCosts = nonMdEmploymentCosts
               fy.miscEmploymentCosts = miscEmploymentCosts
@@ -1229,7 +1371,7 @@ export const useDashboardStore = create<Store>()(
               const customBaseline = sc.future.find(f => f.year === 2025)
               if (customBaseline) {
                 baselineData = {
-                  totalIncome: customBaseline.totalIncome,
+                  therapyIncome: customBaseline.therapyIncome,
                   nonEmploymentCosts: customBaseline.nonEmploymentCosts,
                   miscEmploymentCosts: customBaseline.miscEmploymentCosts,
                   nonMdEmploymentCosts: customBaseline.nonMdEmploymentCosts,
@@ -1237,7 +1379,7 @@ export const useDashboardStore = create<Store>()(
               } else {
                 // Fallback if Custom baseline missing (shouldn't happen)
                 baselineData = {
-                  totalIncome: last2025?.totalIncome || 3344068.19,
+                  therapyIncome: last2025?.therapyIncome || 3344068.19,
                   nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
                   miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                   nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
@@ -1245,14 +1387,14 @@ export const useDashboardStore = create<Store>()(
               }
             } else if (dataMode === '2024 Data' && last2024) {
               baselineData = {
-                totalIncome: last2024.totalIncome,
+                therapyIncome: last2024.therapyIncome,
                 nonEmploymentCosts: last2024.nonEmploymentCosts,
                 miscEmploymentCosts: 24623.49, // 2024 actual misc employment from image
                 nonMdEmploymentCosts: 164677.44, // 2024 actual staff employment costs
               }
             } else if (last2025) {
               baselineData = {
-                totalIncome: last2025.totalIncome,
+                therapyIncome: last2025.therapyIncome,
                 nonEmploymentCosts: last2025.nonEmploymentCosts,
                 miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                 nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
@@ -1260,7 +1402,7 @@ export const useDashboardStore = create<Store>()(
             } else {
               // Fallback to 2025 hardcoded values
               baselineData = {
-                totalIncome: 3344068.19,
+                therapyIncome: 3344068.19,
                 nonEmploymentCosts: 229713.57,
                 miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                 nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
@@ -1274,7 +1416,7 @@ export const useDashboardStore = create<Store>()(
             const miscEmploymentGpct = sc.projection.miscEmploymentCostsPct / 100
             
             // Starting values from the selected baseline
-            let income = baselineData.totalIncome
+            let income = baselineData.therapyIncome
             let nonEmploymentCosts = baselineData.nonEmploymentCosts
             let nonMdEmploymentCosts = baselineData.nonMdEmploymentCosts
             let miscEmploymentCosts = baselineData.miscEmploymentCosts
@@ -1288,7 +1430,7 @@ export const useDashboardStore = create<Store>()(
               nonMdEmploymentCosts = nonMdEmploymentCosts * (1 + nonMdEmploymentGpct)
               miscEmploymentCosts = miscEmploymentCosts * (1 + miscEmploymentGpct)
               
-              fy.totalIncome = income
+              fy.therapyIncome = income
               fy.nonEmploymentCosts = nonEmploymentCosts
               fy.nonMdEmploymentCosts = nonMdEmploymentCosts
               fy.miscEmploymentCosts = miscEmploymentCosts
@@ -1320,7 +1462,7 @@ export const useDashboardStore = create<Store>()(
               if (sc.dataMode === '2024 Data' && last2024) {
                 baselineData = {
                   year: 2025,
-                  totalIncome: last2024.totalIncome,
+                  therapyIncome: last2024.therapyIncome,
                   nonEmploymentCosts: last2024.nonEmploymentCosts,
                   nonMdEmploymentCosts: 164677.44, // 2024 actual staff employment costs
                   locumCosts: 113400, // 2024 actual locums costs
@@ -1330,7 +1472,7 @@ export const useDashboardStore = create<Store>()(
               } else if (sc.dataMode === '2025 Data' && last2025) {
                 baselineData = {
                   year: 2025,
-                  totalIncome: last2025.totalIncome,
+                  therapyIncome: last2025.therapyIncome,
                   nonEmploymentCosts: last2025.nonEmploymentCosts,
                   nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
                   locumCosts: 54600,
@@ -1341,7 +1483,7 @@ export const useDashboardStore = create<Store>()(
                 // Fallback to 2025 defaults
                 baselineData = {
                   year: 2025,
-                  totalIncome: last2025?.totalIncome || 3344068.19,
+                  therapyIncome: last2025?.therapyIncome || 3344068.19,
                   nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
                   nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
                   locumCosts: 54600,
@@ -1377,8 +1519,8 @@ export const useDashboardStore = create<Store>()(
               })),
               projection: { 
                 incomeGrowthPct: 3.7, 
-                medicalDirectorHours: 102870,
-                prcsMedicalDirectorHours: 25805,
+                medicalDirectorHours: 110000,
+                prcsMedicalDirectorHours: 60000,
                 nonEmploymentCostsPct: 7.8, 
                 nonMdEmploymentCostsPct: 6.0, 
                 locumsCosts: 120000, 
@@ -1392,6 +1534,9 @@ export const useDashboardStore = create<Store>()(
             state.scenarioBEnabled = false
             state.scenarioB = undefined
           }, false)
+          // Recalculate projections so future values are not left at baseline defaults
+          // This mirrors the initial store boot logic and the per-field reset behavior
+          get().applyProjectionFromLastActual('A')
         },
       }
     }),
@@ -1507,6 +1652,7 @@ function calculateBenefitStartDay(startDay: number, year: number): number {
 
 // Calculate total cost for an employee including benefits and payroll taxes (WA State medical practice <50 employees)
 function calculateEmployeeTotalCost(employee: Physician, year: number = 2025, benefitGrowthPct: number = 5.0): number {
+  
   const baseSalary = employee.salary || 0
   const bonusAmount = employee.bonusAmount || 0
   
@@ -1823,6 +1969,7 @@ function calculateDelayedW2Payment(physician: Physician, year: number): { amount
 
 // Generate tooltip content for employee cost breakdown (WA State medical practice <50 employees)
 function getEmployeeCostTooltip(employee: Physician, year: number = 2025, benefitGrowthPct: number = 5.0, delayedW2Amount: number = 0, delayedW2Taxes: number = 0, delayedW2Details: string = ''): string {
+  
   const baseSalary = employee.salary || 0
   const bonusAmount = employee.bonusAmount || 0
   
@@ -1989,7 +2136,7 @@ function usePartnerComp(year: number, scenario: ScenarioKey) {
       return sum
     }, 0)
     const totalCosts = fy.nonEmploymentCosts + fy.nonMdEmploymentCosts + fy.miscEmploymentCosts + fy.locumCosts + totalEmployeeCosts + totalBuyoutCosts + totalDelayedW2Costs
-    const pool = Math.max(0, fy.totalIncome - totalCosts)
+    const pool = Math.max(0, fy.therapyIncome - totalCosts)
     if (partners.length === 0) return []
     const partnerFTEs = partners.map((p) => ({ p, weight: getPartnerFTEWeight(p) }))
     const totalWeight = partnerFTEs.reduce((s, x) => s + x.weight, 0) || 1
@@ -2077,7 +2224,7 @@ function arePhysiciansChanged(
 function calculateProjectedValue(
   scenario: ScenarioKey,
   year: number,
-  field: 'totalIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'miscEmploymentCosts',
+  field: 'therapyIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'miscEmploymentCosts',
   store: any
 ): number {
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB
@@ -2089,7 +2236,7 @@ function calculateProjectedValue(
     const customBaseline = sc.baseline?.find((b: any) => b.year === 2025)
     if (customBaseline) {
       baselineData = {
-        totalIncome: customBaseline.totalIncome,
+        therapyIncome: customBaseline.therapyIncome,
         nonEmploymentCosts: customBaseline.nonEmploymentCosts,
         miscEmploymentCosts: customBaseline.miscEmploymentCosts,
         nonMdEmploymentCosts: customBaseline.nonMdEmploymentCosts,
@@ -2097,7 +2244,7 @@ function calculateProjectedValue(
     } else {
       const last2025 = store.historic.find((h: any) => h.year === 2025)
       baselineData = {
-        totalIncome: last2025?.totalIncome || 3344068.19,
+        therapyIncome: last2025?.therapyIncome || 3344068.19,
         nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
         miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
         nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
@@ -2106,7 +2253,7 @@ function calculateProjectedValue(
   } else if (sc.dataMode === '2024 Data') {
     const last2024 = store.historic.find((h: any) => h.year === 2024)!
     baselineData = {
-      totalIncome: last2024.totalIncome,
+      therapyIncome: last2024.therapyIncome,
       nonEmploymentCosts: last2024.nonEmploymentCosts,
       miscEmploymentCosts: 24623.49,
       nonMdEmploymentCosts: 164677.44,
@@ -2114,14 +2261,14 @@ function calculateProjectedValue(
   } else if (sc.dataMode === '2025 Data') {
     const last2025 = store.historic.find((h: any) => h.year === 2025)!
     baselineData = {
-      totalIncome: last2025.totalIncome,
+      therapyIncome: last2025.therapyIncome,
       nonEmploymentCosts: last2025.nonEmploymentCosts,
       miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
       nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
     }
   } else {
     baselineData = {
-      totalIncome: 3344068.19,
+      therapyIncome: 3344068.19,
       nonEmploymentCosts: 229713.57,
       miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
       nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
@@ -2138,7 +2285,7 @@ function calculateProjectedValue(
   let value = baselineData[field]
   const yearsSinceBaseline = year - 2025
   
-  if (field === 'totalIncome') {
+  if (field === 'therapyIncome') {
     value = value * Math.pow(1 + incomeGpct, yearsSinceBaseline)
   } else if (field === 'nonEmploymentCosts') {
     value = value * Math.pow(1 + nonEmploymentGpct, yearsSinceBaseline)
@@ -2169,7 +2316,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
           // Fallback if no custom data exists yet
           return {
             year: 2025,
-            totalIncome: last2025?.totalIncome || 3344068.19,
+            therapyIncome: last2025?.therapyIncome || 3344068.19,
             nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
             nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
             locumCosts: 54600,
@@ -2181,28 +2328,32 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
         else if (dataMode === '2024 Data' && last2024) {
           return {
             year: 2025,
-            totalIncome: last2024.totalIncome,
+            therapyIncome: last2024.therapyIncome,
             nonEmploymentCosts: last2024.nonEmploymentCosts,
             nonMdEmploymentCosts: 164677.44, // 2024 actual staff employment costs
             locumCosts: 113400, // 2024 actual locums costs
             miscEmploymentCosts: 18182.56, // 2024 actual misc employment from image
+            medicalDirectorHours: 102870, // 2024 shared medical director amount
+            prcsMedicalDirectorHours: 25805, // 2024 PRCS medical director amount (JS)
             physicians: scenario2024Defaults(),
           } as FutureYear
         } else if (dataMode === '2025 Data' && last2025) {
           return {
             year: 2025,
-            totalIncome: last2025.totalIncome,
+            therapyIncome: last2025.therapyIncome,
             nonEmploymentCosts: last2025.nonEmploymentCosts,
             nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
             locumCosts: 54600,
             miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+            medicalDirectorHours: 111070, // 2025 shared medical director amount
+            prcsMedicalDirectorHours: 37792.5, // 2025 PRCS medical director amount (JS)
             physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
           } as FutureYear
         } else {
           // Fallback 
           return {
             year: 2025,
-            totalIncome: last2025?.totalIncome || 3344068.19,
+            therapyIncome: last2025?.therapyIncome || 3344068.19,
             nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
             nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
             locumCosts: 54600,
@@ -2263,14 +2414,14 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
         <div style={{ fontSize: 14, fontWeight: 600 }}>Therapy Income</div>
         {(() => {
-          const projectedValue = calculateProjectedValue(scenario, year, 'totalIncome', store)
-          const currentValue = fy.totalIncome || 0
+          const projectedValue = calculateProjectedValue(scenario, year, 'therapyIncome', store)
+          const currentValue = fy.therapyIncome || 0
           const isChanged = projectedValue > 0 && Math.abs(currentValue - projectedValue) > 1000 // $1000 threshold for dollar amounts
           return isChanged && !isReadOnly ? (
             <button
               onClick={() => {
                 removeTooltip('income-reset-tooltip')
-                store.setFutureValue(scenario, year, 'totalIncome', projectedValue)
+                store.setFutureValue(scenario, year, 'therapyIncome', projectedValue)
               }}
               style={{
                 background: 'none',
@@ -2305,21 +2456,21 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
           min={2000000}
           max={4000000}
           step={1000}
-          value={fy.totalIncome || 3000000}
+          value={fy.therapyIncome || 3000000}
           onChange={(e) =>
-            store.setFutureValue(scenario, year, 'totalIncome', Number(e.target.value))
+            store.setFutureValue(scenario, year, 'therapyIncome', Number(e.target.value))
           }
           disabled={isReadOnly}
           style={{ 
             width: '100%',
-            ['--fill-percent' as any]: `${(((fy.totalIncome || 3000000) - 2000000) / (4000000 - 2000000)) * 100}%`
+            ['--fill-percent' as any]: `${(((fy.therapyIncome || 3000000) - 2000000) / (4000000 - 2000000)) * 100}%`
           }}
         />
         <input
           type="text"
-          value={currency(Math.round(fy.totalIncome || 3000000))}
+          value={currency(Math.round(fy.therapyIncome || 3000000))}
           onChange={(e) =>
-            store.setFutureValue(scenario, year, 'totalIncome', Number(e.target.value.replace(/[^0-9]/g, '')))
+            store.setFutureValue(scenario, year, 'therapyIncome', Number(e.target.value.replace(/[^0-9]/g, '')))
           }
           disabled={isReadOnly}
           style={{ 
@@ -2515,7 +2666,7 @@ function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, fontSize: 13, color: '#374151', paddingRight: 48 }}>
           <span style={{ fontWeight: 500 }}>Total Income:</span>
           <span style={{ fontWeight: 600 }}>
-            {currency(((fy.totalIncome || 0)
+            {currency(((fy.therapyIncome || 0)
               + (fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000)
               + (((fy.prcsDirectorPhysicianId ?? (year >= 2024 ? (fy.physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))?.id) : undefined))
                   ? (fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000)
@@ -2930,7 +3081,7 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
   const jsDefault = year >= 2024 ? defaultPhysiciansIfNeeded.find((p) => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire')) : undefined
   const fy: FutureYear = fyExisting ?? {
     year,
-    totalIncome: 0,
+    therapyIncome: 0,
     nonEmploymentCosts: 0,
     nonMdEmploymentCosts: 0,
     locumCosts,
@@ -3005,7 +3156,13 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                 if (readOnly) {
                   // Read-only: show a non-interactive summary tooltip reflecting current selection state
                   if (isSelected) {
-                    const amount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 0
+                    // Use specific 2024-25 values when in those data modes for baseline year
+                    let amount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 0
+                    if (year === 2025 && sc.dataMode === '2024 Data') {
+                      amount = fy.prcsMedicalDirectorHours ?? 25805 // 2024 PRCS medical director amount
+                    } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                      amount = fy.prcsMedicalDirectorHours ?? 37792.5 // 2025 PRCS medical director amount
+                    }
                     createTooltip(`prcs-readonly-${p.id}`, `PRCS Medical Director: ${currency(Math.round(amount))}`, e)
                   } else {
                     createTooltip(`prcs-readonly-${p.id}`, 'PRCS Medical Director: Not designated', e)
@@ -3017,7 +3174,13 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   createTooltip(`prcs-md-hover-${p.id}`, msg, e)
                   // Only show the slider on hover if this physician is already selected
                   if (isSelected) {
-                    const currentAmount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000
+                    // Use specific 2024-25 values when in those data modes for baseline year
+                    let currentAmount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000
+                    if (year === 2025 && sc.dataMode === '2024 Data') {
+                      currentAmount = fy.prcsMedicalDirectorHours ?? 25805 // 2024 PRCS medical director amount
+                    } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                      currentAmount = fy.prcsMedicalDirectorHours ?? 37792.5 // 2025 PRCS medical director amount
+                    }
                     createPrcsAmountTooltip(p.id, currentAmount, e, (_pid, amount) => {
                       store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
                     }, msg, 120000)
@@ -3055,7 +3218,13 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   // Remove hover text on this new selection before showing the slider
                   removeTooltip(`prcs-md-hover-${p.id}`)
                   const msg = 'Double-click to deselect'
-                  const currentAmount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000
+                  // Use specific 2024-25 values when in those data modes for baseline year
+                  let currentAmount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000
+                  if (year === 2025 && sc.dataMode === '2024 Data') {
+                    currentAmount = fy.prcsMedicalDirectorHours ?? 25805 // 2024 PRCS medical director amount
+                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                    currentAmount = fy.prcsMedicalDirectorHours ?? 37792.5 // 2025 PRCS medical director amount
+                  }
                   createPrcsAmountTooltip(p.id, currentAmount, e as any, (_pid, amount) => {
                     store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
                   }, msg, 120000)
@@ -3071,7 +3240,13 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                 if (readOnly) return
                 const isSelected = prcsSelectedId === p.id
                 const msg = isSelected ? 'Double-click to deselect' : 'Double-click to select as PRCS Medical Director'
-                const currentAmount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000
+                // Use specific 2024-25 values when in those data modes for baseline year
+                let currentAmount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000
+                if (year === 2025 && sc.dataMode === '2024 Data') {
+                  currentAmount = fy.prcsMedicalDirectorHours ?? 25805 // 2024 PRCS medical director amount
+                } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                  currentAmount = fy.prcsMedicalDirectorHours ?? 37792.5 // 2025 PRCS medical director amount
+                }
                 createPrcsAmountTooltip(p.id, currentAmount, e, (_pid, amount) => {
                   store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
                 }, msg, 120000)
@@ -4192,11 +4367,8 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                 <div style={{ height: 20 }} />
                 <img
                   src={(() => {
-                    // If any prior-year retiree, show selected icon if has positive trailing amount (default 0)
                     if ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0) {
-                      const fixed2025: Record<string, number> = { GA: 29295.00, JS: 29295.00, MC: 20992.50, HW: 8302.50 }
-                      const defaultAmount = (year === 2025) ? (fixed2025[p.name as keyof typeof fixed2025] ?? 0) : 0
-                      const amount = p.trailingSharedMdAmount ?? defaultAmount
+                      const amount = p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)
                       return amount > 0 ? '/hours_selected.png' : '/hours_unselected.png'
                     }
                     return (p.medicalDirectorHoursPercentage ?? 0) > 0 ? '/hours_selected.png' : '/hours_unselected.png'
@@ -4213,63 +4385,135 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   }}
                   onClick={(e) => {
                     if (!readOnly) {
-                      const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                      if ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0) {
+                        const initial = p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)
+                        createTrailingSharedMdAmountTooltip(p.id, initial, e, (_, amount) => {
+                          store.upsertPhysician(scenario, year, {
+                            ...p,
+                            trailingSharedMdAmount: amount
+                          })
+                        })
+                      } else {
+                        // Use specific 2024-25 values when in those data modes for baseline year
+                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                  if (year === 2025 && sc.dataMode === '2024 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                  }
+                        const trailingTotal = fy.physicians.reduce((s, ph) => {
+                          const isPriorYearRetiree = (ph.type === 'partnerToRetire') && ((ph.partnerPortionOfYear ?? 0) === 0)
+                          return s + (isPriorYearRetiree ? (ph.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(ph)) : 0)
+                        }, 0)
+                        const remainderBudget = Math.max(0, totalBudget - trailingTotal)
+                        createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
+                          store.upsertPhysician(scenario, year, {
+                            ...p,
+                            medicalDirectorHoursPercentage: percentage,
+                            hasMedicalDirectorHours: percentage !== 0
+                          })
+                        }, remainderBudget)
+                      }
+                    }
+                  }}
+                onMouseEnter={(e) => {
+                  // Use specific 2024-25 values when in those data modes for baseline year
+                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                  if (year === 2025 && sc.dataMode === '2024 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                  }
+                  if (!readOnly) {
+                    if ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0) {
+                      const initial = p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)
+                      createTrailingSharedMdAmountTooltip(p.id, initial, e, (_, amount) => {
+                        store.upsertPhysician(scenario, year, {
+                          ...p,
+                          trailingSharedMdAmount: amount
+                        })
+                      })
+                    } else {
+                      const trailingTotal = fy.physicians.reduce((s, ph) => {
+                        const isPriorYearRetiree = (ph.type === 'partnerToRetire') && ((ph.partnerPortionOfYear ?? 0) === 0)
+                        return s + (isPriorYearRetiree ? (ph.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(ph)) : 0)
+                      }, 0)
+                      const remainderBudget = Math.max(0, totalBudget - trailingTotal)
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                         store.upsertPhysician(scenario, year, {
                           ...p,
                           medicalDirectorHoursPercentage: percentage,
                           hasMedicalDirectorHours: percentage !== 0
                         })
-                      }, totalBudget)
+                      }, remainderBudget)
                     }
-                  }}
-                onMouseEnter={(e) => {
-                  const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
-                  if (!readOnly && !((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0)) {
-                    createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
-                      store.upsertPhysician(scenario, year, {
-                        ...p,
-                        medicalDirectorHoursPercentage: percentage,
-                        hasMedicalDirectorHours: percentage !== 0
-                      })
-                    }, totalBudget)
                     e.currentTarget.style.opacity = '0.8'
                   } else {
-                    // Read-only or Prior-Year retiree: show trailing fixed amount (from field if present; else default 0 except 2025 with fixed defaults)
-                    const fixed2025: Record<string, number> = { GA: 29295.00, JS: 29295.00, MC: 20992.50, HW: 8302.50 }
-                    const defaultAmount = (year === 2025) ? (fixed2025[p.name as keyof typeof fixed2025] ?? 0) : 0
-                    const amount = ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0) ? (p.trailingSharedMdAmount ?? defaultAmount) : Math.round((p.medicalDirectorHoursPercentage ?? 0) * totalBudget / 100)
-                    const text = ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0)
-                      ? `Medical Director Hours: ${amount > 0 ? currency(Math.round(amount)) : 'Not designated'}`
-                      : `Medical Director Hours: ${(p.medicalDirectorHoursPercentage ?? 0).toFixed(1)}% (${currency(amount)})`
-                    createTooltip(`hours-readonly-${p.id}`, text, e)
+                    // Read-only: show dollar amount only (no percentage)
+                    if ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0) {
+                      const amount = p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)
+                      createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${currency(Math.round(amount))}`, e)
+                    } else {
+                      const trailingTotal = fy.physicians.reduce((s, ph) => {
+                        const isPriorYearRetiree = (ph.type === 'partnerToRetire') && ((ph.partnerPortionOfYear ?? 0) === 0)
+                        return s + (isPriorYearRetiree ? (ph.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(ph)) : 0)
+                      }, 0)
+                      const remainderBudget = Math.max(0, totalBudget - trailingTotal)
+                      const amount = Math.round((p.medicalDirectorHoursPercentage ?? 0) * remainderBudget / 100)
+                      createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${currency(Math.round(amount))}`, e)
+                    }
                   }
                 }}
                   onMouseLeave={(e) => {
-                    if (!readOnly && !((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0)) {
-                      const tooltip = document.getElementById(`hours-slider-${p.id}`)
-                      if (tooltip) {
-                        (tooltip as any).hideTimeout = setTimeout(() => {
+                    if (!readOnly) {
+                      const tooltipHours = document.getElementById(`hours-slider-${p.id}`)
+                      const tooltipTrailing = document.getElementById(`trailing-md-amount-${p.id}`)
+                      const maybeHide = (tooltip: HTMLElement | null, id: string) => {
+                        if (!tooltip) return
+                        ;(tooltip as any).hideTimeout = setTimeout(() => {
                           if (tooltip && !tooltip.matches(':hover')) {
-                            removeTooltip(`hours-slider-${p.id}`)
+                            removeTooltip(id)
                           }
                         }, 150)
                       }
+                      maybeHide(tooltipHours as any, `hours-slider-${p.id}`)
+                      maybeHide(tooltipTrailing as any, `trailing-md-amount-${p.id}`)
                       e.currentTarget.style.opacity = '1'
                     } else {
                       removeTooltip(`hours-readonly-${p.id}`)
                     }
                   }}
                   onTouchStart={(e) => {
-                    if (!readOnly && !((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0)) {
-                      const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
-                      createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
-                        store.upsertPhysician(scenario, year, {
-                          ...p,
-                          medicalDirectorHoursPercentage: percentage,
-                          hasMedicalDirectorHours: percentage !== 0
+                    if (!readOnly) {
+                      if ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0) {
+                        const initial = p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)
+                        createTrailingSharedMdAmountTooltip(p.id, initial, e, (_, amount) => {
+                          store.upsertPhysician(scenario, year, {
+                            ...p,
+                            trailingSharedMdAmount: amount
+                          })
                         })
-                      }, totalBudget)
+                      } else {
+                        // Use specific 2024-25 values when in those data modes for baseline year
+                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                  if (year === 2025 && sc.dataMode === '2024 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                  }
+                        const trailingTotal = fy.physicians.reduce((s, ph) => {
+                          const isPriorYearRetiree = (ph.type === 'partnerToRetire') && ((ph.partnerPortionOfYear ?? 0) === 0)
+                          return s + (isPriorYearRetiree ? (ph.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(ph)) : 0)
+                        }, 0)
+                        const remainderBudget = Math.max(0, totalBudget - trailingTotal)
+                        createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
+                          store.upsertPhysician(scenario, year, {
+                            ...p,
+                            medicalDirectorHoursPercentage: percentage,
+                            hasMedicalDirectorHours: percentage !== 0
+                          })
+                        }, remainderBudget)
+                      }
                     }
                   }}
                 />
@@ -4436,7 +4680,13 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                 }}
                 onClick={(e) => {
                   if (!readOnly) {
-                      const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                      // Use specific 2024-25 values when in those data modes for baseline year
+                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                  if (year === 2025 && sc.dataMode === '2024 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                  }
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                       store.upsertPhysician(scenario, year, {
                         ...p,
@@ -4447,7 +4697,13 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   }
                 }}
                 onMouseEnter={(e) => {
-                  const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                  // Use specific 2024-25 values when in those data modes for baseline year
+                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                  if (year === 2025 && sc.dataMode === '2024 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                  }
                   if (!readOnly) {
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                       store.upsertPhysician(scenario, year, {
@@ -4458,10 +4714,10 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                     }, totalBudget)
                     e.currentTarget.style.opacity = '0.8'
                   } else {
-                    // Show read-only tooltip with current percentage and dollar amount
+                    // Show read-only tooltip with dollar amount only
                     const percentage = p.medicalDirectorHoursPercentage ?? 0
                     const dollarAmount = Math.round(percentage * totalBudget / 100)
-                    createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${percentage.toFixed(1)}% (${currency(dollarAmount)})`, e)
+                    createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${currency(dollarAmount)}`, e)
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -4480,7 +4736,13 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   }
                 }}
                 onTouchStart={(e) => {
-                  const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                  // Use specific 2024-25 values when in those data modes for baseline year
+                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                  if (year === 2025 && sc.dataMode === '2024 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                  }
                   if (!readOnly) {
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                       store.upsertPhysician(scenario, year, {
@@ -4490,10 +4752,10 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                       })
                     }, totalBudget)
                   } else {
-                    // Show read-only tooltip with current percentage and dollar amount
+                    // Show read-only tooltip with dollar amount only
                     const percentage = p.medicalDirectorHoursPercentage ?? 0
                     const dollarAmount = Math.round(percentage * totalBudget / 100)
-                    createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${percentage.toFixed(1)}% (${currency(dollarAmount)})`, e)
+                    createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${currency(dollarAmount)}`, e)
                   }
                 }}
               />
@@ -4830,7 +5092,13 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                 }}
                 onClick={(e) => {
                   if (!readOnly) {
-                      const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                      // Use specific 2024-25 values when in those data modes for baseline year
+                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                  if (year === 2025 && sc.dataMode === '2024 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                  }
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                       store.upsertPhysician(scenario, year, {
                         ...p,
@@ -4841,7 +5109,13 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   }
                 }}
                 onMouseEnter={(e) => {
-                  const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                  // Use specific 2024-25 values when in those data modes for baseline year
+                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                  if (year === 2025 && sc.dataMode === '2024 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                  }
                   if (!readOnly) {
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                       store.upsertPhysician(scenario, year, {
@@ -4852,10 +5126,10 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                     }, totalBudget)
                     e.currentTarget.style.opacity = '0.8'
                   } else {
-                    // Show read-only tooltip with current percentage and dollar amount
+                    // Show read-only tooltip with dollar amount only
                     const percentage = p.medicalDirectorHoursPercentage ?? 0
                     const dollarAmount = Math.round(percentage * totalBudget / 100)
-                    createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${percentage.toFixed(1)}% (${currency(dollarAmount)})`, e)
+                    createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${currency(dollarAmount)}`, e)
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -4874,7 +5148,13 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                   }
                 }}
                 onTouchStart={(e) => {
-                  const totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                  // Use specific 2024-25 values when in those data modes for baseline year
+                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                  if (year === 2025 && sc.dataMode === '2024 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? 111070 // 2025 shared medical director amount
+                  }
                   if (!readOnly) {
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                       store.upsertPhysician(scenario, year, {
@@ -4884,10 +5164,10 @@ function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride
                       })
                     }, totalBudget)
                   } else {
-                    // Show read-only tooltip with current percentage and dollar amount
+                    // Show read-only tooltip with dollar amount only
                     const percentage = p.medicalDirectorHoursPercentage ?? 0
                     const dollarAmount = Math.round(percentage * totalBudget / 100)
-                    createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${percentage.toFixed(1)}% (${currency(dollarAmount)})`, e)
+                    createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${currency(dollarAmount)}`, e)
                   }
                 }}
               />
@@ -5196,7 +5476,7 @@ function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
     if (last2025) {
       fy = {
         year: 2025,
-        totalIncome: last2025.totalIncome,
+        therapyIncome: last2025.therapyIncome,
         nonEmploymentCosts: last2025.nonEmploymentCosts,
         nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
         locumCosts: 54600,
@@ -5256,7 +5536,7 @@ function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
 
   const pool = year === 2025
     ? (NET_PARTNER_POOL_2025 - totalBuyoutCosts)
-    : Math.max(0, fy!.totalIncome - (fy!.nonEmploymentCosts + fy!.nonMdEmploymentCosts + fy!.miscEmploymentCosts + fy!.locumCosts + totalEmployeeCosts + totalBuyoutCosts + totalDelayedW2Costs))
+    : Math.max(0, fy!.therapyIncome - (fy!.nonEmploymentCosts + fy!.nonMdEmploymentCosts + fy!.miscEmploymentCosts + fy!.locumCosts + totalEmployeeCosts + totalBuyoutCosts + totalDelayedW2Costs))
 
   const parts = partners.map((p) => ({ p, weight: getPartnerFTEWeight(p) }))
   const workingPartners = parts.filter(({ weight }) => weight > 0)
@@ -5309,16 +5589,28 @@ function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
   if (!sc) return null
 
   // Default values for reset functionality
-  const defaultValues = {
-    incomeGrowthPct: 3.7,
-    medicalDirectorHours: 102870,
-    prcsMedicalDirectorHours: 25805,
-    nonEmploymentCostsPct: 7.8,
-    nonMdEmploymentCostsPct: 6.0,
-    locumsCosts: 120000,
-    miscEmploymentCostsPct: 6.7,
-    benefitCostsGrowthPct: 5.0
-  }
+  const defaultValues = scenario === 'B'
+    ? {
+        incomeGrowthPct: 3.7,
+        medicalDirectorHours: 110000,
+        prcsMedicalDirectorHours: 60000,
+        nonEmploymentCostsPct: 7.8,
+        nonMdEmploymentCostsPct: 6.0,
+        // Scenario B default: $0 locums (except 2026 handled elsewhere)
+        locumsCosts: 0,
+        miscEmploymentCostsPct: 6.7,
+        benefitCostsGrowthPct: 5.0,
+      }
+    : {
+        incomeGrowthPct: 3.7,
+        medicalDirectorHours: 110000,
+        prcsMedicalDirectorHours: 60000,
+        nonEmploymentCostsPct: 7.8,
+        nonMdEmploymentCostsPct: 6.0,
+        locumsCosts: 120000,
+        miscEmploymentCostsPct: 6.7,
+        benefitCostsGrowthPct: 5.0,
+      }
 
   // Helper function to create a slider with number input and reset button
   const createSlider = (
@@ -5819,8 +6111,8 @@ function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
         <div className={'panel-green'} style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)' }}>
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Medical Director Hours (Annual Overrides)</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
-            {createSlider('Shared', 'medicalDirectorHours', sc.projection.medicalDirectorHours ?? 102870, 0, 120000, 1000, '', true, 'income', 'Reset to Default', true)}
-            {createSlider('PRCS', 'prcsMedicalDirectorHours', sc.projection.prcsMedicalDirectorHours ?? 25805, 0, 120000, 1000, '', true, 'income', 'Reset to Default', true)}
+            {createSlider('Shared', 'medicalDirectorHours', sc.projection.medicalDirectorHours ?? 110000, 0, 120000, 1000, '', true, 'income', 'Reset to Default', true)}
+            {createSlider('PRCS', 'prcsMedicalDirectorHours', sc.projection.prcsMedicalDirectorHours ?? 60000, 0, 120000, 1000, '', true, 'income', 'Reset to Default', true)}
           </div>
         </div>
 
@@ -5840,9 +6132,9 @@ function HistoricAndProjectionChart() {
   const store = useDashboardStore()
   const isMobile = useIsMobile()
   const historicYears = store.historic.map((h) => h.year)
-  const incomeHistoric = store.historic.map((h) => h.totalIncome)
+  const incomeHistoric = store.historic.map((h) => getTotalIncome(h))
   const costHistoric = store.historic.map((h) => h.nonEmploymentCosts)
-  const netHistoric = store.historic.map((h) => h.totalIncome - h.nonEmploymentCosts - (h.employeePayroll ?? 0))
+  const netHistoric = store.historic.map((h) => getTotalIncome(h) - h.nonEmploymentCosts - (h.employeePayroll ?? 0))
   const employmentHistoric = store.historic.map((h) => h.employeePayroll ?? 0)
 
   // Helper function to get 2025 baseline values for each scenario based on their dataMode
@@ -5857,20 +6149,20 @@ function HistoricAndProjectionChart() {
       const customBaseline = sc.future.find(f => f.year === 2025)
       if (customBaseline) {
         return {
-          totalIncome: customBaseline.totalIncome,
+          therapyIncome: getTotalIncome(customBaseline),
           nonEmploymentCosts: customBaseline.nonEmploymentCosts,
           employeePayroll: customBaseline.nonMdEmploymentCosts + customBaseline.miscEmploymentCosts
         }
       }
     } else if (dataMode === '2024 Data' && last2024) {
       return {
-        totalIncome: last2024.totalIncome,
+        therapyIncome: getTotalIncome(last2024),
         nonEmploymentCosts: last2024.nonEmploymentCosts,
         employeePayroll: last2024.employeePayroll ?? (164677.44 + 24623.49) // 2024 actual values
       }
     } else if (dataMode === '2025 Data' && last2025) {
       return {
-        totalIncome: last2025.totalIncome,
+        therapyIncome: getTotalIncome(last2025),
         nonEmploymentCosts: last2025.nonEmploymentCosts,
         employeePayroll: last2025.employeePayroll ?? (computeDefaultNonMdEmploymentCosts(2025) + DEFAULT_MISC_EMPLOYMENT_COSTS)
       }
@@ -5878,7 +6170,7 @@ function HistoricAndProjectionChart() {
     
     // Fallback to 2025 defaults - use actual 2025 historic data if available
     return {
-      totalIncome: last2025?.totalIncome || 2700000,
+      therapyIncome: last2025 ? getTotalIncome(last2025) : 2700000,
       nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
       employeePayroll: last2025?.employeePayroll ?? (computeDefaultNonMdEmploymentCosts(2025) + DEFAULT_MISC_EMPLOYMENT_COSTS)
     }
@@ -5912,7 +6204,7 @@ function HistoricAndProjectionChart() {
   const getScenarioBMarkerColor = (traceColor: string) => getIntermediateColor(traceColor)
 
   // Calculate max Y value from all data
-  const scAIncome = store.scenarioA.future.map(f => f.totalIncome)
+  const scAIncome = store.scenarioA.future.map(f => getTotalIncome(f))
   const scACosts = store.scenarioA.future.map(f => f.nonEmploymentCosts)
   const scAEmployment = store.scenarioA.future.map(f => {
     const md = f.physicians.reduce((s, e) => {
@@ -5932,7 +6224,7 @@ function HistoricAndProjectionChart() {
     }, 0)
     return md + f.nonMdEmploymentCosts + delayedW2
   })
-  const scBIncome = store.scenarioB?.future.map(f => f.totalIncome) || []
+  const scBIncome = store.scenarioB?.future.map(f => getTotalIncome(f)) || []
   const scBCosts = store.scenarioB?.future.map(f => f.nonEmploymentCosts) || []
   const scBEmployment = store.scenarioB?.future.map(f => {
     const md = f.physicians.reduce((s, e) => {
@@ -5967,7 +6259,7 @@ function HistoricAndProjectionChart() {
       }
       return s
     }, 0)
-    return f.totalIncome - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - f.locumCosts - md - buyouts - delayedW2
+    return getTotalIncome(f) - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - f.locumCosts - md - buyouts - delayedW2
   })
   const scBNet = store.scenarioB?.future.map(f => {
     const md = f.physicians.reduce((s, e) => {
@@ -5984,7 +6276,7 @@ function HistoricAndProjectionChart() {
       }
       return s
     }, 0)
-    return f.totalIncome - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - f.locumCosts - md - buyouts - delayedW2
+    return getTotalIncome(f) - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - f.locumCosts - md - buyouts - delayedW2
   }) || []
   
   const yMax = Math.max(
@@ -6021,9 +6313,9 @@ function HistoricAndProjectionChart() {
           const traces: any[] = []
           const historic2025 = store.historic.find(h => h.year === 2025)
           // Group: Income
-          traces.push({ x: historicYears, y: incomeHistoric, type: 'scatter', mode: 'lines+markers', name: 'Therapy Income', line: { color: '#1976d2', width: 3 }, marker: { symbol: 'circle', color: markerColorsFor2025('#1976d2'), line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}', legendgroup: 'income', legendrank: 1 })
-          traces.push({ x: [2025, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => f.year)], y: [historic2025?.totalIncome ?? baselineA.totalIncome, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => f.totalIncome)], type: 'scatter', mode: 'lines+markers', name: 'Income projection A', line: { dash: 'dot', color: '#1976d2', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 2 })
-          if (store.scenarioBEnabled && store.scenarioB && baselineB) traces.push({ x: [2025, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.year)], y: [historic2025?.totalIncome ?? baselineB.totalIncome, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.totalIncome)], type: 'scatter', mode: 'lines+markers', name: 'Income projection B', line: { dash: 'dash', color: '#1976d2', width: 2 }, marker: { symbol: 'circle', color: getScenarioBMarkerColor('#1976d2'), line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 3 })
+          traces.push({ x: historicYears, y: incomeHistoric, type: 'scatter', mode: 'lines+markers', name: 'Total Income', line: { color: '#1976d2', width: 3 }, marker: { symbol: 'circle', color: markerColorsFor2025('#1976d2'), line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}', legendgroup: 'income', legendrank: 1 })
+          traces.push({ x: [2025, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => f.year)], y: [historic2025 ? getTotalIncome(historic2025) : baselineA.therapyIncome, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => getTotalIncome(f))], type: 'scatter', mode: 'lines+markers', name: 'Income projection A', line: { dash: 'dot', color: '#1976d2', width: 2 }, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: 'A: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 2 })
+          if (store.scenarioBEnabled && store.scenarioB && baselineB) traces.push({ x: [2025, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.year)], y: [historic2025 ? getTotalIncome(historic2025) : baselineB.therapyIncome, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => getTotalIncome(f))], type: 'scatter', mode: 'lines+markers', name: 'Income projection B', line: { dash: 'dash', color: '#1976d2', width: 2 }, marker: { symbol: 'circle', color: getScenarioBMarkerColor('#1976d2'), line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'income', legendrank: 3 })
 
           // Group: Non-employment costs
           traces.push({ x: historicYears, y: costHistoric, type: 'scatter', mode: 'lines+markers', name: 'Non-Employment Costs', line: { color: '#e65100', width: 3 }, marker: { symbol: 'circle', color: markerColorsFor2025('#e65100'), line: { color: '#e65100', width: 2 }, size: 8 }, hovertemplate: '%{y:$,.0f}', legendgroup: 'cost', legendrank: 1 })
@@ -6043,7 +6335,7 @@ function HistoricAndProjectionChart() {
           // Add white overlay markers for Scenario B's 2025 points to make them appear hollow
           // All scenarios should use 2025 historic data for the 2025 points
           if (store.scenarioBEnabled && store.scenarioB && historic2025) {
-            traces.push({ x: [2025], y: [historic2025.totalIncome], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'income' })
+            traces.push({ x: [2025], y: [getTotalIncome(historic2025)], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#1976d2', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'income' })
             traces.push({ x: [2025], y: [historic2025.nonEmploymentCosts], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#e65100', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'cost' })
             traces.push({ x: [2025], y: [NET_PARTNER_POOL_2025], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#2e7d32', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'net' })
             traces.push({ x: [2025], y: [historic2025.employeePayroll ?? 0], type: 'scatter', mode: 'markers', showlegend: false, marker: { symbol: 'circle', color: plotBackgroundColor, line: { color: '#6b7280', width: 2 }, size: 8 }, hovertemplate: 'B: %{y:$,.0f}<extra></extra>', legendgroup: 'employment' })
@@ -6251,7 +6543,7 @@ function OverallCompensationSummary() {
       if (last2025) {
         fy = {
           year: 2025,
-          totalIncome: last2025.totalIncome,
+          therapyIncome: last2025.therapyIncome,
           nonEmploymentCosts: last2025.nonEmploymentCosts,
           nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
           locumCosts: 54600,
@@ -6874,21 +7166,21 @@ function ParametersSummary() {
     
     if (dataMode === '2024 Data' && last2024) {
       baselineData = {
-        totalIncome: last2024.totalIncome,
+        therapyIncome: last2024.therapyIncome,
         nonEmploymentCosts: last2024.nonEmploymentCosts,
         miscEmploymentCosts: 24623.49,
         nonMdEmploymentCosts: 164677.44,
       }
     } else if (last2025) {
       baselineData = {
-        totalIncome: last2025.totalIncome,
+        therapyIncome: last2025.therapyIncome,
         nonEmploymentCosts: last2025.nonEmploymentCosts,
         miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
         nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
       }
     } else {
       baselineData = {
-        totalIncome: 3344068.19,
+        therapyIncome: 3344068.19,
         nonEmploymentCosts: 229713.57,
         miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
         nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
@@ -6909,7 +7201,7 @@ function ParametersSummary() {
     const miscEmploymentGpct = sc.projection.miscEmploymentCostsPct / 100
 
     // Starting values from the selected baseline
-    let expectedIncome = baselineData.totalIncome
+    let expectedIncome = baselineData.therapyIncome
     let expectedNonEmploymentCosts = baselineData.nonEmploymentCosts
     let expectedNonMdEmploymentCosts = baselineData.nonMdEmploymentCosts
     let expectedMiscEmploymentCosts = baselineData.miscEmploymentCosts
@@ -6926,7 +7218,7 @@ function ParametersSummary() {
 
       // Compare with actual values (with 1% tolerance for floating point differences)
       const tolerance = 0.01
-      if (Math.abs(fy.totalIncome - expectedIncome) / expectedIncome > tolerance) {
+      if (Math.abs(fy.therapyIncome - expectedIncome) / expectedIncome > tolerance) {
         overrides.incomeGrowthPct = true
       }
       if (Math.abs(fy.nonEmploymentCosts - expectedNonEmploymentCosts) / expectedNonEmploymentCosts > tolerance) {
@@ -6951,7 +7243,7 @@ function ParametersSummary() {
       if (year === 2025) {
         return {
           year,
-        totalIncome: historic2025.totalIncome,
+        therapyIncome: historic2025.therapyIncome,
         nonEmploymentCosts: historic2025.nonEmploymentCosts,
         nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
         locumCosts: 54600,
@@ -6986,7 +7278,7 @@ function ParametersSummary() {
         if (!h2024) return null
         return {
           year: 2024,
-          totalIncome: h2024.totalIncome,
+          therapyIncome: h2024.therapyIncome,
           nonEmploymentCosts: h2024.nonEmploymentCosts,
           nonMdEmploymentCosts: 164677.44,
           locumCosts: 113400,
@@ -7018,7 +7310,7 @@ function ParametersSummary() {
             </div>
             {/* Data rows with alternating backgrounds */}
             {[
-              { label: 'Income', baseline: baselineDataObj?.totalIncome, values: data.map(d => d.totalIncome), key: 'inc' },
+              { label: 'Income', baseline: baselineDataObj?.therapyIncome, values: data.map(d => d.therapyIncome), key: 'inc' },
               { label: 'Non-Employment', baseline: baselineDataObj?.nonEmploymentCosts, values: data.map(d => d.nonEmploymentCosts), key: 'nec' },
               { label: 'Staff Employment', baseline: baselineDataObj?.nonMdEmploymentCosts, values: data.map(d => d.nonMdEmploymentCosts), key: 'nmd' },
               { label: 'Misc Employment', baseline: baselineDataObj?.miscEmploymentCosts, values: data.map(d => d.miscEmploymentCosts), key: 'msc' },
