@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-// Responsive helper hook
+// Responsive helper
 export function useIsMobile(breakpoint = 768): boolean {
   const [isMobile, setIsMobile] = useState<boolean>(
     typeof window !== 'undefined' ? window.innerWidth < breakpoint : false

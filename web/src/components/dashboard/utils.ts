@@ -1,4 +1,4 @@
-// Currency formatting functions
+// Currency formatters
 export function currency(value: number): string {
   // Handle undefined/null values gracefully
   if (value == null || isNaN(value)) {
@@ -32,12 +32,12 @@ export function currencyShort(value: number): string {
   return `$${thousands}k`
 }
 
-// Math utilities
+// Helper to clamp values between min and max
 export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
 }
 
-// Date and calendar utilities
+// Date and calendar helpers
 export function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0)
 }
@@ -81,7 +81,6 @@ export function dateToString(month: number, day: number): string {
   return `${monthNames[month - 1]} ${day}`
 }
 
-// Employee transition date utilities
 export function employeePortionToTransitionDay(employeePortionOfYear: number, year: number): number {
   const totalDays = daysInYear(year)
   // If employeePortionOfYear is 0, they transition on Jan 1 (day 1)
@@ -96,7 +95,7 @@ export function transitionDayToEmployeePortion(transitionDay: number, year: numb
   return Math.max(0, (transitionDay - 1) / totalDays)
 }
 
-// Partner retirement date utilities
+// Helper for retirement portion - day 0 means retired in prior year (0 working days), day 1+ means last day of work
 export function retirementDayToPartnerPortion(retirementDay: number, year: number): number {
   const totalDays = daysInYear(year)
   if (retirementDay === 0) {
@@ -115,7 +114,7 @@ export function partnerPortionToRetirementDay(partnerPortionOfYear: number, year
   return Math.round(partnerPortionOfYear * totalDays)
 }
 
-// New employee start date utilities
+// Helper for new employee start date - similar to transition day but for start of employment
 export function startPortionToStartDay(startPortionOfYear: number, year: number): number {
   const totalDays = daysInYear(year)
   // startPortionOfYear 0 means Jan 1 (day 1), 1 means Dec 31 (last day)
@@ -163,11 +162,65 @@ export function abbreviatePhysicianName(name: string): string {
   return name.trim()
 }
 
-// Payroll date utilities
+// Date manipulation helpers
 export function addDays(date: Date, days: number): Date {
   const result = new Date(date)
   result.setDate(result.getDate() + days)
   return result
+}
+
+// Calculate when benefits start for a new employee based on the new waiting period rules
+export function calculateBenefitStartDay(startDay: number, year: number): number {
+  const { month: startMonth, day: startDayOfMonth } = dayOfYearToDate(startDay, year)
+  
+  // Rule: If start date is the first of any month (except February), benefits start next month
+  if (startDayOfMonth === 1 && startMonth !== 2) {
+    // Benefits start on the first of the next month
+    const nextMonth = startMonth === 12 ? 1 : startMonth + 1
+    const nextYear = startMonth === 12 ? year + 1 : year
+    
+    if (nextYear > year) {
+      // If it rolls to next year, benefits start after this year ends
+      return daysInYear(year) + 1
+    }
+    
+    // Calculate day of year for first of next month
+    const daysInMonth = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    let dayOfYear = 0
+    for (let i = 0; i < nextMonth - 1; i++) {
+      dayOfYear += daysInMonth[i]
+    }
+    return dayOfYear + 1
+  }
+  
+  // Rule: If start is mid-month (or Feb 1st), benefits start one month PLUS rounding up to next month start
+  // This means: 30 days + beginning of first full month after that
+  const thirtyDaysAfterStart = startDay + 30
+  
+  if (thirtyDaysAfterStart > daysInYear(year)) {
+    // If 30 days after start goes into next year, benefits start after this year
+    return daysInYear(year) + 1
+  }
+  
+  // Find what month the 30-day mark falls in
+  const { month: month30Days } = dayOfYearToDate(thirtyDaysAfterStart, year)
+  
+  // Benefits start on the first of the month AFTER the 30-day mark
+  const benefitMonth = month30Days === 12 ? 1 : month30Days + 1
+  const benefitYear = month30Days === 12 ? year + 1 : year
+  
+  if (benefitYear > year) {
+    // If benefits start next year, return beyond this year
+    return daysInYear(year) + 1
+  }
+  
+  // Calculate day of year for first of benefit month
+  const daysInMonth = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  let dayOfYear = 0
+  for (let i = 0; i < benefitMonth - 1; i++) {
+    dayOfYear += daysInMonth[i]
+  }
+  return dayOfYear + 1
 }
 
 // Bi-weekly payroll schedule calculations
@@ -179,28 +232,33 @@ export function getPayPeriodsForYear(year: number): Array<{ periodStart: Date; p
   const periods: Array<{ periodStart: Date; periodEnd: Date; payDate: Date }> = []
   
   // Start from reference point and work backwards to find the first period of the year
-  let currentPayDate = new Date(REFERENCE_PAY_DATE)
   let currentPeriodEnd = new Date(REFERENCE_PERIOD_END)
+  let currentPayDate = new Date(REFERENCE_PAY_DATE)
   
-  // Go backwards to find periods that end in or before the target year
-  while (currentPeriodEnd.getFullYear() > year) {
-    currentPayDate = addDays(currentPayDate, -14)
+  // Go back to find the first pay period of the target year
+  while (currentPeriodEnd.getFullYear() > year || 
+         (currentPeriodEnd.getFullYear() === year && currentPeriodEnd.getMonth() > 0) ||
+         (currentPeriodEnd.getFullYear() === year && currentPeriodEnd.getMonth() === 0 && currentPeriodEnd.getDate() > 14)) {
     currentPeriodEnd = addDays(currentPeriodEnd, -14)
+    currentPayDate = addDays(currentPayDate, -14)
   }
   
-  // Go forward to collect all periods for the target year
-  while (currentPeriodEnd.getFullYear() === year) {
+  // Now work forward to collect all periods that could affect the target year
+  const nextYearEnd = new Date(year + 1, 0, 31) // Include early next year for delayed payments
+  
+  while (currentPayDate <= nextYearEnd) {
     const periodStart = addDays(currentPeriodEnd, -13) // 14-day period
+    
     periods.push({
-      periodStart: new Date(periodStart),
+      periodStart,
       periodEnd: new Date(currentPeriodEnd),
       payDate: new Date(currentPayDate)
     })
     
-    // Move to next period
-    currentPayDate = addDays(currentPayDate, 14)
+    // Move to next bi-weekly period
     currentPeriodEnd = addDays(currentPeriodEnd, 14)
+    currentPayDate = addDays(currentPayDate, 14)
   }
   
-  return periods.sort((a, b) => a.periodStart.getTime() - b.periodStart.getTime())
+  return periods
 }
