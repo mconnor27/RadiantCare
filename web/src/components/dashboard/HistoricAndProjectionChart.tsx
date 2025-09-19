@@ -2,7 +2,7 @@ import Plot from 'react-plotly.js'
 import { useDashboardStore, getTotalIncome, NET_PARTNER_POOL_2025 } from '../Dashboard'
 import { useIsMobile } from './hooks'
 import { getEmployeePortionOfYear, calculateDelayedW2Payment, computeDefaultNonMdEmploymentCosts } from './calculations'
-import { DEFAULT_MISC_EMPLOYMENT_COSTS } from './calculations'
+import { DEFAULT_MISC_EMPLOYMENT_COSTS } from './defaults'
 
 export default function HistoricAndProjectionChart() {
   const store = useDashboardStore()

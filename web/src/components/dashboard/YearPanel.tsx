@@ -7,9 +7,9 @@ import { currency } from './utils'
 import {
   scenario2024Defaults,
   scenarioADefaultsByYear,
-  scenarioBDefaultsByYear
+  scenarioBDefaultsByYear,
+  DEFAULT_MISC_EMPLOYMENT_COSTS
 } from './defaults'
-import { DEFAULT_MISC_EMPLOYMENT_COSTS } from './calculations'
 import type { ScenarioKey, FutureYear } from './types'
 import PhysiciansEditor from './PhysiciansEditor'
 

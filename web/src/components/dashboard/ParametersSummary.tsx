@@ -5,8 +5,7 @@ import { useIsMobile } from './hooks'
 import {
   computeDefaultNonMdEmploymentCosts
 } from './calculations'
-import { scenarioADefaultsByYear, scenarioBDefaultsByYear, scenario2024Defaults } from './defaults'
-import { DEFAULT_MISC_EMPLOYMENT_COSTS } from './calculations'
+import { scenarioADefaultsByYear, scenarioBDefaultsByYear, scenario2024Defaults, DEFAULT_MISC_EMPLOYMENT_COSTS } from './defaults'
 import {
   currency,
   currencyShort,

@@ -1,5 +1,5 @@
 import type { Physician, PhysicianType, YearRow, FutureYear } from './types'
-import { getPartnerPortionOfYear, computeDefaultNonMdEmploymentCosts, DEFAULT_MISC_EMPLOYMENT_COSTS } from './calculations'
+import { getPartnerPortionOfYear } from './calculations'
 import { calendarDateToPortion } from './utils'
 
 // Constants
@@ -18,6 +18,8 @@ const HISTORIC_DATA: YearRow[] = [
   // 2025 actuals per provided figures
   { year: 2025, therapyIncome: 3164006.93, nonEmploymentCosts: 229713.57, employeePayroll:  752155.73  },
 ]
+
+export const DEFAULT_MISC_EMPLOYMENT_COSTS = 29115.51
 
 export function defaultPhysiciansGeneric(year: number): Physician[] {
   return [
@@ -199,31 +201,61 @@ export function scenarioBDefaultsByYear(year: number): Physician[] {
   return calculateMedicalDirectorHourPercentages(physicians)
 }
 
-// Create the base future years array
-export const FUTURE_YEARS_BASE: Omit<FutureYear, 'physicians'>[] = Array.from({ length: 5 }).map((_, idx) => {
-  const startYear = HISTORIC_DATA[HISTORIC_DATA.length - 1].year + 1 // start after last actual (2025)
-  const year = startYear + idx
-  return {
-    year,
-    therapyIncome: HISTORIC_DATA[HISTORIC_DATA.length - 1].therapyIncome,
-    nonEmploymentCosts:
-      HISTORIC_DATA[HISTORIC_DATA.length - 1].nonEmploymentCosts,
-    nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(year),
-    locumCosts: year === 2026 ? 60000 : 120000,
-    miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-  }
-})
+// Create the base future years array (function to avoid circular dependency)
+export function getFutureYearsBase(): Omit<FutureYear, 'physicians'>[] {
+  return Array.from({ length: 5 }).map((_, idx) => {
+    const startYear = HISTORIC_DATA[HISTORIC_DATA.length - 1].year + 1 // start after last actual (2025)
+    const year = startYear + idx
+    return {
+      year,
+      therapyIncome: HISTORIC_DATA[HISTORIC_DATA.length - 1].therapyIncome,
+      nonEmploymentCosts:
+        HISTORIC_DATA[HISTORIC_DATA.length - 1].nonEmploymentCosts,
+      nonMdEmploymentCosts: getDefaultNonMdEmploymentCostsForYear(year),
+      locumCosts: year === 2026 ? 60000 : 120000,
+      miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+    }
+  })
+}
 
-// Initial future years for scenario A
-export const INITIAL_FUTURE_YEARS_A: FutureYear[] = FUTURE_YEARS_BASE.map((b) => {
-  const physicians = scenarioADefaultsByYear(b.year)
-  const js = physicians.find((p) => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
-  return {
-    ...b,
-    physicians,
-    prcsDirectorPhysicianId: b.year >= 2024 && js ? js.id : undefined,
+// Local function to avoid circular dependency
+function getDefaultNonMdEmploymentCostsForYear(year: number = 2025): number {
+  // Return the correct 2025 baseline value
+  if (year === 2025) {
+    return 164273.25
   }
-})
+
+  // For other years, use simplified calculation (inline the logic)
+  // Employee 1: $31.25/hr, 40 hrs/week, full-time + benefits
+  const emp1Wages = 31.25 * 40 * 52
+  const emp1Taxes = emp1Wages * 0.0765 // Simplified tax calculation
+  const emp1Total = emp1Wages + emp1Taxes + 10309.16 // Simplified benefits
+
+  // Employee 2: $27/hr, 32 hrs/week, part-time (no benefits)
+  const emp2Wages = 27 * 32 * 52
+  const emp2Taxes = emp2Wages * 0.0765
+  const emp2Total = emp2Wages + emp2Taxes
+
+  // Employee 3: $23/hr, 20 hrs/week, part-time
+  const emp3Wages = 23 * 20 * 52
+  const emp3Taxes = emp3Wages * 0.0765
+  const emp3Total = emp3Wages + emp3Taxes
+
+  return Math.round(emp1Total + emp2Total + emp3Total)
+}
+
+// Initial future years for scenario A (function to avoid circular dependency)
+export function getInitialFutureYearsA(): FutureYear[] {
+  return getFutureYearsBase().map((b) => {
+    const physicians = scenarioADefaultsByYear(b.year)
+    const js = physicians.find((p) => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+    return {
+      ...b,
+      physicians,
+      prcsDirectorPhysicianId: b.year >= 2024 && js ? js.id : undefined,
+    }
+  })
+}
 
 // Export historic data for use in other modules
 export { HISTORIC_DATA }

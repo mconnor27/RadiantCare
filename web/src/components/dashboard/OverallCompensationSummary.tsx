@@ -7,8 +7,7 @@ import {
   getPartnerFTEWeight,
   computeDefaultNonMdEmploymentCosts
 } from './calculations'
-import { scenarioADefaultsByYear, scenarioBDefaultsByYear } from './defaults'
-import { DEFAULT_MISC_EMPLOYMENT_COSTS } from './calculations'
+import { scenarioADefaultsByYear, scenarioBDefaultsByYear, DEFAULT_MISC_EMPLOYMENT_COSTS } from './defaults'
 import { computeAllCompensationsForYear } from '../Dashboard'
 import { currency, currencyOrDash } from './utils'
 

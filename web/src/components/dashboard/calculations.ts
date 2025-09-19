@@ -5,11 +5,11 @@ import {
   calculateBenefitStartDay,
   startPortionToStartDay,
   employeePortionToTransitionDay,
-  getPayPeriodsForYear,
-  addDays
+  getPayPeriodsForYear
 } from './utils'
+import { DEFAULT_MISC_EMPLOYMENT_COSTS } from './defaults'
+
 // Constants
-export const DEFAULT_MISC_EMPLOYMENT_COSTS = 29115.51
 const MONTHLY_BENEFITS_MED = 796.37
 const MONTHLY_BENEFITS_DENTAL = 57.12
 const MONTHLY_BENEFITS_VISION = 6.44
