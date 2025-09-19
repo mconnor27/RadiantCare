@@ -19,7 +19,119 @@ const HISTORIC_DATA: YearRow[] = [
   { year: 2025, therapyIncome: 3164006.93, nonEmploymentCosts: 229713.57, employeePayroll:  752155.73  },
 ]
 
+// Default employment costs
 export const DEFAULT_MISC_EMPLOYMENT_COSTS = 29115.51
+
+// Benefits constants (moved from calculations.ts)
+export const MONTHLY_BENEFITS_MED = 796.37
+export const MONTHLY_BENEFITS_DENTAL = 57.12
+export const MONTHLY_BENEFITS_VISION = 6.44
+export const ANNUAL_BENEFITS_FULLTIME = (MONTHLY_BENEFITS_MED + MONTHLY_BENEFITS_DENTAL + MONTHLY_BENEFITS_VISION) * 12
+
+// Social Security Wage Bases by year (moved from calculations.ts)
+export const SOCIAL_SECURITY_WAGE_BASES = {
+  2025: 176100,
+  2026: 183600,
+  2027: 190800,
+  2028: 198900,
+  2029: 207000,
+  2030: 215400,
+} as const
+
+// Tax rate constants (moved from calculations.ts)
+export const TAX_RATES = {
+  federalUnemploymentRate: 0.006, // FUTA: 0.6%
+  federalUnemploymentWageBase: 7000, // FUTA: on first $7,000
+  socialSecurityRate: 0.062, // FICA: 6.2%
+  medicareRate: 0.0145, // Medicare: 1.45% on all wages
+  waUnemploymentRate: 0.009, // WA SUTA: 0.9%
+  waUnemploymentWageBase: 72800, // WA SUTA: on first $72,800
+  waFamilyLeaveRate: 0.00658, // WA FLI: 0.658% on first SS wage base
+  waStateDisabilityRate: 0.00255, // WA SDI: 0.255% on all wages
+  washingtonRate: 0.0003, // Washington Rate: 0.030% on all wages
+} as const
+
+// Default financial values for fallbacks
+export const DEFAULT_THERAPY_INCOME_2025 = 3344068.19
+export const DEFAULT_NON_EMPLOYMENT_COSTS_2025 = 229713.57
+export const DEFAULT_LOCUM_COSTS_2025 = 54600
+
+// 2024 actual values for data mode
+export const ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS = 164677.44
+export const ACTUAL_2024_LOCUM_COSTS = 113400
+export const ACTUAL_2024_MISC_EMPLOYMENT_COSTS = 18182.56
+export const ACTUAL_2024_MEDICAL_DIRECTOR_HOURS = 102870
+export const ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS = 25805
+
+// 2025 actual/projected values
+export const ACTUAL_2025_MEDICAL_DIRECTOR_HOURS = 119373.75
+export const ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS = 37792.5
+
+// UI defaults for sliders and inputs
+export const UI_DEFAULTS = {
+  // Therapy Income slider
+  therapyIncomeMin: 2000000,
+  therapyIncomeMax: 4000000,
+  therapyIncomeStep: 1000,
+  therapyIncomeFallback: 3000000,
+
+  // Medical Director Hours sliders
+  medicalDirectorHoursMax: 120000,
+  medicalDirectorHoursStep: 1000,
+  medicalDirectorHoursFallback: 80000,
+
+  // Non-Employment Costs slider
+  nonEmploymentCostsMin: 100000,
+  nonEmploymentCostsMax: 500000,
+  nonEmploymentCostsStep: 1000,
+  nonEmploymentCostsFallback: 200000,
+
+  // Non-MD Employment Costs slider
+  nonMdEmploymentCostsMin: 50000,
+  nonMdEmploymentCostsMax: 300000,
+  nonMdEmploymentCostsStep: 1000,
+  nonMdEmploymentCostsFallback: 150000,
+
+  // Misc Employment Costs slider
+  miscEmploymentCostsMax: 100000,
+  miscEmploymentCostsStep: 1000,
+  miscEmploymentCostsFallback: 25000,
+
+  // Thresholds
+  changeThreshold: 1000, // $1000 threshold for detecting changes
+  floatingPointTolerance: 0.001,
+}
+
+// Projection defaults
+export const PROJECTION_DEFAULTS = {
+  A: {
+    incomeGrowthPct: 3.7,
+    nonEmploymentCostsPct: 7.8,
+    nonMdEmploymentCostsPct: 6.0,
+    miscEmploymentCostsPct: 6.7,
+    benefitCostsGrowthPct: 5.0,
+    medicalDirectorHours: 110000,
+    prcsMedicalDirectorHours: 60000,
+    locumsCosts: 120000,
+  },
+  B: {
+    incomeGrowthPct: 3.7,
+    nonEmploymentCostsPct: 7.8,
+    nonMdEmploymentCostsPct: 6.0,
+    miscEmploymentCostsPct: 6.7,
+    benefitCostsGrowthPct: 5.0,
+    medicalDirectorHours: 110000,
+    prcsMedicalDirectorHours: 60000,
+    locumsCosts: 0, // Scenario B default: $0 locums (except 2026 handled elsewhere)
+  }
+}
+
+// Slider configuration for ProjectionSettingsControls
+export const SLIDER_CONFIGS = {
+  medicalDirectorHours: { min: 0, max: 120000, step: 1000 },
+  prcsMedicalDirectorHours: { min: 0, max: 120000, step: 1000 },
+  locumsCosts: { min: 0, max: 500000, step: 1000 }
+}
 
 export function defaultPhysiciansGeneric(year: number): Physician[] {
   return [

@@ -3,6 +3,7 @@ import { useIsMobile } from './hooks'
 import { createTooltip, removeTooltip } from './tooltips'
 import { currency } from './utils'
 import type { ScenarioKey, Projection } from './types'
+import { PROJECTION_DEFAULTS, SLIDER_CONFIGS, UI_DEFAULTS } from './defaults'
 
 export default function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
   const store = useDashboardStore()
@@ -12,28 +13,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
   if (!sc) return null
 
   // Default values for reset functionality
-  const defaultValues = scenario === 'B'
-    ? {
-        incomeGrowthPct: 3.7,
-        medicalDirectorHours: 110000,
-        prcsMedicalDirectorHours: 60000,
-        nonEmploymentCostsPct: 7.8,
-        nonMdEmploymentCostsPct: 6.0,
-        // Scenario B default: $0 locums (except 2026 handled elsewhere)
-        locumsCosts: 0,
-        miscEmploymentCostsPct: 6.7,
-        benefitCostsGrowthPct: 5.0,
-      }
-    : {
-        incomeGrowthPct: 3.7,
-        medicalDirectorHours: 110000,
-        prcsMedicalDirectorHours: 60000,
-        nonEmploymentCostsPct: 7.8,
-        nonMdEmploymentCostsPct: 6.0,
-        locumsCosts: 120000,
-        miscEmploymentCostsPct: 6.7,
-        benefitCostsGrowthPct: 5.0,
-      }
+  const defaultValues = PROJECTION_DEFAULTS[scenario]
 
   // Helper function to create a slider with number input and reset button
   const createSlider = (
@@ -50,7 +30,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
     bare: boolean = false
   ) => {
     const defaultValue = defaultValues[field]
-    const isChanged = Math.abs(value - defaultValue) > 0.001 // Account for floating point precision
+    const isChanged = Math.abs(value - defaultValue) > UI_DEFAULTS.floatingPointTolerance
 
     const wrapperStyle = bare
       ? { padding: 0, backgroundColor: 'transparent', borderRadius: 0, border: 'none', boxShadow: 'none' as any }
@@ -349,7 +329,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
             }}>
               <button
                 onClick={() => {
-                  const increment = step >= 1 ? step : 1000
+                  const increment = step >= 1 ? step : UI_DEFAULTS.therapyIncomeStep
                   const newValue = Math.min(max, value + increment)
                   store.setProjectionField(scenario, field, newValue)
                 }}
@@ -375,7 +355,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
               </button>
               <button
                 onClick={() => {
-                  const decrement = step >= 1 ? step : 1000
+                  const decrement = step >= 1 ? step : UI_DEFAULTS.therapyIncomeStep
                   const newValue = Math.max(min, value - decrement)
                   store.setProjectionField(scenario, field, newValue)
                 }}
@@ -534,8 +514,8 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
         <div className={'panel-green'} style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)' }}>
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Medical Director Hours (Annual Overrides)</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
-            {createSlider('Shared', 'medicalDirectorHours', sc.projection.medicalDirectorHours ?? 110000, 0, 120000, 1000, '', true, 'income', 'Reset to Default', true)}
-            {createSlider('PRCS', 'prcsMedicalDirectorHours', sc.projection.prcsMedicalDirectorHours ?? 60000, 0, 120000, 1000, '', true, 'income', 'Reset to Default', true)}
+            {createSlider('Shared', 'medicalDirectorHours', sc.projection.medicalDirectorHours ?? PROJECTION_DEFAULTS[scenario].medicalDirectorHours, SLIDER_CONFIGS.medicalDirectorHours.min, SLIDER_CONFIGS.medicalDirectorHours.max, SLIDER_CONFIGS.medicalDirectorHours.step, '', true, 'income', 'Reset to Default', true)}
+            {createSlider('PRCS', 'prcsMedicalDirectorHours', sc.projection.prcsMedicalDirectorHours ?? PROJECTION_DEFAULTS[scenario].prcsMedicalDirectorHours, SLIDER_CONFIGS.prcsMedicalDirectorHours.min, SLIDER_CONFIGS.prcsMedicalDirectorHours.max, SLIDER_CONFIGS.prcsMedicalDirectorHours.step, '', true, 'income', 'Reset to Default', true)}
           </div>
         </div>
 
@@ -544,7 +524,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
         {createSlider('Benefit Costs Growth', 'benefitCostsGrowthPct', sc.projection.benefitCostsGrowthPct ?? 5.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Default')}
         {createSlider('Misc Employment Costs Growth', 'miscEmploymentCostsPct', sc.projection.miscEmploymentCostsPct ?? 6.7, -10, 20, 0.1, '%', false, 'cost')}
         <div style={{ gridColumn: isMobile ? '1' : '1 / -1' }}>
-        {createSlider('Locums Costs (Annual Override)', 'locumsCosts', sc.projection.locumsCosts ?? 120000, 0, 500000, 1000, '', true, 'cost', 'Reset to Default')}
+        {createSlider('Locums Costs (Annual Override)', 'locumsCosts', sc.projection.locumsCosts ?? PROJECTION_DEFAULTS[scenario].locumsCosts, SLIDER_CONFIGS.locumsCosts.min, SLIDER_CONFIGS.locumsCosts.max, SLIDER_CONFIGS.locumsCosts.step, '', true, 'cost', 'Reset to Default')}
         </div>
       </div>
     </div>

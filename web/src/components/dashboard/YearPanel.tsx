@@ -8,7 +8,18 @@ import {
   scenario2024Defaults,
   scenarioADefaultsByYear,
   scenarioBDefaultsByYear,
-  DEFAULT_MISC_EMPLOYMENT_COSTS
+  DEFAULT_MISC_EMPLOYMENT_COSTS,
+  DEFAULT_THERAPY_INCOME_2025,
+  DEFAULT_NON_EMPLOYMENT_COSTS_2025,
+  DEFAULT_LOCUM_COSTS_2025,
+  ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS,
+  ACTUAL_2024_LOCUM_COSTS,
+  ACTUAL_2024_MISC_EMPLOYMENT_COSTS,
+  ACTUAL_2024_MEDICAL_DIRECTOR_HOURS,
+  ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS,
+  ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
+  ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
+  UI_DEFAULTS
 } from './defaults'
 import type { ScenarioKey, FutureYear } from './types'
 import PhysiciansEditor from './PhysiciansEditor'
@@ -31,10 +42,10 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           // Fallback if no custom data exists yet
           return {
             year: 2025,
-            therapyIncome: last2025?.therapyIncome || 3344068.19,
-            nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
+            therapyIncome: last2025?.therapyIncome || DEFAULT_THERAPY_INCOME_2025,
+            nonEmploymentCosts: last2025?.nonEmploymentCosts || DEFAULT_NON_EMPLOYMENT_COSTS_2025,
             nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
-            locumCosts: 54600,
+            locumCosts: DEFAULT_LOCUM_COSTS_2025,
             miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
             physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
           } as FutureYear
@@ -47,11 +58,11 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
             year: 2025,
             therapyIncome: last2024.therapyIncome,
             nonEmploymentCosts: last2024.nonEmploymentCosts,
-            nonMdEmploymentCosts: 164677.44, // 2024 actual staff employment costs
-            locumCosts: 113400, // 2024 actual locums costs
-            miscEmploymentCosts: 18182.56, // 2024 actual misc employment from image
-            medicalDirectorHours: 102870, // 2024 shared medical director amount
-            prcsMedicalDirectorHours: 25805, // 2024 PRCS medical director amount (JS)
+            nonMdEmploymentCosts: ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS, // 2024 actual staff employment costs
+            locumCosts: ACTUAL_2024_LOCUM_COSTS, // 2024 actual locums costs
+            miscEmploymentCosts: ACTUAL_2024_MISC_EMPLOYMENT_COSTS, // 2024 actual misc employment from image
+            medicalDirectorHours: ACTUAL_2024_MEDICAL_DIRECTOR_HOURS, // 2024 shared medical director amount
+            prcsMedicalDirectorHours: ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS, // 2024 PRCS medical director amount (JS)
             prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
             physicians,
           } as FutureYear
@@ -63,10 +74,10 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
             therapyIncome: last2025.therapyIncome,
             nonEmploymentCosts: last2025.nonEmploymentCosts,
             nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
-            locumCosts: 54600,
+            locumCosts: DEFAULT_LOCUM_COSTS_2025,
             miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-            medicalDirectorHours: 119373.75, // 2025 shared medical director amount
-            prcsMedicalDirectorHours: 37792.5, // 2025 PRCS medical director amount (JS)
+            medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS, // 2025 shared medical director amount
+            prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, // 2025 PRCS medical director amount (JS)
             prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
             physicians,
           } as FutureYear
@@ -76,10 +87,10 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
           return {
             year: 2025,
-            therapyIncome: last2025?.therapyIncome || 3344068.19,
-            nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
+            therapyIncome: last2025?.therapyIncome || DEFAULT_THERAPY_INCOME_2025,
+            nonEmploymentCosts: last2025?.nonEmploymentCosts || DEFAULT_NON_EMPLOYMENT_COSTS_2025,
             nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
-            locumCosts: 54600,
+            locumCosts: DEFAULT_LOCUM_COSTS_2025,
             miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
             prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
             physicians,
@@ -140,7 +151,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
         {(() => {
           const projectedValue = calculateProjectedValue(scenario, year, 'therapyIncome', store)
           const currentValue = fy.therapyIncome || 0
-          const isChanged = projectedValue > 0 && Math.abs(currentValue - projectedValue) > 1000 // $1000 threshold for dollar amounts
+          const isChanged = projectedValue > 0 && Math.abs(currentValue - projectedValue) > UI_DEFAULTS.changeThreshold
           return isChanged && !isReadOnly ? (
             <button
               onClick={() => {
@@ -177,22 +188,22 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
       <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
-          min={2000000}
-          max={4000000}
-          step={1000}
-          value={fy.therapyIncome || 3000000}
+          min={UI_DEFAULTS.therapyIncomeMin}
+          max={UI_DEFAULTS.therapyIncomeMax}
+          step={UI_DEFAULTS.therapyIncomeStep}
+          value={fy.therapyIncome || UI_DEFAULTS.therapyIncomeFallback}
           onChange={(e) =>
             store.setFutureValue(scenario, year, 'therapyIncome', Number(e.target.value))
           }
           disabled={isReadOnly}
           style={{
             width: '100%',
-            ['--fill-percent' as any]: `${(((fy.therapyIncome || 3000000) - 2000000) / (4000000 - 2000000)) * 100}%`
+            ['--fill-percent' as any]: `${(((fy.therapyIncome || UI_DEFAULTS.therapyIncomeFallback) - UI_DEFAULTS.therapyIncomeMin) / (UI_DEFAULTS.therapyIncomeMax - UI_DEFAULTS.therapyIncomeMin)) * 100}%`
           }}
         />
         <input
           type="text"
-          value={currency(Math.round(fy.therapyIncome || 3000000))}
+          value={currency(Math.round(fy.therapyIncome || UI_DEFAULTS.therapyIncomeFallback))}
           onChange={(e) =>
             store.setFutureValue(scenario, year, 'therapyIncome', Number(e.target.value.replace(/[^0-9]/g, '')))
           }
@@ -224,9 +235,9 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
         <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', lineHeight: '19px', height: 19, display: 'inline-flex', alignItems: 'center' }}>Shared</div>
         <div style={{ width: 20, display: 'inline-flex', justifyContent: 'center' }}>
           {(() => {
-            const projectionValue = sc.projection.medicalDirectorHours ?? 80000
+            const projectionValue = sc.projection.medicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback
             const currentValue = fy.medicalDirectorHours ?? projectionValue
-            const isChanged = Math.abs(currentValue - projectionValue) > 1000 // $1000 threshold
+            const isChanged = Math.abs(currentValue - projectionValue) > UI_DEFAULTS.changeThreshold
             return isChanged && !isReadOnly ? (
               <button
                 onClick={() => {
@@ -265,21 +276,21 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
         <input
           type="range"
           min={0}
-          max={120000}
-          step={1000}
-          value={fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000}
+          max={UI_DEFAULTS.medicalDirectorHoursMax}
+          step={UI_DEFAULTS.medicalDirectorHoursStep}
+          value={fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback}
           onChange={(e) =>
             store.setFutureValue(scenario, year, 'medicalDirectorHours', Number(e.target.value))
           }
           disabled={isReadOnly}
           style={{
             width: '100%',
-            ['--fill-percent' as any]: `${((fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000) / 120000) * 100}%`
+            ['--fill-percent' as any]: `${((fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback) / UI_DEFAULTS.medicalDirectorHoursMax) * 100}%`
           }}
         />
         <input
           type="text"
-          value={currency(Math.round(fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000))}
+          value={currency(Math.round(fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback))}
           onChange={(e) =>
             store.setFutureValue(scenario, year, 'medicalDirectorHours', Number(e.target.value.replace(/[^0-9]/g, '')))
           }
@@ -307,9 +318,9 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
         <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', lineHeight: '19px', height: 19, display: 'inline-flex', alignItems: 'center' }}>PRCS</div>
         <div style={{ width: 20, display: 'inline-flex', justifyContent: 'center' }}>
           {(() => {
-            const projectionValue = sc.projection.prcsMedicalDirectorHours ?? 80000
+            const projectionValue = sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback
             const currentValue = fy.prcsMedicalDirectorHours ?? projectionValue
-            const isChanged = Math.abs(currentValue - projectionValue) > 1000
+            const isChanged = Math.abs(currentValue - projectionValue) > UI_DEFAULTS.changeThreshold
             return isChanged && !isReadOnly ? (
               <button
                 onClick={() => {
@@ -348,21 +359,21 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
         <input
           type="range"
           min={0}
-          max={120000}
-          step={1000}
-          value={fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000}
+          max={UI_DEFAULTS.medicalDirectorHoursMax}
+          step={UI_DEFAULTS.medicalDirectorHoursStep}
+          value={fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback}
           onChange={(e) =>
             store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Number(e.target.value))
           }
           disabled={isReadOnly}
           style={{
             width: '100%',
-            ['--fill-percent' as any]: `${((fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000) / 120000) * 100}%`
+            ['--fill-percent' as any]: `${((fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback) / UI_DEFAULTS.medicalDirectorHoursMax) * 100}%`
           }}
         />
         <input
           type="text"
-          value={currency(Math.round(fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000))}
+          value={currency(Math.round(fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback))}
           onChange={(e) =>
             store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Number(e.target.value.replace(/[^0-9]/g, '')))
           }
@@ -391,9 +402,9 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           <span style={{ fontWeight: 500 }}>Total Income:</span>
           <span style={{ fontWeight: 600 }}>
             {currency(((fy.therapyIncome || 0)
-              + (fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000)
+              + (fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback)
               + (((fy.prcsDirectorPhysicianId ?? (year >= 2024 ? (fy.physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))?.id) : undefined))
-                  ? (fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000)
+                  ? (fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback)
                   : 0))))}
           </span>
         </div>
@@ -407,7 +418,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
         {(() => {
           const projectedValue = calculateProjectedValue(scenario, year, 'nonEmploymentCosts', store)
           const currentValue = fy.nonEmploymentCosts || 0
-          const isChanged = projectedValue > 0 && Math.abs(currentValue - projectedValue) > 1000 // $1000 threshold for dollar amounts
+          const isChanged = projectedValue > 0 && Math.abs(currentValue - projectedValue) > UI_DEFAULTS.changeThreshold
           return isChanged && !isReadOnly ? (
             <button
               onClick={() => {
@@ -444,10 +455,10 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
       <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
-          min={100000}
-          max={500000}
-          step={1000}
-          value={fy.nonEmploymentCosts || 200000}
+          min={UI_DEFAULTS.nonEmploymentCostsMin}
+          max={UI_DEFAULTS.nonEmploymentCostsMax}
+          step={UI_DEFAULTS.nonEmploymentCostsStep}
+          value={fy.nonEmploymentCosts || UI_DEFAULTS.nonEmploymentCostsFallback}
           onChange={(e) =>
             store.setFutureValue(
               scenario,
@@ -459,12 +470,12 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           disabled={isReadOnly}
           style={{
             width: '100%',
-            ['--fill-percent' as any]: `${(((fy.nonEmploymentCosts || 200000) - 100000) / (500000 - 100000)) * 100}%`
+            ['--fill-percent' as any]: `${(((fy.nonEmploymentCosts || UI_DEFAULTS.nonEmploymentCostsFallback) - UI_DEFAULTS.nonEmploymentCostsMin) / (UI_DEFAULTS.nonEmploymentCostsMax - UI_DEFAULTS.nonEmploymentCostsMin)) * 100}%`
           }}
         />
         <input
           type="text"
-          value={currency(Math.round(fy.nonEmploymentCosts || 200000))}
+          value={currency(Math.round(fy.nonEmploymentCosts || UI_DEFAULTS.nonEmploymentCostsFallback))}
           onChange={(e) =>
             store.setFutureValue(
               scenario,
@@ -499,7 +510,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
         {(() => {
           const projectedValue = calculateProjectedValue(scenario, year, 'nonMdEmploymentCosts', store)
           const currentValue = fy.nonMdEmploymentCosts || 0
-          const isChanged = projectedValue > 0 && Math.abs(currentValue - projectedValue) > 1000 // $1000 threshold for dollar amounts
+          const isChanged = projectedValue > 0 && Math.abs(currentValue - projectedValue) > UI_DEFAULTS.changeThreshold
           return isChanged && !isReadOnly ? (
             <button
               onClick={() => {
@@ -536,10 +547,10 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
       <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
-          min={50000}
-          max={300000}
-          step={1000}
-          value={fy.nonMdEmploymentCosts || 150000}
+          min={UI_DEFAULTS.nonMdEmploymentCostsMin}
+          max={UI_DEFAULTS.nonMdEmploymentCostsMax}
+          step={UI_DEFAULTS.nonMdEmploymentCostsStep}
+          value={fy.nonMdEmploymentCosts || UI_DEFAULTS.nonMdEmploymentCostsFallback}
           onChange={(e) =>
             store.setFutureValue(
               scenario,
@@ -551,12 +562,12 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           disabled={isReadOnly}
           style={{
             width: '100%',
-            ['--fill-percent' as any]: `${(((fy.nonMdEmploymentCosts || 150000) - 50000) / (300000 - 50000)) * 100}%`
+            ['--fill-percent' as any]: `${(((fy.nonMdEmploymentCosts || UI_DEFAULTS.nonMdEmploymentCostsFallback) - UI_DEFAULTS.nonMdEmploymentCostsMin) / (UI_DEFAULTS.nonMdEmploymentCostsMax - UI_DEFAULTS.nonMdEmploymentCostsMin)) * 100}%`
           }}
         />
         <input
           type="text"
-          value={currency(Math.round(fy.nonMdEmploymentCosts || 150000))}
+          value={currency(Math.round(fy.nonMdEmploymentCosts || UI_DEFAULTS.nonMdEmploymentCostsFallback))}
           onChange={(e) =>
             store.setFutureValue(
               scenario,
@@ -655,9 +666,9 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
         <input
           type="range"
           min={0}
-          max={100000}
-          step={1000}
-          value={fy.miscEmploymentCosts || 25000}
+          max={UI_DEFAULTS.miscEmploymentCostsMax}
+          step={UI_DEFAULTS.miscEmploymentCostsStep}
+          value={fy.miscEmploymentCosts || UI_DEFAULTS.miscEmploymentCostsFallback}
           onChange={(e) =>
             store.setFutureValue(
               scenario,
@@ -669,12 +680,12 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           disabled={isReadOnly}
           style={{
             width: '100%',
-            ['--fill-percent' as any]: `${((fy.miscEmploymentCosts || 25000) / 100000) * 100}%`
+            ['--fill-percent' as any]: `${((fy.miscEmploymentCosts || UI_DEFAULTS.miscEmploymentCostsFallback) / UI_DEFAULTS.miscEmploymentCostsMax) * 100}%`
           }}
         />
         <input
           type="text"
-          value={currency(Math.round(fy.miscEmploymentCosts || 25000))}
+          value={currency(Math.round(fy.miscEmploymentCosts || UI_DEFAULTS.miscEmploymentCostsFallback))}
           onChange={(e) =>
             store.setFutureValue(
               scenario,

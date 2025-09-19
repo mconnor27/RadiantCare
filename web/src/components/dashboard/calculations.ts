@@ -7,24 +7,18 @@ import {
   employeePortionToTransitionDay,
   getPayPeriodsForYear
 } from './utils'
-import { DEFAULT_MISC_EMPLOYMENT_COSTS } from './defaults'
-
-// Constants
-const MONTHLY_BENEFITS_MED = 796.37
-const MONTHLY_BENEFITS_DENTAL = 57.12
-const MONTHLY_BENEFITS_VISION = 6.44
-const ANNUAL_BENEFITS_FULLTIME = (MONTHLY_BENEFITS_MED + MONTHLY_BENEFITS_DENTAL + MONTHLY_BENEFITS_VISION) * 12
+import {
+  DEFAULT_MISC_EMPLOYMENT_COSTS,
+  MONTHLY_BENEFITS_MED,
+  MONTHLY_BENEFITS_DENTAL,
+  MONTHLY_BENEFITS_VISION,
+  ANNUAL_BENEFITS_FULLTIME,
+  SOCIAL_SECURITY_WAGE_BASES,
+  TAX_RATES
+} from './defaults'
 
 export function getSocialSecurityWageBase(year: number): number {
-  const wageBases: Record<number, number> = {
-    2025: 176100,
-    2026: 183600,
-    2027: 190800,
-    2028: 198900,
-    2029: 207000,
-    2030: 215400,
-  }
-  return wageBases[year] || wageBases[2030] // Use 2030 as fallback for later years
+  return SOCIAL_SECURITY_WAGE_BASES[year as keyof typeof SOCIAL_SECURITY_WAGE_BASES] || SOCIAL_SECURITY_WAGE_BASES[2030] // Use 2030 as fallback for later years
 }
 
 // Helper: employer payroll taxes for W2 annual wages (WA State medical practice <50 employees)
@@ -32,16 +26,16 @@ export function calculateEmployerPayrollTaxes(annualWages: number, year: number 
   const ssWageBase = getSocialSecurityWageBase(year)
   
   // Federal taxes
-  const federalUnemploymentTax = Math.min(annualWages, 7000) * 0.006 // FUTA: 0.6% on first $7,000
-  const socialSecurityTax = Math.min(annualWages, ssWageBase) * 0.062 // FICA: 6.2%
-  const medicareTax = annualWages * 0.0145 // Medicare: 1.45% on all wages
+  const federalUnemploymentTax = Math.min(annualWages, TAX_RATES.federalUnemploymentWageBase) * TAX_RATES.federalUnemploymentRate
+  const socialSecurityTax = Math.min(annualWages, ssWageBase) * TAX_RATES.socialSecurityRate
+  const medicareTax = annualWages * TAX_RATES.medicareRate
   // Note: Additional Medicare tax (0.9% over $200K) is employee-paid, not employer-paid
-  
+
   // Washington State taxes
-  const waUnemploymentTax = Math.min(annualWages, 72800) * 0.009 // WA SUTA: 0.9% on first $72,800
-  const waFamilyLeaveTax = Math.min(annualWages, ssWageBase) * 0.00658 // WA FLI: 0.658% on first SS wage base
-  const waStateDisabilityTax = annualWages * 0.00255 // WA SDI: 0.255% on all wages
-  const washingtonRateTax = annualWages * 0.0003 // Washington Rate: 0.030% on all wages
+  const waUnemploymentTax = Math.min(annualWages, TAX_RATES.waUnemploymentWageBase) * TAX_RATES.waUnemploymentRate
+  const waFamilyLeaveTax = Math.min(annualWages, ssWageBase) * TAX_RATES.waFamilyLeaveRate // WA FLI: 0.658% on first SS wage base
+  const waStateDisabilityTax = annualWages * TAX_RATES.waStateDisabilityRate // WA SDI: 0.255% on all wages
+  const washingtonRateTax = annualWages * TAX_RATES.washingtonRate // Washington Rate: 0.030% on all wages
   
   return federalUnemploymentTax + socialSecurityTax + medicareTax + 
          waUnemploymentTax + waFamilyLeaveTax + waStateDisabilityTax + washingtonRateTax
