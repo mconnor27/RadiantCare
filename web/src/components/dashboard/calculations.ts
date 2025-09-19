@@ -1,15 +1,15 @@
-import { Physician } from './types'
-import { 
-  clamp, 
-  daysInYear, 
-  calculateBenefitStartDay, 
-  startPortionToStartDay, 
+import type { Physician, ScenarioKey } from './types'
+import {
+  clamp,
+  daysInYear,
+  calculateBenefitStartDay,
+  startPortionToStartDay,
   employeePortionToTransitionDay,
   getPayPeriodsForYear,
   addDays
 } from './utils'
-
 // Constants
+export const DEFAULT_MISC_EMPLOYMENT_COSTS = 29115.51
 const MONTHLY_BENEFITS_MED = 796.37
 const MONTHLY_BENEFITS_DENTAL = 57.12
 const MONTHLY_BENEFITS_VISION = 6.44
@@ -311,6 +311,84 @@ export function getEmployeeCostTooltip(employee: Physician, year: number = 2025,
   }
   
   tooltip += `\nTotal: ${formattedTotal}`
-  
+
   return tooltip
+}
+
+// Calculate projected values based on scenario settings
+export function calculateProjectedValue(
+  scenario: ScenarioKey,
+  year: number,
+  field: 'therapyIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'miscEmploymentCosts',
+  store: any
+): number {
+  const sc = scenario === 'A' ? store.scenarioA : store.scenarioB
+  if (!sc || year === 2025) return 0 // No projections for baseline year
+
+  // Get baseline data based on data mode
+  let baselineData
+  if (sc.dataMode === 'Custom') {
+    const customBaseline = sc.baseline?.find((b: any) => b.year === 2025)
+    if (customBaseline) {
+      baselineData = {
+        therapyIncome: customBaseline.therapyIncome,
+        nonEmploymentCosts: customBaseline.nonEmploymentCosts,
+        miscEmploymentCosts: customBaseline.miscEmploymentCosts,
+        nonMdEmploymentCosts: customBaseline.nonMdEmploymentCosts,
+      }
+    } else {
+      const last2025 = store.historic.find((h: any) => h.year === 2025)
+      baselineData = {
+        therapyIncome: last2025?.therapyIncome || 3344068.19,
+        nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
+        miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+        nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+      }
+    }
+  } else if (sc.dataMode === '2024 Data') {
+    const last2024 = store.historic.find((h: any) => h.year === 2024)!
+    baselineData = {
+      therapyIncome: last2024.therapyIncome,
+      nonEmploymentCosts: last2024.nonEmploymentCosts,
+      miscEmploymentCosts: 24623.49,
+      nonMdEmploymentCosts: 164677.44,
+    }
+  } else if (sc.dataMode === '2025 Data') {
+    const last2025 = store.historic.find((h: any) => h.year === 2025)!
+    baselineData = {
+      therapyIncome: last2025.therapyIncome,
+      nonEmploymentCosts: last2025.nonEmploymentCosts,
+      miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+      nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+    }
+  } else {
+    baselineData = {
+      therapyIncome: 3344068.19,
+      nonEmploymentCosts: 229713.57,
+      miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+      nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+    }
+  }
+
+  // Convert percentage growth rates to decimal multipliers
+  const incomeGpct = sc.projection.incomeGrowthPct / 100
+  const nonEmploymentGpct = sc.projection.nonEmploymentCostsPct / 100
+  const nonMdEmploymentGpct = sc.projection.nonMdEmploymentCostsPct / 100
+  const miscEmploymentGpct = sc.projection.miscEmploymentCostsPct / 100
+
+  // Calculate projected value for the specific year
+  let value = baselineData[field]
+  const yearsSinceBaseline = year - 2025
+
+  if (field === 'therapyIncome') {
+    value = value * Math.pow(1 + incomeGpct, yearsSinceBaseline)
+  } else if (field === 'nonEmploymentCosts') {
+    value = value * Math.pow(1 + nonEmploymentGpct, yearsSinceBaseline)
+  } else if (field === 'nonMdEmploymentCosts') {
+    value = value * Math.pow(1 + nonMdEmploymentGpct, yearsSinceBaseline)
+  } else if (field === 'miscEmploymentCosts') {
+    value = value * Math.pow(1 + miscEmploymentGpct, yearsSinceBaseline)
+  }
+
+  return value
 }

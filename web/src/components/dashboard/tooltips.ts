@@ -1,4 +1,4 @@
-import { Physician } from './types'
+import type { Physician } from './types'
 import React from 'react'
 
 // Helper function for creating mobile-friendly tooltips

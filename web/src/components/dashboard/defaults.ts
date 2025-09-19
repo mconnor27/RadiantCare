@@ -1,5 +1,5 @@
-import { Physician, PhysicianType, YearRow, FutureYear } from './types'
-import { getPartnerPortionOfYear, computeDefaultNonMdEmploymentCosts } from './calculations'
+import type { Physician, PhysicianType, YearRow, FutureYear } from './types'
+import { getPartnerPortionOfYear, computeDefaultNonMdEmploymentCosts, DEFAULT_MISC_EMPLOYMENT_COSTS } from './calculations'
 import { calendarDateToPortion } from './utils'
 
 // Constants
@@ -18,8 +18,6 @@ const HISTORIC_DATA: YearRow[] = [
   // 2025 actuals per provided figures
   { year: 2025, therapyIncome: 3164006.93, nonEmploymentCosts: 229713.57, employeePayroll:  752155.73  },
 ]
-
-const DEFAULT_MISC_EMPLOYMENT_COSTS = 29115.51
 
 export function defaultPhysiciansGeneric(year: number): Physician[] {
   return [
