@@ -321,13 +321,13 @@ export function getTotalIncome(yearData: YearRow | FutureYear): number {
   
   // For historic years (2024-2025), we need to estimate medical director income
   if ('employeePayroll' in yearData) {
-    // Historic year - estimate medical director income based on defaults
-    const defaultMedicalDirectorIncome = 119373.75 // Default shared MD income
-    const defaultPrcsMedicalDirectorIncome = 60000 // Default PRCS MD income
+    // Historic year - use actual values based on year
+    const medicalDirectorIncome = yearData.year === 2024 ? 102870 : 119373.75 // 2024 vs 2025 actual shared MD income
+    const prcsMedicalDirectorIncome = yearData.year === 2024 ? 25805 : 37792.5 // 2024 vs 2025 actual PRCS MD income
     // Add consulting services agreement based on year
     const consultingServicesIncome = yearData.year === 2024 ? 15693.40 : 
                                    yearData.year === 2025 ? 16200.00 : 17030
-    return therapyIncome + defaultMedicalDirectorIncome + defaultPrcsMedicalDirectorIncome + consultingServicesIncome
+    return therapyIncome + medicalDirectorIncome + prcsMedicalDirectorIncome + consultingServicesIncome
   }
   
   // For future years, calculate from stored values

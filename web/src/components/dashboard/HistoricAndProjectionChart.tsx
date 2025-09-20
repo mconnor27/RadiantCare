@@ -1,6 +1,6 @@
 import Plot from 'react-plotly.js'
 import { useDashboardStore } from '../Dashboard'
-import { NET_PARTNER_POOL_2025 } from './defaults'
+// Removed NET_PARTNER_POOL_2025 import - now calculating dynamically
 import { getTotalIncome } from './calculations'
 import { useIsMobile } from './hooks'
 import { getEmployeePortionOfYear, calculateDelayedW2Payment, computeDefaultNonMdEmploymentCosts } from './calculations'
@@ -357,10 +357,18 @@ export default function HistoricAndProjectionChart() {
             'Net Income',
             '#1976d2',
             netHistoric,
-            [NET_PARTNER_POOL_2025, ...store.scenarioA.future.filter(f => f.year !== 2025).map((_, idx) => scANet[idx])],
-            store.scenarioBEnabled && store.scenarioB ? [NET_PARTNER_POOL_2025, ...store.scenarioB.future.filter(f => f.year !== 2025).map((_, idx) => scBNet[idx])] : null,
-            NET_PARTNER_POOL_2025,
-            NET_PARTNER_POOL_2025,
+            [
+              // Calculate 2025 dynamically like netHistoric
+              historic2025 ? getTotalIncome(historic2025) - historic2025.nonEmploymentCosts - (historic2025.employeePayroll ?? 0) : 2355503.88,
+              ...store.scenarioA.future.filter(f => f.year !== 2025).map((_, idx) => scANet[idx])
+            ],
+            store.scenarioBEnabled && store.scenarioB ? [
+              // Calculate 2025 dynamically for Scenario B too
+              historic2025 ? getTotalIncome(historic2025) - historic2025.nonEmploymentCosts - (historic2025.employeePayroll ?? 0) : 2355503.88,
+              ...store.scenarioB.future.filter(f => f.year !== 2025).map((_, idx) => scBNet[idx])
+            ] : null,
+            historic2025 ? getTotalIncome(historic2025) - historic2025.nonEmploymentCosts - (historic2025.employeePayroll ?? 0) : 2355503.88,
+            historic2025 ? getTotalIncome(historic2025) - historic2025.nonEmploymentCosts - (historic2025.employeePayroll ?? 0) : 2355503.88,
             'net'
           )
 

@@ -35,7 +35,7 @@ export const MONTHLY_BENEFITS_MED = 796.37
 export const MONTHLY_BENEFITS_DENTAL = 57.12
 export const MONTHLY_BENEFITS_VISION = 6.44
 export const ANNUAL_BENEFITS_FULLTIME = (MONTHLY_BENEFITS_MED + MONTHLY_BENEFITS_DENTAL + MONTHLY_BENEFITS_VISION) * 12
-export const NET_PARTNER_POOL_2025 = 2362198.89
+// Removed NET_PARTNER_POOL_2025 - now calculating dynamically everywhere
 
 // Social Security Wage Bases by year (moved from calculations.ts)
 export const SOCIAL_SECURITY_WAGE_BASES = {

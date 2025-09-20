@@ -23,15 +23,17 @@ import {
   calculateMedicalDirectorHourPercentages,
   getEmployeePortionOfYear,
   getPartnerPortionOfYear,
-  getPartnerFTEWeight
+  getPartnerFTEWeight,
+  getTotalIncome
 } from './dashboard/calculations'
+import { getDefaultTrailingSharedMdAmount } from './dashboard/tooltips'
 import {
   HISTORIC_DATA,
   scenario2024Defaults,
   scenarioADefaultsByYear,
   scenarioBDefaultsByYear,
   DEFAULT_MISC_EMPLOYMENT_COSTS,
-  NET_PARTNER_POOL_2025,
+  // Removed NET_PARTNER_POOL_2025 import - now calculating dynamically
   INITIAL_FUTURE_YEARS_A,
   INITIAL_FUTURE_YEARS_B
 } from './dashboard/defaults'
@@ -885,9 +887,11 @@ export function usePartnerComp(year: number, scenario: ScenarioKey) {
       // Calculate total Medical Director allocations to subtract from pool
       const totalMedicalDirectorAllocations = Array.from(partnerMedicalDirectorAllocations.values()).reduce((sum, allocation) => sum + allocation, 0)
       
-      // Use different partner pools based on data mode
-      const basePool = dataMode === '2024 Data' ? 2032099.02 : NET_PARTNER_POOL_2025
-      // NET_PARTNER_POOL_2025 is already net of all costs, so only subtract buyouts and MD allocations
+      // Calculate partner pool dynamically based on data mode
+      const historic2025 = store.historic.find(h => h.year === 2025)!
+      const dynamicNetIncome2025 = getTotalIncome(historic2025) - historic2025.nonEmploymentCosts - (historic2025.employeePayroll ?? 0)
+      const basePool = dataMode === '2024 Data' ? 2032099.02 : dynamicNetIncome2025
+      // Dynamic net income is already net of all costs, so only subtract buyouts and MD allocations
       // delayedW2Costs are already accounted for in the net pool
       const adjustedPool = Math.max(0, basePool - buyoutCosts - totalMedicalDirectorAllocations)
       
@@ -902,7 +906,9 @@ export function usePartnerComp(year: number, scenario: ScenarioKey) {
         .map(({ p, weight }) => ({ 
           id: p.id, 
           name: p.name, 
-          comp: (weight / totalWeight) * adjustedPool + (partnerMedicalDirectorAllocations.get(p.id) ?? 0) + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0)
+          comp: (weight / totalWeight) * adjustedPool + (partnerMedicalDirectorAllocations.get(p.id) ?? 0) + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0) + 
+                // Add trailing shared MD amount for prior-year retirees
+                (p.type === 'partnerToRetire' && (p.partnerPortionOfYear ?? 0) === 0 ? (p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)) : 0)
         }))
     }
     if (!fy) return [] as { id: string; name: string; comp: number }[]
@@ -991,7 +997,9 @@ export function usePartnerComp(year: number, scenario: ScenarioKey) {
       .map(({ p, weight }) => ({
         id: p.id,
         name: p.name,
-        comp: (weight / totalWeight) * pool + (partnerMedicalDirectorAllocations.get(p.id) ?? 0) + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0),
+        comp: (weight / totalWeight) * pool + (partnerMedicalDirectorAllocations.get(p.id) ?? 0) + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0) +
+              // Add trailing shared MD amount for prior-year retirees
+              (p.type === 'partnerToRetire' && (p.partnerPortionOfYear ?? 0) === 0 ? (p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)) : 0),
       }))
   }, [fy, sc, dataMode])
 }
@@ -1161,7 +1169,11 @@ export function computeAllCompensationsForYear(year: number, scenario: ScenarioK
   
   // Calculate partner pool excluding Medical Director income that's directly allocated
   const basePool = year === 2025
-    ? (NET_PARTNER_POOL_2025 - totalBuyoutCosts)
+    ? (() => {
+        const historic2025 = state.historic.find(h => h.year === 2025)!
+        const dynamicNetIncome2025 = getTotalIncome(historic2025) - historic2025.nonEmploymentCosts - (historic2025.employeePayroll ?? 0)
+        return dynamicNetIncome2025 - totalBuyoutCosts
+      })()
     : Math.max(0, fy!.therapyIncome - (fy!.nonEmploymentCosts + fy!.nonMdEmploymentCosts + fy!.miscEmploymentCosts + fy!.locumCosts + totalEmployeeCosts + totalBuyoutCosts + totalDelayedW2Costs))
     
   // Subtract Medical Director allocations from the pool to get the FTE-distributable pool
@@ -1202,6 +1214,10 @@ export function computeAllCompensationsForYear(year: number, scenario: ScenarioK
     if (s.physician.type === 'partnerToRetire') {
       // Add buyout cost back to retiring partner's total compensation
       comp += s.physician.buyoutCost ?? 0
+      // Add trailing shared MD amount for prior-year retirees
+      if ((s.physician.partnerPortionOfYear ?? 0) === 0) {
+        comp += s.physician.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(s.physician)
+      }
     }
     results.push({ id: s.id, name: s.name, type: 'partner', comp })
   }
@@ -1252,7 +1268,7 @@ export function computeAllCompensationsForYearWithRetired(year: number, scenario
     id: p.id,
     name: p.name,
     type: 'partner' as const,
-    comp: p.buyoutCost ?? 0 // Show buyout amount as their compensation
+    comp: (p.buyoutCost ?? 0) + (p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)) // Show buyout amount plus trailing MD amount as their compensation
   }))
 
   return [...regularComps, ...retiredComps]

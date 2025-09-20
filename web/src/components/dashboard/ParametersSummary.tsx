@@ -2,7 +2,8 @@ import type { FutureYear } from './types'
 import { useDashboardStore } from '../Dashboard'
 import { useIsMobile } from './hooks'
 import {
-  computeDefaultNonMdEmploymentCosts
+  computeDefaultNonMdEmploymentCosts,
+  getTotalIncome
 } from './calculations'
 import { scenarioADefaultsByYear, scenarioBDefaultsByYear, scenario2024Defaults, DEFAULT_MISC_EMPLOYMENT_COSTS } from './defaults'
 import {
@@ -181,7 +182,7 @@ export default function ParametersSummary() {
             </div>
             {/* Data rows with alternating backgrounds */}
             {[
-              { label: 'Income', baseline: baselineDataObj?.therapyIncome, values: data.map(d => d.therapyIncome), key: 'inc' },
+              { label: 'Income', baseline: baselineDataObj ? getTotalIncome(baselineDataObj) : undefined, values: data.map(d => getTotalIncome(d)), key: 'inc' },
               { label: 'Non-Employment', baseline: baselineDataObj?.nonEmploymentCosts, values: data.map(d => d.nonEmploymentCosts), key: 'nec' },
               { label: 'Staff Employment', baseline: baselineDataObj?.nonMdEmploymentCosts, values: data.map(d => d.nonMdEmploymentCosts), key: 'nmd' },
               { label: 'Misc Employment', baseline: baselineDataObj?.miscEmploymentCosts, values: data.map(d => d.miscEmploymentCosts), key: 'msc' },

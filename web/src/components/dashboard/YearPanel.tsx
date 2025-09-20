@@ -1,7 +1,7 @@
 import { Fragment } from 'react'
 import { useDashboardStore, usePartnerComp, calculateProjectedValue } from '../Dashboard'
 import { useIsMobile } from './hooks'
-import { calculateDelayedW2Payment, computeDefaultNonMdEmploymentCosts } from './calculations'
+import { calculateDelayedW2Payment, computeDefaultNonMdEmploymentCosts, getTotalIncome, getEmployeePortionOfYear } from './calculations'
 import { createTooltip, removeTooltip } from './tooltips'
 import { currency } from './utils'
 import {
@@ -913,7 +913,34 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
             <div style={{ gridColumn: '1 / -1', height: 1, background: '#e5e7eb', margin: '4px 0' }} />
             <div style={{ fontWeight: 700 }}>Net Income</div>
             <div style={{ textAlign: 'right', fontWeight: 700 }}>
-              {currency(partnerComp.reduce((s, x) => s + x.comp, 0))}
+              {currency((() => {
+                if (year === 2025) {
+                  // Calculate 2025 Net Income dynamically
+                  const historic2025 = store.historic.find(h => h.year === 2025)!
+                  return getTotalIncome(historic2025) - historic2025.nonEmploymentCosts - (historic2025.employeePayroll ?? 0)
+                } else if (year === 2024) {
+                  // Calculate 2024 Net Income dynamically  
+                  const historic2024 = store.historic.find(h => h.year === 2024)!
+                  return getTotalIncome(historic2024) - historic2024.nonEmploymentCosts - (historic2024.employeePayroll ?? 0)
+                } else {
+                  // For future years, calculate from future year data
+                  return getTotalIncome(fy!) - (fy!.nonEmploymentCosts + fy!.nonMdEmploymentCosts + fy!.miscEmploymentCosts + fy!.locumCosts + 
+                    fy!.physicians.reduce((s, p) => {
+                      if (p.type === 'employee') return s + (p.salary ?? 0)
+                      if (p.type === 'newEmployee') return s + (p.salary ?? 0) * getEmployeePortionOfYear(p)
+                      if (p.type === 'employeeToPartner') return s + (p.salary ?? 0) * getEmployeePortionOfYear(p)
+                      return s
+                    }, 0) + 
+                    fy!.physicians.reduce((s, p) => s + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0), 0) +
+                    fy!.physicians.reduce((s, p) => {
+                      if (p.type === 'employeeToPartner') {
+                        const delayed = calculateDelayedW2Payment(p, year)
+                        return s + delayed.amount + delayed.taxes
+                      }
+                      return s
+                    }, 0))
+                }
+              })())}
             </div>
           </div>
         </div>
