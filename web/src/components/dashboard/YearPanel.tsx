@@ -179,7 +179,9 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
       )}
       <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#f3f4f6', padding: 8 }}>
 
-      <div className="panel-green" style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16, rowGap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="panel-green" style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 0, border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
         <div style={{ fontSize: 14, fontWeight: 600 }}>Therapy Income</div>
         {(() => {
@@ -262,51 +264,53 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
 
       {/* Medical Director Hours Section */}
       <div style={{ marginTop: 8, paddingTop: 4 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
         <div style={{ fontSize: 14, fontWeight: 600 }}>Medical Director Hours</div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 2 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', lineHeight: '19px', height: 19, display: 'inline-flex', alignItems: 'center' }}>Shared</div>
-        <div style={{ width: 20, display: 'inline-flex', justifyContent: 'center' }}>
-          {(() => {
-            const projectionValue = sc.projection.medicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback
-            const currentValue = fy.medicalDirectorHours ?? projectionValue
-            const isChanged = Math.abs(currentValue - projectionValue) > UI_DEFAULTS.changeThreshold
-            return isChanged && !isReadOnly ? (
-              <button
-                onClick={() => {
-                  removeTooltip('shared-medical-director-reset-tooltip')
-                  store.setFutureValue(scenario, year, 'medicalDirectorHours', projectionValue)
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  color: '#6b7280',
-                  padding: '2px 4px',
-                  borderRadius: 3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  opacity: 0.7,
-                  transition: 'opacity 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.opacity = '1'
-                  createTooltip('shared-medical-director-reset-tooltip', 'Reset to Annual Override Value', e)
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.opacity = '0.7'
-                  removeTooltip('shared-medical-director-reset-tooltip')
-                }}
-              >
-                ↺
-              </button>
-            ) : null
-          })()}
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '60px 1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1, marginBottom: 2 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: '#374151', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+          Shared
+          <div style={{ width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {(() => {
+              const projectionValue = sc.projection.medicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback
+              const currentValue = fy.medicalDirectorHours ?? projectionValue
+              const isChanged = Math.abs(currentValue - projectionValue) > UI_DEFAULTS.changeThreshold
+              return isChanged && !isReadOnly ? (
+                <button
+                  onClick={() => {
+                    removeTooltip('shared-medical-director-reset-tooltip')
+                    store.setFutureValue(scenario, year, 'medicalDirectorHours', projectionValue)
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 10,
+                    color: '#6b7280',
+                    padding: '1px 2px',
+                    borderRadius: 3,
+                    display: 'flex',
+                    alignItems: 'center',
+                    opacity: 0.7,
+                    transition: 'opacity 0.2s',
+                    width: 14,
+                    height: 14
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '1'
+                    createTooltip('shared-medical-director-reset-tooltip', 'Reset to Annual Override Value', e)
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '0.7'
+                    removeTooltip('shared-medical-director-reset-tooltip')
+                  }}
+                >
+                  ↺
+                </button>
+              ) : null
+            })()}
+          </div>
         </div>
-      </div>
-      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={0}
@@ -348,48 +352,50 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
       </div>
 
       {/* PRCS Row */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4, marginBottom: 2 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', lineHeight: '19px', height: 19, display: 'inline-flex', alignItems: 'center' }}>PRCS</div>
-        <div style={{ width: 20, display: 'inline-flex', justifyContent: 'center' }}>
-          {(() => {
-            const projectionValue = sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback
-            const currentValue = fy.prcsMedicalDirectorHours ?? projectionValue
-            const isChanged = Math.abs(currentValue - projectionValue) > UI_DEFAULTS.changeThreshold
-            return isChanged && !isReadOnly ? (
-              <button
-                onClick={() => {
-                  removeTooltip('prcs-medical-director-reset-tooltip')
-                  store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', projectionValue)
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  color: '#6b7280',
-                  padding: '2px 4px',
-                  borderRadius: 3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  opacity: 0.7,
-                  transition: 'opacity 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.opacity = '1'
-                  createTooltip('prcs-medical-director-reset-tooltip', 'Reset to Annual Override Value', e)
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.opacity = '0.7'
-                  removeTooltip('prcs-medical-director-reset-tooltip')
-                }}
-              >
-                ↺
-              </button>
-            ) : null
-          })()}
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '60px 1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1, marginTop: 4 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: '#374151', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+          PRCS
+          <div style={{ width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {(() => {
+              const projectionValue = sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback
+              const currentValue = fy.prcsMedicalDirectorHours ?? projectionValue
+              const isChanged = Math.abs(currentValue - projectionValue) > UI_DEFAULTS.changeThreshold
+              return isChanged && !isReadOnly ? (
+                <button
+                  onClick={() => {
+                    removeTooltip('prcs-medical-director-reset-tooltip')
+                    store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', projectionValue)
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 10,
+                    color: '#6b7280',
+                    padding: '1px 2px',
+                    borderRadius: 3,
+                    display: 'flex',
+                    alignItems: 'center',
+                    opacity: 0.7,
+                    transition: 'opacity 0.2s',
+                    width: 14,
+                    height: 14
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '1'
+                    createTooltip('prcs-medical-director-reset-tooltip', 'Reset to Annual Override Value', e)
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '0.7'
+                    removeTooltip('prcs-medical-director-reset-tooltip')
+                  }}
+                >
+                  ↺
+                </button>
+              ) : null
+            })()}
+          </div>
         </div>
-      </div>
-      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={0}
@@ -429,48 +435,48 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           onClick={(e) => createTooltip('prcs-medical-director-tooltip', PRCS_MD_TOOLTIP, e)}
         ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
       </div>
+      </div>
 
       {/* Consulting Services Agreement Section */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4, marginBottom: 2 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', lineHeight: '19px', height: 19, display: 'inline-flex', alignItems: 'center' }}>Consulting Services Agreement</div>
-        <div style={{ width: 20, display: 'inline-flex', justifyContent: 'center' }}>
-          {(() => {
-            const projectionValue = sc.projection.consultingServicesAgreement ?? DEFAULT_CONSULTING_SERVICES_PROJECTION
-            const currentValue = fy.consultingServicesAgreement ?? projectionValue
-            const isChanged = Math.abs(currentValue - projectionValue) > UI_DEFAULTS.changeThreshold
-            return isChanged && !isReadOnly ? (
-              <button
-                onClick={() => {
-                  removeTooltip('consulting-services-reset-tooltip')
-                  store.setFutureValue(scenario, year, 'consultingServicesAgreement', projectionValue)
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  color: '#6b7280',
-                  padding: '2px 4px',
-                  borderRadius: 3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  opacity: 0.7,
-                  transition: 'opacity 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.opacity = '1'
-                  createTooltip('consulting-services-reset-tooltip', 'Reset to Annual Override Value', e)
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.opacity = '0.7'
-                  removeTooltip('consulting-services-reset-tooltip')
-                }}
-              >
-                ↺
-              </button>
-            ) : null
-          })()}
-        </div>
+      <div style={{ marginTop: 8, paddingTop: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>Consulting Services Agreement</div>
+        {(() => {
+          const projectionValue = sc.projection.consultingServicesAgreement ?? DEFAULT_CONSULTING_SERVICES_PROJECTION
+          const currentValue = fy.consultingServicesAgreement ?? projectionValue
+          const isChanged = Math.abs(currentValue - projectionValue) > UI_DEFAULTS.changeThreshold
+          return isChanged && !isReadOnly ? (
+            <button
+              onClick={() => {
+                removeTooltip('consulting-services-reset-tooltip')
+                store.setFutureValue(scenario, year, 'consultingServicesAgreement', projectionValue)
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 12,
+                color: '#6b7280',
+                padding: '2px 4px',
+                borderRadius: 3,
+                display: 'flex',
+                alignItems: 'center',
+                opacity: 0.7,
+                transition: 'opacity 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '1'
+                createTooltip('consulting-services-reset-tooltip', 'Reset to Annual Override Value', e)
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '0.7'
+                removeTooltip('consulting-services-reset-tooltip')
+              }}
+            >
+              ↺
+            </button>
+          ) : null
+        })()}
       </div>
       <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
@@ -512,6 +518,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           onClick={(e) => createTooltip('consulting-services-tooltip', 'Annual consulting services agreement income', e)}
         ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
       </div>
+      </div>
 
       {/* Total Combined Income */}
       <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(16, 185, 129, 0.15)' }}>
@@ -528,10 +535,11 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
         </div>
       </div>
       </div>
-      </div>
 
-      <div className="panel-red" style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="panel-red" style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 0, border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 5 }}>
         <div style={{ fontSize: 14, fontWeight: 600 }}>Non-Employment Costs</div>
         {(() => {
           const projectedValue = calculateProjectedValue(scenario, year, 'nonEmploymentCosts', store)
@@ -620,10 +628,11 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           onClick={(e) => createTooltip('nonemp-tooltip', 'Includes these non-employment categories:\n\nInsurance Cost\nState/Local Taxes\nCommunications Cost\nLicensure Costs\nPromotional Costs\nBilling Costs\nOffice Overhead\nCapital Expense', e)}
         ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
       </div>
+      <div style={{ height: 3 }}></div>
       </div>
 
-      <div className="panel-red" style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+      <div className="panel-red" style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 0, border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 5 }}>
         <div style={{ fontSize: 14, fontWeight: 600 }}>Staff Employment Costs</div>
         {(() => {
           const projectedValue = calculateProjectedValue(scenario, year, 'nonMdEmploymentCosts', store)
@@ -739,9 +748,11 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           <span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span>
         </div>
       </div>
+      <div style={{ height: 3 }}></div>
+      </div>
 
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2, marginTop: 8 }}>
+      <div className="panel-red" style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 0, border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 5 }}>
         <div style={{ fontSize: 14, fontWeight: 600 }}>Misc Employment Costs</div>
         {(() => {
           const projectedValue = calculateProjectedValue(scenario, year, 'miscEmploymentCosts', store)
@@ -857,6 +868,9 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
         >
           <span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span>
         </div>
+      </div>
+      <div style={{ height: 3 }}></div>
+      </div>
       </div>
       </div>
       </div>

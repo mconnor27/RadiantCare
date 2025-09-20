@@ -33,7 +33,13 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
     const isChanged = Math.abs(value - defaultValue) > UI_DEFAULTS.floatingPointTolerance
 
     const wrapperStyle = bare
-      ? { padding: 0, backgroundColor: 'transparent', borderRadius: 0, border: 'none', boxShadow: 'none' as any }
+      ? { 
+          padding: (field === 'nonMdEmploymentCostsPct' || field === 'benefitCostsGrowthPct') ? '0 0 0 4px' : 0, 
+          backgroundColor: 'transparent', 
+          borderRadius: 0, 
+          border: 'none', 
+          boxShadow: 'none' as any 
+        }
       : {
       padding: 8,
       backgroundColor: '#ffffff',
@@ -49,7 +55,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
     if (bare) {
       return (
         <div style={wrapperStyle}>
-          <div style={{ display: 'grid', gridTemplateColumns: `${isMobile ? '96px' : '50px'} 19px 1fr auto 24px`, alignItems: 'center', gap: 2 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `${isMobile ? '96px' : '50px'} 19px 1fr auto ${(field === 'nonMdEmploymentCostsPct' || field === 'benefitCostsGrowthPct') ? '12px' : '24px'}`, alignItems: 'center', gap: (field === 'nonMdEmploymentCostsPct' || field === 'benefitCostsGrowthPct') ? 0 : 2 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', justifyContent: 'flex-end' }}>
               <label style={{ fontSize: 13, fontWeight: 500 }}>{label}</label>
             </div>
@@ -104,6 +110,18 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
                 }}
                 className="growth-slider"
               />
+              {suffix === '%' && (
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: `${((0 - min) / (max - min)) * 100}%`,
+                  transform: 'translate(-50%, -50%)',
+                  width: '2px',
+                  height: '8px',
+                  backgroundColor: '#374151',
+                  pointerEvents: 'none'
+                }} />
+              )}
             </div>
 
             {isDollar ? (
@@ -195,7 +213,98 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
                 </div>
               </div>
             ) : (
-              <span style={{ fontSize: 14, color: '#666' }}>{suffix}</span>
+              // For bare sliders without info icons (like Staff Employment), show text input
+              // For bare sliders with info icons (like Medical Director), show just the suffix
+              (field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours') ? (
+                <span style={{ fontSize: 14, color: '#666' }}>{suffix}</span>
+              ) : (
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: isMobile ? 60 : 70, height: 21 }}>
+                  <input
+                    type="number"
+                    min={min}
+                    max={max}
+                    step={step}
+                    value={value}
+                    onChange={(e) => {
+                      store.setProjectionField(scenario, field, Number(e.target.value))
+                    }}
+                    style={{
+                      width: '100%',
+                      height: 21,
+                      padding: '2px 18px 2px 4px',
+                      border: '1px solid #ccc',
+                      borderRadius: 3,
+                      fontSize: 14
+                    }}
+                    readOnly={true}
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    right: 1,
+                    top: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: 19
+                  }}>
+                    <button
+                      onClick={() => {
+                        const newValue = Math.min(max, value + step)
+                        store.setProjectionField(scenario, field, newValue)
+                      }}
+                      style={{
+                        width: 16,
+                        height: 9.5,
+                        border: '1px solid #ccc',
+                        borderBottom: 'none',
+                        borderRadius: '2px 2px 0 0',
+                        background: '#f8f9fa',
+                        cursor: 'pointer',
+                        fontSize: 8,
+                        lineHeight: '8px',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      onMouseDown={(e) => e.preventDefault()}
+                      title="Increase value"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      onClick={() => {
+                        const newValue = Math.max(min, value - step)
+                        store.setProjectionField(scenario, field, newValue)
+                      }}
+                      style={{
+                        width: 16,
+                        height: 9.5,
+                        border: '1px solid #ccc',
+                        borderRadius: '0 0 2px 2px',
+                        background: '#f8f9fa',
+                        cursor: 'pointer',
+                        fontSize: 8,
+                        lineHeight: '8px',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      onMouseDown={(e) => e.preventDefault()}
+                      title="Decrease value"
+                    >
+                      ▼
+                    </button>
+                  </div>
+                </div>
+              )
+            )}
+
+            {/* Only show suffix for non-dollar, non-medical-director fields */}
+            {!isDollar && !(field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours') && (
+              <span style={{ fontSize: 14, color: '#666', minWidth: 12 }}>
+                {suffix}
+              </span>
             )}
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -509,22 +618,40 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
         </button>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 16 }}>
-        {createSlider('Therapy Income Growth', 'incomeGrowthPct', sc.projection.incomeGrowthPct ?? 3.7, -10, 20, 0.1, '%', false, 'income')}
+        {/* First Column - Income Panels */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {createSlider('Therapy Income Growth', 'incomeGrowthPct', sc.projection.incomeGrowthPct ?? 3.7, -10, 20, 0.1, '%', false, 'income')}
 
-        <div className={'panel-green'} style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)' }}>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Medical Director Hours (Annual Overrides)</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
-            {createSlider('Shared', 'medicalDirectorHours', sc.projection.medicalDirectorHours ?? PROJECTION_DEFAULTS[scenario].medicalDirectorHours, SLIDER_CONFIGS.medicalDirectorHours.min, SLIDER_CONFIGS.medicalDirectorHours.max, SLIDER_CONFIGS.medicalDirectorHours.step, '', true, 'income', 'Reset to Default', true)}
-            {createSlider('PRCS', 'prcsMedicalDirectorHours', sc.projection.prcsMedicalDirectorHours ?? PROJECTION_DEFAULTS[scenario].prcsMedicalDirectorHours, SLIDER_CONFIGS.prcsMedicalDirectorHours.min, SLIDER_CONFIGS.prcsMedicalDirectorHours.max, SLIDER_CONFIGS.prcsMedicalDirectorHours.step, '', true, 'income', 'Reset to Default', true)}
+          <div className={'panel-green'} style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)' }}>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2, textAlign: 'left' }}>Medical Director Hours (Annual Overrides)</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
+              {createSlider('Shared', 'medicalDirectorHours', sc.projection.medicalDirectorHours ?? PROJECTION_DEFAULTS[scenario].medicalDirectorHours, SLIDER_CONFIGS.medicalDirectorHours.min, SLIDER_CONFIGS.medicalDirectorHours.max, SLIDER_CONFIGS.medicalDirectorHours.step, '', true, 'income', 'Reset to Default', true)}
+              {createSlider('PRCS', 'prcsMedicalDirectorHours', sc.projection.prcsMedicalDirectorHours ?? PROJECTION_DEFAULTS[scenario].prcsMedicalDirectorHours, SLIDER_CONFIGS.prcsMedicalDirectorHours.min, SLIDER_CONFIGS.prcsMedicalDirectorHours.max, SLIDER_CONFIGS.prcsMedicalDirectorHours.step, '', true, 'income', 'Reset to Default', true)}
+            </div>
           </div>
+
+          {createSlider('Consulting Services Agreement (Annual Override)', 'consultingServicesAgreement', sc.projection.consultingServicesAgreement ?? PROJECTION_DEFAULTS[scenario].consultingServicesAgreement, SLIDER_CONFIGS.consultingServicesAgreement.min, SLIDER_CONFIGS.consultingServicesAgreement.max, SLIDER_CONFIGS.consultingServicesAgreement.step, '', true, 'income', 'Reset to Default')}
         </div>
 
-        {createSlider('Consulting Services Agreement (Annual Override)', 'consultingServicesAgreement', sc.projection.consultingServicesAgreement ?? PROJECTION_DEFAULTS[scenario].consultingServicesAgreement, SLIDER_CONFIGS.consultingServicesAgreement.min, SLIDER_CONFIGS.consultingServicesAgreement.max, SLIDER_CONFIGS.consultingServicesAgreement.step, '', true, 'income', 'Reset to Default')}
-        {createSlider('Non-Employment Costs Growth', 'nonEmploymentCostsPct', sc.projection.nonEmploymentCostsPct ?? 7.8, -10, 20, 0.1, '%', false, 'cost')}
-        {createSlider('Staff Employment Costs Growth', 'nonMdEmploymentCostsPct', sc.projection.nonMdEmploymentCostsPct ?? 6.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Default')}
+        {/* Second Column - Cost Panels */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {createSlider('Non-Employment Costs Growth', 'nonEmploymentCostsPct', sc.projection.nonEmploymentCostsPct ?? 7.8, -10, 20, 0.1, '%', false, 'cost')}
+
+          <div className={'panel-red'} style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)' }}>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2, textAlign: 'left' }}>Staff Employment Costs Growth</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
+              {createSlider('Salary', 'nonMdEmploymentCostsPct', sc.projection.nonMdEmploymentCostsPct ?? 6.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Default', true)}
+              {createSlider('Benefits', 'benefitCostsGrowthPct', sc.projection.benefitCostsGrowthPct ?? 5.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Default', true)}
+            </div>
+          </div>
+
+          {createSlider('Misc Employment Costs Growth', 'miscEmploymentCostsPct', sc.projection.miscEmploymentCostsPct ?? 6.7, -10, 20, 0.1, '%', false, 'cost')}
+        </div>
+      </div>
+
+      {/* Locums Panel - Full Width */}
+      <div style={{ marginTop: 16 }}>
         {createSlider('Locums Costs (Annual Override)', 'locumsCosts', sc.projection.locumsCosts ?? PROJECTION_DEFAULTS[scenario].locumsCosts, SLIDER_CONFIGS.locumsCosts.min, SLIDER_CONFIGS.locumsCosts.max, SLIDER_CONFIGS.locumsCosts.step, '', true, 'cost', 'Reset to Default')}
-        {createSlider('Benefit Costs Growth', 'benefitCostsGrowthPct', sc.projection.benefitCostsGrowthPct ?? 5.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Default')}
-        {createSlider('Misc Employment Costs Growth', 'miscEmploymentCostsPct', sc.projection.miscEmploymentCostsPct ?? 6.7, -10, 20, 0.1, '%', false, 'cost')}
       </div>
     </div>
   )
