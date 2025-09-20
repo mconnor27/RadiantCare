@@ -519,13 +519,12 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
           </div>
         </div>
 
+        {createSlider('Consulting Services Agreement (Annual Override)', 'consultingServicesAgreement', sc.projection.consultingServicesAgreement ?? PROJECTION_DEFAULTS[scenario].consultingServicesAgreement, SLIDER_CONFIGS.consultingServicesAgreement.min, SLIDER_CONFIGS.consultingServicesAgreement.max, SLIDER_CONFIGS.consultingServicesAgreement.step, '', true, 'income', 'Reset to Default')}
         {createSlider('Non-Employment Costs Growth', 'nonEmploymentCostsPct', sc.projection.nonEmploymentCostsPct ?? 7.8, -10, 20, 0.1, '%', false, 'cost')}
         {createSlider('Staff Employment Costs Growth', 'nonMdEmploymentCostsPct', sc.projection.nonMdEmploymentCostsPct ?? 6.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Default')}
+        {createSlider('Locums Costs (Annual Override)', 'locumsCosts', sc.projection.locumsCosts ?? PROJECTION_DEFAULTS[scenario].locumsCosts, SLIDER_CONFIGS.locumsCosts.min, SLIDER_CONFIGS.locumsCosts.max, SLIDER_CONFIGS.locumsCosts.step, '', true, 'cost', 'Reset to Default')}
         {createSlider('Benefit Costs Growth', 'benefitCostsGrowthPct', sc.projection.benefitCostsGrowthPct ?? 5.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Default')}
         {createSlider('Misc Employment Costs Growth', 'miscEmploymentCostsPct', sc.projection.miscEmploymentCostsPct ?? 6.7, -10, 20, 0.1, '%', false, 'cost')}
-        <div style={{ gridColumn: isMobile ? '1' : '1 / -1' }}>
-        {createSlider('Locums Costs (Annual Override)', 'locumsCosts', sc.projection.locumsCosts ?? PROJECTION_DEFAULTS[scenario].locumsCosts, SLIDER_CONFIGS.locumsCosts.min, SLIDER_CONFIGS.locumsCosts.max, SLIDER_CONFIGS.locumsCosts.step, '', true, 'cost', 'Reset to Default')}
-        </div>
       </div>
     </div>
   )

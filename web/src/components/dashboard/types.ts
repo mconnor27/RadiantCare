@@ -47,6 +47,7 @@ export type FutureYear = {
   miscEmploymentCosts: number
   medicalDirectorHours?: number
   prcsMedicalDirectorHours?: number
+  consultingServicesAgreement?: number // Consulting Services Agreement annual amount (overrides projection)
   prcsDirectorPhysicianId?: string
   physicians: Physician[]
 }
@@ -55,6 +56,7 @@ export type Projection = {
   incomeGrowthPct: number // Total income growth percentage
   medicalDirectorHours: number // Medical Director Hours annual amount (0-250K)
   prcsMedicalDirectorHours: number // PRCS Medical Director Hours annual amount (0-90K)
+  consultingServicesAgreement: number // Consulting Services Agreement annual amount (0-20K)
   nonEmploymentCostsPct: number // Non-Employment Costs growth percentage
   nonMdEmploymentCostsPct: number // Staff Employment Costs growth percentage
   locumsCosts: number // Locums costs in dollars (global override)
@@ -80,7 +82,7 @@ export type Store = {
   setFutureValue: (
     scenario: ScenarioKey,
     year: number,
-    field: 'therapyIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'locumCosts' | 'miscEmploymentCosts' | 'medicalDirectorHours' | 'prcsMedicalDirectorHours',
+    field: 'therapyIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'locumCosts' | 'miscEmploymentCosts' | 'medicalDirectorHours' | 'prcsMedicalDirectorHours' | 'consultingServicesAgreement',
     value: number
   ) => void
   upsertPhysician: (scenario: ScenarioKey, year: number, physician: Physician) => void

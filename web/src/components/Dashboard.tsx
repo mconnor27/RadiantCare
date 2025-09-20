@@ -50,6 +50,7 @@ export const useDashboardStore = create<Store>()(
             incomeGrowthPct: 3.7, 
             medicalDirectorHours: 110000,
             prcsMedicalDirectorHours: 60000,
+            consultingServicesAgreement: 17030,
             nonEmploymentCostsPct: 7.8, 
             nonMdEmploymentCostsPct: 6.0, 
             locumsCosts: 120000, 
@@ -72,6 +73,7 @@ export const useDashboardStore = create<Store>()(
                   incomeGrowthPct: 3.7, 
                   medicalDirectorHours: 110000,
                   prcsMedicalDirectorHours: 60000,
+                  consultingServicesAgreement: 17030,
                   nonEmploymentCostsPct: 7.8, 
                   nonMdEmploymentCostsPct: 6.0, 
                   locumsCosts: 0, 
@@ -395,9 +397,11 @@ export const useDashboardStore = create<Store>()(
             if (!sc) return
             
             // Apply appropriate limits based on field type
-            if (field === 'locumsCosts' || field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours') {
-              // Dollar amount fields should use reasonable range (0 to 1M for locums, 0 to 120K for medical director amounts)
-              const maxValue = field === 'medicalDirectorHours' ? 120000 : (field === 'prcsMedicalDirectorHours' ? 120000 : 1000000)
+            if (field === 'locumsCosts' || field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours' || field === 'consultingServicesAgreement') {
+              // Dollar amount fields should use reasonable range
+              const maxValue = field === 'medicalDirectorHours' ? 120000 : 
+                               field === 'prcsMedicalDirectorHours' ? 120000 :
+                               field === 'consultingServicesAgreement' ? 20000 : 1000000
               sc.projection[field] = Math.max(0, Math.min(maxValue, value))
             } else {
               // Percentage fields should be limited to reasonable range (-10% to +20%)
@@ -406,9 +410,9 @@ export const useDashboardStore = create<Store>()(
               sc.projection[field] = Math.round(clamped * 10) / 10
             }
             
-            // When changing Medical Director override sliders, force-sync the per-year values so
+            // When changing override sliders, force-sync the per-year values so
             // the yearly sliders necessarily move with the projection override.
-            if (field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours') {
+            if (field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours' || field === 'consultingServicesAgreement') {
               for (const fy of sc.future) {
                 ;(fy as any)[field] = sc.projection[field]
               }
@@ -491,6 +495,9 @@ export const useDashboardStore = create<Store>()(
               fy.nonMdEmploymentCosts = nonMdEmploymentCosts
               fy.miscEmploymentCosts = miscEmploymentCosts
               fy.locumCosts = fy.year === 2026 ? 60000 : sc.projection.locumsCosts
+              
+              // Set consulting services agreement from the global override
+              fy.consultingServicesAgreement = sc.projection.consultingServicesAgreement
             }
           }),
         applyProjectionFromLastActual: (scenario) =>
@@ -576,6 +583,9 @@ export const useDashboardStore = create<Store>()(
               
               // Set locums costs from the global override (except 2026 which defaults to 60K)
               fy.locumCosts = fy.year === 2026 ? 60000 : sc.projection.locumsCosts
+              
+              // Set consulting services agreement from the global override
+              fy.consultingServicesAgreement = sc.projection.consultingServicesAgreement
             }
 
             // Do not modify PRCS Director assignment during projection recalculation
@@ -631,6 +641,7 @@ export const useDashboardStore = create<Store>()(
                   miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                   medicalDirectorHours: 119373.75, // 2025 shared medical director amount
                   prcsMedicalDirectorHours: 37792.5, // 2025 PRCS medical director amount (JS)
+                  consultingServicesAgreement: 16200.00, // 2025 consulting services amount
                   prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
                   physicians,
                 }
@@ -696,6 +707,7 @@ export const useDashboardStore = create<Store>()(
               incomeGrowthPct: 3.7, 
               medicalDirectorHours: 110000,
               prcsMedicalDirectorHours: 60000,
+              consultingServicesAgreement: 17030,
               nonEmploymentCostsPct: 7.8, 
               nonMdEmploymentCostsPct: 6.0, 
               locumsCosts: 120000, 
@@ -737,6 +749,7 @@ export const useDashboardStore = create<Store>()(
                 incomeGrowthPct: 3.7, 
                 medicalDirectorHours: 110000,
                 prcsMedicalDirectorHours: 60000,
+                consultingServicesAgreement: 17030,
                 nonEmploymentCostsPct: 7.8, 
                 nonMdEmploymentCostsPct: 6.0, 
                 locumsCosts: 120000, 
@@ -801,6 +814,7 @@ export function usePartnerComp(year: number, scenario: ScenarioKey) {
           return {
             medicalDirectorHours: 102870,
             prcsMedicalDirectorHours: 25805,
+            consultingServicesAgreement: 15693.40, // 2024 consulting services amount
             prcsDirectorPhysicianId: js?.id,
             physicians,
           }
@@ -810,6 +824,7 @@ export function usePartnerComp(year: number, scenario: ScenarioKey) {
           return {
             medicalDirectorHours: 119373.75,
             prcsMedicalDirectorHours: 37792.5,
+            consultingServicesAgreement: 16200.00, // 2025 consulting services amount
             prcsDirectorPhysicianId: js?.id,
             physicians,
           }
@@ -819,6 +834,7 @@ export function usePartnerComp(year: number, scenario: ScenarioKey) {
           return {
             medicalDirectorHours: 119373.75,
             prcsMedicalDirectorHours: 37792.5,
+            consultingServicesAgreement: 16200.00, // 2025 consulting services amount (fallback)
             prcsDirectorPhysicianId: js?.id,
             physicians,
           }
@@ -1064,6 +1080,7 @@ export function computeAllCompensationsForYear(year: number, scenario: ScenarioK
         miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
         medicalDirectorHours: 119373.75, // 2025 shared medical director amount
         prcsMedicalDirectorHours: 37792.5, // 2025 PRCS medical director amount (JS)
+        consultingServicesAgreement: 16200.00, // 2025 consulting services amount
         prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
         physicians,
       }
@@ -1220,6 +1237,7 @@ export function computeAllCompensationsForYearWithRetired(year: number, scenario
         miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
         medicalDirectorHours: 119373.75, // 2025 shared medical director amount
         prcsMedicalDirectorHours: 37792.5, // 2025 PRCS medical director amount (JS)
+        consultingServicesAgreement: 16200.00, // 2025 consulting services amount
         prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
         physicians,
       }

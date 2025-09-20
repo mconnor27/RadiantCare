@@ -22,6 +22,14 @@ const HISTORIC_DATA: YearRow[] = [
 // Default employment costs
 export const DEFAULT_MISC_EMPLOYMENT_COSTS = 29115.51
 
+// Default consulting services agreement values
+export const DEFAULT_CONSULTING_SERVICES_2024 = 15693.40
+export const DEFAULT_CONSULTING_SERVICES_2025 = 16200.00
+
+// Actual consulting services agreement values (for baseline years)
+export const ACTUAL_2024_CONSULTING_SERVICES = 15693.40
+export const ACTUAL_2025_CONSULTING_SERVICES = 16200.00
+
 // Benefits constants (moved from calculations.ts)
 export const MONTHLY_BENEFITS_MED = 796.37
 export const MONTHLY_BENEFITS_DENTAL = 57.12
@@ -113,6 +121,7 @@ export const PROJECTION_DEFAULTS = {
     benefitCostsGrowthPct: 5.0,
     medicalDirectorHours: 110000,
     prcsMedicalDirectorHours: 60000,
+    consultingServicesAgreement: 17030,
     locumsCosts: 120000,
   },
   B: {
@@ -123,6 +132,7 @@ export const PROJECTION_DEFAULTS = {
     benefitCostsGrowthPct: 5.0,
     medicalDirectorHours: 110000,
     prcsMedicalDirectorHours: 60000,
+    consultingServicesAgreement: 17030,
     locumsCosts: 0, // Scenario B default: $0 locums (except 2026 handled elsewhere)
   }
 }
@@ -131,6 +141,7 @@ export const PROJECTION_DEFAULTS = {
 export const SLIDER_CONFIGS = {
   medicalDirectorHours: { min: 0, max: 120000, step: 1000 },
   prcsMedicalDirectorHours: { min: 0, max: 120000, step: 1000 },
+  consultingServicesAgreement: { min: 0, max: 20000, step: 100 },
   locumsCosts: { min: 0, max: 500000, step: 1000 }
 }
 
@@ -390,6 +401,7 @@ export const INITIAL_FUTURE_YEARS_A: FutureYear[] = FUTURE_YEARS_BASE.map((b) =>
   const js = physicians.find((p) => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
   return {
     ...b,
+    consultingServicesAgreement: b.year === 2025 ? DEFAULT_CONSULTING_SERVICES_2025 : 17030,
     physicians,
     prcsDirectorPhysicianId: b.year >= 2024 && js ? js.id : undefined,
   }
@@ -400,6 +412,7 @@ export const INITIAL_FUTURE_YEARS_B: FutureYear[] = FUTURE_YEARS_BASE.map((b) =>
   const js = physicians.find((p) => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
   return {
     ...b,
+    consultingServicesAgreement: b.year === 2025 ? DEFAULT_CONSULTING_SERVICES_2025 : 17030,
     // Scenario B default: $0 locums except $60k in 2026
     locumCosts: b.year === 2026 ? 60000 : 0,
     physicians,

@@ -324,15 +324,19 @@ export function getTotalIncome(yearData: YearRow | FutureYear): number {
     // Historic year - estimate medical director income based on defaults
     const defaultMedicalDirectorIncome = 119373.75 // Default shared MD income
     const defaultPrcsMedicalDirectorIncome = 60000 // Default PRCS MD income
-    return therapyIncome + defaultMedicalDirectorIncome + defaultPrcsMedicalDirectorIncome
+    // Add consulting services agreement based on year
+    const consultingServicesIncome = yearData.year === 2024 ? 15693.40 : 
+                                   yearData.year === 2025 ? 16200.00 : 17030
+    return therapyIncome + defaultMedicalDirectorIncome + defaultPrcsMedicalDirectorIncome + consultingServicesIncome
   }
   
   // For future years, calculate from stored values
   const futureYear = yearData as FutureYear
   const medicalDirectorIncome = futureYear.medicalDirectorHours ?? 110000
   const prcsMedicalDirectorIncome = futureYear.prcsDirectorPhysicianId ? (futureYear.prcsMedicalDirectorHours ?? 60000) : 0
+  const consultingServicesIncome = futureYear.consultingServicesAgreement ?? 17030
   
-  return therapyIncome + medicalDirectorIncome + prcsMedicalDirectorIncome
+  return therapyIncome + medicalDirectorIncome + prcsMedicalDirectorIncome + consultingServicesIncome
 }
 
 // Helper function to calculate even medical director hour percentages among partners

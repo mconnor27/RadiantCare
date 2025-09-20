@@ -117,6 +117,7 @@ export default function ParametersSummary() {
         miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
         medicalDirectorHours: 119373.75, // 2025 shared medical director amount
         prcsMedicalDirectorHours: 37792.5, // 2025 PRCS medical director amount (JS)
+        consultingServicesAgreement: 16200.00, // 2025 consulting services amount
         prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
         physicians,
         } as FutureYear

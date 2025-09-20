@@ -17,8 +17,10 @@ import {
   ACTUAL_2024_MISC_EMPLOYMENT_COSTS,
   ACTUAL_2024_MEDICAL_DIRECTOR_HOURS,
   ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS,
+  ACTUAL_2024_CONSULTING_SERVICES,
   ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
   ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
+  ACTUAL_2025_CONSULTING_SERVICES,
   UI_DEFAULTS
 } from './defaults'
 import type { ScenarioKey, FutureYear } from './types'
@@ -66,6 +68,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
             miscEmploymentCosts: ACTUAL_2024_MISC_EMPLOYMENT_COSTS, // 2024 actual misc employment from image
             medicalDirectorHours: ACTUAL_2024_MEDICAL_DIRECTOR_HOURS, // 2024 shared medical director amount
             prcsMedicalDirectorHours: ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS, // 2024 PRCS medical director amount (JS)
+            consultingServicesAgreement: ACTUAL_2024_CONSULTING_SERVICES, // 2024 consulting services amount
             prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
             physicians,
           } as FutureYear
@@ -81,6 +84,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
             miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
             medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS, // 2025 shared medical director amount
             prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, // 2025 PRCS medical director amount (JS)
+            consultingServicesAgreement: ACTUAL_2025_CONSULTING_SERVICES, // 2025 consulting services amount
             prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
             physicians,
           } as FutureYear
@@ -95,6 +99,9 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
             nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
             locumCosts: DEFAULT_LOCUM_COSTS_2025,
             miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+            medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS, // 2025 shared medical director amount
+            prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, // 2025 PRCS medical director amount (JS)
+            consultingServicesAgreement: ACTUAL_2025_CONSULTING_SERVICES, // 2025 consulting services amount
             prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
             physicians,
           } as FutureYear
@@ -419,6 +426,89 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
         ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
       </div>
 
+      {/* Consulting Services Agreement Section */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4, marginBottom: 2 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', lineHeight: '19px', height: 19, display: 'inline-flex', alignItems: 'center' }}>Consulting Services Agreement</div>
+        <div style={{ width: 20, display: 'inline-flex', justifyContent: 'center' }}>
+          {(() => {
+            const projectionValue = sc.projection.consultingServicesAgreement ?? 17030
+            const currentValue = fy.consultingServicesAgreement ?? projectionValue
+            const isChanged = Math.abs(currentValue - projectionValue) > UI_DEFAULTS.changeThreshold
+            return isChanged && !isReadOnly ? (
+              <button
+                onClick={() => {
+                  removeTooltip('consulting-services-reset-tooltip')
+                  store.setFutureValue(scenario, year, 'consultingServicesAgreement', projectionValue)
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  color: '#6b7280',
+                  padding: '2px 4px',
+                  borderRadius: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  opacity: 0.7,
+                  transition: 'opacity 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '1'
+                  createTooltip('consulting-services-reset-tooltip', 'Reset to Annual Override Value', e)
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '0.7'
+                  removeTooltip('consulting-services-reset-tooltip')
+                }}
+              >
+                ↺
+              </button>
+            ) : null
+          })()}
+        </div>
+      </div>
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+        <input
+          type="range"
+          min={0}
+          max={20000}
+          step={100}
+          value={fy.consultingServicesAgreement ?? sc.projection.consultingServicesAgreement ?? 17030}
+          onChange={(e) =>
+            store.setFutureValue(scenario, year, 'consultingServicesAgreement', Number(e.target.value))
+          }
+          disabled={isReadOnly}
+          style={{
+            width: '100%',
+            ['--fill-percent' as any]: `${((fy.consultingServicesAgreement ?? sc.projection.consultingServicesAgreement ?? 17030) / 20000) * 100}%`
+          }}
+        />
+        <input
+          type="text"
+          value={currency(Math.round(fy.consultingServicesAgreement ?? sc.projection.consultingServicesAgreement ?? 17030))}
+          onChange={(e) =>
+            store.setFutureValue(scenario, year, 'consultingServicesAgreement', Number(e.target.value.replace(/[^0-9]/g, '')))
+          }
+          disabled={isReadOnly}
+          style={{
+            width: isMobile ? 100 : 100,
+            height: 20,
+            padding: '2px 8px',
+            border: '1px solid #ccc',
+            borderRadius: 3,
+            fontSize: 12,
+            justifySelf: isMobile ? 'end' : undefined
+          }}
+        />
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+          onMouseEnter={(e) => createTooltip('consulting-services-tooltip', 'Annual consulting services agreement income', e)}
+          onMouseLeave={() => removeTooltip('consulting-services-tooltip')}
+          onTouchStart={(e) => createTooltip('consulting-services-tooltip', 'Annual consulting services agreement income', e)}
+          onClick={(e) => createTooltip('consulting-services-tooltip', 'Annual consulting services agreement income', e)}
+        ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+      </div>
+
       {/* Total Combined Income */}
       <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(16, 185, 129, 0.15)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, fontSize: 13, color: '#374151', paddingRight: 48 }}>
@@ -428,7 +518,8 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
               + (fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback)
               + (((fy.prcsDirectorPhysicianId ?? (year >= 2024 ? (fy.physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))?.id) : undefined))
                   ? (fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback)
-                  : 0))))}
+                  : 0))
+              + (fy.consultingServicesAgreement ?? sc.projection.consultingServicesAgreement ?? 17030)))}
           </span>
         </div>
       </div>
