@@ -2,10 +2,7 @@ import { useState } from 'react'
 import Plot from 'react-plotly.js'
 import { useDashboardStore } from '../Dashboard'
 import { useIsMobile } from './hooks'
-import {
-  computeAllCompensationsForYearWithRetired
-} from './calculations'
-import { computeAllCompensationsForYear } from '../Dashboard'
+import { computeAllCompensationsForYear, computeAllCompensationsForYearWithRetired } from '../Dashboard'
 import { currency, currencyOrDash } from './utils'
 
 export default function OverallCompensationSummary() {

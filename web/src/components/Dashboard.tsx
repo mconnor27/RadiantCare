@@ -20,7 +20,10 @@ import {
   computeDefaultNonMdEmploymentCosts,
   calculateEmployeeTotalCost,
   calculateDelayedW2Payment,
-  calculateMedicalDirectorHourPercentages
+  calculateMedicalDirectorHourPercentages,
+  getEmployeePortionOfYear,
+  getPartnerPortionOfYear,
+  getPartnerFTEWeight
 } from './dashboard/calculations'
 import {
   HISTORIC_DATA,
@@ -777,40 +780,6 @@ setTimeout(() => {
   if (store.scenarioB) store.applyProjectionFromLastActual('B')
 }, 0)
 
-// Mixed type helpers
-function getEmployeePortionOfYear(physician: Physician): number {
-  if (physician.type === 'employee') return 1
-  if (physician.type === 'partner') return 0
-  if (physician.type === 'newEmployee') {
-    // New employees work from their start date to end of year
-    const startPortion = physician.startPortionOfYear ?? 0
-    return 1 - startPortion
-  }
-  if (physician.type === 'employeeToTerminate') {
-    // Terminating employees work from beginning of year to termination date
-    const terminatePortion = physician.terminatePortionOfYear ?? 1
-    return terminatePortion
-  }
-  const val = physician.employeePortionOfYear ?? 0.5
-  return clamp(val, 0, 1)
-}
-
-function getPartnerPortionOfYear(physician: Physician): number {
-  if (physician.type === 'employee') return 0
-  if (physician.type === 'newEmployee') return 0
-  if (physician.type === 'employeeToTerminate') return 0
-  if (physician.type === 'partner') return 1
-  if (physician.type === 'employeeToPartner') return 1 - getEmployeePortionOfYear(physician)
-  if (physician.type === 'partnerToRetire') return physician.partnerPortionOfYear ?? 0.5
-  return 0
-}
-
-function getPartnerFTEWeight(physician: Physician): number {
-  // Allow up to 24 weeks for historical data compatibility
-  const weeks = clamp(physician.weeksVacation ?? 0, 0, 24)
-  const baseFte = 1 - weeks / 52
-  return baseFte * getPartnerPortionOfYear(physician)
-}
 
 export function usePartnerComp(year: number, scenario: ScenarioKey) {
   const store = useDashboardStore()
@@ -1227,6 +1196,143 @@ export function computeAllCompensationsForYear(year: number, scenario: ScenarioK
     results.push({ id: e.id, name: e.name, type: 'employee', comp })
   }
   return results
+}
+
+export function computeAllCompensationsForYearWithRetired(year: number, scenario: ScenarioKey) {
+  const regularComps = computeAllCompensationsForYear(year, scenario)
+  const state = useDashboardStore.getState()
+  const sc = scenario === 'A' ? state.scenarioA : state.scenarioB!
+  let fy = sc.future.find((f) => f.year === year) as FutureYear | undefined
+  
+  if (!fy && year === 2025) {
+    const last2025 = state.historic.find((h) => h.year === 2025)
+    // For the multi-year compensation summary, 2025 should always show 2025 actual values
+    // regardless of the baseline data mode selection
+    if (last2025) {
+      const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
+      const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+      fy = {
+        year: 2025,
+        therapyIncome: last2025.therapyIncome,
+        nonEmploymentCosts: last2025.nonEmploymentCosts,
+        nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+        locumCosts: 54600,
+        miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+        medicalDirectorHours: 119373.75, // 2025 shared medical director amount
+        prcsMedicalDirectorHours: 37792.5, // 2025 PRCS medical director amount (JS)
+        prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
+        physicians,
+      }
+    }
+  }
+  
+  if (!fy) return regularComps
+
+  // Add any retired partners that were excluded
+  const retiredPartners = fy.physicians.filter(p => p.type === 'partnerToRetire' && getPartnerFTEWeight(p) === 0)
+  const retiredComps = retiredPartners.map(p => ({
+    id: p.id,
+    name: p.name,
+    type: 'partner' as const,
+    comp: p.buyoutCost ?? 0 // Show buyout amount as their compensation
+  }))
+
+  return [...regularComps, ...retiredComps]
+}
+
+// Helper function to calculate Net Income for MDs (total partner compensation + locums costs)
+export function calculateNetIncomeForMDs(year: number, scenario: ScenarioKey): number {
+  // Get all compensations including retired partners
+  const allComps = computeAllCompensationsForYearWithRetired(year, scenario)
+  const totalComp = allComps.reduce((sum, c) => sum + c.comp, 0)
+  
+  // Get locums costs for the year (matching the table logic exactly)
+  const store = useDashboardStore.getState()
+  const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
+  const fy = sc.future.find(f => f.year === year)
+  const locumCost = year === 2025 
+    ? 54600 // 2025 default
+    : (fy?.locumCosts ?? 0)
+  
+  return totalComp + locumCost
+}
+
+// Calculate projected values based on scenario settings
+export function calculateProjectedValue(
+  scenario: ScenarioKey,
+  year: number,
+  field: 'therapyIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'miscEmploymentCosts',
+  store: any
+): number {
+  const sc = scenario === 'A' ? store.scenarioA : store.scenarioB
+  if (!sc || year === 2025) return 0 // No projections for baseline year
+
+  // Get baseline data based on data mode
+  let baselineData
+  if (sc.dataMode === 'Custom') {
+    const customBaseline = sc.baseline?.find((b: any) => b.year === 2025)
+    if (customBaseline) {
+      baselineData = {
+        therapyIncome: customBaseline.therapyIncome,
+        nonEmploymentCosts: customBaseline.nonEmploymentCosts,
+        miscEmploymentCosts: customBaseline.miscEmploymentCosts,
+        nonMdEmploymentCosts: customBaseline.nonMdEmploymentCosts,
+      }
+    } else {
+      const last2025 = store.historic.find((h: any) => h.year === 2025)
+      baselineData = {
+        therapyIncome: last2025?.therapyIncome || 3344068.19,
+        nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
+        miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+        nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+      }
+    }
+  } else if (sc.dataMode === '2024 Data') {
+    const last2024 = store.historic.find((h: any) => h.year === 2024)!
+    baselineData = {
+      therapyIncome: last2024.therapyIncome,
+      nonEmploymentCosts: last2024.nonEmploymentCosts,
+      miscEmploymentCosts: 24623.49,
+      nonMdEmploymentCosts: 164677.44,
+    }
+  } else if (sc.dataMode === '2025 Data') {
+    const last2025 = store.historic.find((h: any) => h.year === 2025)!
+    baselineData = {
+      therapyIncome: last2025.therapyIncome,
+      nonEmploymentCosts: last2025.nonEmploymentCosts,
+      miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+      nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+    }
+  } else {
+    baselineData = {
+      therapyIncome: 3344068.19,
+      nonEmploymentCosts: 229713.57,
+      miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+      nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+    }
+  }
+
+  // Convert percentage growth rates to decimal multipliers
+  const incomeGpct = sc.projection.incomeGrowthPct / 100
+  const nonEmploymentGpct = sc.projection.nonEmploymentCostsPct / 100
+  const nonMdEmploymentGpct = sc.projection.nonMdEmploymentCostsPct / 100
+  const miscEmploymentGpct = sc.projection.miscEmploymentCostsPct / 100
+
+  // Calculate projected value for the specific year
+  let value = baselineData[field]
+  const yearsSinceBaseline = year - 2025
+
+  if (field === 'therapyIncome') {
+    value = value * Math.pow(1 + incomeGpct, yearsSinceBaseline)
+  } else if (field === 'nonEmploymentCosts') {
+    value = value * Math.pow(1 + nonEmploymentGpct, yearsSinceBaseline)
+  } else if (field === 'nonMdEmploymentCosts') {
+    value = value * Math.pow(1 + nonMdEmploymentGpct, yearsSinceBaseline)
+  } else if (field === 'miscEmploymentCosts') {
+    value = value * Math.pow(1 + miscEmploymentGpct, yearsSinceBaseline)
+  }
+
+  return value
 }
 
 export function Dashboard() {

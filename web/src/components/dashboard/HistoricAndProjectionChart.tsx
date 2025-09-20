@@ -3,7 +3,8 @@ import { useDashboardStore } from '../Dashboard'
 import { NET_PARTNER_POOL_2025 } from './defaults'
 import { getTotalIncome } from './calculations'
 import { useIsMobile } from './hooks'
-import { getEmployeePortionOfYear, calculateDelayedW2Payment, computeDefaultNonMdEmploymentCosts, calculateNetIncomeForMDs } from './calculations'
+import { getEmployeePortionOfYear, calculateDelayedW2Payment, computeDefaultNonMdEmploymentCosts } from './calculations'
+import { calculateNetIncomeForMDs } from '../Dashboard'
 import { DEFAULT_MISC_EMPLOYMENT_COSTS } from './defaults'
 
 export default function HistoricAndProjectionChart() {

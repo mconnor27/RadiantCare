@@ -1,7 +1,7 @@
 import { Fragment } from 'react'
-import { useDashboardStore, usePartnerComp } from '../Dashboard'
+import { useDashboardStore, usePartnerComp, calculateProjectedValue } from '../Dashboard'
 import { useIsMobile } from './hooks'
-import { calculateDelayedW2Payment, calculateProjectedValue, computeDefaultNonMdEmploymentCosts } from './calculations'
+import { calculateDelayedW2Payment, computeDefaultNonMdEmploymentCosts } from './calculations'
 import { createTooltip, removeTooltip } from './tooltips'
 import { currency } from './utils'
 import {
