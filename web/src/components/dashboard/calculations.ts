@@ -1,4 +1,4 @@
-import type { Physician, ScenarioKey } from './types'
+import type { Physician, ScenarioKey, FutureYear } from './types'
 import {
   clamp,
   daysInYear,
@@ -14,8 +14,11 @@ import {
   MONTHLY_BENEFITS_VISION,
   ANNUAL_BENEFITS_FULLTIME,
   SOCIAL_SECURITY_WAGE_BASES,
-  TAX_RATES
+  TAX_RATES,
+  scenarioADefaultsByYear,
+  scenarioBDefaultsByYear
 } from './defaults'
+import { useDashboardStore, computeAllCompensationsForYear } from '../Dashboard'
 
 export function getSocialSecurityWageBase(year: number): number {
   return SOCIAL_SECURITY_WAGE_BASES[year as keyof typeof SOCIAL_SECURITY_WAGE_BASES] || SOCIAL_SECURITY_WAGE_BASES[2030] // Use 2030 as fallback for later years
@@ -385,4 +388,64 @@ export function calculateProjectedValue(
   }
 
   return value
+}
+
+// Helper function to compute compensations including retired partners (for tables and charts)
+export function computeAllCompensationsForYearWithRetired(year: number, scenario: ScenarioKey) {
+  const regularComps = computeAllCompensationsForYear(year, scenario)
+  const state = useDashboardStore.getState()
+  const sc = scenario === 'A' ? state.scenarioA : state.scenarioB!
+  let fy = sc.future.find((f) => f.year === year) as FutureYear | undefined
+  
+  if (!fy && year === 2025) {
+    const last2025 = state.historic.find((h) => h.year === 2025)
+    // For the multi-year compensation summary, 2025 should always show 2025 actual values
+    // regardless of the baseline data mode selection
+    if (last2025) {
+      const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
+      const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+      fy = {
+        year: 2025,
+        therapyIncome: last2025.therapyIncome,
+        nonEmploymentCosts: last2025.nonEmploymentCosts,
+        nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+        locumCosts: 54600,
+        miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+        medicalDirectorHours: 119373.75, // 2025 shared medical director amount
+        prcsMedicalDirectorHours: 37792.5, // 2025 PRCS medical director amount (JS)
+        prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
+        physicians,
+      }
+    }
+  }
+  
+  if (!fy) return regularComps
+
+  // Add any retired partners that were excluded
+  const retiredPartners = fy.physicians.filter(p => p.type === 'partnerToRetire' && getPartnerFTEWeight(p) === 0)
+  const retiredComps = retiredPartners.map(p => ({
+    id: p.id,
+    name: p.name,
+    type: 'partner' as const,
+    comp: p.buyoutCost ?? 0 // Show buyout amount as their compensation
+  }))
+
+  return [...regularComps, ...retiredComps]
+}
+
+// Helper function to calculate Net Income for MDs (total partner compensation + locums costs)
+export function calculateNetIncomeForMDs(year: number, scenario: ScenarioKey): number {
+  // Get all compensations including retired partners
+  const allComps = computeAllCompensationsForYearWithRetired(year, scenario)
+  const totalComp = allComps.reduce((sum, c) => sum + c.comp, 0)
+  
+  // Get locums costs for the year (matching the table logic exactly)
+  const store = useDashboardStore.getState()
+  const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
+  const fy = sc.future.find(f => f.year === year)
+  const locumCost = year === 2025 
+    ? 54600 // 2025 default
+    : (fy?.locumCosts ?? 0)
+  
+  return totalComp + locumCost
 }

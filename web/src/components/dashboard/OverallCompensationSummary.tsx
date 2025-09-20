@@ -5,7 +5,8 @@ import { useDashboardStore } from '../Dashboard'
 import { useIsMobile } from './hooks'
 import {
   getPartnerFTEWeight,
-  computeDefaultNonMdEmploymentCosts
+  computeDefaultNonMdEmploymentCosts,
+  computeAllCompensationsForYearWithRetired
 } from './calculations'
 import { scenarioADefaultsByYear, scenarioBDefaultsByYear, DEFAULT_MISC_EMPLOYMENT_COSTS } from './defaults'
 import { computeAllCompensationsForYear } from '../Dashboard'
@@ -22,47 +23,7 @@ export default function OverallCompensationSummary() {
   // const totalPerYear = perYear.map(({ year, comps }) => ({ year, total: comps.reduce((s, c) => s + c.comp, 0) }))
 
   // For the "Per Physician By Year" table, we want to include retired partners
-  // Create a modified version that includes all partners
-  const computeAllCompensationsForYearWithRetired = (year: number, scenario: ScenarioKey) => {
-    const regularComps = computeAllCompensationsForYear(year, scenario)
-    const state = useDashboardStore.getState()
-    const sc = scenario === 'A' ? state.scenarioA : state.scenarioB!
-    let fy = sc.future.find((f) => f.year === year) as FutureYear | undefined
-    if (!fy && year === 2025) {
-      const last2025 = state.historic.find((h) => h.year === 2025)
-
-      // For the multi-year compensation summary, 2025 should always show 2025 actual values
-      // regardless of the baseline data mode selection
-      if (last2025) {
-        const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
-        const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
-        fy = {
-          year: 2025,
-          therapyIncome: last2025.therapyIncome,
-          nonEmploymentCosts: last2025.nonEmploymentCosts,
-          nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
-          locumCosts: 54600,
-          miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-          medicalDirectorHours: 119373.75, // 2025 shared medical director amount
-          prcsMedicalDirectorHours: 37792.5, // 2025 PRCS medical director amount (JS)
-          prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
-          physicians,
-        }
-      }
-    }
-    if (!fy) return regularComps
-
-    // Add any retired partners that were excluded
-    const retiredPartners = fy.physicians.filter(p => p.type === 'partnerToRetire' && getPartnerFTEWeight(p) === 0)
-    const retiredComps = retiredPartners.map(p => ({
-      id: p.id,
-      name: p.name,
-      type: 'partner' as const,
-      comp: p.buyoutCost ?? 0 // Show buyout amount as their compensation
-    }))
-
-    return [...regularComps, ...retiredComps]
-  }
+  // Using the shared function from calculations.ts
 
   const perYearAWithRetired = years.map((y) => ({ year: y, comps: computeAllCompensationsForYearWithRetired(y, 'A') }))
   const perYearBWithRetired = store.scenarioBEnabled && store.scenarioB
@@ -223,10 +184,9 @@ export default function OverallCompensationSummary() {
   // }))
 
   return (
-    <div style={{ marginTop: 16, border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, background: '#f9fafb' }}>
+    <div style={{ marginTop: 16, border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, background: '#f9fafb', maxWidth: store.scenarioBEnabled ? 1660 : 1000, margin: '16px auto 0 auto' }}>
       <h3 style={{ margin: '12px 0' }}>Multi-Year Compensation Summary (2025–2030)</h3>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#ffffff', padding: 4, position: 'relative' }}>
+      <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#ffffff', padding: 4, position: 'relative' }}>
         <Plot
           key={`plot-${isolated?.scenario}-${isolated?.name}-${highlight?.scenario}-${highlight?.name}-${scenarioIsolated?.scenario}-${scenarioIsolated?.name}-${scenarioHighlight?.scenario}-${scenarioHighlight?.name}`}
           data={(() => {
@@ -332,11 +292,9 @@ export default function OverallCompensationSummary() {
           </button>
         )}
         </div>
-      </div>
-
 
       <div style={{ marginTop: 8, overflowX: isMobile ? 'auto' : 'visible', border: '1px solid #e5e7eb', borderRadius: 6, padding: 8, background: '#ffffff' }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>Per Physician By Year</div>
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>Per Physician By Year</div>
         <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 2, fontWeight: 600 }}>
           <div>Name</div>
           {years.map((y) => (
@@ -486,12 +444,12 @@ export default function OverallCompensationSummary() {
             </div>
           </div>
         )}
-      </div>
+        </div>
 
       {/* Per Scenario by Year table - only show when Scenario B is enabled */}
       {store.scenarioBEnabled && (
         <div style={{ marginTop: 16, overflowX: isMobile ? 'auto' : 'visible' }}>
-          <div style={{ fontWeight: 600, marginBottom: 8 }}>Per Scenario by Year</div>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Per Scenario by Year</div>
         <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${years.length}, 1fr) 1fr`, gap: 2, fontWeight: 600 }}>
           <div>Scenario</div>
           {years.map((y) => (

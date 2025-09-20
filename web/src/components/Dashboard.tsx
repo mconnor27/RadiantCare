@@ -2367,43 +2367,58 @@ export function Dashboard() {
   }
 
   return (
-    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16, maxWidth: store.scenarioBEnabled ? 1610 : 1000, margin: '0 auto' }}>
+    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: isMobile ? '8px 0' : '0 0 4px', justifyContent: 'center' }}>
         <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 60, width: 'auto', display: 'block' }} />
         <h2 style={{ margin: 0, fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif', color: '#7c2a83', fontWeight: 900, fontSize: 36, lineHeight: 1.05 }}>Compensation Dashboard</h2>
       </div>
-      <div style={{ marginTop: 20, display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end', flexWrap: 'wrap', marginBottom: 8, gap: 8 }}>
-        <button onClick={() => { store.resetToDefaults(); window.location.hash = '' }} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Reset to defaults</button>
-        <button onClick={copyShareLink} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Copy shareable link</button>
+      <div style={{ 
+        marginTop: 20, 
+        maxWidth: 1200, 
+        margin: '20px auto 0 auto' 
+      }}>
+        <div style={{ display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+          <button onClick={() => { store.resetToDefaults(); window.location.hash = '' }} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Reset to defaults</button>
+          <button onClick={copyShareLink} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Copy shareable link</button>
+        </div>
+        <HistoricAndProjectionChart key={store.scenarioBEnabled ? 'withB' : 'withoutB'} />
       </div>
-      <HistoricAndProjectionChart key={store.scenarioBEnabled ? 'withB' : 'withoutB'} />
 
       {/* Scenario compare */}
       <div style={{ marginTop: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, justifyContent: 'flex-end' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input
-                type="checkbox"
-                checked={store.scenarioBEnabled}
-                onChange={(e) => store.setScenarioEnabled(e.target.checked)}
-              />
-              <span>Enable Scenario B</span>
-            </label>
+        <div style={{ 
+          maxWidth: store.scenarioBEnabled ? 1660 : 1000, 
+          margin: '0 auto' 
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="checkbox"
+                  checked={store.scenarioBEnabled}
+                  onChange={(e) => store.setScenarioEnabled(e.target.checked)}
+                />
+                <span>Enable Scenario B</span>
+              </label>
+            </div>
           </div>
         </div>
 
-        <div className="scenario-grid" style={{
-          border: '1px solid #e5e7eb',
-          borderRadius: 8,
-          padding: isMobile ? 8 : 12,
-          marginTop: 0,
-          display: 'grid',
-          gridTemplateColumns: store.scenarioBEnabled && !isMobile ? '1fr 1fr' : '1fr',
-          alignItems: 'start',
-          gap: 12,
-          background: '#f9fafb',
+        <div style={{ 
+          maxWidth: store.scenarioBEnabled ? 1660 : 1000, 
+          margin: '0 auto' 
         }}>
+          <div className="scenario-grid" style={{
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            padding: isMobile ? 8 : 12,
+            marginTop: 0,
+            display: 'grid',
+            gridTemplateColumns: store.scenarioBEnabled && !isMobile ? '1fr 1fr' : '1fr',
+            alignItems: 'start',
+            gap: 12,
+            background: '#f9fafb',
+          }}>
           {/* Scenario A column */}
           <div>
             <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario A</div>
@@ -2459,12 +2474,11 @@ export function Dashboard() {
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
       <OverallCompensationSummary />
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <ParametersSummary />
-      </div>
+      <ParametersSummary />
     </div>
   )
 }
