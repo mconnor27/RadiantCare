@@ -1,4 +1,3 @@
-import React from 'react'
 import type { FutureYear } from './types'
 import { useDashboardStore } from '../Dashboard'
 import { useIsMobile } from './hooks'

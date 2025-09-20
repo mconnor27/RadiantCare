@@ -1,14 +1,10 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import Plot from 'react-plotly.js'
-import type { FutureYear, ScenarioKey } from './types'
 import { useDashboardStore } from '../Dashboard'
 import { useIsMobile } from './hooks'
 import {
-  getPartnerFTEWeight,
-  computeDefaultNonMdEmploymentCosts,
   computeAllCompensationsForYearWithRetired
 } from './calculations'
-import { scenarioADefaultsByYear, scenarioBDefaultsByYear, DEFAULT_MISC_EMPLOYMENT_COSTS } from './defaults'
 import { computeAllCompensationsForYear } from '../Dashboard'
 import { currency, currencyOrDash } from './utils'
 

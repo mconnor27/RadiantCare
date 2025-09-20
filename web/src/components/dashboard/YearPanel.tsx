@@ -30,6 +30,9 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
   const dataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
   const isReadOnly = year === 2025 && dataMode !== 'Custom'
+  
+  // Get all available years for the year buttons
+  const availableYears = [2025, ...sc.future.filter((f) => f.year !== 2025).map((f) => f.year)]
   const last2024 = store.historic.find((h) => h.year === 2024)
   const last2025 = store.historic.find((h) => h.year === 2025)
 
@@ -102,6 +105,26 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Year Navigation Buttons */}
+      <div className="year-buttons" style={{ display: 'flex', gap: 8, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal', marginBottom: 8 }}>
+        {availableYears.map((yr) => (
+          <button
+            key={`${scenario}-${yr}`}
+            onClick={() => store.setSelectedYear(scenario, yr)}
+            style={{
+              padding: isMobile ? '6px 10px' : '8px 12px',
+              borderRadius: 6,
+              border: '1px solid #ccc',
+              background: sc.selectedYear === yr ? '#f0f4ff' : 'white',
+              fontWeight: sc.selectedYear === yr ? 700 : 500,
+              cursor: 'pointer',
+            }}
+          >
+            {yr === 2025 ? 'Baseline' : yr}
+          </button>
+        ))}
+      </div>
+      
       {year === 2025 ? (
         <div style={{ position: 'relative' }}>
           <div style={{

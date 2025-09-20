@@ -1,4 +1,3 @@
-import React from 'react'
 import { DragDropPhysicians } from './DragDropPhysicians'
 import type { PhysicianType, Physician, FutureYear, ScenarioKey } from './types'
 import {

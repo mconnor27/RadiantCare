@@ -1,4 +1,4 @@
-import type { Physician, ScenarioKey, FutureYear } from './types'
+import type { Physician, ScenarioKey, FutureYear, YearRow } from './types'
 import {
   clamp,
   daysInYear,
@@ -448,4 +448,59 @@ export function calculateNetIncomeForMDs(year: number, scenario: ScenarioKey): n
     : (fy?.locumCosts ?? 0)
   
   return totalComp + locumCost
+}
+
+// Helper function to calculate true total income for any year
+export function getTotalIncome(yearData: YearRow | FutureYear): number {
+  // For historic years 2016-2023, therapyIncome represents total income (no separate MD data)
+  if ('year' in yearData && yearData.year <= 2023) {
+    return yearData.therapyIncome
+  }
+  
+  // For 2024+ (including historic 2024-2025), calculate therapy + medical director income
+  const therapyIncome = yearData.therapyIncome || 0
+  
+  // For historic years (2024-2025), we need to estimate medical director income
+  if ('employeePayroll' in yearData) {
+    // Historic year - estimate medical director income based on defaults
+    const defaultMedicalDirectorIncome = 119373.75 // Default shared MD income
+    const defaultPrcsMedicalDirectorIncome = 60000 // Default PRCS MD income
+    return therapyIncome + defaultMedicalDirectorIncome + defaultPrcsMedicalDirectorIncome
+  }
+  
+  // For future years, calculate from stored values
+  const futureYear = yearData as FutureYear
+  const medicalDirectorIncome = futureYear.medicalDirectorHours ?? 110000
+  const prcsMedicalDirectorIncome = futureYear.prcsDirectorPhysicianId ? (futureYear.prcsMedicalDirectorHours ?? 60000) : 0
+  
+  return therapyIncome + medicalDirectorIncome + prcsMedicalDirectorIncome
+}
+
+// Helper function to calculate even medical director hour percentages among partners
+export function calculateMedicalDirectorHourPercentages(physicians: Physician[]): Physician[] {
+  // Calculate total partner work time (sum of partner portions, ignoring vacation as requested)
+  const totalPartnerPortions = physicians.reduce((sum, physician) => {
+    return sum + getPartnerPortionOfYear(physician)
+  }, 0)
+  
+  // If no partners, return physicians as-is
+  if (totalPartnerPortions === 0) {
+    return physicians.map(p => ({
+      ...p,
+      medicalDirectorHoursPercentage: 0,
+      hasMedicalDirectorHours: false
+    }))
+  }
+  
+  // Distribute percentages evenly among partners based on their portion of year
+  return physicians.map(physician => {
+    const partnerPortion = getPartnerPortionOfYear(physician)
+    const percentage = partnerPortion > 0 ? (partnerPortion / totalPartnerPortions) * 100 : 0
+    
+    return {
+      ...physician,
+      medicalDirectorHoursPercentage: percentage,
+      hasMedicalDirectorHours: percentage > 0
+    }
+  })
 }

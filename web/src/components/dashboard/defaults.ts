@@ -1,5 +1,5 @@
 import type { Physician, PhysicianType, YearRow, FutureYear } from './types'
-import { getPartnerPortionOfYear } from './calculations'
+import { getPartnerPortionOfYear, computeDefaultNonMdEmploymentCosts } from './calculations'
 import { calendarDateToPortion } from './utils'
 
 // Constants
@@ -27,6 +27,7 @@ export const MONTHLY_BENEFITS_MED = 796.37
 export const MONTHLY_BENEFITS_DENTAL = 57.12
 export const MONTHLY_BENEFITS_VISION = 6.44
 export const ANNUAL_BENEFITS_FULLTIME = (MONTHLY_BENEFITS_MED + MONTHLY_BENEFITS_DENTAL + MONTHLY_BENEFITS_VISION) * 12
+export const NET_PARTNER_POOL_2025 = 2362198.89
 
 // Social Security Wage Bases by year (moved from calculations.ts)
 export const SOCIAL_SECURITY_WAGE_BASES = {
@@ -368,6 +369,43 @@ export function getInitialFutureYearsA(): FutureYear[] {
     }
   })
 }
+
+// Future years base configuration
+export const FUTURE_YEARS_BASE: Omit<FutureYear, 'physicians'>[] = Array.from({ length: 5 }).map((_, idx) => {
+  const startYear = HISTORIC_DATA[HISTORIC_DATA.length - 1].year + 1 // start after last actual (2025)
+  const year = startYear + idx
+  return {
+    year,
+    therapyIncome: HISTORIC_DATA[HISTORIC_DATA.length - 1].therapyIncome,
+    nonEmploymentCosts:
+      HISTORIC_DATA[HISTORIC_DATA.length - 1].nonEmploymentCosts,
+    nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(year),
+    locumCosts: year === 2026 ? 60000 : 120000,
+    miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+  }
+})
+
+export const INITIAL_FUTURE_YEARS_A: FutureYear[] = FUTURE_YEARS_BASE.map((b) => {
+  const physicians = scenarioADefaultsByYear(b.year)
+  const js = physicians.find((p) => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+  return {
+    ...b,
+    physicians,
+    prcsDirectorPhysicianId: b.year >= 2024 && js ? js.id : undefined,
+  }
+})
+
+export const INITIAL_FUTURE_YEARS_B: FutureYear[] = FUTURE_YEARS_BASE.map((b) => {
+  const physicians = scenarioBDefaultsByYear(b.year)
+  const js = physicians.find((p) => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+  return {
+    ...b,
+    // Scenario B default: $0 locums except $60k in 2026
+    locumCosts: b.year === 2026 ? 60000 : 0,
+    physicians,
+    prcsDirectorPhysicianId: b.year >= 2024 && js ? js.id : undefined,
+  }
+})
 
 // Export historic data for use in other modules
 export { HISTORIC_DATA }
