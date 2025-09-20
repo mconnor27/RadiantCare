@@ -22,7 +22,11 @@ import {
 } from './calculations'
 import {
   scenarioADefaultsByYear,
-  scenarioBDefaultsByYear
+  scenarioBDefaultsByYear,
+  ACTUAL_2024_MEDICAL_DIRECTOR_HOURS,
+  ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
+  ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS,
+  ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
 } from './defaults'
 import {
   createTooltip,
@@ -121,9 +125,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     // Use specific 2024-25 values when in those data modes for baseline year
                     let amount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 0
                     if (year === 2025 && sc.dataMode === '2024 Data') {
-                      amount = fy.prcsMedicalDirectorHours ?? 25805 // 2024 PRCS medical director amount
+                      amount = fy.prcsMedicalDirectorHours ?? ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS // 2024 PRCS medical director amount
                     } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                      amount = fy.prcsMedicalDirectorHours ?? 37792.5 // 2025 PRCS medical director amount
+                      amount = fy.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS // 2025 PRCS medical director amount
                     }
                     createTooltip(`prcs-readonly-${p.id}`, `PRCS Medical Director: ${currency(Math.round(amount))}`, e)
                   } else {
@@ -139,9 +143,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     // Use specific 2024-25 values when in those data modes for baseline year
                     let currentAmount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000
                     if (year === 2025 && sc.dataMode === '2024 Data') {
-                      currentAmount = fy.prcsMedicalDirectorHours ?? 25805 // 2024 PRCS medical director amount
+                      currentAmount = fy.prcsMedicalDirectorHours ?? ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS // 2024 PRCS medical director amount
                     } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                      currentAmount = fy.prcsMedicalDirectorHours ?? 37792.5 // 2025 PRCS medical director amount
+                      currentAmount = fy.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS // 2025 PRCS medical director amount
                     }
                     createPrcsAmountTooltip(p.id, currentAmount, e, (_pid, amount) => {
                       store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
@@ -183,9 +187,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   // Use specific 2024-25 values when in those data modes for baseline year
                   let currentAmount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000
                   if (year === 2025 && sc.dataMode === '2024 Data') {
-                    currentAmount = fy.prcsMedicalDirectorHours ?? 25805 // 2024 PRCS medical director amount
+                    currentAmount = fy.prcsMedicalDirectorHours ?? ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS // 2024 PRCS medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    currentAmount = fy.prcsMedicalDirectorHours ?? 37792.5 // 2025 PRCS medical director amount
+                    currentAmount = fy.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS // 2025 PRCS medical director amount
                   }
                   createPrcsAmountTooltip(p.id, currentAmount, e as any, (_pid, amount) => {
                     store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
@@ -205,9 +209,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 // Use specific 2024-25 values when in those data modes for baseline year
                 let currentAmount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000
                 if (year === 2025 && sc.dataMode === '2024 Data') {
-                  currentAmount = fy.prcsMedicalDirectorHours ?? 25805 // 2024 PRCS medical director amount
+                  currentAmount = fy.prcsMedicalDirectorHours ?? ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS // 2024 PRCS medical director amount
                 } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                  currentAmount = fy.prcsMedicalDirectorHours ?? 37792.5 // 2025 PRCS medical director amount
+                  currentAmount = fy.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS // 2025 PRCS medical director amount
                 }
                 createPrcsAmountTooltip(p.id, currentAmount, e, (_pid, amount) => {
                   store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
@@ -1359,9 +1363,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                         // Use specific 2024-25 values when in those data modes for baseline year
                   let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
                   if (year === 2025 && sc.dataMode === '2024 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
                   }
                         const trailingTotal = fy.physicians.reduce((s, ph) => {
                           const isPriorYearRetiree = (ph.type === 'partnerToRetire') && ((ph.partnerPortionOfYear ?? 0) === 0)
@@ -1382,9 +1386,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   // Use specific 2024-25 values when in those data modes for baseline year
                   let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
                   if (year === 2025 && sc.dataMode === '2024 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
                   }
                   if (!readOnly) {
                     if ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0) {
@@ -1459,9 +1463,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                         // Use specific 2024-25 values when in those data modes for baseline year
                   let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
                   if (year === 2025 && sc.dataMode === '2024 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
                   }
                         const trailingTotal = fy.physicians.reduce((s, ph) => {
                           const isPriorYearRetiree = (ph.type === 'partnerToRetire') && ((ph.partnerPortionOfYear ?? 0) === 0)
@@ -1645,9 +1649,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                       // Use specific 2024-25 values when in those data modes for baseline year
                   let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
                   if (year === 2025 && sc.dataMode === '2024 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
                   }
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                       store.upsertPhysician(scenario, year, {
@@ -1662,9 +1666,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   // Use specific 2024-25 values when in those data modes for baseline year
                   let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
                   if (year === 2025 && sc.dataMode === '2024 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
                   }
                   if (!readOnly) {
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
@@ -1701,9 +1705,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   // Use specific 2024-25 values when in those data modes for baseline year
                   let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
                   if (year === 2025 && sc.dataMode === '2024 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
                   }
                   if (!readOnly) {
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
@@ -2057,9 +2061,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                       // Use specific 2024-25 values when in those data modes for baseline year
                   let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
                   if (year === 2025 && sc.dataMode === '2024 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
                   }
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
                       store.upsertPhysician(scenario, year, {
@@ -2074,9 +2078,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   // Use specific 2024-25 values when in those data modes for baseline year
                   let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
                   if (year === 2025 && sc.dataMode === '2024 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
                   }
                   if (!readOnly) {
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
@@ -2113,9 +2117,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   // Use specific 2024-25 values when in those data modes for baseline year
                   let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
                   if (year === 2025 && sc.dataMode === '2024 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 102870 // 2024 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
                   } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? 119373.75 // 2025 shared medical director amount
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
                   }
                   if (!readOnly) {
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {

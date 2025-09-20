@@ -25,6 +25,7 @@ export const DEFAULT_MISC_EMPLOYMENT_COSTS = 29115.51
 // Default consulting services agreement values
 export const DEFAULT_CONSULTING_SERVICES_2024 = 15693.40
 export const DEFAULT_CONSULTING_SERVICES_2025 = 16200.00
+export const DEFAULT_CONSULTING_SERVICES_PROJECTION = 17030
 
 // Actual consulting services agreement values (for baseline years)
 export const ACTUAL_2024_CONSULTING_SERVICES = 15693.40
@@ -64,6 +65,8 @@ export const TAX_RATES = {
 export const DEFAULT_THERAPY_INCOME_2025 = 3344068.19
 export const DEFAULT_NON_EMPLOYMENT_COSTS_2025 = 229713.57
 export const DEFAULT_LOCUM_COSTS_2025 = 54600
+export const DEFAULT_LOCUM_COSTS_2026 = 60000
+export const DEFAULT_NON_MD_EMPLOYMENT_COSTS_2025 = 164273.25
 
 // 2024 actual values for data mode
 export const ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS = 157986.94
@@ -75,6 +78,21 @@ export const ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS = 25805
 // 2025 actual/projected values
 export const ACTUAL_2025_MEDICAL_DIRECTOR_HOURS = 119373.75
 export const ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS = 37792.5
+
+// Projection defaults for medical director hours
+export const DEFAULT_MD_SHARED_PROJECTION = 110000
+export const DEFAULT_MD_PRCS_PROJECTION = 60000
+
+// Contract terms for tooltips and calculations
+export const SHARED_MD_RATE = 270 // $/hour
+export const SHARED_MD_ANNUAL_MAX = 97200 // Annual maximum
+export const PRCS_MD_RATE = 250 // $/hour
+export const PRCS_MD_ANNUAL_MAX = 90000 // Annual maximum
+
+// Tooltip messages using contract terms
+export const SHARED_MD_TOOLTIP = `Shared contract terms: $${SHARED_MD_RATE}/hr up to $${SHARED_MD_ANNUAL_MAX.toLocaleString()} maximum annual. Distributed evenly to partners.`
+export const PRCS_MD_TOOLTIP = `PRCS contract terms: $${PRCS_MD_RATE}/hr up to $${PRCS_MD_ANNUAL_MAX.toLocaleString()} maximum annual. Applies if a PRCS Medical Director is specified in the Physicians section.`
+export const PRCS_MD_TOOLTIP_SHORT = `PRCS contract terms: $${PRCS_MD_RATE}/hr up to $${PRCS_MD_ANNUAL_MAX.toLocaleString()} maximum annual.`
 
 // UI defaults for sliders and inputs
 export const UI_DEFAULTS = {
@@ -119,9 +137,9 @@ export const PROJECTION_DEFAULTS = {
     nonMdEmploymentCostsPct: 6.0,
     miscEmploymentCostsPct: 6.7,
     benefitCostsGrowthPct: 5.0,
-    medicalDirectorHours: 110000,
-    prcsMedicalDirectorHours: 60000,
-    consultingServicesAgreement: 17030,
+    medicalDirectorHours: DEFAULT_MD_SHARED_PROJECTION,
+    prcsMedicalDirectorHours: DEFAULT_MD_PRCS_PROJECTION,
+    consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_PROJECTION,
     locumsCosts: 120000,
   },
   B: {
@@ -130,9 +148,9 @@ export const PROJECTION_DEFAULTS = {
     nonMdEmploymentCostsPct: 6.0,
     miscEmploymentCostsPct: 6.7,
     benefitCostsGrowthPct: 5.0,
-    medicalDirectorHours: 110000,
-    prcsMedicalDirectorHours: 60000,
-    consultingServicesAgreement: 17030,
+    medicalDirectorHours: DEFAULT_MD_SHARED_PROJECTION,
+    prcsMedicalDirectorHours: DEFAULT_MD_PRCS_PROJECTION,
+    consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_PROJECTION,
     locumsCosts: 0, // Scenario B default: $0 locums (except 2026 handled elsewhere)
   }
 }
@@ -336,7 +354,7 @@ export function getFutureYearsBase(): Omit<FutureYear, 'physicians'>[] {
       nonEmploymentCosts:
         HISTORIC_DATA[HISTORIC_DATA.length - 1].nonEmploymentCosts,
       nonMdEmploymentCosts: getDefaultNonMdEmploymentCostsForYear(year),
-      locumCosts: year === 2026 ? 60000 : 120000,
+      locumCosts: year === 2026 ? DEFAULT_LOCUM_COSTS_2026 : PROJECTION_DEFAULTS.A.locumsCosts,
       miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
     }
   })
@@ -346,7 +364,7 @@ export function getFutureYearsBase(): Omit<FutureYear, 'physicians'>[] {
 function getDefaultNonMdEmploymentCostsForYear(year: number = 2025): number {
   // Return the correct 2025 baseline value
   if (year === 2025) {
-    return 164273.25
+    return DEFAULT_NON_MD_EMPLOYMENT_COSTS_2025
   }
 
   // For other years, use simplified calculation (inline the logic)
@@ -391,7 +409,7 @@ export const FUTURE_YEARS_BASE: Omit<FutureYear, 'physicians'>[] = Array.from({ 
     nonEmploymentCosts:
       HISTORIC_DATA[HISTORIC_DATA.length - 1].nonEmploymentCosts,
     nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(year),
-    locumCosts: year === 2026 ? 60000 : 120000,
+    locumCosts: year === 2026 ? DEFAULT_LOCUM_COSTS_2026 : PROJECTION_DEFAULTS.A.locumsCosts,
     miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
   }
 })
@@ -401,7 +419,7 @@ export const INITIAL_FUTURE_YEARS_A: FutureYear[] = FUTURE_YEARS_BASE.map((b) =>
   const js = physicians.find((p) => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
   return {
     ...b,
-    consultingServicesAgreement: b.year === 2025 ? DEFAULT_CONSULTING_SERVICES_2025 : 17030,
+    consultingServicesAgreement: b.year === 2025 ? DEFAULT_CONSULTING_SERVICES_2025 : DEFAULT_CONSULTING_SERVICES_PROJECTION,
     physicians,
     prcsDirectorPhysicianId: b.year >= 2024 && js ? js.id : undefined,
   }
@@ -412,9 +430,9 @@ export const INITIAL_FUTURE_YEARS_B: FutureYear[] = FUTURE_YEARS_BASE.map((b) =>
   const js = physicians.find((p) => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
   return {
     ...b,
-    consultingServicesAgreement: b.year === 2025 ? DEFAULT_CONSULTING_SERVICES_2025 : 17030,
+    consultingServicesAgreement: b.year === 2025 ? DEFAULT_CONSULTING_SERVICES_2025 : DEFAULT_CONSULTING_SERVICES_PROJECTION,
     // Scenario B default: $0 locums except $60k in 2026
-    locumCosts: b.year === 2026 ? 60000 : 0,
+    locumCosts: b.year === 2026 ? DEFAULT_LOCUM_COSTS_2026 : 0,
     physicians,
     prcsDirectorPhysicianId: b.year >= 2024 && js ? js.id : undefined,
   }

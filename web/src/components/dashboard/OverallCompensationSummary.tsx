@@ -4,6 +4,7 @@ import { useDashboardStore } from '../Dashboard'
 import { useIsMobile } from './hooks'
 import { computeAllCompensationsForYear, computeAllCompensationsForYearWithRetired } from '../Dashboard'
 import { currency, currencyOrDash } from './utils'
+import { DEFAULT_LOCUM_COSTS_2025 } from './defaults'
 
 export default function OverallCompensationSummary() {
   const store = useDashboardStore()
@@ -51,14 +52,14 @@ export default function OverallCompensationSummary() {
   // Calculate locums data for both scenarios
   const locumsSeriesA = years.map((y) => {
     const fy = y === 2025
-      ? { locumCosts: 54600 } // 2025 default
+      ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
       : store.scenarioA.future.find(f => f.year === y)
     return fy?.locumCosts ?? 0
   })
   const locumsSeriesB = store.scenarioBEnabled && store.scenarioB
     ? years.map((y) => {
         const fy = y === 2025
-          ? { locumCosts: 54600 } // 2025 default
+          ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
           : store.scenarioB!.future.find(f => f.year === y)
         return fy?.locumCosts ?? 0
       })
@@ -350,7 +351,7 @@ export default function OverallCompensationSummary() {
           <div style={{ paddingLeft: '8px' }}>{store.scenarioBEnabled ? 'Locums (Scenario A)' : 'Locums'}</div>
           {years.map((y, i) => {
             const fy = y === 2025
-              ? { locumCosts: 54600 } // 2025 default
+              ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
               : store.scenarioA.future.find(f => f.year === y)
             const locumCost = fy?.locumCosts ?? 0
             return <div key={`LA-${i}`} style={{ textAlign: 'right' }}>{currencyOrDash(locumCost)}</div>
@@ -358,7 +359,7 @@ export default function OverallCompensationSummary() {
           <div style={{ textAlign: 'right' }}>
             {currency(years.reduce((total, y) => {
               const fy = y === 2025
-                ? { locumCosts: 54600 } // 2025 default
+                ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
                 : store.scenarioA.future.find(f => f.year === y)
               return total + (fy?.locumCosts ?? 0)
             }, 0))}
@@ -372,7 +373,7 @@ export default function OverallCompensationSummary() {
             <div style={{ paddingLeft: '8px' }}>Locums (Scenario B)</div>
             {years.map((y, i) => {
               const fy = y === 2025
-                ? { locumCosts: 54600 } // 2025 default
+                ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
                 : store.scenarioB!.future.find(f => f.year === y)
               const locumCost = fy?.locumCosts ?? 0
               return <div key={`LB-${i}`} style={{ textAlign: 'right' }}>{currencyOrDash(locumCost)}</div>
@@ -380,7 +381,7 @@ export default function OverallCompensationSummary() {
             <div style={{ textAlign: 'right' }}>
               {currency(years.reduce((total, y) => {
                 const fy = y === 2025
-                  ? { locumCosts: 54600 } // 2025 default
+                  ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
                   : store.scenarioB!.future.find(f => f.year === y)
                 return total + (fy?.locumCosts ?? 0)
               }, 0))}
@@ -394,7 +395,7 @@ export default function OverallCompensationSummary() {
           {years.map((y) => {
             const totalComp = perYearAWithRetired.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
             const fy = y === 2025
-              ? { locumCosts: 54600 } // 2025 default
+              ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
               : store.scenarioA.future.find(f => f.year === y)
             const locumCost = fy?.locumCosts ?? 0
             return <div key={`SAT-${y}`} style={{ textAlign: 'right' }}>{currency(totalComp + locumCost)}</div>
@@ -404,7 +405,7 @@ export default function OverallCompensationSummary() {
               perYearAWithRetired.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
               years.reduce((total, y) => {
                 const fy = y === 2025
-                  ? { locumCosts: 54600 } // 2025 default
+                  ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
                   : store.scenarioA.future.find(f => f.year === y)
                 return total + (fy?.locumCosts ?? 0)
               }, 0)
@@ -419,7 +420,7 @@ export default function OverallCompensationSummary() {
             {years.map((y) => {
               const totalComp = perYearBWithRetired.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
               const fy = y === 2025
-                ? { locumCosts: 54600 } // 2025 default
+                ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
                 : store.scenarioB!.future.find(f => f.year === y)
               const locumCost = fy?.locumCosts ?? 0
               return <div key={`SBT-${y}`} style={{ textAlign: 'right' }}>{currency(totalComp + locumCost)}</div>
@@ -429,7 +430,7 @@ export default function OverallCompensationSummary() {
                 perYearBWithRetired.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
                 years.reduce((total, y) => {
                   const fy = y === 2025
-                    ? { locumCosts: 54600 } // 2025 default
+                    ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
                     : store.scenarioB!.future.find(f => f.year === y)
                   return total + (fy?.locumCosts ?? 0)
                 }, 0)
@@ -480,7 +481,7 @@ export default function OverallCompensationSummary() {
           <div style={{ paddingLeft: '16px' }}>Locums (A)</div>
           {years.map((y, i) => {
             const fy = y === 2025
-              ? { locumCosts: 54600 } // 2025 default
+              ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
               : store.scenarioA.future.find(f => f.year === y)
             const locumCost = fy?.locumCosts ?? 0
             return <div key={`SAL-${i}`} style={{ textAlign: 'right' }}>{currencyOrDash(locumCost)}</div>
@@ -488,7 +489,7 @@ export default function OverallCompensationSummary() {
           <div style={{ textAlign: 'right' }}>
             {currency(years.reduce((total, y) => {
               const fy = y === 2025
-                ? { locumCosts: 54600 } // 2025 default
+                ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
                 : store.scenarioA.future.find(f => f.year === y)
               return total + (fy?.locumCosts ?? 0)
             }, 0))}
@@ -501,7 +502,7 @@ export default function OverallCompensationSummary() {
           {years.map((y) => {
             const totalComp = perYearA.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
             const fy = y === 2025
-              ? { locumCosts: 54600 } // 2025 default
+              ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
               : store.scenarioA.future.find(f => f.year === y)
             const locumCost = fy?.locumCosts ?? 0
             return <div key={`SAT-${y}`} style={{ textAlign: 'right' }}>{currency(totalComp + locumCost)}</div>
@@ -511,7 +512,7 @@ export default function OverallCompensationSummary() {
               perYearA.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
               years.reduce((total, y) => {
                 const fy = y === 2025
-                  ? { locumCosts: 54600 } // 2025 default
+                  ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
                   : store.scenarioA.future.find(f => f.year === y)
                 return total + (fy?.locumCosts ?? 0)
               }, 0)
@@ -551,7 +552,7 @@ export default function OverallCompensationSummary() {
               <div style={{ paddingLeft: '16px' }}>Locums (B)</div>
               {years.map((y, i) => {
                 const fy = y === 2025
-                  ? { locumCosts: 54600 } // 2025 default
+                  ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
                   : store.scenarioB!.future.find(f => f.year === y)
                 const locumCost = fy?.locumCosts ?? 0
                 return <div key={`SBL-${i}`} style={{ textAlign: 'right' }}>{currencyOrDash(locumCost)}</div>
@@ -559,7 +560,7 @@ export default function OverallCompensationSummary() {
               <div style={{ textAlign: 'right' }}>
                 {currency(years.reduce((total, y) => {
                   const fy = y === 2025
-                    ? { locumCosts: 54600 } // 2025 default
+                    ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
                     : store.scenarioB!.future.find(f => f.year === y)
                   return total + (fy?.locumCosts ?? 0)
                 }, 0))}
@@ -572,7 +573,7 @@ export default function OverallCompensationSummary() {
               {years.map((y) => {
                 const totalComp = perYearB.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
                 const fy = y === 2025
-                  ? { locumCosts: 54600 } // 2025 default
+                  ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
                   : store.scenarioB!.future.find(f => f.year === y)
                 const locumCost = fy?.locumCosts ?? 0
                 return <div key={`SBT-${y}`} style={{ textAlign: 'right' }}>{currency(totalComp + locumCost)}</div>
@@ -582,7 +583,7 @@ export default function OverallCompensationSummary() {
                   perYearB.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
                   years.reduce((total, y) => {
                     const fy = y === 2025
-                      ? { locumCosts: 54600 } // 2025 default
+                      ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
                       : store.scenarioB!.future.find(f => f.year === y)
                     return total + (fy?.locumCosts ?? 0)
                   }, 0)

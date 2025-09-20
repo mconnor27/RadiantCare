@@ -5,7 +5,7 @@ import {
   computeDefaultNonMdEmploymentCosts,
   getTotalIncome
 } from './calculations'
-import { scenarioADefaultsByYear, scenarioBDefaultsByYear, scenario2024Defaults, DEFAULT_MISC_EMPLOYMENT_COSTS } from './defaults'
+import { scenarioADefaultsByYear, scenarioBDefaultsByYear, scenario2024Defaults, DEFAULT_MISC_EMPLOYMENT_COSTS, DEFAULT_CONSULTING_SERVICES_2025, ACTUAL_2025_MEDICAL_DIRECTOR_HOURS, ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, DEFAULT_LOCUM_COSTS_2025, ACTUAL_2024_MISC_EMPLOYMENT_COSTS, DEFAULT_THERAPY_INCOME_2025, DEFAULT_NON_EMPLOYMENT_COSTS_2025, ACTUAL_2024_LOCUM_COSTS } from './defaults'
 import {
   currency,
   currencyShort,
@@ -46,8 +46,8 @@ export default function ParametersSummary() {
       }
     } else {
       baselineData = {
-        therapyIncome: 3344068.19,
-        nonEmploymentCosts: 229713.57,
+        therapyIncome: DEFAULT_THERAPY_INCOME_2025,
+        nonEmploymentCosts: DEFAULT_NON_EMPLOYMENT_COSTS_2025,
         miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
         nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
       }
@@ -114,11 +114,11 @@ export default function ParametersSummary() {
         therapyIncome: historic2025.therapyIncome,
         nonEmploymentCosts: historic2025.nonEmploymentCosts,
         nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
-        locumCosts: 54600,
+        locumCosts: DEFAULT_LOCUM_COSTS_2025,
         miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-        medicalDirectorHours: 119373.75, // 2025 shared medical director amount
-        prcsMedicalDirectorHours: 37792.5, // 2025 PRCS medical director amount (JS)
-        consultingServicesAgreement: 16200.00, // 2025 consulting services amount
+        medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS, // 2025 shared medical director amount
+        prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, // 2025 PRCS medical director amount (JS)
+        consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_2025, // 2025 consulting services amount
         prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
         physicians,
         } as FutureYear
@@ -153,8 +153,8 @@ export default function ParametersSummary() {
           therapyIncome: h2024.therapyIncome,
           nonEmploymentCosts: h2024.nonEmploymentCosts,
           nonMdEmploymentCosts: 164677.44,
-          locumCosts: 113400,
-          miscEmploymentCosts: 18182.56,
+          locumCosts: ACTUAL_2024_LOCUM_COSTS,
+          miscEmploymentCosts: ACTUAL_2024_MISC_EMPLOYMENT_COSTS,
           physicians: scenario2024Defaults(),
         } as FutureYear
       }

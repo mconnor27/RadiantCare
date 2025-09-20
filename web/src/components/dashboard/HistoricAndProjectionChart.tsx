@@ -5,7 +5,7 @@ import { getTotalIncome } from './calculations'
 import { useIsMobile } from './hooks'
 import { getEmployeePortionOfYear, calculateDelayedW2Payment, computeDefaultNonMdEmploymentCosts } from './calculations'
 import { calculateNetIncomeForMDs } from '../Dashboard'
-import { DEFAULT_MISC_EMPLOYMENT_COSTS } from './defaults'
+import { DEFAULT_MISC_EMPLOYMENT_COSTS, DEFAULT_NON_EMPLOYMENT_COSTS_2025 } from './defaults'
 
 export default function HistoricAndProjectionChart() {
   const store = useDashboardStore()
@@ -94,7 +94,7 @@ export default function HistoricAndProjectionChart() {
     // Fallback to 2025 defaults - use actual 2025 historic data if available
     return {
       therapyIncome: last2025 ? getTotalIncome(last2025) : 2700000,
-      nonEmploymentCosts: last2025?.nonEmploymentCosts || 229713.57,
+      nonEmploymentCosts: last2025?.nonEmploymentCosts || DEFAULT_NON_EMPLOYMENT_COSTS_2025,
       employeePayroll: last2025?.employeePayroll ?? (computeDefaultNonMdEmploymentCosts(2025) + DEFAULT_MISC_EMPLOYMENT_COSTS)
     }
   }

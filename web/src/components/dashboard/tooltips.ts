@@ -1,5 +1,6 @@
 import type { Physician } from './types'
 import React from 'react'
+import { PRCS_MD_ANNUAL_MAX } from './defaults'
 
 // Helper function for creating mobile-friendly tooltips
 export function createTooltip(id: string, content: string, e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>) {
@@ -275,7 +276,7 @@ export function createPrcsAmountTooltip(
   e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>,
   onUpdate: (physicianId: string, amount: number) => void,
   message: string,
-  maxValue: number = 90000
+  maxValue: number = PRCS_MD_ANNUAL_MAX
 ) {
   const tooltipId = `prcs-amount-slider-${physicianId}`
   const existing = document.getElementById(tooltipId)

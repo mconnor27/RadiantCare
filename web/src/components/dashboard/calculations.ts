@@ -13,7 +13,17 @@ import {
   MONTHLY_BENEFITS_VISION,
   ANNUAL_BENEFITS_FULLTIME,
   SOCIAL_SECURITY_WAGE_BASES,
-  TAX_RATES
+  TAX_RATES,
+  DEFAULT_CONSULTING_SERVICES_2024,
+  DEFAULT_CONSULTING_SERVICES_2025,
+  DEFAULT_CONSULTING_SERVICES_PROJECTION,
+  ACTUAL_2024_MEDICAL_DIRECTOR_HOURS,
+  ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS,
+  ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
+  ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
+  DEFAULT_MD_SHARED_PROJECTION,
+  DEFAULT_MD_PRCS_PROJECTION,
+  DEFAULT_NON_MD_EMPLOYMENT_COSTS_2025
 } from './defaults'
 
 export function getSocialSecurityWageBase(year: number): number {
@@ -56,7 +66,7 @@ export function getBenefitCostsForYear(year: number, benefitGrowthPct: number): 
 export function computeDefaultNonMdEmploymentCosts(year: number = 2025): number {
   // Return the correct 2025 baseline value
   if (year === 2025) {
-    return 164273.25
+    return DEFAULT_NON_MD_EMPLOYMENT_COSTS_2025
   }
   
   // For other years, use the original calculation
@@ -322,19 +332,19 @@ export function getTotalIncome(yearData: YearRow | FutureYear): number {
   // For historic years (2024-2025), we need to estimate medical director income
   if ('employeePayroll' in yearData) {
     // Historic year - use actual values based on year
-    const medicalDirectorIncome = yearData.year === 2024 ? 102870 : 119373.75 // 2024 vs 2025 actual shared MD income
-    const prcsMedicalDirectorIncome = yearData.year === 2024 ? 25805 : 37792.5 // 2024 vs 2025 actual PRCS MD income
+    const medicalDirectorIncome = yearData.year === 2024 ? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS : ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2024 vs 2025 actual shared MD income
+    const prcsMedicalDirectorIncome = yearData.year === 2024 ? ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS : ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS // 2024 vs 2025 actual PRCS MD income
     // Add consulting services agreement based on year
-    const consultingServicesIncome = yearData.year === 2024 ? 15693.40 : 
-                                   yearData.year === 2025 ? 16200.00 : 17030
+    const consultingServicesIncome = yearData.year === 2024 ? DEFAULT_CONSULTING_SERVICES_2024 :
+                                   yearData.year === 2025 ? DEFAULT_CONSULTING_SERVICES_2025 : DEFAULT_CONSULTING_SERVICES_PROJECTION
     return therapyIncome + medicalDirectorIncome + prcsMedicalDirectorIncome + consultingServicesIncome
   }
   
   // For future years, calculate from stored values
   const futureYear = yearData as FutureYear
-  const medicalDirectorIncome = futureYear.medicalDirectorHours ?? 110000
-  const prcsMedicalDirectorIncome = futureYear.prcsDirectorPhysicianId ? (futureYear.prcsMedicalDirectorHours ?? 60000) : 0
-  const consultingServicesIncome = futureYear.consultingServicesAgreement ?? 17030
+  const medicalDirectorIncome = futureYear.medicalDirectorHours ?? DEFAULT_MD_SHARED_PROJECTION
+  const prcsMedicalDirectorIncome = futureYear.prcsDirectorPhysicianId ? (futureYear.prcsMedicalDirectorHours ?? DEFAULT_MD_PRCS_PROJECTION) : 0
+  const consultingServicesIncome = futureYear.consultingServicesAgreement ?? DEFAULT_CONSULTING_SERVICES_PROJECTION
   
   return therapyIncome + medicalDirectorIncome + prcsMedicalDirectorIncome + consultingServicesIncome
 }
