@@ -165,7 +165,7 @@ export default function ParametersSummary() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>Scenario {scenario} Parameters</div>
           <div style={{ fontSize: 13, color: '#374151', border: '1px solid #e5e7eb', borderRadius: 6, padding: 5, background: '#ffffff' }}>
-            Growth — Income: {overrides.incomeGrowthPct ? 'Custom' : `${sc.projection.incomeGrowthPct}%`} · Non-Emp: {overrides.nonEmploymentCostsPct ? 'Custom' : `${sc.projection.nonEmploymentCostsPct}%`} · Staff: {overrides.nonMdEmploymentCostsPct ? 'Custom' : `${sc.projection.nonMdEmploymentCostsPct}%`} · Benefits: {sc.projection.benefitCostsGrowthPct}% · Misc: {overrides.miscEmploymentCostsPct ? 'Custom' : `${sc.projection.miscEmploymentCostsPct}%`}
+            Growth — Income: {overrides.incomeGrowthPct ? 'Custom' : `${sc.projection.incomeGrowthPct.toFixed(1)}%`} · Non-Emp: {overrides.nonEmploymentCostsPct ? 'Custom' : `${sc.projection.nonEmploymentCostsPct.toFixed(1)}%`} · Staff: {overrides.nonMdEmploymentCostsPct ? 'Custom' : `${sc.projection.nonMdEmploymentCostsPct.toFixed(1)}%`} · Benefits: {sc.projection.benefitCostsGrowthPct.toFixed(1)}% · Misc: {overrides.miscEmploymentCostsPct ? 'Custom' : `${sc.projection.miscEmploymentCostsPct.toFixed(1)}%`}
           </div>
         </div>
 

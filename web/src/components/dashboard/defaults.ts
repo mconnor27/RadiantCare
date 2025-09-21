@@ -108,13 +108,13 @@ Capital Expense`
 export const STAFF_W2_TOOLTIP = `Includes: Salary, Payroll Tax, and Benefits for Practice Manager, Billing
 
 Baseline 2025:
-RG: Full-time, $31.25 per hour, Medical/Dental/Vision
-AL: Part-time: $27 per hour, 32 hours per week
-MW: Part-time: $23 per hour, 20 hours per week`
+RG: Full-time: $31.25/hr, Medical/Dental/Vision
+AL: Part-time: $27/hr, 32 hours per week
+MW: Part-time: $23/hr, 20 hours per week`
 export const BENEFITS_TOOLTIP = `2025 Baseline:
-Medical: $722.81
-Dental: $57.12
-Vision: $6.44
+Medical: $722.81 / month
+Dental: $57.12 / month
+Vision: $6.44 / month
 
 Applies to Physicians only; all costs included in Staff sliders`
 export const MISC_EMPLOYMENT_COSTS_TOOLTIP = "Includes: Gifts, Profit Sharing, Relocation, Recruiting"
@@ -159,10 +159,10 @@ export const UI_DEFAULTS = {
 // Projection defaults
 export const PROJECTION_DEFAULTS = {
   A: {
-    incomeGrowthPct: 4.7,
-    nonEmploymentCostsPct: 7.0,
-    nonMdEmploymentCostsPct: 6.0,
-    miscEmploymentCostsPct: 3.6,
+    incomeGrowthPct: 4.0,
+    nonEmploymentCostsPct: 5.7,
+    nonMdEmploymentCostsPct: 2.4,
+    miscEmploymentCostsPct: 3.2,
     benefitCostsGrowthPct: 7.2,
     medicalDirectorHours: DEFAULT_MD_SHARED_PROJECTION,
     prcsMedicalDirectorHours: DEFAULT_MD_PRCS_PROJECTION,
@@ -172,8 +172,8 @@ export const PROJECTION_DEFAULTS = {
   B: {
     incomeGrowthPct: 0,
     nonEmploymentCostsPct: 7.0,
-    nonMdEmploymentCostsPct: 6.0,
-    miscEmploymentCostsPct: 3.6,
+    nonMdEmploymentCostsPct: 2.4,
+    miscEmploymentCostsPct: 3.2,
     benefitCostsGrowthPct: 7.2,
     medicalDirectorHours: DEFAULT_MD_SHARED_PROJECTION,
     prcsMedicalDirectorHours: DEFAULT_MD_PRCS_PROJECTION,

@@ -236,7 +236,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
                     min={min}
                     max={max}
                     step={step}
-                    value={value}
+                    value={suffix === '%' ? value.toFixed(1) : value}
                     onChange={(e) => {
                       store.setProjectionField(scenario, field, Number(e.target.value))
                     }}
@@ -519,7 +519,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
               min={min}
               max={max}
               step={step}
-              value={value}
+              value={suffix === '%' ? value.toFixed(1) : value}
               onChange={(e) => {
                 store.setProjectionField(scenario, field, Number(e.target.value))
               }}
