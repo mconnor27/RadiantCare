@@ -25,7 +25,12 @@ import {
   UI_DEFAULTS,
   SLIDER_CONFIGS,
   SHARED_MD_TOOLTIP,
-  PRCS_MD_TOOLTIP
+  PRCS_MD_TOOLTIP,
+  THERAPY_INCOME_GROWTH_TOOLTIP,
+  NON_EMPLOYMENT_COSTS_GROWTH_TOOLTIP,
+  STAFF_W2_TOOLTIP,
+  MISC_EMPLOYMENT_COSTS_TOOLTIP,
+  CONSULTING_SERVICES_TOOLTIP
 } from './defaults'
 import type { ScenarioKey, FutureYear } from './types'
 import PhysiciansEditor from './PhysiciansEditor'
@@ -117,7 +122,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {/* Year Navigation Buttons */}
-      <div className="year-buttons" style={{ display: 'flex', gap: 8, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal', marginBottom: 8 }}>
+      <div className="year-buttons" style={{ display: 'flex', gap: 8, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal', marginBottom: 8, paddingLeft: 8 }}>
         {availableYears.map((yr) => (
           <button
             key={`${scenario}-${yr}`}
@@ -177,9 +182,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
       ) : (
         <div style={{ fontWeight: 700, fontSize: 18 }}>{year}</div>
       )}
-      <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#f3f4f6', padding: 8 }}>
-
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16, rowGap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16, rowGap: 16, alignItems: 'start', padding: '0 8px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="panel-green" style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 0, border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
@@ -255,10 +258,10 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           }}
         />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-          onMouseEnter={(e) => createTooltip('income-tooltip', 'Includes Interest Income', e)}
+          onMouseEnter={(e) => createTooltip('income-tooltip', THERAPY_INCOME_GROWTH_TOOLTIP, e)}
           onMouseLeave={() => removeTooltip('income-tooltip')}
-          onTouchStart={(e) => createTooltip('income-tooltip', 'Includes Interest Income', e)}
-          onClick={(e) => createTooltip('income-tooltip', 'Includes Interest Income', e)}
+          onTouchStart={(e) => createTooltip('income-tooltip', THERAPY_INCOME_GROWTH_TOOLTIP, e)}
+          onClick={(e) => createTooltip('income-tooltip', THERAPY_INCOME_GROWTH_TOOLTIP, e)}
         ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
       </div>
 
@@ -512,10 +515,10 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           }}
         />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-          onMouseEnter={(e) => createTooltip('consulting-services-tooltip', 'Annual consulting services agreement income', e)}
+          onMouseEnter={(e) => createTooltip('consulting-services-tooltip', CONSULTING_SERVICES_TOOLTIP, e)}
           onMouseLeave={() => removeTooltip('consulting-services-tooltip')}
-          onTouchStart={(e) => createTooltip('consulting-services-tooltip', 'Annual consulting services agreement income', e)}
-          onClick={(e) => createTooltip('consulting-services-tooltip', 'Annual consulting services agreement income', e)}
+          onTouchStart={(e) => createTooltip('consulting-services-tooltip', CONSULTING_SERVICES_TOOLTIP, e)}
+          onClick={(e) => createTooltip('consulting-services-tooltip', CONSULTING_SERVICES_TOOLTIP, e)}
         ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
       </div>
       </div>
@@ -622,10 +625,10 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           }}
         />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: 11, fontFamily: 'Arial, sans-serif', color: '#666', width: 20, height: 20, border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-          onMouseEnter={(e) => createTooltip('nonemp-tooltip', 'Includes these non-employment categories:\n\nInsurance Cost\nState/Local Taxes\nCommunications Cost\nLicensure Costs\nPromotional Costs\nBilling Costs\nOffice Overhead\nCapital Expense', e)}
+          onMouseEnter={(e) => createTooltip('nonemp-tooltip', NON_EMPLOYMENT_COSTS_GROWTH_TOOLTIP, e)}
           onMouseLeave={() => removeTooltip('nonemp-tooltip')}
-          onTouchStart={(e) => createTooltip('nonemp-tooltip', 'Includes these non-employment categories:\n\nInsurance Cost\nState/Local Taxes\nCommunications Cost\nLicensure Costs\nPromotional Costs\nBilling Costs\nOffice Overhead\nCapital Expense', e)}
-          onClick={(e) => createTooltip('nonemp-tooltip', 'Includes these non-employment categories:\n\nInsurance Cost\nState/Local Taxes\nCommunications Cost\nLicensure Costs\nPromotional Costs\nBilling Costs\nOffice Overhead\nCapital Expense', e)}
+          onTouchStart={(e) => createTooltip('nonemp-tooltip', NON_EMPLOYMENT_COSTS_GROWTH_TOOLTIP, e)}
+          onClick={(e) => createTooltip('nonemp-tooltip', NON_EMPLOYMENT_COSTS_GROWTH_TOOLTIP, e)}
         ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
       </div>
       <div style={{ height: 3 }}></div>
@@ -715,35 +718,10 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           }}
         />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: 11, fontFamily: 'Arial, sans-serif', color: '#666', width: 20, height: 20, border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-          onMouseEnter={(e) => {
-            const existing = document.getElementById('nonmd-tooltip')
-            if (existing) existing.remove()
-            const tooltip = document.createElement('div')
-            tooltip.id = 'nonmd-tooltip'
-            tooltip.style.cssText = `
-              position: absolute;
-              background: #333;
-              color: white;
-              padding: 8px 12px;
-              border-radius: 4px;
-              font-size: 12px;
-              white-space: pre-line;
-              text-align: left;
-              z-index: 1000;
-              max-width: 360px;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-              pointer-events: none;
-            `
-            tooltip.textContent = `Includes: Practice Manager, Billing\n\nBaseline 2025:\nRG: Full-time, $31.25 per hour, Medical/Dental/Vision\nAL: Part-time: $27 per hour, 32 hours per week\nMW: Part-time: $23 per hour, 20 hours per week`
-            document.body.appendChild(tooltip)
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-            tooltip.style.left = `${rect.right + 10}px`
-            tooltip.style.top = `${rect.top + window.scrollY}px`
-          }}
-          onMouseLeave={() => {
-            const tooltip = document.getElementById('nonmd-tooltip')
-            if (tooltip) tooltip.remove()
-          }}
+          onMouseEnter={(e) => createTooltip('nonmd-tooltip', STAFF_W2_TOOLTIP, e)}
+          onMouseLeave={() => removeTooltip('nonmd-tooltip')}
+          onTouchStart={(e) => createTooltip('nonmd-tooltip', STAFF_W2_TOOLTIP, e)}
+          onClick={(e) => createTooltip('nonmd-tooltip', STAFF_W2_TOOLTIP, e)}
         >
           <span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span>
         </div>
@@ -835,42 +813,15 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           }}
         />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: 11, fontFamily: 'Arial, sans-serif', color: '#666', width: 20, height: 20, border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-          onMouseEnter={(e) => {
-            const existing = document.getElementById('misc-tooltip')
-            if (existing) existing.remove()
-            const tooltip = document.createElement('div')
-            tooltip.id = 'misc-tooltip'
-            tooltip.style.cssText = `
-              position: absolute;
-              background: #333;
-              color: white;
-              padding: 8px 12px;
-              border-radius: 4px;
-              font-size: 12px;
-              white-space: pre-line;
-              text-align: left;
-              z-index: 1000;
-              max-width: 300px;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-              pointer-events: none;
-            `
-            const baseContent = 'Includes:\nGifts\nProfit Sharing\nRelocation\nRecruiting'
-            tooltip.textContent = baseContent
-            document.body.appendChild(tooltip)
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-            tooltip.style.left = `${rect.right + 10}px`
-            tooltip.style.top = `${rect.top + window.scrollY}px`
-          }}
-          onMouseLeave={() => {
-            const tooltip = document.getElementById('misc-tooltip')
-            if (tooltip) tooltip.remove()
-          }}
+          onMouseEnter={(e) => createTooltip('misc-tooltip', MISC_EMPLOYMENT_COSTS_TOOLTIP, e)}
+          onMouseLeave={() => removeTooltip('misc-tooltip')}
+          onTouchStart={(e) => createTooltip('misc-tooltip', MISC_EMPLOYMENT_COSTS_TOOLTIP, e)}
+          onClick={(e) => createTooltip('misc-tooltip', MISC_EMPLOYMENT_COSTS_TOOLTIP, e)}
         >
           <span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span>
         </div>
       </div>
       <div style={{ height: 3 }}></div>
-      </div>
       </div>
       </div>
       </div>
@@ -892,8 +843,17 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
 
       {partnerComp.length > 0 && (
         <div style={{ marginTop: 6, border: '1px solid #e5e7eb', borderRadius: 8, padding: 8, background: '#f3f4f6' }}>
-          <div style={{ fontWeight: 600, textAlign: 'center', marginBottom: 4 }}>Partner Compensation</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', justifyContent: 'center', columnGap: 16, rowGap: 2 }}>
+          <div style={{ fontWeight: 600, textAlign: 'center', marginBottom: 8 }}>Partner Compensation</div>
+          <div className="panel-purple" style={{ 
+            background: '#ffffff',
+            borderRadius: 8,
+            border: '1px solid rgba(126, 34, 206, 0.4)',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(126, 34, 206, 0.05), 0 0 10px rgba(126, 34, 206, 0.08), 0 0 6px rgba(126, 34, 206, 0.4)',
+            padding: 12, 
+            width: 'fit-content', 
+            margin: '0 auto' 
+          }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', columnGap: 16, rowGap: 2 }}>
             {partnerComp.map((p) => (
               <Fragment key={p.id}>
                 <div>{p.name}</div>
@@ -960,6 +920,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
                 }
               })())}
             </div>
+          </div>
           </div>
         </div>
       )}

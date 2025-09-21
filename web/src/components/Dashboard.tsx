@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
@@ -7,6 +7,7 @@ import ProjectionSettingsControls from './dashboard/ProjectionSettingsControls'
 import HistoricAndProjectionChart from './dashboard/HistoricAndProjectionChart'
 import OverallCompensationSummary from './dashboard/OverallCompensationSummary'
 import ParametersSummary from './dashboard/ParametersSummary'
+import CollapsibleSection from './dashboard/CollapsibleSection'
 // Import types from types.ts to avoid duplication and binding conflicts
 import type { YearRow, PhysicianType, Physician, FutureYear, ScenarioKey, Store } from './dashboard/types'
 
@@ -24,7 +25,8 @@ import {
   getEmployeePortionOfYear,
   getPartnerPortionOfYear,
   getPartnerFTEWeight,
-  getTotalIncome
+  getTotalIncome,
+  getBenefitCostsForYear
 } from './dashboard/calculations'
 import { getDefaultTrailingSharedMdAmount } from './dashboard/tooltips'
 import {
@@ -48,6 +50,7 @@ import {
   DEFAULT_THERAPY_INCOME_2025,
   DEFAULT_NON_EMPLOYMENT_COSTS_2025,
   PROJECTION_DEFAULTS,
+  ANNUAL_BENEFITS_FULLTIME,
   // Removed NET_PARTNER_POOL_2025 import - now calculating dynamically
   INITIAL_FUTURE_YEARS_A,
   INITIAL_FUTURE_YEARS_B
@@ -491,12 +494,17 @@ export const useDashboardStore = create<Store>()(
             const nonEmploymentGpct = sc.projection.nonEmploymentCostsPct / 100
             const nonMdEmploymentGpct = sc.projection.nonMdEmploymentCostsPct / 100
             const miscEmploymentGpct = sc.projection.miscEmploymentCostsPct / 100
+            const benefitGrowthPct = sc.projection.benefitCostsGrowthPct
             
             // Starting values from the selected baseline
             let income = baselineData.therapyIncome
             let nonEmploymentCosts = baselineData.nonEmploymentCosts
-            let nonMdEmploymentCosts = baselineData.nonMdEmploymentCosts
             let miscEmploymentCosts = baselineData.miscEmploymentCosts
+
+            // For staff costs, decompose base (2025) into wages+taxes vs benefits.
+            // Always anchor benefits to 2025 base and grow by benefit slider separately from wages+taxes.
+            const baseStaff2025 = computeDefaultNonMdEmploymentCosts(2025)
+            const baseWagesTaxes2025 = Math.max(0, baseStaff2025 - ANNUAL_BENEFITS_FULLTIME)
             
             // Apply projections to each future year (SKIP baseline year 2025)
             for (const fy of sc.future) {
@@ -504,12 +512,17 @@ export const useDashboardStore = create<Store>()(
               
               income = income * (1 + incomeGpct)
               nonEmploymentCosts = nonEmploymentCosts * (1 + nonEmploymentGpct)
-              nonMdEmploymentCosts = nonMdEmploymentCosts * (1 + nonMdEmploymentGpct)
               miscEmploymentCosts = miscEmploymentCosts * (1 + miscEmploymentGpct)
+
+              // Compute staff employment costs using split growth: wages+taxes vs benefits
+              const yearsSince2025 = fy.year - 2025
+              const wagesAndTaxes = baseWagesTaxes2025 * Math.pow(1 + nonMdEmploymentGpct, yearsSince2025)
+              const benefits = getBenefitCostsForYear(fy.year, benefitGrowthPct)
+              const staffEmploymentCosts = wagesAndTaxes + benefits
               
               fy.therapyIncome = income
               fy.nonEmploymentCosts = nonEmploymentCosts
-              fy.nonMdEmploymentCosts = nonMdEmploymentCosts
+              fy.nonMdEmploymentCosts = staffEmploymentCosts
               fy.miscEmploymentCosts = miscEmploymentCosts
               fy.locumCosts = fy.year === 2026 ? DEFAULT_LOCUM_COSTS_2026 : sc.projection.locumsCosts
               
@@ -577,12 +590,16 @@ export const useDashboardStore = create<Store>()(
             const nonEmploymentGpct = sc.projection.nonEmploymentCostsPct / 100
             const nonMdEmploymentGpct = sc.projection.nonMdEmploymentCostsPct / 100
             const miscEmploymentGpct = sc.projection.miscEmploymentCostsPct / 100
+            const benefitGrowthPct = sc.projection.benefitCostsGrowthPct
             
             // Starting values from the selected baseline
             let income = baselineData.therapyIncome
             let nonEmploymentCosts = baselineData.nonEmploymentCosts
-            let nonMdEmploymentCosts = baselineData.nonMdEmploymentCosts
             let miscEmploymentCosts = baselineData.miscEmploymentCosts
+
+            // For staff costs, decompose base (2025) into wages+taxes vs benefits.
+            const baseStaff2025 = computeDefaultNonMdEmploymentCosts(2025)
+            const baseWagesTaxes2025 = Math.max(0, baseStaff2025 - ANNUAL_BENEFITS_FULLTIME)
             
             // Apply projections to each future year (SKIP baseline year 2025)
             for (const fy of sc.future) {
@@ -590,12 +607,17 @@ export const useDashboardStore = create<Store>()(
               
               income = income * (1 + incomeGpct)
               nonEmploymentCosts = nonEmploymentCosts * (1 + nonEmploymentGpct)
-              nonMdEmploymentCosts = nonMdEmploymentCosts * (1 + nonMdEmploymentGpct)
               miscEmploymentCosts = miscEmploymentCosts * (1 + miscEmploymentGpct)
+
+              // Compute staff employment costs using split growth.
+              const yearsSince2025 = fy.year - 2025
+              const wagesAndTaxes = baseWagesTaxes2025 * Math.pow(1 + nonMdEmploymentGpct, yearsSince2025)
+              const benefits = getBenefitCostsForYear(fy.year, benefitGrowthPct)
+              const staffEmploymentCosts = wagesAndTaxes + benefits
               
               fy.therapyIncome = income
               fy.nonEmploymentCosts = nonEmploymentCosts
-              fy.nonMdEmploymentCosts = nonMdEmploymentCosts
+              fy.nonMdEmploymentCosts = staffEmploymentCosts
               fy.miscEmploymentCosts = miscEmploymentCosts
               
               // Set locums costs from the global override (except 2026 which defaults to 60K)
@@ -1366,27 +1388,47 @@ export function calculateProjectedValue(
   const nonEmploymentGpct = sc.projection.nonEmploymentCostsPct / 100
   const nonMdEmploymentGpct = sc.projection.nonMdEmploymentCostsPct / 100
   const miscEmploymentGpct = sc.projection.miscEmploymentCostsPct / 100
+  const benefitGrowthPct = sc.projection.benefitCostsGrowthPct
 
   // Calculate projected value for the specific year
-  let value = baselineData[field]
   const yearsSinceBaseline = year - 2025
-
   if (field === 'therapyIncome') {
-    value = value * Math.pow(1 + incomeGpct, yearsSinceBaseline)
+    return baselineData.therapyIncome * Math.pow(1 + incomeGpct, yearsSinceBaseline)
   } else if (field === 'nonEmploymentCosts') {
-    value = value * Math.pow(1 + nonEmploymentGpct, yearsSinceBaseline)
-  } else if (field === 'nonMdEmploymentCosts') {
-    value = value * Math.pow(1 + nonMdEmploymentGpct, yearsSinceBaseline)
+    return baselineData.nonEmploymentCosts * Math.pow(1 + nonEmploymentGpct, yearsSinceBaseline)
   } else if (field === 'miscEmploymentCosts') {
-    value = value * Math.pow(1 + miscEmploymentGpct, yearsSinceBaseline)
+    return baselineData.miscEmploymentCosts * Math.pow(1 + miscEmploymentGpct, yearsSinceBaseline)
+  } else if (field === 'nonMdEmploymentCosts') {
+    // Split staff costs: wages+taxes grow by salary slider; benefits by benefits slider (anchored to 2025)
+    const baseStaff2025 = computeDefaultNonMdEmploymentCosts(2025)
+    const baseWagesTaxes2025 = Math.max(0, baseStaff2025 - ANNUAL_BENEFITS_FULLTIME)
+    const wagesAndTaxes = baseWagesTaxes2025 * Math.pow(1 + nonMdEmploymentGpct, yearsSinceBaseline)
+    const benefits = getBenefitCostsForYear(year, benefitGrowthPct)
+    return wagesAndTaxes + benefits
   }
-
-  return value
+  return 0
 }
 
 export function Dashboard() {
   const store = useDashboardStore()
   const isMobile = useIsMobile()
+  const [projectionOpen, setProjectionOpen] = useState(true)
+  const [yearPanelOpen, setYearPanelOpen] = useState(true)
+  const [overallOpen, setOverallOpen] = useState(true)
+  const [parametersOpen, setParametersOpen] = useState(true)
+
+  const expandAll = () => {
+    setProjectionOpen(true)
+    setYearPanelOpen(true)
+    setOverallOpen(true)
+    setParametersOpen(true)
+  }
+  const collapseAll = () => {
+    setProjectionOpen(false)
+    setYearPanelOpen(false)
+    setOverallOpen(false)
+    setParametersOpen(false)
+  }
   useEffect(() => {}, [])
   useEffect(() => {
     // Nudge Plotly to recompute sizes when layout width changes
@@ -1438,7 +1480,15 @@ export function Dashboard() {
         margin: '20px auto 0 auto' 
       }}>
         <div style={{ display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-          <button onClick={() => { store.resetToDefaults(); window.location.hash = '' }} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Reset to defaults</button>
+          <button onClick={() => { 
+            store.resetToDefaults(); 
+            window.location.hash = '';
+            // Collapse all sections except Overall Compensation
+            setProjectionOpen(false);
+            setYearPanelOpen(false);
+            setOverallOpen(true);
+            setParametersOpen(false);
+          }} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Reset to defaults</button>
           <button onClick={copyShareLink} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Copy shareable link</button>
         </div>
         <HistoricAndProjectionChart key={store.scenarioBEnabled ? 'withB' : 'withoutB'} />
@@ -1450,7 +1500,11 @@ export function Dashboard() {
           maxWidth: store.scenarioBEnabled ? 1660 : 1000, 
           margin: '0 auto' 
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, justifyContent: 'space-between', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button onClick={expandAll} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Expand all</button>
+              <button onClick={collapseAll} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Collapse all</button>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <input
@@ -1482,23 +1536,39 @@ export function Dashboard() {
           {/* Scenario A column */}
           <div>
             <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario A</div>
-            <ProjectionSettingsControls scenario={'A'} />
+            <CollapsibleSection title="Projection Settings" open={projectionOpen} onOpenChange={setProjectionOpen} tone="neutral">
+              <ProjectionSettingsControls scenario={'A'} />
+            </CollapsibleSection>
+            <CollapsibleSection title={`Per Year Settings — ${store.scenarioA.selectedYear === 2025 ? 'Baseline' : store.scenarioA.selectedYear}`} open={yearPanelOpen} onOpenChange={setYearPanelOpen} tone="neutral">
               <YearPanel year={store.scenarioA.selectedYear} scenario={'A'} />
+            </CollapsibleSection>
           </div>
 
           {/* Scenario B column */}
           {store.scenarioBEnabled && store.scenarioB && (
             <div>
               <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario B</div>
-              <ProjectionSettingsControls scenario={'B'} />
+              <CollapsibleSection title="Projection Settings" open={projectionOpen} onOpenChange={setProjectionOpen} tone="neutral">
+                <ProjectionSettingsControls scenario={'B'} />
+              </CollapsibleSection>
+              <CollapsibleSection title={`Per Year Settings — ${store.scenarioB.selectedYear === 2025 ? 'Baseline' : store.scenarioB.selectedYear}`} open={yearPanelOpen} onOpenChange={setYearPanelOpen} tone="neutral">
                 <YearPanel year={store.scenarioB.selectedYear} scenario={'B'} />
+              </CollapsibleSection>
             </div>
           )}
           </div>
         </div>
       </div>
-      <OverallCompensationSummary />
-      <ParametersSummary />
+      <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '0 auto' }}>
+        <CollapsibleSection title="Overall Compensation Summary (2025-2030)" open={overallOpen} onOpenChange={setOverallOpen} tone="neutral">
+          <OverallCompensationSummary />
+        </CollapsibleSection>
+      </div>
+      <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '0 auto' }}>
+        <CollapsibleSection title="Parameters Summary" open={parametersOpen} onOpenChange={setParametersOpen} tone="neutral">
+          <ParametersSummary />
+        </CollapsibleSection>
+      </div>
     </div>
   )
 }

@@ -541,6 +541,17 @@ input[type=number] {
   transform: scale(1.002);
 }
 
+/* Collapsible sections */
+.collapsible-header {
+  transition: background-color 0.12s ease;
+}
+.collapsible-header:hover {
+  background: #f3f4f6;
+}
+.collapsible-content {
+  will-change: max-height, opacity;
+}
+
 /* Subtle panels for grouping sliders and text inputs */
 .control-panel {
   background-color: #f9fafb;

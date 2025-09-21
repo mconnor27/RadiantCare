@@ -32,7 +32,7 @@ export const ACTUAL_2024_CONSULTING_SERVICES = 15693.40
 export const ACTUAL_2025_CONSULTING_SERVICES = 16200.00
 
 // Benefits constants (moved from calculations.ts)
-export const MONTHLY_BENEFITS_MED = 796.37
+export const MONTHLY_BENEFITS_MED = 722.81
 export const MONTHLY_BENEFITS_DENTAL = 57.12
 export const MONTHLY_BENEFITS_VISION = 6.44
 export const ANNUAL_BENEFITS_FULLTIME = (MONTHLY_BENEFITS_MED + MONTHLY_BENEFITS_DENTAL + MONTHLY_BENEFITS_VISION) * 12
@@ -94,6 +94,33 @@ export const SHARED_MD_TOOLTIP = `Shared contract terms: $${SHARED_MD_RATE}/hr u
 export const PRCS_MD_TOOLTIP = `PRCS contract terms: $${PRCS_MD_RATE}/hr up to $${PRCS_MD_ANNUAL_MAX.toLocaleString()} maximum annual. Applies if a PRCS Medical Director is specified in the Physicians section.`
 export const PRCS_MD_TOOLTIP_SHORT = `PRCS contract terms: $${PRCS_MD_RATE}/hr up to $${PRCS_MD_ANNUAL_MAX.toLocaleString()} maximum annual.`
 
+// Projection Settings Tooltips
+export const THERAPY_INCOME_GROWTH_TOOLTIP = "Includes: Lacey, Centralia, Aberdeen, Interest"
+export const NON_EMPLOYMENT_COSTS_GROWTH_TOOLTIP = `Includes:
+Insurance Cost
+State/Local Taxes
+Communications Cost
+Licensure Costs
+Promotional Costs
+Billing Costs
+Office Overhead
+Capital Expense`
+export const STAFF_W2_TOOLTIP = `Includes: Salary, Payroll Tax, and Benefits for Practice Manager, Billing
+
+Baseline 2025:
+RG: Full-time, $31.25 per hour, Medical/Dental/Vision
+AL: Part-time: $27 per hour, 32 hours per week
+MW: Part-time: $23 per hour, 20 hours per week`
+export const BENEFITS_TOOLTIP = `2025 Baseline:
+Medical: $722.81
+Dental: $57.12
+Vision: $6.44
+
+Applies to Physicians only; all costs included in Staff sliders`
+export const MISC_EMPLOYMENT_COSTS_TOOLTIP = "Includes: Gifts, Profit Sharing, Relocation, Recruiting"
+export const CONSULTING_SERVICES_TOOLTIP = `$26.20 per hour for work actually performed subject to a limit of $17,030 per year
+(25 hours per two-week pay period).`
+
 // UI defaults for sliders and inputs
 export const UI_DEFAULTS = {
   // Therapy Income slider
@@ -132,22 +159,22 @@ export const UI_DEFAULTS = {
 // Projection defaults
 export const PROJECTION_DEFAULTS = {
   A: {
-    incomeGrowthPct: 3.7,
-    nonEmploymentCostsPct: 7.8,
+    incomeGrowthPct: 4.7,
+    nonEmploymentCostsPct: 7.0,
     nonMdEmploymentCostsPct: 6.0,
-    miscEmploymentCostsPct: 6.7,
-    benefitCostsGrowthPct: 5.0,
+    miscEmploymentCostsPct: 3.6,
+    benefitCostsGrowthPct: 7.2,
     medicalDirectorHours: DEFAULT_MD_SHARED_PROJECTION,
     prcsMedicalDirectorHours: DEFAULT_MD_PRCS_PROJECTION,
     consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_PROJECTION,
     locumsCosts: 120000,
   },
   B: {
-    incomeGrowthPct: 3.7,
-    nonEmploymentCostsPct: 7.8,
+    incomeGrowthPct: 0,
+    nonEmploymentCostsPct: 7.0,
     nonMdEmploymentCostsPct: 6.0,
-    miscEmploymentCostsPct: 6.7,
-    benefitCostsGrowthPct: 5.0,
+    miscEmploymentCostsPct: 3.6,
+    benefitCostsGrowthPct: 7.2,
     medicalDirectorHours: DEFAULT_MD_SHARED_PROJECTION,
     prcsMedicalDirectorHours: DEFAULT_MD_PRCS_PROJECTION,
     consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_PROJECTION,

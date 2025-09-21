@@ -3,7 +3,7 @@ import { useIsMobile } from './hooks'
 import { createTooltip, removeTooltip } from './tooltips'
 import { currency } from './utils'
 import type { ScenarioKey, Projection } from './types'
-import { PROJECTION_DEFAULTS, SLIDER_CONFIGS, UI_DEFAULTS, SHARED_MD_TOOLTIP, PRCS_MD_TOOLTIP_SHORT } from './defaults'
+import { PROJECTION_DEFAULTS, SLIDER_CONFIGS, UI_DEFAULTS, SHARED_MD_TOOLTIP, PRCS_MD_TOOLTIP_SHORT, THERAPY_INCOME_GROWTH_TOOLTIP, NON_EMPLOYMENT_COSTS_GROWTH_TOOLTIP, STAFF_W2_TOOLTIP, BENEFITS_TOOLTIP, MISC_EMPLOYMENT_COSTS_TOOLTIP, CONSULTING_SERVICES_TOOLTIP } from './defaults'
 
 export default function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
   const store = useDashboardStore()
@@ -11,6 +11,17 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
   const isMobile = useIsMobile()
 
   if (!sc) return null
+
+  // Helper function to calculate locums tooltip with days and weeks
+  const createLocumsTooltip = (cost: number) => {
+    const dailyRate = 2000
+    const days = Math.round(cost / dailyRate)
+    const weeks4Day = Math.round(days / 4 * 10) / 10 // 4-day weeks, rounded to 1 decimal
+    const weeks5Day = Math.round(days / 5 * 10) / 10 // 5-day weeks, rounded to 1 decimal
+    const minWeeks = Math.min(weeks4Day, weeks5Day)
+    const maxWeeks = Math.max(weeks4Day, weeks5Day)
+    return `~$${dailyRate.toLocaleString()} per day, ${days} days, ${minWeeks}-${maxWeeks} weeks`
+  }
 
   // Default values for reset functionality
   const defaultValues = PROJECTION_DEFAULTS[scenario]
@@ -27,7 +38,8 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
     isDollar: boolean = false,
     glowType: 'income' | 'cost' = 'cost',
     resetTooltip: string = 'Reset to 2016-2024 Trend',
-    bare: boolean = false
+    bare: boolean = false,
+    tooltipText?: string
   ) => {
     const defaultValue = defaultValues[field]
     const isChanged = Math.abs(value - defaultValue) > UI_DEFAULTS.floatingPointTolerance
@@ -55,7 +67,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
     if (bare) {
       return (
         <div style={wrapperStyle}>
-          <div style={{ display: 'grid', gridTemplateColumns: `${isMobile ? '96px' : '50px'} 19px 1fr auto ${(field === 'nonMdEmploymentCostsPct' || field === 'benefitCostsGrowthPct') ? '12px' : '24px'}`, alignItems: 'center', gap: (field === 'nonMdEmploymentCostsPct' || field === 'benefitCostsGrowthPct') ? 0 : 2 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `${isMobile ? '96px' : '50px'} 19px 1fr auto ${(field === 'nonMdEmploymentCostsPct' || field === 'benefitCostsGrowthPct') ? '12px' : '24px'} ${tooltipText ? '24px' : ''}`, alignItems: 'center', gap: (field === 'nonMdEmploymentCostsPct' || field === 'benefitCostsGrowthPct') ? 0 : 2, columnGap: (field === 'nonMdEmploymentCostsPct' || field === 'benefitCostsGrowthPct') ? 4 : undefined }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', justifyContent: 'flex-end' }}>
               <label style={{ fontSize: 13, fontWeight: 500 }}>{label}</label>
             </div>
@@ -302,21 +314,32 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
 
             {/* Only show suffix for non-dollar, non-medical-director fields */}
             {!isDollar && !(field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours') && (
-              <span style={{ fontSize: 14, color: '#666', minWidth: 12 }}>
+              <span style={{ fontSize: 14, color: '#666', minWidth: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
                 {suffix}
+                {tooltipText && (
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                    onMouseEnter={(e) => createTooltip(`${field}-projection-tooltip`, tooltipText, e)}
+                    onMouseLeave={() => removeTooltip(`${field}-projection-tooltip`)}
+                    onTouchStart={(e) => createTooltip(`${field}-projection-tooltip`, tooltipText, e)}
+                    onClick={(e) => createTooltip(`${field}-projection-tooltip`, tooltipText, e)}
+                  ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+                )}
               </span>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {(field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours') && (
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-                  onMouseEnter={(e) => createTooltip('md-projection-tooltip', field === 'medicalDirectorHours' ? SHARED_MD_TOOLTIP : PRCS_MD_TOOLTIP_SHORT, e)}
-                  onMouseLeave={() => removeTooltip('md-projection-tooltip')}
-                  onTouchStart={(e) => createTooltip('md-projection-tooltip', field === 'medicalDirectorHours' ? SHARED_MD_TOOLTIP : PRCS_MD_TOOLTIP_SHORT, e)}
-                  onClick={(e) => createTooltip('md-projection-tooltip', field === 'medicalDirectorHours' ? SHARED_MD_TOOLTIP : PRCS_MD_TOOLTIP_SHORT, e)}
-                ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
-              )}
-            </div>
+            {/* Tooltip icon column for bare sliders */}
+            {tooltipText && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {(field !== 'medicalDirectorHours' && field !== 'prcsMedicalDirectorHours') && (
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                    onMouseEnter={(e) => createTooltip(`${field}-projection-tooltip`, tooltipText, e)}
+                    onMouseLeave={() => removeTooltip(`${field}-projection-tooltip`)}
+                    onTouchStart={(e) => createTooltip(`${field}-projection-tooltip`, tooltipText, e)}
+                    onClick={(e) => createTooltip(`${field}-projection-tooltip`, tooltipText, e)}
+                  ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )
@@ -573,15 +596,23 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
         <span style={{ fontSize: 14, color: '#666', minWidth: isDollar ? 0 : 12 }}>
           {isDollar ? '' : suffix}
         </span>
+        {(field !== 'medicalDirectorHours' && field !== 'prcsMedicalDirectorHours' && tooltipText) && (
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+            onMouseEnter={(e) => createTooltip(`${field}-projection-tooltip`, tooltipText, e)}
+            onMouseLeave={() => removeTooltip(`${field}-projection-tooltip`)}
+            onTouchStart={(e) => createTooltip(`${field}-projection-tooltip`, tooltipText, e)}
+            onClick={(e) => createTooltip(`${field}-projection-tooltip`, tooltipText, e)}
+          ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+        )}
       </div>
     </div>
     )
   }
 
   return (
-    <div style={{ marginBottom: 12, padding: 16, backgroundColor: '#f3f4f6', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+    <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12 }}>
-        <div style={{ fontSize: 14, fontWeight: 600 }}>Projection Settings</div>
+        
         <button
           onClick={() => {
             removeTooltip('reset-all-tooltip')
@@ -606,7 +637,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
           onMouseEnter={(e) => {
             e.currentTarget.style.opacity = '1'
             e.currentTarget.style.backgroundColor = '#f3f4f6'
-            createTooltip('reset-all-tooltip', 'Reset All to 2016-2024 Trend', e)
+            createTooltip('reset-all-tooltip', 'Reset All to Defaults/2016-2024 Trends', e)
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.opacity = '0.8'
@@ -617,10 +648,10 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
           ↺ Reset All
         </button>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 16, padding: '0 8px' }}>
         {/* First Column - Income Panels */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {createSlider('Therapy Income Growth', 'incomeGrowthPct', sc.projection.incomeGrowthPct ?? 3.7, -10, 20, 0.1, '%', false, 'income')}
+          {createSlider('Therapy Income Growth', 'incomeGrowthPct', sc.projection.incomeGrowthPct ?? 3.7, -10, 20, 0.1, '%', false, 'income', 'Reset to 2016-2024 Trend', false, THERAPY_INCOME_GROWTH_TOOLTIP)}
 
           <div className={'panel-green'} style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)' }}>
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2, textAlign: 'left' }}>Medical Director Hours (Annual Overrides)</div>
@@ -630,29 +661,29 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
             </div>
           </div>
 
-          {createSlider('Consulting Services Agreement (Annual Override)', 'consultingServicesAgreement', sc.projection.consultingServicesAgreement ?? PROJECTION_DEFAULTS[scenario].consultingServicesAgreement, SLIDER_CONFIGS.consultingServicesAgreement.min, SLIDER_CONFIGS.consultingServicesAgreement.max, SLIDER_CONFIGS.consultingServicesAgreement.step, '', true, 'income', 'Reset to Default')}
+          {createSlider('Consulting Services Agreement (Annual Override)', 'consultingServicesAgreement', sc.projection.consultingServicesAgreement ?? PROJECTION_DEFAULTS[scenario].consultingServicesAgreement, SLIDER_CONFIGS.consultingServicesAgreement.min, SLIDER_CONFIGS.consultingServicesAgreement.max, SLIDER_CONFIGS.consultingServicesAgreement.step, '', true, 'income', 'Reset to Default', false, CONSULTING_SERVICES_TOOLTIP)}
         </div>
 
         {/* Second Column - Cost Panels */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {createSlider('Non-Employment Costs Growth', 'nonEmploymentCostsPct', sc.projection.nonEmploymentCostsPct ?? 7.8, -10, 20, 0.1, '%', false, 'cost')}
+          {createSlider('Non-Employment Costs Growth', 'nonEmploymentCostsPct', sc.projection.nonEmploymentCostsPct ?? 7.8, -10, 20, 0.1, '%', false, 'cost', 'Reset to 2016-2024 Trend', false, NON_EMPLOYMENT_COSTS_GROWTH_TOOLTIP)}
 
           <div className={'panel-red'} style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)' }}>
-            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2, textAlign: 'left' }}>Staff Employment Costs Growth</div>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2, textAlign: 'left' }}>Employment Costs Growth</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
-              {createSlider('Salary', 'nonMdEmploymentCostsPct', sc.projection.nonMdEmploymentCostsPct ?? 6.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Default', true)}
-              {createSlider('Benefits', 'benefitCostsGrowthPct', sc.projection.benefitCostsGrowthPct ?? 5.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Default', true)}
+              {createSlider('Staff W2', 'nonMdEmploymentCostsPct', sc.projection.nonMdEmploymentCostsPct ?? 6.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Default', true, STAFF_W2_TOOLTIP)}
+              {createSlider('Benefits', 'benefitCostsGrowthPct', sc.projection.benefitCostsGrowthPct ?? 5.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Default', true, BENEFITS_TOOLTIP)}
             </div>
           </div>
 
-          {createSlider('Misc Employment Costs Growth', 'miscEmploymentCostsPct', sc.projection.miscEmploymentCostsPct ?? 6.7, -10, 20, 0.1, '%', false, 'cost')}
+          {createSlider('Misc Employment Costs Growth', 'miscEmploymentCostsPct', sc.projection.miscEmploymentCostsPct ?? 6.7, -10, 20, 0.1, '%', false, 'cost', 'Reset to 2016-2024 Trend', false, MISC_EMPLOYMENT_COSTS_TOOLTIP)}
         </div>
       </div>
 
       {/* Locums Panel - Full Width */}
-      <div style={{ marginTop: 16 }}>
-        {createSlider('Locums Costs (Annual Override)', 'locumsCosts', sc.projection.locumsCosts ?? PROJECTION_DEFAULTS[scenario].locumsCosts, SLIDER_CONFIGS.locumsCosts.min, SLIDER_CONFIGS.locumsCosts.max, SLIDER_CONFIGS.locumsCosts.step, '', true, 'cost', 'Reset to Default')}
+      <div style={{ marginTop: 16, padding: '0 8px 8px 8px' }}>
+        {createSlider('Locums Costs (Annual Override)', 'locumsCosts', sc.projection.locumsCosts ?? PROJECTION_DEFAULTS[scenario].locumsCosts, SLIDER_CONFIGS.locumsCosts.min, SLIDER_CONFIGS.locumsCosts.max, SLIDER_CONFIGS.locumsCosts.step, '', true, 'cost', 'Reset to Default', false, createLocumsTooltip(sc.projection.locumsCosts ?? PROJECTION_DEFAULTS[scenario].locumsCosts))}
       </div>
-    </div>
+    </>
   )
 }

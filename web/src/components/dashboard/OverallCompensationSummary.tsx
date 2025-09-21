@@ -171,15 +171,9 @@ export default function OverallCompensationSummary() {
   }
 
 
-
-  // const totalsByPhysician = allNames.map((name) => ({
-  //   name,
-  //   total: years.reduce((s, _y, idx) => s + series.find((s2) => s2.name === name)!.values[idx], 0),
-  // }))
-
   return (
-    <div style={{ marginTop: 16, border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, background: '#f9fafb', maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '16px auto 0 auto' }}>
-      <h3 style={{ margin: '12px 0' }}>Multi-Year Compensation Summary (2025–2030)</h3>
+    <div style={{ marginTop: 0, maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '16px auto 0 auto' }}>
+      
       <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#ffffff', padding: 4, position: 'relative', maxWidth: 1000, margin: '0 auto' }}>
         <Plot
           key={`plot-${isolated?.scenario}-${isolated?.name}-${highlight?.scenario}-${highlight?.name}-${scenarioIsolated?.scenario}-${scenarioIsolated?.name}-${scenarioHighlight?.scenario}-${scenarioHighlight?.name}`}
@@ -247,8 +241,8 @@ export default function OverallCompensationSummary() {
             return rows
           })() as any}
           layout={{
-            title: { text: 'Compensation per Physician (By Year)', font: { size: 14 } },
-            margin: { l: 80, r: 8, t: 28, b: 60 },
+            title: { text: 'Compensation per Physician (2025-2030)', font: { size: 18, weight: 600 } },
+            margin: { l: 80, r: 8, t: 45, b: 60 },
             yaxis: { tickprefix: '$', separatethousands: true, tickformat: ',.0f' },
             xaxis: { dtick: 1 },
             legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.05, yanchor: 'top', traceorder: 'grouped' },

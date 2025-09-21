@@ -161,7 +161,7 @@ export default function ParametersSummary() {
       return null
     })()
     return (
-      <div style={{ marginTop: 12, border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, background: '#f9fafb', maxWidth: 1000, marginLeft: 'auto', marginRight: 'auto' }}>
+      <div style={{ marginTop: 0, border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, background: '#f9fafb', maxWidth: 1000, marginLeft: 'auto', marginRight: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>Scenario {scenario} Parameters</div>
           <div style={{ fontSize: 13, color: '#374151', border: '1px solid #e5e7eb', borderRadius: 6, padding: 5, background: '#ffffff' }}>
@@ -357,8 +357,7 @@ export default function ParametersSummary() {
   }
 
   return (
-    <div style={{ marginTop: 12 }}>
-      <h3 style={{ margin: '8px 0', fontSize: 15 }}>Parameters Summary</h3>
+    <div style={{ marginTop: 0 }}>
       {renderScenario('A')}
       {store.scenarioBEnabled && store.scenarioB && renderScenario('B')}
     </div>

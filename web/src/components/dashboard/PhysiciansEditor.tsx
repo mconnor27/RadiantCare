@@ -2365,12 +2365,20 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
           <div 
             style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
             onMouseEnter={(e) => {
+              const dailyRate = 2000
+              const days = Math.round(locumCosts / dailyRate)
+              const weeks4Day = Math.round(days / 4 * 10) / 10
+              const weeks5Day = Math.round(days / 5 * 10) / 10
+              const minWeeks = Math.min(weeks4Day, weeks5Day)
+              const maxWeeks = Math.max(weeks4Day, weeks5Day)
+              const tooltipText = `~$${dailyRate.toLocaleString()} per day, ${days} days, ${minWeeks}-${maxWeeks} weeks`
+              
               const existing = document.getElementById('locums-tooltip')
               if (existing) existing.remove()
               const tooltip = document.createElement('div')
               tooltip.id = 'locums-tooltip'
               tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
-              tooltip.textContent = '~$2,000 per day'
+              tooltip.textContent = tooltipText
               document.body.appendChild(tooltip)
               const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
               tooltip.style.left = `${rect.right + 10}px`
