@@ -1409,6 +1409,41 @@ export function calculateProjectedValue(
   return 0
 }
 
+// Helper function to get baseline year from data mode
+function getBaselineYear(dataMode: string): number {
+  if (dataMode === '2024 Data') return 2024
+  return 2025 // Default for '2025 Data' and 'Custom'
+}
+
+// Helper function to create projection settings summary
+function createProjectionSummary(scenario: ScenarioKey, store: any): string {
+  const sc = scenario === 'A' ? store.scenarioA : store.scenarioB
+  if (!sc) return ''
+  
+  const p = sc.projection
+  const summaryParts: string[] = []
+  
+  // Income Growth
+  summaryParts.push(`Income: ${p.incomeGrowthPct?.toFixed(1) ?? '4.0'}%`)
+  
+  // Medical Director amounts (in thousands)
+  const mdShared = Math.round((p.medicalDirectorHours ?? 110000) / 1000)
+  const mdPrcs = Math.round((p.prcsMedicalDirectorHours ?? 50000) / 1000)
+  summaryParts.push(`MD: $${mdShared}k/$${mdPrcs}k`)
+  summaryParts.push(`CSA: $${p.consultingServicesAgreement?.toFixed(0) ?? '26.20'}`)
+  // Major cost growth rates
+  summaryParts.push(`Non-Emp: ${p.nonEmploymentCostsPct?.toFixed(1) ?? '5.7'}%`)
+  summaryParts.push(`Staff: ${p.nonMdEmploymentCostsPct?.toFixed(1) ?? '2.4'}%`)
+  summaryParts.push(`Benefits: ${p.benefitCostsGrowthPct?.toFixed(1) ?? '7.2'}%`)
+  summaryParts.push(`Misc: ${p.miscEmploymentCostsPct?.toFixed(1) ?? '3.2'}%`)
+  
+  // Locums (in thousands)
+  const locums = Math.round((p.locumsCosts ?? 120000) / 1000)
+  summaryParts.push(`Locums: $${locums}k`)
+  
+  return summaryParts.join(' • ')
+}
+
 export function Dashboard() {
   const store = useDashboardStore()
   const isMobile = useIsMobile()
@@ -1416,6 +1451,17 @@ export function Dashboard() {
   const [yearPanelOpen, setYearPanelOpen] = useState(true)
   const [overallOpen, setOverallOpen] = useState(true)
   const [parametersOpen, setParametersOpen] = useState(true)
+
+  // Memoized summaries that update when projection settings change
+  const projectionSummaryA = useMemo(() => 
+    createProjectionSummary('A', store), 
+    [store.scenarioA.projection]
+  )
+  
+  const projectionSummaryB = useMemo(() => 
+    store.scenarioB ? createProjectionSummary('B', store) : '', 
+    [store.scenarioB?.projection]
+  )
 
   const expandAll = () => {
     setProjectionOpen(true)
@@ -1536,10 +1582,22 @@ export function Dashboard() {
           {/* Scenario A column */}
           <div>
             <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario A</div>
-            <CollapsibleSection title="Projection Settings" open={projectionOpen} onOpenChange={setProjectionOpen} tone="neutral">
+            <CollapsibleSection 
+              title={
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                  <span>Projection Settings</span>
+                  <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 400 }}>
+                    {projectionSummaryA}
+                  </span>
+                </div>
+              } 
+              open={projectionOpen} 
+              onOpenChange={setProjectionOpen} 
+              tone="neutral"
+            >
               <ProjectionSettingsControls scenario={'A'} />
             </CollapsibleSection>
-            <CollapsibleSection title={`Per Year Settings — ${store.scenarioA.selectedYear === 2025 ? 'Baseline' : store.scenarioA.selectedYear}`} open={yearPanelOpen} onOpenChange={setYearPanelOpen} tone="neutral">
+            <CollapsibleSection title={`Per Year Settings (Baseline: ${getBaselineYear(store.scenarioA.dataMode)})`} open={yearPanelOpen} onOpenChange={setYearPanelOpen} tone="neutral">
               <YearPanel year={store.scenarioA.selectedYear} scenario={'A'} />
             </CollapsibleSection>
           </div>
@@ -1548,10 +1606,22 @@ export function Dashboard() {
           {store.scenarioBEnabled && store.scenarioB && (
             <div>
               <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario B</div>
-              <CollapsibleSection title="Projection Settings" open={projectionOpen} onOpenChange={setProjectionOpen} tone="neutral">
+              <CollapsibleSection 
+                title={
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                    <span>Projection Settings</span>
+                    <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 400 }}>
+                      {projectionSummaryB}
+                    </span>
+                  </div>
+                } 
+                open={projectionOpen} 
+                onOpenChange={setProjectionOpen} 
+                tone="neutral"
+              >
                 <ProjectionSettingsControls scenario={'B'} />
               </CollapsibleSection>
-              <CollapsibleSection title={`Per Year Settings — ${store.scenarioB.selectedYear === 2025 ? 'Baseline' : store.scenarioB.selectedYear}`} open={yearPanelOpen} onOpenChange={setYearPanelOpen} tone="neutral">
+              <CollapsibleSection title={`Per Year Settings (Baseline: ${getBaselineYear(store.scenarioB?.dataMode || '2025 Data')})`} open={yearPanelOpen} onOpenChange={setYearPanelOpen} tone="neutral">
                 <YearPanel year={store.scenarioB.selectedYear} scenario={'B'} />
               </CollapsibleSection>
             </div>

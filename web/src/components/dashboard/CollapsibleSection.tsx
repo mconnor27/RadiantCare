@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 export default function CollapsibleSection({
   title,
@@ -9,7 +9,7 @@ export default function CollapsibleSection({
   right,
   tone = 'neutral'
 }: {
-  title: string
+  title: string | React.ReactNode
   defaultOpen?: boolean
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -84,7 +84,9 @@ export default function CollapsibleSection({
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={chevronStyle}>
               <path d="M8 5l8 7-8 7" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <div style={{ fontSize: 16, fontWeight: 600 }}>{title}</div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>
+              {title}
+            </div>
           </div>
           <div onClick={(e) => e.stopPropagation()}>{right}</div>
         </div>
