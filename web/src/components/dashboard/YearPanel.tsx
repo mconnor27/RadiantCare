@@ -853,7 +853,32 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
             width: 'fit-content', 
             margin: '0 auto' 
           }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', columnGap: 16, rowGap: 2 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', columnGap: 16, rowGap: 2, paddingRight: (() => {
+              // Calculate the maximum width needed for W2 income text
+              let maxW2TextWidth = 0
+              partnerComp.forEach((p) => {
+                const md = fy?.physicians.find((x) => x.id === p.id)
+                if (md && md.type === 'employeeToPartner') {
+                  const delayedW2 = calculateDelayedW2Payment(md, year)
+                  let w2Text = ''
+                  if (delayedW2.amount > 0) {
+                    w2Text = `(+ ${currency(delayedW2.amount)} W2)`
+                  } else {
+                    const employeePortion = md.employeePortionOfYear ?? 0
+                    const w2 = (md.salary ?? 0) * employeePortion
+                    if (w2 > 0) {
+                      w2Text = `(+ ${currency(w2)} W2)`
+                    }
+                  }
+                  if (w2Text) {
+                    // Approximate width: 8px per character (rough estimate for typical fonts)
+                    const textWidth = w2Text.length * 8 + 10 // +16px for padding/spacing
+                    maxW2TextWidth = Math.max(maxW2TextWidth, textWidth)
+                  }
+                }
+              })
+              return maxW2TextWidth
+            })() }}>
             {partnerComp.map((p) => (
               <Fragment key={p.id}>
                 <div>{p.name}</div>

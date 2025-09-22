@@ -1,0 +1,527 @@
+{
+    "Header": {
+     "Time": "2025-09-21T16:37:33-07:00",
+     "ReportName": "ProfitAndLoss",
+     "ReportBasis": "Cash",
+     "StartPeriod": "2024-12-31",
+     "EndPeriod": "2025-01-01",
+     "SummarizeColumnsBy": "Year",
+     "Currency": "USD",
+     "Option": [
+      {
+       "Name": "AccountingStandard",
+       "Value": "GAAP"
+      },
+      {
+       "Name": "NoReportData",
+       "Value": "false"
+      }
+     ]
+    },
+    "Columns": {
+     "Column": [
+      {
+       "ColTitle": "",
+       "ColType": "Account",
+       "MetaData": [
+        {
+         "Name": "ColKey",
+         "Value": "account"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Dec 31, 2024",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2024-12-31"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2024-12-31"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Dec 31, 2024"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Jan 1, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-01-01"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-01-01"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Jan 1, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Total",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "ColKey",
+         "Value": "total"
+        }
+       ]
+      }
+     ]
+    },
+    "Rows": {
+     "Row": [
+      {
+       "Header": {
+        "ColData": [
+         {
+          "value": "Income"
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         }
+        ]
+       },
+       "Rows": {
+        "Row": [
+         {
+          "Header": {
+           "ColData": [
+            {
+             "value": "7100 Therapy Income",
+             "id": "51"
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": "0.00"
+            }
+           ]
+          },
+          "Rows": {
+           "Row": [
+            {
+             "ColData": [
+              {
+               "value": "7105 Therapy - Lacey",
+               "id": "154"
+              },
+              {
+               "value": "-54265.41"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "-54265.41"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "ColData": [
+              {
+               "value": "7108 Therapy - Aberdeen",
+               "id": "293"
+              },
+              {
+               "value": "25185.18"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "25185.18"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "ColData": [
+              {
+               "value": "7110 Therapy - Centralia",
+               "id": "292"
+              },
+              {
+               "value": "35757.29"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "35757.29"
+              }
+             ],
+             "type": "Data"
+            }
+           ]
+          },
+          "Summary": {
+           "ColData": [
+            {
+             "value": "Total 7100 Therapy Income"
+            },
+            {
+             "value": "6677.06"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "6677.06"
+            }
+           ]
+          },
+          "type": "Section"
+         }
+        ]
+       },
+       "Summary": {
+        "ColData": [
+         {
+          "value": "Total Income"
+         },
+         {
+          "value": "6677.06"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "6677.06"
+         }
+        ]
+       },
+       "type": "Section",
+       "group": "Income"
+      },
+      {
+       "Header": {
+        "ColData": [
+         {
+          "value": "Cost of Goods Sold"
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         }
+        ]
+       },
+       "Rows": {
+        "Row": [
+         {
+          "Header": {
+           "ColData": [
+            {
+             "value": "8320 Employee Payroll Expense",
+             "id": "93"
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": "0.00"
+            }
+           ]
+          },
+          "Rows": {
+           "Row": [
+            {
+             "ColData": [
+              {
+               "value": "8338 Profit Sharing Contribution",
+               "id": "100"
+              },
+              {
+               "value": "20822.04"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "20822.04"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "ColData": [
+              {
+               "value": "8340 Recruiting Costs",
+               "id": "102"
+              },
+              {
+               "value": "399.00"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "399.00"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "ColData": [
+              {
+               "value": "8343 Guaranteed Payments",
+               "id": "283"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "8302.36"
+              },
+              {
+               "value": "8302.36"
+              }
+             ],
+             "type": "Data"
+            }
+           ]
+          },
+          "Summary": {
+           "ColData": [
+            {
+             "value": "Total 8320 Employee Payroll Expense"
+            },
+            {
+             "value": "21221.04"
+            },
+            {
+             "value": "8302.36"
+            },
+            {
+             "value": "29523.40"
+            }
+           ]
+          },
+          "type": "Section"
+         }
+        ]
+       },
+       "Summary": {
+        "ColData": [
+         {
+          "value": "Total Cost of Goods Sold"
+         },
+         {
+          "value": "21221.04"
+         },
+         {
+          "value": "8302.36"
+         },
+         {
+          "value": "29523.40"
+         }
+        ]
+       },
+       "type": "Section",
+       "group": "COGS"
+      },
+      {
+       "Summary": {
+        "ColData": [
+         {
+          "value": "Gross Profit"
+         },
+         {
+          "value": "-14543.98"
+         },
+         {
+          "value": "-8302.36"
+         },
+         {
+          "value": "-22846.34"
+         }
+        ]
+       },
+       "type": "Section",
+       "group": "GrossProfit"
+      },
+      {
+       "Header": {
+        "ColData": [
+         {
+          "value": "Expenses"
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         }
+        ]
+       },
+       "Summary": {
+        "ColData": [
+         {
+          "value": "Total Expenses"
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": "0.00"
+         }
+        ]
+       },
+       "type": "Section",
+       "group": "Expenses"
+      },
+      {
+       "Summary": {
+        "ColData": [
+         {
+          "value": "Net Operating Income"
+         },
+         {
+          "value": "-14543.98"
+         },
+         {
+          "value": "-8302.36"
+         },
+         {
+          "value": "-22846.34"
+         }
+        ]
+       },
+       "type": "Section",
+       "group": "NetOperatingIncome"
+      },
+      {
+       "Header": {
+        "ColData": [
+         {
+          "value": "Other Income"
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         }
+        ]
+       },
+       "Rows": {
+        "Row": [
+         {
+          "ColData": [
+           {
+            "value": "7900 Interest Income",
+            "id": "61"
+           },
+           {
+            "value": "446.49"
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": "446.49"
+           }
+          ],
+          "type": "Data"
+         }
+        ]
+       },
+       "Summary": {
+        "ColData": [
+         {
+          "value": "Total Other Income"
+         },
+         {
+          "value": "446.49"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "446.49"
+         }
+        ]
+       },
+       "type": "Section",
+       "group": "OtherIncome"
+      },
+      {
+       "Summary": {
+        "ColData": [
+         {
+          "value": "Net Other Income"
+         },
+         {
+          "value": "446.49"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "446.49"
+         }
+        ]
+       },
+       "type": "Section",
+       "group": "NetOtherIncome"
+      },
+      {
+       "Summary": {
+        "ColData": [
+         {
+          "value": "Net Income"
+         },
+         {
+          "value": "-14097.49"
+         },
+         {
+          "value": "-8302.36"
+         },
+         {
+          "value": "-22399.85"
+         }
+        ]
+       },
+       "type": "Section",
+       "group": "NetIncome"
+      }
+     ]
+    }
+   }

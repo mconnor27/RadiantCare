@@ -5,6 +5,7 @@ import { immer } from 'zustand/middleware/immer'
 import YearPanel from './dashboard/YearPanel'
 import ProjectionSettingsControls from './dashboard/ProjectionSettingsControls'
 import HistoricAndProjectionChart from './dashboard/HistoricAndProjectionChart'
+import YTDDetailed from './dashboard/YTDDetailed.tsx'
 import OverallCompensationSummary from './dashboard/OverallCompensationSummary'
 import ParametersSummary from './dashboard/ParametersSummary'
 import CollapsibleSection from './dashboard/CollapsibleSection'
@@ -1451,6 +1452,7 @@ export function Dashboard() {
   const [yearPanelOpen, setYearPanelOpen] = useState(true)
   const [overallOpen, setOverallOpen] = useState(true)
   const [parametersOpen, setParametersOpen] = useState(true)
+  const [viewMode, setViewMode] = useState<'Multi-Year' | 'YTD Detailed'>('Multi-Year')
 
   // Memoized summaries that update when projection settings change
   const projectionSummaryA = useMemo(() => 
@@ -1525,7 +1527,18 @@ export function Dashboard() {
         maxWidth: 1200, 
         margin: '20px auto 0 auto' 
       }}>
-        <div style={{ display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={() => setViewMode('Multi-Year')}
+              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'Multi-Year' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
+            >Multi-Year</button>
+            <button
+              onClick={() => setViewMode('YTD Detailed')}
+              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Detailed' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
+            >YTD Detailed</button>
+          </div>
+          <div style={{ display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end', flexWrap: 'wrap', gap: 8 }}>
           <button onClick={() => { 
             store.resetToDefaults(); 
             window.location.hash = '';
@@ -1536,109 +1549,117 @@ export function Dashboard() {
             setParametersOpen(false);
           }} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Reset to defaults</button>
           <button onClick={copyShareLink} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Copy shareable link</button>
-        </div>
-        <HistoricAndProjectionChart key={store.scenarioBEnabled ? 'withB' : 'withoutB'} />
-      </div>
-
-      {/* Scenario compare */}
-      <div style={{ marginTop: 16 }}>
-        <div style={{ 
-          maxWidth: store.scenarioBEnabled ? 1660 : 1000, 
-          margin: '0 auto' 
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, justifyContent: 'space-between', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button onClick={expandAll} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Expand all</button>
-              <button onClick={collapseAll} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Collapse all</button>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input
-                  type="checkbox"
-                  checked={store.scenarioBEnabled}
-                  onChange={(e) => store.setScenarioEnabled(e.target.checked)}
-                />
-                <span>Enable Scenario B</span>
-              </label>
-            </div>
           </div>
         </div>
-
-        <div style={{ 
-          maxWidth: store.scenarioBEnabled ? 1660 : 1000, 
-          margin: '0 auto' 
-        }}>
-          <div className="scenario-grid" style={{
-            border: '1px solid #e5e7eb',
-            borderRadius: 8,
-            padding: isMobile ? 8 : 12,
-            marginTop: 0,
-            display: 'grid',
-            gridTemplateColumns: store.scenarioBEnabled && !isMobile ? '1fr 1fr' : '1fr',
-            alignItems: 'start',
-            gap: 12,
-            background: '#f9fafb',
-          }}>
-          {/* Scenario A column */}
-          <div>
-            <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario A</div>
-            <CollapsibleSection 
-              title={
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                  <span>Projection Settings</span>
-                  <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 400 }}>
-                    {projectionSummaryA}
-                  </span>
+        {viewMode === 'YTD Detailed' ? (
+          <YTDDetailed />
+        ) : (
+          <HistoricAndProjectionChart key={store.scenarioBEnabled ? 'withB' : 'withoutB'} />
+        )}
+      </div>
+      {viewMode === 'Multi-Year' && (
+        <>
+          {/* Scenario compare */}
+          <div style={{ marginTop: 16 }}>
+            <div style={{ 
+              maxWidth: store.scenarioBEnabled ? 1660 : 1000, 
+              margin: '0 auto' 
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button onClick={expandAll} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Expand all</button>
+                  <button onClick={collapseAll} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Collapse all</button>
                 </div>
-              } 
-              open={projectionOpen} 
-              onOpenChange={setProjectionOpen} 
-              tone="neutral"
-            >
-              <ProjectionSettingsControls scenario={'A'} />
-            </CollapsibleSection>
-            <CollapsibleSection title={`Per Year Settings (Baseline: ${getBaselineYear(store.scenarioA.dataMode)})`} open={yearPanelOpen} onOpenChange={setYearPanelOpen} tone="neutral">
-              <YearPanel year={store.scenarioA.selectedYear} scenario={'A'} />
-            </CollapsibleSection>
-          </div>
-
-          {/* Scenario B column */}
-          {store.scenarioBEnabled && store.scenarioB && (
-            <div>
-              <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario B</div>
-              <CollapsibleSection 
-                title={
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                    <span>Projection Settings</span>
-                    <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 400 }}>
-                      {projectionSummaryB}
-                    </span>
-                  </div>
-                } 
-                open={projectionOpen} 
-                onOpenChange={setProjectionOpen} 
-                tone="neutral"
-              >
-                <ProjectionSettingsControls scenario={'B'} />
-              </CollapsibleSection>
-              <CollapsibleSection title={`Per Year Settings (Baseline: ${getBaselineYear(store.scenarioB?.dataMode || '2025 Data')})`} open={yearPanelOpen} onOpenChange={setYearPanelOpen} tone="neutral">
-                <YearPanel year={store.scenarioB.selectedYear} scenario={'B'} />
-              </CollapsibleSection>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={store.scenarioBEnabled}
+                      onChange={(e) => store.setScenarioEnabled(e.target.checked)}
+                    />
+                    <span>Enable Scenario B</span>
+                  </label>
+                </div>
+              </div>
             </div>
-          )}
+
+            <div style={{ 
+              maxWidth: store.scenarioBEnabled ? 1660 : 1000, 
+              margin: '0 auto' 
+            }}>
+              <div className="scenario-grid" style={{
+                border: '1px solid #e5e7eb',
+                borderRadius: 8,
+                padding: isMobile ? 8 : 12,
+                marginTop: 0,
+                display: 'grid',
+                gridTemplateColumns: store.scenarioBEnabled && !isMobile ? '1fr 1fr' : '1fr',
+                alignItems: 'start',
+                gap: 12,
+                background: '#f9fafb',
+              }}>
+              {/* Scenario A column */}
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario A</div>
+                <CollapsibleSection 
+                  title={
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                      <span>Projection Settings</span>
+                      <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 400 }}>
+                        {projectionSummaryA}
+                      </span>
+                    </div>
+                  } 
+                  open={projectionOpen} 
+                  onOpenChange={setProjectionOpen} 
+                  tone="neutral"
+                >
+                  <ProjectionSettingsControls scenario={'A'} />
+                </CollapsibleSection>
+                <CollapsibleSection title={`Per Year Settings (Baseline: ${getBaselineYear(store.scenarioA.dataMode)})`} open={yearPanelOpen} onOpenChange={setYearPanelOpen} tone="neutral">
+                  <YearPanel year={store.scenarioA.selectedYear} scenario={'A'} />
+                </CollapsibleSection>
+              </div>
+
+              {/* Scenario B column */}
+              {store.scenarioBEnabled && store.scenarioB && (
+                <div>
+                  <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario B</div>
+                  <CollapsibleSection 
+                    title={
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                        <span>Projection Settings</span>
+                        <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 400 }}>
+                          {projectionSummaryB}
+                        </span>
+                      </div>
+                    } 
+                    open={projectionOpen} 
+                    onOpenChange={setProjectionOpen} 
+                    tone="neutral"
+                  >
+                    <ProjectionSettingsControls scenario={'B'} />
+                  </CollapsibleSection>
+                  <CollapsibleSection title={`Per Year Settings (Baseline: ${getBaselineYear(store.scenarioB?.dataMode || '2025 Data')})`} open={yearPanelOpen} onOpenChange={setYearPanelOpen} tone="neutral">
+                    <YearPanel year={store.scenarioB.selectedYear} scenario={'B'} />
+                  </CollapsibleSection>
+                </div>
+              )}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '0 auto' }}>
-        <CollapsibleSection title="Overall Compensation Summary (2025-2030)" open={overallOpen} onOpenChange={setOverallOpen} tone="neutral">
-          <OverallCompensationSummary />
-        </CollapsibleSection>
-      </div>
-      <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '0 auto' }}>
-        <CollapsibleSection title="Parameters Summary" open={parametersOpen} onOpenChange={setParametersOpen} tone="neutral">
-          <ParametersSummary />
-        </CollapsibleSection>
-      </div>
+          <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '0 auto' }}>
+            <CollapsibleSection title="Overall Compensation Summary (2025-2030)" open={overallOpen} onOpenChange={setOverallOpen} tone="neutral">
+              <OverallCompensationSummary />
+            </CollapsibleSection>
+          </div>
+          <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '0 auto' }}>
+            <CollapsibleSection title="Parameters Summary" open={parametersOpen} onOpenChange={setParametersOpen} tone="neutral">
+              <ParametersSummary />
+            </CollapsibleSection>
+          </div>
+        </>
+      )}
     </div>
   )
 }
