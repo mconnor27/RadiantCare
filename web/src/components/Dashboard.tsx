@@ -2,22 +2,17 @@ import { useMemo, useEffect, useState } from 'react'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
-import YearPanel from './dashboard/YearPanel'
-import ProjectionSettingsControls from './dashboard/ProjectionSettingsControls'
-import HistoricAndProjectionChart from './dashboard/HistoricAndProjectionChart'
-import YTDDetailed from './dashboard/YTDDetailed.tsx'
-import OverallCompensationSummary from './dashboard/OverallCompensationSummary'
-import ParametersSummary from './dashboard/ParametersSummary'
-import CollapsibleSection from './dashboard/CollapsibleSection'
+import YTDDetailed from './dashboard/views/detailed/YTDDetailed'
+import MultiYearView from './dashboard/views/multi-year/MultiYearView'
 // Import types from types.ts to avoid duplication and binding conflicts
-import type { YearRow, PhysicianType, Physician, FutureYear, ScenarioKey, Store } from './dashboard/types'
+import type { YearRow, PhysicianType, Physician, FutureYear, ScenarioKey, Store } from './dashboard/shared/types'
 
 // Re-export types for backward compatibility with extracted components
 export type { YearRow, PhysicianType, Physician, FutureYear, ScenarioKey }
 import {
   clamp
-} from './dashboard/utils'
-import { useIsMobile } from './dashboard/hooks'
+} from './dashboard/shared/utils'
+import { useIsMobile } from './dashboard/shared/hooks'
 import {
   computeDefaultNonMdEmploymentCosts,
   calculateEmployeeTotalCost,
@@ -28,8 +23,8 @@ import {
   getPartnerFTEWeight,
   getTotalIncome,
   getBenefitCostsForYear
-} from './dashboard/calculations'
-import { getDefaultTrailingSharedMdAmount } from './dashboard/tooltips'
+} from './dashboard/shared/calculations'
+import { getDefaultTrailingSharedMdAmount } from './dashboard/shared/tooltips'
 import {
   HISTORIC_DATA,
   scenario2024Defaults,
@@ -55,7 +50,7 @@ import {
   // Removed NET_PARTNER_POOL_2025 import - now calculating dynamically
   INITIAL_FUTURE_YEARS_A,
   INITIAL_FUTURE_YEARS_B
-} from './dashboard/defaults'
+} from './dashboard/shared/defaults'
 
 
 
@@ -1410,78 +1405,10 @@ export function calculateProjectedValue(
   return 0
 }
 
-// Helper function to get baseline year from data mode
-function getBaselineYear(dataMode: string): number {
-  if (dataMode === '2024 Data') return 2024
-  return 2025 // Default for '2025 Data' and 'Custom'
-}
-
-// Helper function to create projection settings summary
-function createProjectionSummary(scenario: ScenarioKey, store: any): string {
-  const sc = scenario === 'A' ? store.scenarioA : store.scenarioB
-  if (!sc) return ''
-  
-  const p = sc.projection
-  const summaryParts: string[] = []
-  
-  // Income Growth
-  summaryParts.push(`Income: ${p.incomeGrowthPct?.toFixed(1) ?? '4.0'}%`)
-  
-  // Medical Director amounts (in thousands)
-  const mdShared = Math.round((p.medicalDirectorHours ?? 110000) / 1000)
-  const mdPrcs = Math.round((p.prcsMedicalDirectorHours ?? 50000) / 1000)
-  summaryParts.push(`MD: $${mdShared}k/$${mdPrcs}k`)
-  summaryParts.push(`CSA: $${p.consultingServicesAgreement?.toFixed(0) ?? '26.20'}`)
-  // Major cost growth rates
-  summaryParts.push(`Non-Emp: ${p.nonEmploymentCostsPct?.toFixed(1) ?? '5.7'}%`)
-  summaryParts.push(`Staff: ${p.nonMdEmploymentCostsPct?.toFixed(1) ?? '2.4'}%`)
-  summaryParts.push(`Benefits: ${p.benefitCostsGrowthPct?.toFixed(1) ?? '7.2'}%`)
-  summaryParts.push(`Misc: ${p.miscEmploymentCostsPct?.toFixed(1) ?? '3.2'}%`)
-  
-  // Locums (in thousands)
-  const locums = Math.round((p.locumsCosts ?? 120000) / 1000)
-  summaryParts.push(`Locums: $${locums}k`)
-  
-  return summaryParts.join(' • ')
-}
-
 export function Dashboard() {
   const store = useDashboardStore()
   const isMobile = useIsMobile()
-  const [projectionOpen, setProjectionOpen] = useState(true)
-  const [yearPanelOpen, setYearPanelOpen] = useState(true)
-  const [overallOpen, setOverallOpen] = useState(true)
-  const [parametersOpen, setParametersOpen] = useState(true)
   const [viewMode, setViewMode] = useState<'Multi-Year' | 'YTD Detailed'>('Multi-Year')
-
-  // Memoized summaries that update when projection settings change
-  const projectionSummaryA = useMemo(() => 
-    createProjectionSummary('A', store), 
-    [store.scenarioA.projection]
-  )
-  
-  const projectionSummaryB = useMemo(() => 
-    store.scenarioB ? createProjectionSummary('B', store) : '', 
-    [store.scenarioB?.projection]
-  )
-
-  const expandAll = () => {
-    setProjectionOpen(true)
-    setYearPanelOpen(true)
-    setOverallOpen(true)
-    setParametersOpen(true)
-  }
-  const collapseAll = () => {
-    setProjectionOpen(false)
-    setYearPanelOpen(false)
-    setOverallOpen(false)
-    setParametersOpen(false)
-  }
-  useEffect(() => {}, [])
-  useEffect(() => {
-    // Nudge Plotly to recompute sizes when layout width changes
-    window.dispatchEvent(new Event('resize'))
-  }, [store.scenarioBEnabled])
 
   // Load from shareable URL hash if present
   useEffect(() => {
@@ -1522,6 +1449,7 @@ export function Dashboard() {
         <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 60, width: 'auto', display: 'block' }} />
         <h2 style={{ margin: 0, fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif', color: '#7c2a83', fontWeight: 900, fontSize: 36, lineHeight: 1.05 }}>Compensation Dashboard</h2>
       </div>
+      
       <div style={{ 
         marginTop: 20, 
         maxWidth: 1200, 
@@ -1539,127 +1467,20 @@ export function Dashboard() {
             >YTD Detailed</button>
           </div>
           <div style={{ display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end', flexWrap: 'wrap', gap: 8 }}>
-          <button onClick={() => { 
-            store.resetToDefaults(); 
-            window.location.hash = '';
-            // Collapse all sections except Overall Compensation
-            setProjectionOpen(false);
-            setYearPanelOpen(false);
-            setOverallOpen(true);
-            setParametersOpen(false);
-          }} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Reset to defaults</button>
-          <button onClick={copyShareLink} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Copy shareable link</button>
+            <button onClick={() => { 
+              store.resetToDefaults(); 
+              window.location.hash = '';
+            }} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Reset to defaults</button>
+            <button onClick={copyShareLink} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Copy shareable link</button>
           </div>
         </div>
+        
         {viewMode === 'YTD Detailed' ? (
           <YTDDetailed />
         ) : (
-          <HistoricAndProjectionChart key={store.scenarioBEnabled ? 'withB' : 'withoutB'} />
+          <MultiYearView />
         )}
       </div>
-      {viewMode === 'Multi-Year' && (
-        <>
-          {/* Scenario compare */}
-          <div style={{ marginTop: 16 }}>
-            <div style={{ 
-              maxWidth: store.scenarioBEnabled ? 1660 : 1000, 
-              margin: '0 auto' 
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <button onClick={expandAll} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Expand all</button>
-                  <button onClick={collapseAll} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Collapse all</button>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <input
-                      type="checkbox"
-                      checked={store.scenarioBEnabled}
-                      onChange={(e) => store.setScenarioEnabled(e.target.checked)}
-                    />
-                    <span>Enable Scenario B</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ 
-              maxWidth: store.scenarioBEnabled ? 1660 : 1000, 
-              margin: '0 auto' 
-            }}>
-              <div className="scenario-grid" style={{
-                border: '1px solid #e5e7eb',
-                borderRadius: 8,
-                padding: isMobile ? 8 : 12,
-                marginTop: 0,
-                display: 'grid',
-                gridTemplateColumns: store.scenarioBEnabled && !isMobile ? '1fr 1fr' : '1fr',
-                alignItems: 'start',
-                gap: 12,
-                background: '#f9fafb',
-              }}>
-              {/* Scenario A column */}
-              <div>
-                <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario A</div>
-                <CollapsibleSection 
-                  title={
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                      <span>Projection Settings</span>
-                      <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 400 }}>
-                        {projectionSummaryA}
-                      </span>
-                    </div>
-                  } 
-                  open={projectionOpen} 
-                  onOpenChange={setProjectionOpen} 
-                  tone="neutral"
-                >
-                  <ProjectionSettingsControls scenario={'A'} />
-                </CollapsibleSection>
-                <CollapsibleSection title={`Per Year Settings (Baseline: ${getBaselineYear(store.scenarioA.dataMode)})`} open={yearPanelOpen} onOpenChange={setYearPanelOpen} tone="neutral">
-                  <YearPanel year={store.scenarioA.selectedYear} scenario={'A'} />
-                </CollapsibleSection>
-              </div>
-
-              {/* Scenario B column */}
-              {store.scenarioBEnabled && store.scenarioB && (
-                <div>
-                  <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario B</div>
-                  <CollapsibleSection 
-                    title={
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                        <span>Projection Settings</span>
-                        <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 400 }}>
-                          {projectionSummaryB}
-                        </span>
-                      </div>
-                    } 
-                    open={projectionOpen} 
-                    onOpenChange={setProjectionOpen} 
-                    tone="neutral"
-                  >
-                    <ProjectionSettingsControls scenario={'B'} />
-                  </CollapsibleSection>
-                  <CollapsibleSection title={`Per Year Settings (Baseline: ${getBaselineYear(store.scenarioB?.dataMode || '2025 Data')})`} open={yearPanelOpen} onOpenChange={setYearPanelOpen} tone="neutral">
-                    <YearPanel year={store.scenarioB.selectedYear} scenario={'B'} />
-                  </CollapsibleSection>
-                </div>
-              )}
-              </div>
-            </div>
-          </div>
-          <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '0 auto' }}>
-            <CollapsibleSection title="Overall Compensation Summary (2025-2030)" open={overallOpen} onOpenChange={setOverallOpen} tone="neutral">
-              <OverallCompensationSummary />
-            </CollapsibleSection>
-          </div>
-          <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '0 auto' }}>
-            <CollapsibleSection title="Parameters Summary" open={parametersOpen} onOpenChange={setParametersOpen} tone="neutral">
-              <ParametersSummary />
-            </CollapsibleSection>
-          </div>
-        </>
-      )}
     </div>
   )
 }

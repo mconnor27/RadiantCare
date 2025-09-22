@@ -1,11 +1,13 @@
-import Plot from 'react-plotly.js'
-import { useDashboardStore } from '../Dashboard'
+import createPlotlyComponent from 'react-plotly.js/factory'
+import Plotly from 'plotly.js-dist-min'
+const Plot = createPlotlyComponent(Plotly)
+import { useDashboardStore } from '../../../Dashboard'
 // Removed NET_PARTNER_POOL_2025 import - now calculating dynamically
-import { getTotalIncome } from './calculations'
-import { useIsMobile } from './hooks'
-import { getEmployeePortionOfYear, calculateDelayedW2Payment, computeDefaultNonMdEmploymentCosts } from './calculations'
-import { calculateNetIncomeForMDs } from '../Dashboard'
-import { DEFAULT_MISC_EMPLOYMENT_COSTS, DEFAULT_NON_EMPLOYMENT_COSTS_2025 } from './defaults'
+import { getTotalIncome } from '../../shared/calculations'
+import { useIsMobile } from '../../shared/hooks'
+import { getEmployeePortionOfYear, calculateDelayedW2Payment, computeDefaultNonMdEmploymentCosts } from '../../shared/calculations'
+import { calculateNetIncomeForMDs } from '../../../Dashboard'
+import { DEFAULT_MISC_EMPLOYMENT_COSTS, DEFAULT_NON_EMPLOYMENT_COSTS_2025 } from '../../shared/defaults'
 
 export default function HistoricAndProjectionChart() {
   const store = useDashboardStore()

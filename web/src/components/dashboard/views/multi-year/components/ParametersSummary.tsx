@@ -1,11 +1,11 @@
-import type { FutureYear } from './types'
-import { useDashboardStore } from '../Dashboard'
-import { useIsMobile } from './hooks'
+import type { FutureYear } from '../../../shared/types'
+import { useDashboardStore } from '../../../../Dashboard'
+import { useIsMobile } from '../../../shared/hooks'
 import {
   computeDefaultNonMdEmploymentCosts,
   getTotalIncome
-} from './calculations'
-import { scenarioADefaultsByYear, scenarioBDefaultsByYear, scenario2024Defaults, DEFAULT_MISC_EMPLOYMENT_COSTS, DEFAULT_CONSULTING_SERVICES_2025, ACTUAL_2025_MEDICAL_DIRECTOR_HOURS, ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, DEFAULT_LOCUM_COSTS_2025, ACTUAL_2024_MISC_EMPLOYMENT_COSTS, DEFAULT_THERAPY_INCOME_2025, DEFAULT_NON_EMPLOYMENT_COSTS_2025, ACTUAL_2024_LOCUM_COSTS } from './defaults'
+} from '../../../shared/calculations'
+import { scenarioADefaultsByYear, scenarioBDefaultsByYear, scenario2024Defaults, DEFAULT_MISC_EMPLOYMENT_COSTS, DEFAULT_CONSULTING_SERVICES_2025, ACTUAL_2025_MEDICAL_DIRECTOR_HOURS, ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, DEFAULT_LOCUM_COSTS_2025, ACTUAL_2024_MISC_EMPLOYMENT_COSTS, DEFAULT_THERAPY_INCOME_2025, DEFAULT_NON_EMPLOYMENT_COSTS_2025, ACTUAL_2024_LOCUM_COSTS } from '../../../shared/defaults'
 import {
   currency,
   currencyShort,
@@ -14,7 +14,7 @@ import {
   partnerPortionToRetirementDay,
   startPortionToStartDay,
   dayOfYearToDate
-} from './utils'
+} from '../../../shared/utils'
 
 export default function ParametersSummary() {
   const store = useDashboardStore()

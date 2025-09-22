@@ -1,5 +1,5 @@
 import { DragDropPhysicians } from './DragDropPhysicians'
-import type { PhysicianType, Physician, FutureYear, ScenarioKey } from './types'
+import type { PhysicianType, Physician, FutureYear, ScenarioKey } from '../types'
 import {
   currency,
   daysInYear,
@@ -12,14 +12,14 @@ import {
   startPortionToStartDay,
   startDayToStartPortion,
   getQuarterStartDays
-} from './utils'
+} from '../utils'
 import {
   getEmployeePortionOfYear,
   getPartnerPortionOfYear,
   getPartnerFTEWeightProper,
   calculateDelayedW2Payment,
   getEmployeeCostTooltip
-} from './calculations'
+} from '../calculations'
 import {
   scenarioADefaultsByYear,
   scenarioBDefaultsByYear,
@@ -27,7 +27,7 @@ import {
   ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
   ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS,
   ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
-} from './defaults'
+} from '../defaults'
 import {
   createTooltip,
   removeTooltip,
@@ -36,8 +36,8 @@ import {
   createPrcsAmountTooltip,
   getDefaultTrailingSharedMdAmount,
   createTrailingSharedMdAmountTooltip
-} from './tooltips'
-import { useDashboardStore, arePhysiciansChanged } from '../Dashboard'
+} from '../tooltips'
+import { useDashboardStore, arePhysiciansChanged } from '../../../Dashboard'
 
 export default function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride, locumCosts, onLocumCostsChange }: { year: number; scenario: ScenarioKey; readOnly?: boolean; physiciansOverride?: Physician[]; locumCosts: number; onLocumCostsChange: (value: number) => void }) {
   const store = useDashboardStore()
