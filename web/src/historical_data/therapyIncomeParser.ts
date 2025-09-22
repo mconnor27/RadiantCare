@@ -61,7 +61,7 @@ function parseTherapyIncomeFromReport(report: any, year: string): YTDPoint[] {
     // Find the "Total 7100 Therapy Income" row
     const findTherapyIncomeRow = (rows: any[]): any => {
       for (const row of rows) {
-        if (row?.Summary?.ColData?.[0]?.value === 'Total 7100 Therapy Income') {
+        if (row?.Summary?.ColData?.[0]?.value === 'Total Income') {
           return row
         }
         if (row?.Rows?.Row) {
@@ -74,7 +74,7 @@ function parseTherapyIncomeFromReport(report: any, year: string): YTDPoint[] {
     
     const therapyIncomeRow = findTherapyIncomeRow(report?.Rows?.Row || [])
     if (!therapyIncomeRow) {
-      console.error(`Could not find "Total 7100 Therapy Income" row in ${year} data`)
+      console.error(`Could not find "Total Income" row in ${year} data`)
       return []
     }
     
