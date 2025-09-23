@@ -25,17 +25,17 @@ export default function HistoricAndProjectionChart() {
       // Calculate 2025 value from actual compensation data
       return calculateNetIncomeForMDs(2025, 'A')
     }
-    // Historic values from the provided image
+    // Historic values from the yearly data grid
     const historicValues = [
-      1969714.84, // 2016
-      2025641.67, // 2017  
-      2036781.02, // 2018
-      2099963.75, // 2019
-      2136589.69, // 2020
-      2257638.23, // 2021
-      2110440.21, // 2022
-      2553691.52, // 2023
-      2607509.70, // 2024
+      1969715, // 2016
+      2022908, // 2017  
+      2036882, // 2018
+      2107215, // 2019
+      2136804, // 2020
+      2250440, // 2021
+      2118718, // 2022
+      2549332, // 2023
+      2583878, // 2024
     ]
     return historicValues[index] || 0
   })

@@ -4,17 +4,17 @@ import { calendarDateToPortion } from './utils'
 
 // Constants
 const HISTORIC_DATA: YearRow[] = [
-  // 2016-2023: therapyIncome represents total income (no separate medical director data available)
-  { year: 2016, therapyIncome: 2325241.84, nonEmploymentCosts: 167375.03, employeePayroll: 188151.97 },
-  { year: 2017, therapyIncome: 2376068.79, nonEmploymentCosts: 170366.16, employeePayroll: 180060.96 },
-  { year: 2018, therapyIncome: 2386310.08, nonEmploymentCosts: 162454.23, employeePayroll: 357360.09 },
-  { year: 2019, therapyIncome: 2503463.49, nonEmploymentCosts: 170088.91, employeePayroll: 533175.95 },
-  { year: 2020, therapyIncome: 2535944.52, nonEmploymentCosts: 171824.41, employeePayroll: 573277.22 },
-  { year: 2021, therapyIncome: 2686843.84, nonEmploymentCosts: 176887.39, employeePayroll: 655524.05 },
-  { year: 2022, therapyIncome: 2582916.38, nonEmploymentCosts: 269191.26, employeePayroll: 503812.98 },
-  { year: 2023, therapyIncome: 2963164.73, nonEmploymentCosts: 201243.57, employeePayroll: 790092.00 },
-  // 2024+: therapyIncome is now truly therapy income only (medical director income is separate)
-  { year: 2024, therapyIncome: 2934770.14, nonEmploymentCosts: 261114.98, employeePayroll: 785924.54 },
+  // 2016-2023: therapyIncome represents total gross income (from yearly data grid)
+  { year: 2016, therapyIncome: 2325242, nonEmploymentCosts: 167375.03, employeePayroll: 188151.97 },
+  { year: 2017, therapyIncome: 2373335, nonEmploymentCosts: 170366.16, employeePayroll: 180060.96 },
+  { year: 2018, therapyIncome: 2386310, nonEmploymentCosts: 162454.23, employeePayroll: 357360.09 },
+  { year: 2019, therapyIncome: 2503463, nonEmploymentCosts: 170088.91, employeePayroll: 533175.95 },
+  { year: 2020, therapyIncome: 2535945, nonEmploymentCosts: 171824.41, employeePayroll: 573277.22 },
+  { year: 2021, therapyIncome: 2687332, nonEmploymentCosts: 176887.39, employeePayroll: 655524.05 },
+  { year: 2022, therapyIncome: 2609294, nonEmploymentCosts: 269191.26, employeePayroll: 503812.98 },
+  { year: 2023, therapyIncome: 2963169, nonEmploymentCosts: 201243.57, employeePayroll: 790092.00 },
+  // 2024+: therapyIncome represents total gross income (from yearly data grid)
+  { year: 2024, therapyIncome: 3053334, nonEmploymentCosts: 261114.98, employeePayroll: 785924.54 },
   // 2025 actuals per provided figures
   { year: 2025, therapyIncome: 3164006.93, nonEmploymentCosts: 229713.57, employeePayroll:  752155.73  },
 ]
@@ -71,7 +71,7 @@ export const DEFAULT_NON_MD_EMPLOYMENT_COSTS_2025 = 164273.25
 // 2024 actual values for data mode
 export const ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS = 157986.94
 export const ACTUAL_2024_LOCUM_COSTS = 113400
-export const ACTUAL_2024_MISC_EMPLOYMENT_COSTS = 18182.56
+export const ACTUAL_2024_MISC_EMPLOYMENT_COSTS = 48446
 export const ACTUAL_2024_MEDICAL_DIRECTOR_HOURS = 102870
 export const ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS = 25805
 

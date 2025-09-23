@@ -63,7 +63,8 @@ function flattenRows(rows: any[], level = 0, parentGroup?: string, sectionCounte
         colData: row.ColData,
         type: row.type || 'Data',
         level,
-        group: row.group || parentGroup
+        group: row.group || parentGroup,
+        tooltip: row.tooltip
       })
     }
     
@@ -124,6 +125,28 @@ function filterCollapsedRows(rows: any[], collapsedSections: CollapsibleState): 
 }
 
 export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: CollapsibleState = {}): { rows: Row[], columns: any[] } {
+  // Helper to get the absolute 2016 Asset Disposal amount from raw data
+  const getAssetDisposal2016Amount = (source: YearlyData): number => {
+    const search = (rows: any[]): number => {
+      for (const row of rows) {
+        if (row.ColData?.[0]?.value && typeof row.ColData[0].value === 'string') {
+          const name: string = row.ColData[0].value
+          if (name.includes('8530') && name.includes('Asset Disposal')) {
+            const raw = row.ColData[1]?.value || '0'
+            const n = parseFloat(raw.toString().replace(/[$,\s]/g, '')) || 0
+            return Math.abs(n)
+          }
+        }
+        if (row.Rows?.Row) {
+          const found = search(row.Rows.Row)
+          if (found !== 0) return found
+        }
+      }
+      return 0
+    }
+    return search(source.Rows?.Row || [])
+  }
+
   // Extract column titles and format them
   const columnTitles = data.Columns.Column.map(col => {
     const title = col.ColTitle || 'Account'
@@ -156,8 +179,18 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
   // Filter out collapsed sections
   const visibleRows = filterCollapsedRows(flattenedRows, collapsedSections)
   
+  // Compute 2016 asset disposal absolute, rounded for display-aligned math
+  const asset2016Abs = Math.round(getAssetDisposal2016Amount(data))
+  // Compute Interest Income amounts for display-time adjustments
+  const interestAmounts = findAccountValues(data, /(7900).*Interest/i)
+  // Labels that should be adjusted at display-time for asset disposal and interest income
+  const adjustSubtractNames = new Set<string>(['Total 8500 Capital Expense', 'Total Cost of Goods Sold'])
+  const adjustAddNames = new Set<string>(['Gross Profit', 'Net Operating Income', 'Net Income'])
+  // Labels that should be adjusted to exclude Interest Income
+  const interestSubtractNames = new Set<string>(['Total Other Income', 'Net Other Income', 'Net Income'])
+  
   // Currency formatting function
-  const formatCurrency = (value: string): string => {
+  const formatCurrency = (value: string, accountName?: string): string => {
     if (!value || value === '') return ''
     
     // Remove existing currency symbols and commas
@@ -169,6 +202,28 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
     // If the value is zero, return empty string
     if (numValue === 0) return ''
     
+    // Special handling for 2016 Asset Disposal - display original value but mark as excluded
+    if (accountName && accountName.includes('8530') && accountName.includes('Asset Disposal') && Math.abs(numValue) > 5000000) {
+      const formatted = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(Math.round(numValue))
+      return `${formatted} ⓘ`
+    }
+    
+    // Special handling for 7900 Interest Income - display original value but mark as excluded (2016 only)
+    if (accountName && accountName.includes('7900') && accountName.includes('Interest Income') && Math.abs(numValue) > 400000) {
+      const formatted = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(Math.round(numValue))
+      return `${formatted} ⓘ`
+    }
+    
     // Format as currency with no decimals
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -179,6 +234,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
   }
 
   const dataRows: Row[] = visibleRows.map((row, index) => {
+    const accountName = row.colData[0]?.value || ''
     const cells = row.colData.map((cellData: any, cellIndex: number) => {
       let value = cellData.value || ''
       
@@ -190,7 +246,31 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       }
       
       const isNumeric = cellIndex > 0 && value && !isNaN(parseFloat(value.replace(/[,$▶▼\s]/g, '')))
-      const formattedValue = isNumeric ? formatCurrency(value) : value
+      // Apply display adjustments for specific labels
+      if (isNumeric) {
+        const numericValue = parseFloat(value.toString().replace(/[,$\s]/g, '')) || 0
+        let adjustedValue = numericValue
+        
+        // Apply 2016-only asset disposal adjustments
+        if (cellIndex === 1 && asset2016Abs > 0) {
+          if (adjustSubtractNames.has(accountName)) {
+            adjustedValue += asset2016Abs
+          } else if (adjustAddNames.has(accountName)) {
+            adjustedValue -= asset2016Abs
+          }
+        }
+        
+        // Apply Interest Income exclusions for 2016 only (like Asset Disposal)
+        if (cellIndex === 1 && interestSubtractNames.has(accountName)) {
+          const interestAmount2016 = interestAmounts[0] || 0 // 2016 is index 0
+          adjustedValue -= interestAmount2016
+        }
+        
+        if (adjustedValue !== numericValue) {
+          value = adjustedValue.toString()
+        }
+      }
+      const formattedValue = isNumeric ? formatCurrency(value, accountName) : value
       
       // Right-align all columns except the first column (account names)
       const shouldRightAlign = cellIndex > 0
@@ -218,10 +298,30 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
         fontSize = '14px' // Smaller font for summary rows
       }
       
+      // Add tooltip info for first column if row carries tooltip metadata or has info icon
+      // Also check for special cases in numeric columns (Asset Disposal and Interest Income)
+      const isAssetDisposalCell = accountName.includes('8530') && accountName.includes('Asset Disposal') && formattedValue.includes('ⓘ')
+      const isInterestIncomeCell = accountName.includes('7900') && accountName.includes('Interest') && formattedValue.includes('ⓘ')
+      const hasTooltip = (cellIndex === 0 && (!!row.tooltip || formattedValue.includes('ⓘ'))) || isAssetDisposalCell || isInterestIncomeCell
+      
+      // Determine tooltip text
+      let tooltipText = undefined
+      if (hasTooltip) {
+        if (isAssetDisposalCell) {
+          tooltipText = 'This 2016 asset disposal gain is displayed but excluded from all calculations and summaries to maintain operational focus.'
+        } else if (isInterestIncomeCell) {
+          tooltipText = 'Interest income is displayed but excluded from all calculations and summaries to maintain operational focus.'
+        } else {
+          tooltipText = row.tooltip
+        }
+      }
+      
       return {
         type: 'text',
         text: formattedValue,
         nonEditable: true,
+        // Store tooltip data in a custom property
+        tooltip: tooltipText,
         style: {
           background: backgroundColor,
           fontWeight,
@@ -231,7 +331,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
           paddingBottom: '4px',
           textAlign: shouldRightAlign ? 'right' : 'left',
           fontSize: fontSize,
-          cursor: cursor,
+          cursor: hasTooltip ? 'help' : cursor,
           // Force text alignment with additional properties
           justifyContent: shouldRightAlign ? 'flex-end' : 'flex-start',
           display: 'flex',
@@ -262,12 +362,259 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
   }
 }
 
+// Helper function to find account values by name pattern
+function findAccountValues(data: YearlyData, accountPattern: string | RegExp): number[] {
+  const findInRows = (rows: any[]): number[] => {
+    for (const row of rows) {
+      // Check Data row names
+      if (row.ColData?.[0]?.value) {
+        const accountName = row.ColData[0].value
+        const matches = typeof accountPattern === 'string' 
+          ? accountName.includes(accountPattern)
+          : accountPattern.test(accountName)
+        if (matches) {
+          return row.ColData.slice(1).map((col: any, index: number) => {
+            const value = col.value || '0'
+            const numValue = parseFloat(value.toString().replace(/[,$\s]/g, '')) || 0
+            
+            // Special handling for 2016 Asset Disposal - treat as 0 for calculations
+            if (accountName.includes('8530') && accountName.includes('Asset Disposal') && 
+                index === 0 && Math.abs(numValue) > 5000000) {
+              return 0
+            }
+            
+            return numValue
+          })
+        }
+      }
+      // Check Summary row names
+      if (row.Summary?.ColData?.[0]?.value) {
+        const summaryName = row.Summary.ColData[0].value
+        const matches = typeof accountPattern === 'string'
+          ? summaryName.includes(accountPattern)
+          : accountPattern.test(summaryName)
+        if (matches) {
+          return row.Summary.ColData.slice(1).map((col: any, index: number) => {
+            const value = col.value || '0'
+            const numValue = parseFloat(value.toString().replace(/[,$\s]/g, '')) || 0
+            
+            // Special handling for 2016 Asset Disposal - treat as 0 for calculations
+            if (summaryName.includes('8530') && summaryName.includes('Asset Disposal') && 
+                index === 0 && Math.abs(numValue) > 5000000) {
+              return 0
+            }
+            
+            return numValue
+          })
+        }
+      }
+      
+      // Check nested rows
+      if (row.Rows?.Row) {
+        const found = findInRows(row.Rows.Row)
+        if (found.length > 0) return found
+      }
+    }
+    return []
+  }
+  
+  return findInRows(data.Rows.Row)
+}
+
+// Helper function to sum multiple account patterns
+function sumAccountPatterns(data: YearlyData, patterns: (string | RegExp)[]): number[] {
+  const allValues = patterns.map(pattern => findAccountValues(data, pattern))
+  const numYears = allValues[0]?.length || 10 // Assume 10 years if no data found
+  
+  const sums = new Array(numYears).fill(0)
+  for (const values of allValues) {
+    for (let i = 0; i < Math.min(values.length, numYears); i++) {
+      sums[i] += values[i] || 0
+    }
+  }
+  
+  return sums
+}
+
+// Helper function to create calculation row data
+function createCalculatedRow(
+  accountName: string,
+  values: number[],
+  numYears: number,
+  level: number = 1,
+  type: string = 'Data',
+  tooltip?: string
+): any {
+  // Ensure we have exactly numYears numeric columns
+  const padded = Array.from({ length: numYears }, (_, i) => values[i] || 0)
+  const colData = [
+    { value: accountName },
+    ...padded.map(val => ({ value: val.toString() }))
+  ]
+  return { colData, type, level, tooltip }
+}
+
+// Helper function to add summary rows
+function addSummaryRows(data: YearlyData): any[] {
+  const summaryRows: any[] = []
+  const numYears = Math.max(0, (data.Columns?.Column?.length || 1) - 1)
+
+  const normalize = (vals: number[]): number[] => Array.from({ length: numYears }, (_, i) => vals[i] || 0)
+
+  // Two blank rows between native Net Income and our summary sections
+  summaryRows.push({ ColData: [ { value: '' }, ...Array.from({ length: numYears }, () => ({ value: '' })) ] })
+  summaryRows.push({ ColData: [ { value: '' }, ...Array.from({ length: numYears }, () => ({ value: '' })) ] })
+
+  // INCOME SECTION
+  const therapyValues = normalize(findAccountValues(data, /Total\s+7100\s+Therapy\s+Income/i))
+  const medDirSharedValues = normalize(findAccountValues(data, /Medical\s*Director.*Shared/i))
+  const medDirPRCSValues = normalize(findAccountValues(data, /Medical\s*Director.*PRCS/i))
+  const medDirTotal = medDirSharedValues.map((v, i) => v + medDirPRCSValues[i])
+  const consultingValues = normalize(findAccountValues(data, /Consulting\s*Agreement/i))
+  const interestValues = normalize(findAccountValues(data, /(7900).*Interest/i))
+  // Calculate Total Gross Income excluding Interest Income for 2016 only
+  const totalGrossIncome = therapyValues.map((v, i) => {
+    const interestForCalculation = i === 0 ? 0 : interestValues[i] // Exclude 2016 Interest (index 0)
+    return v + medDirTotal[i] + consultingValues[i] + interestForCalculation
+  })
+
+  summaryRows.push({
+    Header: { ColData: [ { value: 'Income' }, ...Array.from({ length: numYears }, () => ({ value: '' })) ] },
+    Rows: {
+      Row: [
+        { ColData: createCalculatedRow('    Therapy', therapyValues, numYears).colData },
+        { ColData: createCalculatedRow('    Medical Director Hours', medDirTotal, numYears).colData },
+        { ColData: createCalculatedRow('    Consulting Agreement/Other', consultingValues, numYears).colData },
+        { ColData: createCalculatedRow('    Interest', interestValues.map((v, i) => i === 0 ? 0 : v), numYears).colData }
+      ]
+    },
+    Summary: { ColData: createCalculatedRow('Total Gross Income', totalGrossIncome, numYears, 0, 'Summary').colData },
+    type: 'Section',
+    group: 'SummaryIncome'
+  })
+
+  // COSTS SECTION
+  const costOfGoodsValues = normalize(findAccountValues(data, /^Cost of Goods Sold$/i).length ? findAccountValues(data, /^Cost of Goods Sold$/i) : findAccountValues(data, /Total.*Cost.*Goods/i))
+  const otherExpensesValues = normalize(findAccountValues(data, /^Other Expenses$/i).length ? findAccountValues(data, /^Other Expenses$/i) : findAccountValues(data, /Total.*Other.*Expenses/i))
+  const employeePayrollValues = normalize(findAccountValues(data, /Total\s*8320.*Employee.*Payroll.*Expense/i))
+  
+  // Get raw Asset Disposal values to exclude from calculations (but not from display)
+  const assetDisposalForCalculations = new Array(numYears).fill(0)
+  const findRawAssetDisposalForCalc = (rows: any[]): number => {
+    for (const row of rows) {
+      if (row.ColData?.[0]?.value?.includes('8530') && row.ColData[0].value.includes('Asset Disposal')) {
+        const value = row.ColData[1]?.value || '0'
+        return parseFloat(value.toString().replace(/[,$\s]/g, '')) || 0
+      }
+      if (row.Rows?.Row) {
+        const found = findRawAssetDisposalForCalc(row.Rows.Row)
+        if (found !== 0) return found
+      }
+    }
+    return 0
+  }
+  const rawAssetDisposal2016ForCalc = findRawAssetDisposalForCalc(data.Rows.Row)
+  assetDisposalForCalculations[0] = rawAssetDisposal2016ForCalc // 2016 is index 0
+
+  // Get raw Interest Income values to exclude from calculations (2016 only, like Asset Disposal)
+  const interestIncomeForCalculations = new Array(numYears).fill(0)
+  const findRawInterestIncomeForCalc = (rows: any[]): number => {
+    for (const row of rows) {
+      if (row.ColData?.[0]?.value?.includes('7900') && row.ColData[0].value.includes('Interest Income')) {
+        const value = row.ColData[1]?.value || '0' // 2016 is column 1
+        return parseFloat(value.toString().replace(/[,$\s]/g, '')) || 0
+      }
+      if (row.Rows?.Row) {
+        const found = findRawInterestIncomeForCalc(row.Rows.Row)
+        if (found !== 0) return found
+      }
+    }
+    return 0
+  }
+  const rawInterestIncome2016ForCalc = findRawInterestIncomeForCalc(data.Rows.Row)
+  interestIncomeForCalculations[0] = rawInterestIncome2016ForCalc // 2016 is index 0
+  
+  // Adjust Other Expenses by removing Asset Disposal for calculations
+  const adjustedOtherExpensesValues = otherExpensesValues.map((v, i) => v - assetDisposalForCalculations[i])
+  const nonEmploymentCosts = costOfGoodsValues.map((v, i) => v + adjustedOtherExpensesValues[i] - employeePayrollValues[i])
+
+  const mdSalaryValues = normalize(findAccountValues(data, /8322.*MD.*Associates.*Salary/i))
+  const mdBenefitsValues = normalize(findAccountValues(data, /8325.*MD.*Associates.*Benefits/i))
+  const mdPayrollTaxValues = normalize(findAccountValues(data, /8330.*MD.*Associates.*Payroll.*Tax/i))
+  const locumsSalaryValues = normalize(findAccountValues(data, /8322.*Locums.*Salary/i))
+  const mdPayroll = mdSalaryValues.map((v, i) => v + mdBenefitsValues[i] + mdPayrollTaxValues[i] + locumsSalaryValues[i])
+
+  const staffSalaryValues = normalize(findAccountValues(data, /8322.*Staff.*Salary/i))
+  const staffBenefitsValues = normalize(findAccountValues(data, /8325.*Staff.*Benefits/i))
+  const staffPayrollTaxValues = normalize(findAccountValues(data, /8330.*Staff.*Payroll.*Tax/i))
+  const staffEmployment = staffSalaryValues.map((v, i) => v + staffBenefitsValues[i] + staffPayrollTaxValues[i])
+
+  const miscEmployment = normalize(
+    sumAccountPatterns(data, [
+      /8334.*Employee.*gift/i,
+      /8335.*Mileage.*reimbursement/i,
+      /8338.*Profit.*Sharing.*Contribution/i,
+      /8339.*Profit.*Sharing.*Plan.*Cost/i,
+      /8340.*Recruiting.*Costs/i,
+      /8342.*Relocation.*Cost/i
+    ])
+  )
+
+  const totalCosts = nonEmploymentCosts.map((v, i) => v + mdPayroll[i] + staffEmployment[i] + miscEmployment[i])
+
+  summaryRows.push({
+    Header: { ColData: [ { value: 'Costs' }, ...Array.from({ length: numYears }, () => ({ value: '' })) ] },
+    Rows: {
+      Row: [
+        { ColData: createCalculatedRow('    Non-Employment Costs ⓘ', nonEmploymentCosts, numYears, 1, 'Data', 'Insurance, Taxes, Communications, Licensure, Promotional, Billing, Office Overhead, Capital Expense').colData, tooltip: 'Insurance, Taxes, Communications, Licensure, Promotional, Billing, Office Overhead, Capital Expense' },
+        { ColData: createCalculatedRow('    MD Payroll ⓘ', mdPayroll, numYears, 1, 'Data', 'Employed MDs, Locums, Staff').colData, tooltip: 'Employed MDs, Locums, Staff' },
+        { ColData: createCalculatedRow('    Staff Employment', staffEmployment, numYears).colData },
+        { ColData: createCalculatedRow('    Misc Employment ⓘ', miscEmployment, numYears, 1, 'Data', 'Gifts, Profit Sharing, Relocation, Recruiting').colData, tooltip: 'Gifts, Profit Sharing, Relocation, Recruiting' }
+      ]
+    },
+    Summary: { ColData: createCalculatedRow('Total Costs', totalCosts, numYears, 0, 'Summary').colData },
+    type: 'Section',
+    group: 'SummaryCosts'
+  })
+
+  // FINAL SUMMARY ROW
+  const netIncomeValues = normalize(findAccountValues(data, /^Net Income$/i))
+  const guaranteedPaymentsValues = normalize(findAccountValues(data, /8343.*Guaranteed.*Payments/i))
+  
+  // Adjust Net Income by removing the Asset Disposal gain and Interest Income
+  const adjustedNetIncomeValues = netIncomeValues.map((v, i) => v + assetDisposalForCalculations[i] - interestIncomeForCalculations[i])
+  const netIncomeForMDs = adjustedNetIncomeValues.map((v, i) => v + mdSalaryValues[i] + mdBenefitsValues[i] + locumsSalaryValues[i] + guaranteedPaymentsValues[i])
+  summaryRows.push({
+    Summary: { ColData: createCalculatedRow('Net Income for MDs', netIncomeForMDs, numYears, 0, 'Summary').colData },
+    type: 'Section',
+    group: 'SummaryNetIncome'
+  })
+
+  return summaryRows
+}
+
 // Load and transform the yearly data
 export async function loadYearlyGridData(collapsedSections: CollapsibleState = {}): Promise<{ rows: Row[], columns: any[] }> {
   try {
     // Import the JSON data
     const yearlyData = await import('../../../../../historical_data/2016-2024_yearly.json')
-    return transformYearlyDataToGrid(yearlyData.default || yearlyData, collapsedSections)
+    const data = yearlyData.default || yearlyData
+    
+    // Add summary rows to the data before transformation
+    const summaryRows = addSummaryRows(data)
+    
+    // Create new data structure with summary rows added
+    const extendedData = {
+      ...data,
+      Rows: {
+        Row: [
+          ...data.Rows.Row,
+          ...summaryRows
+        ]
+      }
+    }
+    
+    return transformYearlyDataToGrid(extendedData, collapsedSections)
   } catch (error) {
     console.error('Failed to load yearly data:', error)
     return { rows: [], columns: [] }
