@@ -104,40 +104,40 @@ export default function YearlyDataGrid() {
               onClick={(e) => {
                 // Backup click handler - try to detect section clicks manually
                 const target = e.target as HTMLElement
-                const cellElement = target.closest('[data-testid^="rg-cell-"]')
+                const cellElement = target.closest('[data-cell-rowidx]')
                 if (cellElement) {
-                  const testId = cellElement.getAttribute('data-testid')
-                  const rowId = testId?.match(/rg-cell-(\S+)-/)?.[1]
-                  const colId = testId?.match(/-(\S+)$/)?.[1]
-                  if (rowId && colId === 'col-0' && rowId.startsWith('section-')) {
-                    console.log('Manual click detected for section:', rowId)
-                    handleCellClick(rowId, colId)
+                  const rowIdx = cellElement.getAttribute('data-cell-rowidx')
+                  const colIdx = cellElement.getAttribute('data-cell-colidx')
+                  if (rowIdx !== null && colIdx === '0') {
+                    // Map back to the actual row data to check if it's a section
+                    const rowIndex = parseInt(rowIdx, 10)
+                    const row = gridData.rows[rowIndex]
+                    const rowId = (row as any)?.id || `row-${rowIndex}`
+                    if (rowId.startsWith('section-')) {
+                      console.log('Manual click detected for section:', rowId)
+                      handleCellClick(rowId, 'col-0')
+                    }
                   }
                 }
               }}
               onMouseOver={(e) => {
                 console.log('[mouseover] container')
                 const target = e.target as HTMLElement
-                const cellElement = target.closest('[data-testid^="rg-cell-"]') || target.closest('[role="gridcell"]') || target.closest('.rg-cell')
+                const cellElement = target.closest('[data-cell-rowidx]') || target.closest('[role="gridcell"]') || target.closest('.rg-cell')
                 if (!cellElement) {
                   console.log('[mouseover] no cellElement found; target=', target.tagName, target.className)
                 }
                 if (cellElement) {
                   console.log('[mouseover] cellElement tag:', (cellElement as HTMLElement).tagName, 'class:', (cellElement as HTMLElement).className)
-                  const testId = cellElement.getAttribute('data-testid')
-                  const rowId = testId?.match(/rg-cell-(\S+)-/)?.[1]
-                  const colId = testId?.match(/-(\S+)$/)?.[1]
+                  const rowIdx = cellElement.getAttribute('data-cell-rowidx')
+                  const colIdx = cellElement.getAttribute('data-cell-colidx')
                   
                   // Check if this cell has tooltip data
-                  if (rowId && colId) {
-                    // Our ReactGrid rows array includes the header at index 0.
-                    // The generated rowIds for data rows are typically like 'row-<n>' or 'section-<n>'.
-                    // We will try to map rowId to index; if parsing fails, fall back to searching by content.
-                    const parsed = parseInt(rowId.replace(/\D/g, ''), 10)
-                    const rowIndex = rowId === 'header' || Number.isNaN(parsed) ? 0 : parsed
-                    const colIndex = parseInt(colId.replace(/\D/g, ''), 10)
+                  if (rowIdx !== null && colIdx !== null) {
+                    const rowIndex = parseInt(rowIdx, 10)
+                    const colIndex = parseInt(colIdx, 10)
                     const cell = gridData.rows[rowIndex]?.cells?.[colIndex] as any
-                    console.log('[mouseover] testId:', testId, 'rowId:', rowId, 'colId:', colId, 'rowIndex:', rowIndex, 'colIndex:', colIndex)
+                    console.log('[mouseover] rowIdx:', rowIdx, 'colIdx:', colIdx, 'rowIndex:', rowIndex, 'colIndex:', colIndex)
                     
                     if (cell?.tooltip) {
                       console.log('[mouseover] tooltip found:', cell.tooltip)
@@ -171,7 +171,7 @@ export default function YearlyDataGrid() {
                       }
                     }
                   } else {
-                    // No testId path: always attempt fallback by visible label
+                    // No data attributes: always attempt fallback by visible label
                     const rawText = (cellElement as HTMLElement).textContent || ''
                     const normalized = rawText
                       .replace(/[▶▼]/g, '')
@@ -180,7 +180,7 @@ export default function YearlyDataGrid() {
                       .replace(/\s*ⓘ\s*$/, '')
                       .trim()
                     const fallback = tooltipByLabel[normalized]
-                    console.log('[mouseover] fallback no testId:', { rawText, normalized, hasFallback: !!fallback })
+                    console.log('[mouseover] fallback no data attrs:', { rawText, normalized, hasFallback: !!fallback })
                     if (fallback) {
                       const mouseEvent = (e as unknown as { clientX: number; clientY: number })
                       setTooltip({
@@ -227,6 +227,8 @@ export default function YearlyDataGrid() {
                     const rowId = location?.rowId as string
                     const colId = location?.columnId as string
                     if (rowId && colId) {
+                      // For focus events, we still need to map from ReactGrid's internal IDs
+                      // to our grid data structure indices
                       const rowIndex = rowId === 'header' ? 0 : parseInt(rowId.replace(/\D/g, ''), 10)
                       const colIndex = parseInt(colId.replace(/\D/g, ''), 10)
                       const cell = (gridData.rows[rowIndex]?.cells?.[colIndex] as any)
