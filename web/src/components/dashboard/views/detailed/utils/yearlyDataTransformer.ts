@@ -31,6 +31,196 @@ interface YearlyData {
   }
 }
 
+// Types for the 2025 JSON data
+interface MonthlyData {
+  Header: any
+  Columns: {
+    Column: Array<{
+      ColTitle: string
+      ColType: string
+    }>
+  }
+  Rows: {
+    Row: Array<any>
+  }
+}
+
+// Mapping from historical account names to 2025 account names and columns
+const mapping2025: Record<string, { name: string, col: string }> = {
+  '8322 Staff - Salary': { name: '8322 Salary - Staff', col: 'TOTAL' },
+  '8325 Staff - Benefits': { name: '8325 Employee Benefits-Insurance', col: 'Total 1-Location' },
+  '8330 Staff - Payroll Taxes': { name: '8330 Payroll Taxes', col: 'Total 1-Location' },
+  '8322 MD Associates - Salary': { name: '8321 Salary - MD Asso.', col: 'TOTAL' },
+  '8325 MD Associates - Benefits': { name: '8325 Employee Benefits-Insurance', col: 'Total 2-Associates' },
+  '8330 MD Associates - Payroll Taxes': { name: '8330 Payroll Taxes', col: 'Total 2-Associates' },
+  '8322 Locums - Salary': { name: '8323 Salary - Locums', col: 'TOTAL' },
+  '7902 Total Other Professional Income': { name: '7902 Other Professional Income', col: 'TOTAL' },
+  'Consulting Agreement/Other': { name: '7902 Other Professional Income', col: 'Total 1-Location' }
+}
+
+// Special calculation function for Medical Director Hours
+function calculateMedicalDirectorHours(data: MonthlyData): { shared: number, prcs: number } {
+  const columnIndexes: Record<string, number> = {}
+  
+  // Get column indexes
+  data.Columns.Column.forEach((col, index) => {
+    columnIndexes[col.ColTitle] = index
+  })
+  
+  // Find the "7902 Other Professional Income" row
+  const findMedDirRow = (rows: any[]): any => {
+    for (const row of rows) {
+      if (row.ColData?.[0]?.value?.trim() === '7902 Other Professional Income') {
+        return row
+      }
+      if (row.Rows?.Row) {
+        const found = findMedDirRow(row.Rows.Row)
+        if (found) return found
+      }
+    }
+    return null
+  }
+  
+  const medDirRow = findMedDirRow(data.Rows.Row)
+  if (!medDirRow) {
+    return { shared: 0, prcs: 0 }
+  }
+  
+  // Get values for Allen, Connor, Suszko, Werner
+  const allenIndex = columnIndexes['Allen']
+  const connorIndex = columnIndexes['Connor']
+  const suszkoIndex = columnIndexes['Suszko']
+  const wernerIndex = columnIndexes['Werner']
+  
+  const allen = allenIndex !== undefined ? parseFloat(medDirRow.ColData[allenIndex].value.replace(/,/g, '')) || 0 : 0
+  const connor = connorIndex !== undefined ? parseFloat(medDirRow.ColData[connorIndex].value.replace(/,/g, '')) || 0 : 0
+  const suszko = suszkoIndex !== undefined ? parseFloat(medDirRow.ColData[suszkoIndex].value.replace(/,/g, '')) || 0 : 0
+  const werner = wernerIndex !== undefined ? parseFloat(medDirRow.ColData[wernerIndex].value.replace(/,/g, '')) || 0 : 0
+  
+  // Calculate PRCS: Suszko - ((Connor x 3) + Werner)
+  // This represents the PRCS-specific Medical Director income
+  const prcs = suszko - connor - werner
+  
+  // Calculate Shared: (Allen + Connor + Suszko + Werner) - PRCS  
+  // This represents the shared Medical Director income across all physicians
+  const shared = (allen + connor + suszko + werner) - prcs
+  
+  return { shared, prcs }
+}
+
+// Function to parse 2025 data and create a lookup map
+function parse2025Data(data: MonthlyData): Record<string, number> {
+  const accountMap: Record<string, number> = {}
+  const columnIndexes: Record<string, number> = {}
+
+  // Get column indexes
+  data.Columns.Column.forEach((col, index) => {
+    columnIndexes[col.ColTitle] = index
+  })
+
+  // Recursive function to traverse rows
+  function traverseRows(rows: any[]) {
+    for (const row of rows) {
+      if (row.ColData?.[0]?.value) {
+        const accountName = row.ColData[0].value.trim()
+        
+        // Skip the "7902 Other Professional Income" section as requested
+        if (accountName.includes('7902 Other Professional Income')) {
+          continue
+        }
+
+        const totalIndex = columnIndexes['TOTAL']
+        if (totalIndex !== undefined && row.ColData[totalIndex]) {
+          const value = parseFloat(row.ColData[totalIndex].value.replace(/,/g, '')) || 0
+          accountMap[accountName] = value
+        }
+      }
+      if (row.Summary?.ColData?.[0]?.value) {
+        const accountName = row.Summary.ColData[0].value.trim()
+        const totalIndex = columnIndexes['TOTAL']
+        if (totalIndex !== undefined && row.Summary.ColData[totalIndex]) {
+          const value = parseFloat(row.Summary.ColData[totalIndex].value.replace(/,/g, '')) || 0
+          accountMap[accountName] = value
+        }
+      }
+      if (row.Rows?.Row) {
+        traverseRows(row.Rows.Row)
+      }
+    }
+  }
+
+  traverseRows(data.Rows.Row)
+  
+  // Handle special mappings
+  for (const key in mapping2025) {
+    const { name, col } = mapping2025[key]
+    const colIndex = columnIndexes[col]
+    if (colIndex !== undefined) {
+      // Need to re-traverse to find these specific rows and columns
+      const findValue = (rows: any[]): number | undefined => {
+        for (const row of rows) {
+          if (row.ColData?.[0]?.value.trim() === name) {
+            return parseFloat(row.ColData[colIndex].value.replace(/,/g, '')) || 0
+          }
+          if (row.Rows?.Row) {
+            const found = findValue(row.Rows.Row)
+            if (found !== undefined) return found
+          }
+        }
+        return undefined
+      }
+      const value = findValue(data.Rows.Row)
+      if (value !== undefined) {
+        accountMap[key] = value
+      }
+    }
+  }
+
+  // Add Medical Director Hours calculations
+  const medDirHours = calculateMedicalDirectorHours(data)
+  accountMap['Medical Director Hours (Shared)'] = medDirHours.shared
+  accountMap['Medical Director Hours (PRCS)'] = medDirHours.prcs
+  
+  return accountMap
+}
+
+// Function to merge 2025 data into the historical data structure
+function merge2025Data(historicalData: YearlyData, data2025: Record<string, number>): YearlyData {
+  // Add 2025 column
+  historicalData.Columns.Column.push({
+    ColTitle: '2025',
+    ColType: 'Money'
+  })
+  
+  function traverseAndMerge(rows: any[]): any[] {
+    return rows.map(row => {
+      if (row.ColData?.[0]?.value) {
+        const accountName = row.ColData[0].value.trim()
+        const value2025 = data2025[accountName] || data2025[accountName.replace(/Total\s+/, '')] || 0
+        
+        row.ColData.push({ value: value2025.toString() })
+      }
+      if (row.Summary?.ColData?.[0]?.value) {
+        const accountName = row.Summary.ColData[0].value.trim()
+        const value2025 = data2025[accountName] || data2025[accountName.replace(/Total\s+/, '')] || 0
+        row.Summary.ColData.push({ value: value2025.toString() })
+      }
+      if (row.Header?.ColData) {
+        row.Header.ColData.push({ value: '' })
+      }
+
+      if (row.Rows?.Row) {
+        row.Rows.Row = traverseAndMerge(row.Rows.Row)
+      }
+      return row
+    })
+  }
+
+  historicalData.Rows.Row = traverseAndMerge(historicalData.Rows.Row)
+  return historicalData
+}
+
+
 // Flatten nested row structure with section identification
 function flattenRows(rows: any[], level = 0, parentGroup?: string, sectionCounter = { count: 0 }): any[] {
   const flattened: any[] = []
@@ -597,8 +787,20 @@ function addSummaryRows(data: YearlyData): any[] {
 export async function loadYearlyGridData(collapsedSections: CollapsibleState = {}): Promise<{ rows: Row[], columns: any[] }> {
   try {
     // Import the JSON data
-    const yearlyData = await import('../../../../../historical_data/2016-2024_yearly.json')
-    const data = yearlyData.default || yearlyData
+    const yearlyDataPromise = import('../../../../../historical_data/2016-2024_yearly.json')
+    const data2025Promise = import('../../../../../historical_data/2025.json')
+    
+    const [yearlyDataModule, data2025Module] = await Promise.all([yearlyDataPromise, data2025Promise])
+    
+    // Deep copy to prevent mutation of cached module data on re-renders
+    const historicalData = JSON.parse(JSON.stringify(yearlyDataModule.default || yearlyDataModule))
+    const data2025Raw = data2025Module.default || data2025Module
+
+    // Parse 2025 data
+    const data2025Map = parse2025Data(data2025Raw)
+    
+    // Merge 2025 data into historical data
+    const data = merge2025Data(historicalData, data2025Map)
     
     // Add summary rows to the data before transformation
     const summaryRows = addSummaryRows(data)
