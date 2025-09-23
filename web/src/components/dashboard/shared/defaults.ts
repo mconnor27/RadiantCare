@@ -14,7 +14,7 @@ const HISTORIC_DATA: YearRow[] = [
   { year: 2022, therapyIncome: 2609294, nonEmploymentCosts: 269191.26, employeePayroll: 503812.98 },
   { year: 2023, therapyIncome: 2963169, nonEmploymentCosts: 201243.57, employeePayroll: 790092.00 },
   // 2024+: therapyIncome represents total gross income (from yearly data grid)
-  { year: 2024, therapyIncome: 3053334, nonEmploymentCosts: 261114.98, employeePayroll: 785924.54 },
+  { year: 2024, therapyIncome: 2934700, nonEmploymentCosts: 260925, employeePayroll: 809747 },
   // 2025 actuals per provided figures
   { year: 2025, therapyIncome: 3164006.93, nonEmploymentCosts: 229713.57, employeePayroll:  752155.73  },
 ]
@@ -74,6 +74,7 @@ export const ACTUAL_2024_LOCUM_COSTS = 113400
 export const ACTUAL_2024_MISC_EMPLOYMENT_COSTS = 48446
 export const ACTUAL_2024_MEDICAL_DIRECTOR_HOURS = 102870
 export const ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS = 25805
+export const ACTUAL_2024_PARTNER_POOL = 2008467
 
 // 2025 actual/projected values
 export const ACTUAL_2025_MEDICAL_DIRECTOR_HOURS = 119373.75

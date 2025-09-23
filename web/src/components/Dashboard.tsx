@@ -33,9 +33,11 @@ import {
   DEFAULT_MISC_EMPLOYMENT_COSTS,
   DEFAULT_CONSULTING_SERVICES_2024,
   DEFAULT_CONSULTING_SERVICES_2025,
-  DEFAULT_CONSULTING_SERVICES_PROJECTION,
   ACTUAL_2024_MEDICAL_DIRECTOR_HOURS,
   ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS,
+  ACTUAL_2024_MISC_EMPLOYMENT_COSTS,
+  ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS,
+  ACTUAL_2024_PARTNER_POOL,
   ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
   ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
   DEFAULT_MD_SHARED_PROJECTION,
@@ -63,15 +65,15 @@ export const useDashboardStore = create<Store>()(
         scenarioA: {
           future: INITIAL_FUTURE_YEARS_A,
           projection: {
-            incomeGrowthPct: 3.7,
-            medicalDirectorHours: DEFAULT_MD_SHARED_PROJECTION,
-            prcsMedicalDirectorHours: DEFAULT_MD_PRCS_PROJECTION,
-            consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_PROJECTION,
-            nonEmploymentCostsPct: 7.8, 
-            nonMdEmploymentCostsPct: 6.0, 
+            incomeGrowthPct: PROJECTION_DEFAULTS.A.incomeGrowthPct,
+            medicalDirectorHours: PROJECTION_DEFAULTS.A.medicalDirectorHours,
+            prcsMedicalDirectorHours: PROJECTION_DEFAULTS.A.prcsMedicalDirectorHours,
+            consultingServicesAgreement: PROJECTION_DEFAULTS.A.consultingServicesAgreement,
+            nonEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonEmploymentCostsPct, 
+            nonMdEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonMdEmploymentCostsPct, 
             locumsCosts: PROJECTION_DEFAULTS.A.locumsCosts, 
-            miscEmploymentCostsPct: 6.7, 
-            benefitCostsGrowthPct: 5.0 
+            miscEmploymentCostsPct: PROJECTION_DEFAULTS.A.miscEmploymentCostsPct, 
+            benefitCostsGrowthPct: PROJECTION_DEFAULTS.A.benefitCostsGrowthPct 
           },
           selectedYear: 2025, // Default to Baseline tab
           dataMode: '2025 Data',
@@ -86,15 +88,15 @@ export const useDashboardStore = create<Store>()(
               state.scenarioB = {
                 future: INITIAL_FUTURE_YEARS_B.map((f) => ({ ...f, physicians: [...f.physicians] })),
                 projection: {
-                  incomeGrowthPct: 3.7,
-                  medicalDirectorHours: DEFAULT_MD_SHARED_PROJECTION,
-                  prcsMedicalDirectorHours: DEFAULT_MD_PRCS_PROJECTION,
-                  consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_PROJECTION,
-                  nonEmploymentCostsPct: 7.8, 
-                  nonMdEmploymentCostsPct: 6.0, 
-                  locumsCosts: 0, 
-                  miscEmploymentCostsPct: 6.7,
-                  benefitCostsGrowthPct: 5.0
+                  incomeGrowthPct: PROJECTION_DEFAULTS.B.incomeGrowthPct,
+                  medicalDirectorHours: PROJECTION_DEFAULTS.B.medicalDirectorHours,
+                  prcsMedicalDirectorHours: PROJECTION_DEFAULTS.B.prcsMedicalDirectorHours,
+                  consultingServicesAgreement: PROJECTION_DEFAULTS.B.consultingServicesAgreement,
+                  nonEmploymentCostsPct: PROJECTION_DEFAULTS.B.nonEmploymentCostsPct, 
+                  nonMdEmploymentCostsPct: PROJECTION_DEFAULTS.B.nonMdEmploymentCostsPct, 
+                  locumsCosts: PROJECTION_DEFAULTS.B.locumsCosts, 
+                  miscEmploymentCostsPct: PROJECTION_DEFAULTS.B.miscEmploymentCostsPct,
+                  benefitCostsGrowthPct: PROJECTION_DEFAULTS.B.benefitCostsGrowthPct
                 },
                 selectedYear: state.scenarioA.selectedYear,
                 dataMode: '2024 Data',
@@ -465,8 +467,8 @@ export const useDashboardStore = create<Store>()(
               baselineData = {
                 therapyIncome: last2024.therapyIncome,
                 nonEmploymentCosts: last2024.nonEmploymentCosts,
-                miscEmploymentCosts: 24623.49, // 2024 actual misc employment from image
-                nonMdEmploymentCosts: 164677.44, // 2024 actual staff employment costs
+                miscEmploymentCosts: ACTUAL_2024_MISC_EMPLOYMENT_COSTS,
+                nonMdEmploymentCosts: ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS,
               }
             } else if (last2025) {
               baselineData = {
@@ -561,8 +563,8 @@ export const useDashboardStore = create<Store>()(
               baselineData = {
                 therapyIncome: last2024.therapyIncome,
                 nonEmploymentCosts: last2024.nonEmploymentCosts,
-                miscEmploymentCosts: 24623.49, // 2024 actual misc employment from image
-                nonMdEmploymentCosts: 164677.44, // 2024 actual staff employment costs
+                miscEmploymentCosts: ACTUAL_2024_MISC_EMPLOYMENT_COSTS,
+                nonMdEmploymentCosts: ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS,
               }
             } else if (last2025) {
               baselineData = {
@@ -648,9 +650,9 @@ export const useDashboardStore = create<Store>()(
                   year: 2025,
                   therapyIncome: last2024.therapyIncome,
                   nonEmploymentCosts: last2024.nonEmploymentCosts,
-                  nonMdEmploymentCosts: 164677.44, // 2024 actual staff employment costs
-                  locumCosts: ACTUAL_2024_LOCUM_COSTS, // 2024 actual locums costs
-                  miscEmploymentCosts: 24623.49, // 2024 actual misc employment
+                  nonMdEmploymentCosts: ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS,
+                  locumCosts: ACTUAL_2024_LOCUM_COSTS,
+                  miscEmploymentCosts: ACTUAL_2024_MISC_EMPLOYMENT_COSTS,
                   physicians: scenario2024Defaults(),
                 }
               } else if (sc.dataMode === '2025 Data' && last2025) {
@@ -739,15 +741,15 @@ export const useDashboardStore = create<Store>()(
             if (!scenarioState) return
             
             scenarioState.projection = {
-              incomeGrowthPct: 3.7, 
-              medicalDirectorHours: DEFAULT_MD_SHARED_PROJECTION,
-              prcsMedicalDirectorHours: DEFAULT_MD_PRCS_PROJECTION,
-              consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_PROJECTION,
-              nonEmploymentCostsPct: 7.8, 
-              nonMdEmploymentCostsPct: 6.0, 
+              incomeGrowthPct: PROJECTION_DEFAULTS.A.incomeGrowthPct, 
+              medicalDirectorHours: PROJECTION_DEFAULTS.A.medicalDirectorHours,
+              prcsMedicalDirectorHours: PROJECTION_DEFAULTS.A.prcsMedicalDirectorHours,
+              consultingServicesAgreement: PROJECTION_DEFAULTS.A.consultingServicesAgreement,
+              nonEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonEmploymentCostsPct, 
+              nonMdEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonMdEmploymentCostsPct, 
               locumsCosts: PROJECTION_DEFAULTS.A.locumsCosts, 
-              miscEmploymentCostsPct: 6.7, 
-              benefitCostsGrowthPct: 5.0 
+              miscEmploymentCostsPct: PROJECTION_DEFAULTS.A.miscEmploymentCostsPct, 
+              benefitCostsGrowthPct: PROJECTION_DEFAULTS.A.benefitCostsGrowthPct 
             }
           })
           
@@ -781,15 +783,15 @@ export const useDashboardStore = create<Store>()(
                 physicians: [...f.physicians.map(p => ({ ...p }))] 
               })),
               projection: { 
-                incomeGrowthPct: 3.7, 
-                medicalDirectorHours: DEFAULT_MD_SHARED_PROJECTION,
-                prcsMedicalDirectorHours: DEFAULT_MD_PRCS_PROJECTION,
-                consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_PROJECTION,
-                nonEmploymentCostsPct: 7.8, 
-                nonMdEmploymentCostsPct: 6.0, 
+                incomeGrowthPct: PROJECTION_DEFAULTS.A.incomeGrowthPct, 
+                medicalDirectorHours: PROJECTION_DEFAULTS.A.medicalDirectorHours,
+                prcsMedicalDirectorHours: PROJECTION_DEFAULTS.A.prcsMedicalDirectorHours,
+                consultingServicesAgreement: PROJECTION_DEFAULTS.A.consultingServicesAgreement,
+                nonEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonEmploymentCostsPct, 
+                nonMdEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonMdEmploymentCostsPct, 
                 locumsCosts: PROJECTION_DEFAULTS.A.locumsCosts, 
-                miscEmploymentCostsPct: 6.7, 
-                benefitCostsGrowthPct: 5.0 
+                miscEmploymentCostsPct: PROJECTION_DEFAULTS.A.miscEmploymentCostsPct, 
+                benefitCostsGrowthPct: PROJECTION_DEFAULTS.A.benefitCostsGrowthPct 
               },
               selectedYear: 2025, // Reset to Baseline tab
               dataMode: '2025 Data',
@@ -923,7 +925,7 @@ export function usePartnerComp(year: number, scenario: ScenarioKey) {
       // Calculate partner pool dynamically based on data mode
       const historic2025 = store.historic.find(h => h.year === 2025)!
       const dynamicNetIncome2025 = getTotalIncome(historic2025) - historic2025.nonEmploymentCosts - (historic2025.employeePayroll ?? 0)
-      const basePool = dataMode === '2024 Data' ? 2032099.02 : dynamicNetIncome2025
+      const basePool = dataMode === '2024 Data' ? ACTUAL_2024_PARTNER_POOL : dynamicNetIncome2025
       // Dynamic net income is already net of all costs, so only subtract buyouts and MD allocations
       // delayedW2Costs are already accounted for in the net pool
       const adjustedPool = Math.max(0, basePool - buyoutCosts - totalMedicalDirectorAllocations)
@@ -1359,8 +1361,8 @@ export function calculateProjectedValue(
     baselineData = {
       therapyIncome: last2024.therapyIncome,
       nonEmploymentCosts: last2024.nonEmploymentCosts,
-      miscEmploymentCosts: 24623.49,
-      nonMdEmploymentCosts: 164677.44,
+      miscEmploymentCosts: ACTUAL_2024_MISC_EMPLOYMENT_COSTS,
+      nonMdEmploymentCosts: ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS,
     }
   } else if (sc.dataMode === '2025 Data') {
     const last2025 = store.historic.find((h: any) => h.year === 2025)!

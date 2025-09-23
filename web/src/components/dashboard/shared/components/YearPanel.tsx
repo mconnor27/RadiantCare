@@ -917,14 +917,17 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
             <div style={{ fontWeight: 700 }}>Net Income</div>
             <div style={{ textAlign: 'right', fontWeight: 700 }}>
               {currency((() => {
+                // For baseline year (2025), use dataMode to determine which baseline data to use
                 if (year === 2025) {
-                  // Calculate 2025 Net Income dynamically
-                  const historic2025 = store.historic.find(h => h.year === 2025)!
-                  return getTotalIncome(historic2025) - historic2025.nonEmploymentCosts - (historic2025.employeePayroll ?? 0)
-                } else if (year === 2024) {
-                  // Calculate 2024 Net Income dynamically  
-                  const historic2024 = store.historic.find(h => h.year === 2024)!
-                  return getTotalIncome(historic2024) - historic2024.nonEmploymentCosts - (historic2024.employeePayroll ?? 0)
+                  if (dataMode === '2024 Data') {
+                    // Use 2024 baseline data
+                    const historic2024 = store.historic.find(h => h.year === 2024)!
+                    return getTotalIncome(historic2024) - historic2024.nonEmploymentCosts - (historic2024.employeePayroll ?? 0)
+                  } else {
+                    // Use 2025 baseline data (default for '2025 Data' and 'Custom')
+                    const historic2025 = store.historic.find(h => h.year === 2025)!
+                    return getTotalIncome(historic2025) - historic2025.nonEmploymentCosts - (historic2025.employeePayroll ?? 0)
+                  }
                 } else {
                   // For future years, calculate from future year data
                   return getTotalIncome(fy!) - (fy!.nonEmploymentCosts + fy!.nonMdEmploymentCosts + fy!.miscEmploymentCosts + fy!.locumCosts + 

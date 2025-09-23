@@ -1,4 +1,4 @@
-import historical2025Data from './2025.json'
+import historical2025Data from './2025_daily.json'
 import historical2024Data from './2024.json'
 import historical2023Data from './2023.json'
 import historical2022Data from './2022.json'

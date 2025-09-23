@@ -358,7 +358,11 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
         fontWeight: 'bold',
         background: index === 0 ? '#f3f4f6' : '#e5e7eb',
         fontSize: '16px',
-        padding: '6px'
+        padding: '6px',
+        textAlign: index === 0 ? 'left' : 'center',
+        justifyContent: index === 0 ? 'flex-start' : 'center',
+        display: 'flex',
+        alignItems: 'center'
       }
     }))
   }
@@ -543,7 +547,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
   
   const columns = columnTitles.map((_, index) => ({
     columnId: `col-${index}`,
-    width: index === 0 ? 350 : index === columnTitles.length - 1 ? 140 : 100 // Account column wider, Total column slightly wider
+    width: index === 0 ? 350 : 100 // Account column wider, all other columns same width
   }))
   
   return {
@@ -788,7 +792,7 @@ export async function loadYearlyGridData(collapsedSections: CollapsibleState = {
   try {
     // Import the JSON data
     const yearlyDataPromise = import('../../../../../historical_data/2016-2024_yearly.json')
-    const data2025Promise = import('../../../../../historical_data/2025.json')
+    const data2025Promise = import('../../../../../historical_data/2025_summary.json')
     
     const [yearlyDataModule, data2025Module] = await Promise.all([yearlyDataPromise, data2025Promise])
     
