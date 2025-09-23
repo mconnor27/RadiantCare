@@ -3,6 +3,7 @@ import { ReactGrid, type Row } from '@silevis/reactgrid'
 import '@silevis/reactgrid/styles.css'
 import CollapsibleSection from '../../../shared/components/CollapsibleSection'
 import { loadYearlyGridData, type CollapsibleState } from '../utils/yearlyDataTransformer'
+import ProjectedValueSlider from './ProjectedValueSlider'
 
 export default function YearlyDataGrid() {
   const [gridData, setGridData] = useState<{ rows: Row[], columns: any[] }>({ rows: [], columns: [] })
@@ -15,6 +16,26 @@ export default function YearlyDataGrid() {
     x: 0,
     y: 0
   })
+  
+  // Slider state for projected value editing
+  const [slider, setSlider] = useState<{
+    isVisible: boolean
+    position: { x: number; y: number }
+    currentValue: number
+    accountName: string
+    rowIndex: number
+    columnIndex: number
+  }>({
+    isVisible: false,
+    position: { x: 0, y: 0 },
+    currentValue: 0,
+    accountName: '',
+    rowIndex: -1,
+    columnIndex: -1
+  })
+  
+  // Store custom projected values that override the default calculations
+  const [customProjectedValues, setCustomProjectedValues] = useState<Record<string, number>>({})
 
   // Fallback tooltip mapping by visible label text (without trailing asterisks and info icons)
   const tooltipByLabel: Record<string, string> = {
@@ -30,7 +51,7 @@ export default function YearlyDataGrid() {
     try {
       setLoading(true)
       setError(null)
-      const data = await loadYearlyGridData(collapsedSections)
+      const data = await loadYearlyGridData(collapsedSections, customProjectedValues)
       setGridData(data)
     } catch (err) {
       console.error('Error loading yearly data:', err)
@@ -38,15 +59,16 @@ export default function YearlyDataGrid() {
     } finally {
       setLoading(false)
     }
-  }, [collapsedSections])
+  }, [collapsedSections, customProjectedValues])
 
   useEffect(() => {
     loadData()
   }, [loadData])
 
-  const handleCellClick = useCallback((rowId: string, columnId: string) => {
+  const handleCellClick = useCallback((rowId: string, columnId: string, event?: React.MouseEvent) => {
     console.log('handleCellClick called with:', { rowId, columnId })
-    // Only handle clicks on the first column (account names) for collapsible sections
+    
+    // Handle section collapse/expand for first column
     if (columnId === 'col-0' && rowId.startsWith('section-')) {
       console.log('Toggling section:', rowId)
       setCollapsedSections(prev => {
@@ -57,12 +79,66 @@ export default function YearlyDataGrid() {
         console.log('New collapsed state:', newState)
         return newState
       })
+      return
     }
+    
+    // Handle projected cell clicks (last column)
+    const colIndex = parseInt(columnId.replace('col-', ''), 10)
+    const parsed = parseInt(rowId.replace(/\D/g, ''), 10)
+    const rowIndex = rowId === 'header' ? 0 : (rowId.startsWith('row-') ? parsed + 1 : parsed)
+    const isProjectedColumn = gridData.columns && colIndex === gridData.columns.length - 1
+    const isDataRow = rowIndex > 0 && !rowId.startsWith('section-') // Skip header and section rows
+    
+    if (isProjectedColumn && isDataRow && gridData.rows[rowIndex]) {
+      const row = gridData.rows[rowIndex]
+      const cell = row.cells[colIndex] as any
+      const accountCell = row.cells[0] as any
+      
+      // Only allow slider for Data rows (ignore Header/Summary) and not computed rows
+      const isRowTypeData = (cell?.rowType === 'Data')
+      const isComputed = cell?.computedRow === true
+      if (cell && accountCell && isRowTypeData && !isComputed) {
+        console.log('Projected cell clicked:', { rowIndex, colIndex, accountName: accountCell.text })
+        
+        // Parse the current value from the cell text
+        const cellText = cell.text || '0'
+        const currentValue = parseFloat(cellText.replace(/[$,\s]/g, '')) || 0
+        
+        // Get click position for slider placement
+        const clickPosition = event ? { x: event.clientX, y: event.clientY } : { x: 0, y: 0 }
+        
+        setSlider({
+          isVisible: true,
+          position: clickPosition,
+          currentValue,
+          accountName: accountCell.text || '',
+          rowIndex,
+          columnIndex: colIndex
+        })
+      }
+    }
+  }, [gridData])
+  
+  const handleSliderClose = useCallback(() => {
+    setSlider(prev => ({ ...prev, isVisible: false }))
   }, [])
+  
+  const handleProjectedValueChange = useCallback((newValue: number) => {
+    const accountName = slider.accountName
+    
+    // Store the custom value
+    setCustomProjectedValues(prev => ({
+      ...prev,
+      [accountName]: newValue
+    }))
+    
+    // Reload data to reflect the change
+    loadData()
+  }, [slider.accountName, loadData])
 
   return (
     <CollapsibleSection 
-      title="Yearly Financial Data (2016-2024)"
+      title="Yearly Financial Data (2016-2025)"
       defaultOpen={false}
       tone="neutral"
     >
@@ -102,20 +178,33 @@ export default function YearlyDataGrid() {
                 minWidth: 'fit-content'
               }}
               onClick={(e) => {
-                // Backup click handler - try to detect section clicks manually
                 const target = e.target as HTMLElement
                 const cellElement = target.closest('[data-cell-rowidx]')
                 if (cellElement) {
                   const rowIdx = cellElement.getAttribute('data-cell-rowidx')
                   const colIdx = cellElement.getAttribute('data-cell-colidx')
-                  if (rowIdx !== null && colIdx === '0') {
-                    // Map back to the actual row data to check if it's a section
+                  
+                  if (rowIdx !== null && colIdx !== null) {
                     const rowIndex = parseInt(rowIdx, 10)
+                    const colIndex = parseInt(colIdx, 10)
                     const row = gridData.rows[rowIndex]
-                    const rowId = (row as any)?.id || `row-${rowIndex}`
-                    if (rowId.startsWith('section-')) {
+                    const rowId = (row as any)?.rowId || `row-${rowIndex}`
+                    const columnId = `col-${colIndex}`
+                    
+                    // Handle section clicks (first column)
+                    if (colIndex === 0 && rowId.startsWith('section-')) {
                       console.log('Manual click detected for section:', rowId)
-                      handleCellClick(rowId, 'col-0')
+                      handleCellClick(rowId, columnId, e)
+                    }
+                    // Handle projected cell clicks (last column) 
+                    else if (gridData.columns && colIndex === gridData.columns.length - 1) {
+                      console.log('Manual click detected for projected cell:', { rowIndex, colIndex, rowId })
+                      // Check row type from the cell to prevent non-Data rows and custom computed summary group rows
+                      const row = gridData.rows[rowIndex]
+                      const cell = row?.cells?.[colIndex] as any
+                      if (cell?.rowType === 'Data' && cell?.computedRow !== true) {
+                        handleCellClick(rowId, columnId, e)
+                      }
                     }
                   }
                 }
@@ -229,7 +318,8 @@ export default function YearlyDataGrid() {
                     if (rowId && colId) {
                       // For focus events, we still need to map from ReactGrid's internal IDs
                       // to our grid data structure indices
-                      const rowIndex = rowId === 'header' ? 0 : parseInt(rowId.replace(/\D/g, ''), 10)
+                      const parsed = parseInt(rowId.replace(/\D/g, ''), 10)
+                      const rowIndex = rowId === 'header' ? 0 : (rowId.startsWith('row-') ? parsed + 1 : parsed)
                       const colIndex = parseInt(colId.replace(/\D/g, ''), 10)
                       const cell = (gridData.rows[rowIndex]?.cells?.[colIndex] as any)
                       console.log('[focus] rowId:', rowId, 'colId:', colId, 'rowIndex:', rowIndex, 'colIndex:', colIndex, 'tooltip:', cell?.tooltip)
@@ -258,7 +348,7 @@ export default function YearlyDataGrid() {
             color: '#6b7280',
             textAlign: 'center'
           }}>
-            Read-only view • {gridData.rows.length - 1} data rows • Click ▶/▼ to expand/collapse sections
+            Read-only view • {gridData.rows.length - 1} data rows • Click ▶/▼ to expand/collapse sections • Click projected cells to adjust values
           </div>
         )}
         
@@ -285,6 +375,16 @@ export default function YearlyDataGrid() {
             {tooltip.text}
           </div>
         )}
+        
+        {/* Projected Value Slider */}
+        <ProjectedValueSlider
+          isVisible={slider.isVisible}
+          onClose={handleSliderClose}
+          currentValue={slider.currentValue}
+          onValueChange={handleProjectedValueChange}
+          accountName={slider.accountName}
+          position={slider.position}
+        />
       </div>
     </CollapsibleSection>
   )

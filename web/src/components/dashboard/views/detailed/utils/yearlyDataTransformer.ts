@@ -186,9 +186,15 @@ function parse2025Data(data: MonthlyData): Record<string, number> {
 
 // Function to merge 2025 data into the historical data structure
 function merge2025Data(historicalData: YearlyData, data2025: Record<string, number>): YearlyData {
-  // Add 2025 column
+  // Add 2025 YTD column
   historicalData.Columns.Column.push({
-    ColTitle: '2025',
+    ColTitle: '2025 (YTD)',
+    ColType: 'Money'
+  })
+  
+  // Add 2025 Projected column (extrapolate 8 months to 12 months)
+  historicalData.Columns.Column.push({
+    ColTitle: '2025 (Projected)',
     ColType: 'Money'
   })
   
@@ -196,16 +202,24 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
     return rows.map(row => {
       if (row.ColData?.[0]?.value) {
         const accountName = row.ColData[0].value.trim()
-        const value2025 = data2025[accountName] || data2025[accountName.replace(/Total\s+/, '')] || 0
+        const value2025YTD = data2025[accountName] || data2025[accountName.replace(/Total\s+/, '')] || 0
+        // Project 8 months of data to 12 months (multiply by 1.5)
+        const value2025Projected = value2025YTD * 1.5
         
-        row.ColData.push({ value: value2025.toString() })
+        row.ColData.push({ value: value2025YTD.toString() })
+        row.ColData.push({ value: value2025Projected.toString() })
       }
       if (row.Summary?.ColData?.[0]?.value) {
         const accountName = row.Summary.ColData[0].value.trim()
-        const value2025 = data2025[accountName] || data2025[accountName.replace(/Total\s+/, '')] || 0
-        row.Summary.ColData.push({ value: value2025.toString() })
+        const value2025YTD = data2025[accountName] || data2025[accountName.replace(/Total\s+/, '')] || 0
+        // Project 8 months of data to 12 months (multiply by 1.5)
+        const value2025Projected = value2025YTD * 1.5
+        
+        row.Summary.ColData.push({ value: value2025YTD.toString() })
+        row.Summary.ColData.push({ value: value2025Projected.toString() })
       }
       if (row.Header?.ColData) {
+        row.Header.ColData.push({ value: '' })
         row.Header.ColData.push({ value: '' })
       }
 
@@ -254,7 +268,9 @@ function flattenRows(rows: any[], level = 0, parentGroup?: string, sectionCounte
         type: row.type || 'Data',
         level,
         group: row.group || parentGroup,
-        tooltip: row.tooltip
+        tooltip: row.tooltip,
+        // propagate computed marker from source rows (used to block editing via slider)
+        computed: row.computed === true
       })
     }
     
@@ -269,7 +285,8 @@ function flattenRows(rows: any[], level = 0, parentGroup?: string, sectionCounte
         colData: row.Summary.ColData,
         type: 'Summary',
         level,
-        group: row.group || parentGroup
+        group: row.group || parentGroup,
+        computed: row.computed === true
       })
     }
   }
@@ -314,7 +331,7 @@ function filterCollapsedRows(rows: any[], collapsedSections: CollapsibleState): 
   return filteredRows
 }
 
-export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: CollapsibleState = {}): { rows: Row[], columns: any[] } {
+export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}): { rows: Row[], columns: any[] } {
   // Helper to get the absolute 2016 Asset Disposal amount from raw data
   const getAssetDisposal2016Amount = (source: YearlyData): number => {
     const search = (rows: any[]): number => {
@@ -427,6 +444,19 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
     }).format(Math.round(numValue))
   }
 
+  // Helper: get numeric value for a row's Projected column (last numeric col)
+  const getProjectedNumericForRow = (r: any): number => {
+    const name = r.colData?.[0]?.value || ''
+    const lastIdx = columnTitles.length - 1
+    // Prefer custom override
+    if (customProjectedValues[name] !== undefined) {
+      return Number(customProjectedValues[name]) || 0
+    }
+    const raw = r.colData?.[lastIdx]?.value
+    const num = parseFloat((raw ?? '0').toString().replace(/[,$\s]/g, '')) || 0
+    return num
+  }
+
   const dataRows: Row[] = visibleRows.map((row, index) => {
     const accountName = row.colData[0]?.value || ''
     const cells = row.colData.map((cellData: any, cellIndex: number) => {
@@ -440,8 +470,96 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       }
       
       const isNumeric = cellIndex > 0 && value && !isNaN(parseFloat(value.replace(/[,$▶▼\s]/g, '')))
-      // Apply display adjustments for specific labels
-      if (isNumeric) {
+      
+      // Check if this is the projected column (last column) and if there's a custom value
+      const isProjectedColumn = cellIndex === columnTitles.length - 1
+      const hasCustomValue = isProjectedColumn && customProjectedValues[accountName] !== undefined
+      
+      // Apply custom projected value if available
+      if (hasCustomValue) {
+        value = customProjectedValues[accountName].toString()
+      }
+      // Special calculated summaries (projected column only)
+      else if (isProjectedColumn && row.type === 'Summary') {
+        const computeSummaryByName = (pattern: RegExp): number => {
+          // Find the summary row in flattenedRows and sum its section data
+          const target = flattenedRows.find(r => {
+            const n = r.colData?.[0]?.value || ''
+            return r.type === 'Summary' && pattern.test(n)
+          })
+          if (!target) return 0
+          const originalIndex = flattenedRows.indexOf(target)
+          if (originalIndex < 0) return 0
+          // find nearest Section above at the same level
+          let startIdx = 0
+          for (let i = originalIndex - 1; i >= 0; i--) {
+            const r = flattenedRows[i]
+            if (r.type === 'Section' && r.level === target.level) {
+              startIdx = i
+              break
+            }
+          }
+          let sum = 0
+          for (let i = startIdx + 1; i < originalIndex; i++) {
+            const r = flattenedRows[i]
+            if (r.type === 'Data') {
+              sum += getProjectedNumericForRow(r)
+            }
+          }
+          return sum
+        }
+
+        if (/^net\s+operating\s+income$/i.test(accountName)) {
+          const totalGrossIncome = computeSummaryByName(/^total\s+gross\s+income$/i)
+          const totalCOGS = computeSummaryByName(/^total\s+cost\s+of\s+goods\s+sold$/i)
+          const grossProfit = totalGrossIncome - totalCOGS
+          const totalExpenses = computeSummaryByName(/^total\s+expenses$/i)
+          value = (grossProfit - totalExpenses).toString()
+        } else if (/^net\s+other\s+income$/i.test(accountName)) {
+          const totalOtherIncome = computeSummaryByName(/^total\s+other\s+income$/i)
+          const totalOtherExpenses = computeSummaryByName(/^total\s+other\s+expenses$/i)
+          value = (totalOtherIncome - totalOtherExpenses).toString()
+        } else if (/^net\s+income$/i.test(accountName)) {
+          // compute from NOI and Net Other Income
+          // Compute NOI
+          const totalGrossIncome = computeSummaryByName(/^total\s+gross\s+income$/i)
+          const totalCOGS = computeSummaryByName(/^total\s+cost\s+of\s+goods\s+sold$/i)
+          const grossProfit = totalGrossIncome - totalCOGS
+          const totalExpenses = computeSummaryByName(/^total\s+expenses$/i)
+          const noi = grossProfit - totalExpenses
+          // Compute Net Other Income
+          const totalOtherIncome = computeSummaryByName(/^total\s+other\s+income$/i)
+          const totalOtherExpenses = computeSummaryByName(/^total\s+other\s+expenses$/i)
+          const noiOther = totalOtherIncome - totalOtherExpenses
+          value = (noi + noiOther).toString()
+        }
+      }
+      // For Summary rows in Projected column, dynamically sum all Data rows in the same section
+      else if (isProjectedColumn && row.type === 'Summary') {
+        // Find this summary row in the full flattenedRows array
+        const originalIndex = flattenedRows.indexOf(row)
+        let startIdx = 0
+        if (originalIndex > -1) {
+          for (let i = originalIndex - 1; i >= 0; i--) {
+            const r = flattenedRows[i]
+            if (r.type === 'Section' && r.level === row.level) {
+              startIdx = i
+              break
+            }
+          }
+          // Sum Data rows between startIdx and originalIndex (exclusive)
+          let sum = 0
+          for (let i = startIdx + 1; i < originalIndex; i++) {
+            const r = flattenedRows[i]
+            if (r.type === 'Data') {
+              sum += getProjectedNumericForRow(r)
+            }
+          }
+          value = sum.toString()
+        }
+      }
+      // Apply display adjustments for specific labels (but not for custom projected values)
+      else if (isNumeric) {
         const numericValue = parseFloat(value.toString().replace(/[,$\s]/g, '')) || 0
         let adjustedValue = numericValue
         
@@ -464,7 +582,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
           value = adjustedValue.toString()
         }
       }
-      const formattedValue = isNumeric ? formatCurrency(value, accountName) : value
+      const formattedValue = (isNumeric || hasCustomValue) ? formatCurrency(value, accountName) : value
       
       // Right-align all columns except the first column (account names)
       const shouldRightAlign = cellIndex > 0
@@ -475,6 +593,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       let fontSize = '12px'
       let paddingLeft = row.level * 12
       let cursor = 'default'
+      let border = 'none'
       
       if (row.type === 'Header' || row.type === 'Section') {
         backgroundColor = '#f9fafb'
@@ -490,6 +609,14 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
         backgroundColor = '#f3f4f6'
         fontWeight = 'bold'
         fontSize = '14px' // Smaller font for summary rows
+      }
+      
+      // Style projected column cells to indicate they're clickable, except computed custom rows
+      const isComputedCustomRow = (row.group && (row.group.startsWith('Summary') || row.group === 'SummaryIncome' || row.group === 'SummaryCosts' || row.group === 'SummaryNetIncome')) && row.type === 'Data'
+      if (isProjectedColumn && row.type === 'Data' && cellIndex > 0 && !isComputedCustomRow) {
+        cursor = 'pointer'
+        backgroundColor = hasCustomValue ? '#f0fdf4' : '#fefce8' // Light green if custom, light yellow if default
+        border = hasCustomValue ? '1px solid #bbf7d0' : '1px solid #fed7aa'
       }
       
       // Add tooltip info for first column if row carries tooltip metadata or has info icon
@@ -516,6 +643,9 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
         nonEditable: true,
         // Store tooltip data in a custom property
         tooltip: tooltipText,
+        // Row type metadata for UI logic (e.g., disable slider on non-Data rows)
+        rowType: row.type,
+        computedRow: row.computed === true,
         style: {
           background: backgroundColor,
           fontWeight,
@@ -526,6 +656,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
           textAlign: shouldRightAlign ? 'right' : 'left',
           fontSize: fontSize,
           cursor: hasTooltip ? 'help' : cursor,
+          border: border,
           // Force text alignment with additional properties
           justifyContent: shouldRightAlign ? 'flex-end' : 'flex-start',
           display: 'flex',
@@ -651,6 +782,7 @@ function createCalculatedRow(
 // Helper function to add summary rows
 function addSummaryRows(data: YearlyData): any[] {
   const summaryRows: any[] = []
+  // We now have 2016-2024 (9 years) + 2025 YTD + 2025 Projected = 11 columns total minus 1 for account name = 10 numeric columns
   const numYears = Math.max(0, (data.Columns?.Column?.length || 1) - 1)
 
   const normalize = (vals: number[]): number[] => Array.from({ length: numYears }, (_, i) => vals[i] || 0)
@@ -663,9 +795,21 @@ function addSummaryRows(data: YearlyData): any[] {
   const therapyValues = normalize(findAccountValues(data, /Total\s+7100\s+Therapy\s+Income/i))
   const medDirSharedValues = normalize(findAccountValues(data, /Medical\s*Director.*Shared/i))
   const medDirPRCSValues = normalize(findAccountValues(data, /Medical\s*Director.*PRCS/i))
-  const medDirTotal = medDirSharedValues.map((v, i) => v + medDirPRCSValues[i])
   const consultingValues = normalize(findAccountValues(data, /Consulting\s*Agreement/i))
   const interestValues = normalize(findAccountValues(data, /(7900).*Interest/i))
+  
+  // For 2025 Projected (last column), extrapolate from 2025 YTD (second-to-last column)
+  if (numYears >= 2) {
+    const ytdIndex = numYears - 2  // 2025 YTD column index
+    const projectedIndex = numYears - 1  // 2025 Projected column index
+    therapyValues[projectedIndex] = therapyValues[ytdIndex] * 1.5
+    medDirSharedValues[projectedIndex] = medDirSharedValues[ytdIndex] * 1.5
+    medDirPRCSValues[projectedIndex] = medDirPRCSValues[ytdIndex] * 1.5
+    consultingValues[projectedIndex] = consultingValues[ytdIndex] * 1.5
+    interestValues[projectedIndex] = interestValues[ytdIndex] * 1.5
+  }
+  
+  const medDirTotal = medDirSharedValues.map((v, i) => v + medDirPRCSValues[i])
   // Calculate Total Gross Income excluding Interest Income for 2016 only
   const totalGrossIncome = therapyValues.map((v, i) => {
     const interestForCalculation = i === 0 ? 0 : interestValues[i] // Exclude 2016 Interest (index 0)
@@ -676,10 +820,10 @@ function addSummaryRows(data: YearlyData): any[] {
     Header: { ColData: [ { value: 'Income' }, ...Array.from({ length: numYears }, () => ({ value: '' })) ] },
     Rows: {
       Row: [
-        { ColData: createCalculatedRow('    Therapy', therapyValues, numYears).colData },
-        { ColData: createCalculatedRow('    Medical Director Hours', medDirTotal, numYears).colData },
-        { ColData: createCalculatedRow('    Consulting Agreement/Other', consultingValues, numYears).colData },
-        { ColData: createCalculatedRow('    Interest', interestValues.map((v, i) => i === 0 ? 0 : v), numYears).colData }
+        { ColData: createCalculatedRow('    Therapy', therapyValues, numYears).colData, computed: true },
+        { ColData: createCalculatedRow('    Medical Director Hours', medDirTotal, numYears).colData, computed: true },
+        { ColData: createCalculatedRow('    Consulting Agreement/Other', consultingValues, numYears).colData, computed: true },
+        { ColData: createCalculatedRow('    Interest', interestValues.map((v, i) => i === 0 ? 0 : v), numYears).colData, computed: true }
       ]
     },
     Summary: { ColData: createCalculatedRow('Total Gross Income', totalGrossIncome, numYears, 0, 'Summary').colData },
@@ -691,6 +835,15 @@ function addSummaryRows(data: YearlyData): any[] {
   const costOfGoodsValues = normalize(findAccountValues(data, /^Cost of Goods Sold$/i).length ? findAccountValues(data, /^Cost of Goods Sold$/i) : findAccountValues(data, /Total.*Cost.*Goods/i))
   const otherExpensesValues = normalize(findAccountValues(data, /^Other Expenses$/i).length ? findAccountValues(data, /^Other Expenses$/i) : findAccountValues(data, /Total.*Other.*Expenses/i))
   const employeePayrollValues = normalize(findAccountValues(data, /Total\s*8320.*Employee.*Payroll.*Expense/i))
+  
+  // Project 2025 cost values
+  if (numYears >= 2) {
+    const ytdIndex = numYears - 2
+    const projectedIndex = numYears - 1
+    costOfGoodsValues[projectedIndex] = costOfGoodsValues[ytdIndex] * 1.5
+    otherExpensesValues[projectedIndex] = otherExpensesValues[ytdIndex] * 1.5
+    employeePayrollValues[projectedIndex] = employeePayrollValues[ytdIndex] * 1.5
+  }
   
   // Get raw Asset Disposal values to exclude from calculations (but not from display)
   const assetDisposalForCalculations = new Array(numYears).fill(0)
@@ -736,12 +889,10 @@ function addSummaryRows(data: YearlyData): any[] {
   const mdBenefitsValues = normalize(findAccountValues(data, /8325.*MD.*Associates.*Benefits/i))
   const mdPayrollTaxValues = normalize(findAccountValues(data, /8330.*MD.*Associates.*Payroll.*Tax/i))
   const locumsSalaryValues = normalize(findAccountValues(data, /8322.*Locums.*Salary/i))
-  const mdPayroll = mdSalaryValues.map((v, i) => v + mdBenefitsValues[i] + mdPayrollTaxValues[i] + locumsSalaryValues[i])
 
   const staffSalaryValues = normalize(findAccountValues(data, /8322.*Staff.*Salary/i))
   const staffBenefitsValues = normalize(findAccountValues(data, /8325.*Staff.*Benefits/i))
   const staffPayrollTaxValues = normalize(findAccountValues(data, /8330.*Staff.*Payroll.*Tax/i))
-  const staffEmployment = staffSalaryValues.map((v, i) => v + staffBenefitsValues[i] + staffPayrollTaxValues[i])
 
   const miscEmployment = normalize(
     sumAccountPatterns(data, [
@@ -753,6 +904,23 @@ function addSummaryRows(data: YearlyData): any[] {
       /8342.*Relocation.*Cost/i
     ])
   )
+  
+  // Project 2025 payroll values
+  if (numYears >= 2) {
+    const ytdIndex = numYears - 2
+    const projectedIndex = numYears - 1
+    mdSalaryValues[projectedIndex] = mdSalaryValues[ytdIndex] * 1.5
+    mdBenefitsValues[projectedIndex] = mdBenefitsValues[ytdIndex] * 1.5
+    mdPayrollTaxValues[projectedIndex] = mdPayrollTaxValues[ytdIndex] * 1.5
+    locumsSalaryValues[projectedIndex] = locumsSalaryValues[ytdIndex] * 1.5
+    staffSalaryValues[projectedIndex] = staffSalaryValues[ytdIndex] * 1.5
+    staffBenefitsValues[projectedIndex] = staffBenefitsValues[ytdIndex] * 1.5
+    staffPayrollTaxValues[projectedIndex] = staffPayrollTaxValues[ytdIndex] * 1.5
+    miscEmployment[projectedIndex] = miscEmployment[ytdIndex] * 1.5
+  }
+
+  const mdPayroll = mdSalaryValues.map((v, i) => v + mdBenefitsValues[i] + mdPayrollTaxValues[i] + locumsSalaryValues[i])
+  const staffEmployment = staffSalaryValues.map((v, i) => v + staffBenefitsValues[i] + staffPayrollTaxValues[i])
 
   const totalCosts = nonEmploymentCosts.map((v, i) => v + mdPayroll[i] + staffEmployment[i] + miscEmployment[i])
 
@@ -760,10 +928,10 @@ function addSummaryRows(data: YearlyData): any[] {
     Header: { ColData: [ { value: 'Costs' }, ...Array.from({ length: numYears }, () => ({ value: '' })) ] },
     Rows: {
       Row: [
-        { ColData: createCalculatedRow('    Non-Employment Costs ⓘ', nonEmploymentCosts, numYears, 1, 'Data', 'Insurance, Taxes, Communications, Licensure, Promotional, Billing, Office Overhead, Capital Expense').colData, tooltip: 'Insurance, Taxes, Communications, Licensure, Promotional, Billing, Office Overhead, Capital Expense' },
-        { ColData: createCalculatedRow('    MD Payroll ⓘ', mdPayroll, numYears, 1, 'Data', 'Employed MDs, Locums, Staff').colData, tooltip: 'Employed MDs, Locums, Staff' },
-        { ColData: createCalculatedRow('    Staff Employment', staffEmployment, numYears).colData },
-        { ColData: createCalculatedRow('    Misc Employment ⓘ', miscEmployment, numYears, 1, 'Data', 'Gifts, Profit Sharing, Relocation, Recruiting').colData, tooltip: 'Gifts, Profit Sharing, Relocation, Recruiting' }
+        { ColData: createCalculatedRow('    Non-Employment Costs ⓘ', nonEmploymentCosts, numYears, 1, 'Data', 'Insurance, Taxes, Communications, Licensure, Promotional, Billing, Office Overhead, Capital Expense').colData, tooltip: 'Insurance, Taxes, Communications, Licensure, Promotional, Billing, Office Overhead, Capital Expense', computed: true },
+        { ColData: createCalculatedRow('    MD Payroll ⓘ', mdPayroll, numYears, 1, 'Data', 'Employed MDs, Locums, Staff').colData, tooltip: 'Employed MDs, Locums, Staff', computed: true },
+        { ColData: createCalculatedRow('    Staff Employment', staffEmployment, numYears).colData, computed: true },
+        { ColData: createCalculatedRow('    Misc Employment ⓘ', miscEmployment, numYears, 1, 'Data', 'Gifts, Profit Sharing, Relocation, Recruiting').colData, tooltip: 'Gifts, Profit Sharing, Relocation, Recruiting', computed: true }
       ]
     },
     Summary: { ColData: createCalculatedRow('Total Costs', totalCosts, numYears, 0, 'Summary').colData },
@@ -774,6 +942,14 @@ function addSummaryRows(data: YearlyData): any[] {
   // FINAL SUMMARY ROW
   const netIncomeValues = normalize(findAccountValues(data, /^Net Income$/i))
   const guaranteedPaymentsValues = normalize(findAccountValues(data, /8343.*Guaranteed.*Payments/i))
+  
+  // Project 2025 final summary values
+  if (numYears >= 2) {
+    const ytdIndex = numYears - 2
+    const projectedIndex = numYears - 1
+    netIncomeValues[projectedIndex] = netIncomeValues[ytdIndex] * 1.5
+    guaranteedPaymentsValues[projectedIndex] = guaranteedPaymentsValues[ytdIndex] * 1.5
+  }
   
   // Adjust Net Income by removing the Asset Disposal gain and Interest Income
   const adjustedNetIncomeValues = netIncomeValues.map((v, i) => v + assetDisposalForCalculations[i] - interestIncomeForCalculations[i])
@@ -788,7 +964,7 @@ function addSummaryRows(data: YearlyData): any[] {
 }
 
 // Load and transform the yearly data
-export async function loadYearlyGridData(collapsedSections: CollapsibleState = {}): Promise<{ rows: Row[], columns: any[] }> {
+export async function loadYearlyGridData(collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}): Promise<{ rows: Row[], columns: any[] }> {
   try {
     // Import the JSON data
     const yearlyDataPromise = import('../../../../../historical_data/2016-2024_yearly.json')
@@ -820,7 +996,7 @@ export async function loadYearlyGridData(collapsedSections: CollapsibleState = {
       }
     }
     
-    return transformYearlyDataToGrid(extendedData, collapsedSections)
+    return transformYearlyDataToGrid(extendedData, collapsedSections, customProjectedValues)
   } catch (error) {
     console.error('Failed to load yearly data:', error)
     return { rows: [], columns: [] }
