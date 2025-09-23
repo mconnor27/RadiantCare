@@ -1,5 +1,8 @@
 import { type Row } from '@silevis/reactgrid'
 
+// Type for tracking collapsed sections
+export type CollapsibleState = Record<string, boolean>
+
 // Types for the yearly JSON data
 interface YearlyData {
   Header: {
@@ -28,18 +31,29 @@ interface YearlyData {
   }
 }
 
-// Flatten nested row structure
-function flattenRows(rows: any[], level = 0, parentGroup?: string): any[] {
+// Flatten nested row structure with section identification
+function flattenRows(rows: any[], level = 0, parentGroup?: string, sectionCounter = { count: 0 }): any[] {
   const flattened: any[] = []
   
   for (const row of rows) {
-    // Add header row if it exists
+    // Add header row if it exists (these are typically section headers)
     if (row.Header?.ColData) {
+      const headerText = row.Header.ColData[0]?.value || ''
+      // Consider any non-empty header text as a potential section
+      const isSection = headerText && !headerText.match(/^\s*$/) && headerText.trim().length > 0
+      const sectionId = isSection ? `section-${sectionCounter.count++}` : undefined
+      
+      if (isSection) {
+        console.log('Creating section:', headerText, 'with ID:', sectionId, 'at level:', level)
+      }
+      
       flattened.push({
         colData: row.Header.ColData,
-        type: row.type || 'Header',
+        type: isSection ? 'Section' : 'Header',
         level,
-        group: row.group || parentGroup
+        group: row.group || parentGroup,
+        sectionId,
+        isCollapsible: isSection
       })
     }
     
@@ -55,7 +69,7 @@ function flattenRows(rows: any[], level = 0, parentGroup?: string): any[] {
     
     // Recursively process nested rows
     if (row.Rows?.Row) {
-      flattened.push(...flattenRows(row.Rows.Row, level + 1, row.group || parentGroup))
+      flattened.push(...flattenRows(row.Rows.Row, level + 1, row.group || parentGroup, sectionCounter))
     }
     
     // Add summary row if it exists
@@ -72,7 +86,44 @@ function flattenRows(rows: any[], level = 0, parentGroup?: string): any[] {
   return flattened
 }
 
-export function transformYearlyDataToGrid(data: YearlyData): { rows: Row[], columns: any[] } {
+// Filter rows based on collapsed sections
+function filterCollapsedRows(rows: any[], collapsedSections: CollapsibleState): any[] {
+  console.log('Filtering rows with collapsed sections:', collapsedSections)
+  const filteredRows: any[] = []
+  let skipUntilLevel: number | null = null
+  
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]
+    
+    // If we're skipping, check if we should stop skipping
+    if (skipUntilLevel !== null) {
+      console.log(`Skipping row ${i}: ${row.colData[0]?.value} (level ${row.level}) - waiting for Summary at level ${skipUntilLevel} or higher`)
+      // Stop skipping when we reach a Summary row at the same level or higher
+      if (row.type === 'Summary' && row.level <= skipUntilLevel) {
+        console.log(`Found Summary at level ${row.level}, stopping skip`)
+        skipUntilLevel = null
+        filteredRows.push(row)
+        continue
+      }
+      // Skip this row
+      continue
+    }
+    
+    // Check if this is a collapsed section
+    if (row.type === 'Section' && row.sectionId && collapsedSections[row.sectionId] === true) {
+      console.log(`Section ${row.sectionId} (${row.colData[0]?.value}) is collapsed, starting skip at level ${row.level}`)
+      // This section is collapsed, skip everything until the next Summary at the same level
+      skipUntilLevel = row.level
+    }
+    
+    filteredRows.push(row)
+  }
+  
+  console.log(`Filtered from ${rows.length} to ${filteredRows.length} rows`)
+  return filteredRows
+}
+
+export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: CollapsibleState = {}): { rows: Row[], columns: any[] } {
   // Extract column titles and format them
   const columnTitles = data.Columns.Column.map(col => {
     const title = col.ColTitle || 'Account'
@@ -102,6 +153,9 @@ export function transformYearlyDataToGrid(data: YearlyData): { rows: Row[], colu
   // Flatten and transform data rows
   const flattenedRows = flattenRows(data.Rows.Row)
   
+  // Filter out collapsed sections
+  const visibleRows = filterCollapsedRows(flattenedRows, collapsedSections)
+  
   // Currency formatting function
   const formatCurrency = (value: string): string => {
     if (!value || value === '') return ''
@@ -124,10 +178,18 @@ export function transformYearlyDataToGrid(data: YearlyData): { rows: Row[], colu
     }).format(Math.round(numValue))
   }
 
-  const dataRows: Row[] = flattenedRows.map((row, index) => {
+  const dataRows: Row[] = visibleRows.map((row, index) => {
     const cells = row.colData.map((cellData: any, cellIndex: number) => {
-      const value = cellData.value || ''
-      const isNumeric = cellIndex > 0 && value && !isNaN(parseFloat(value.replace(/[,$]/g, '')))
+      let value = cellData.value || ''
+      
+      // Add visual indicators for collapsible sections in the first column
+      if (cellIndex === 0 && row.type === 'Section' && row.isCollapsible) {
+        const isCollapsed = collapsedSections[row.sectionId] === true
+        const indicator = isCollapsed ? '▶ ' : '▼ '
+        value = indicator + value
+      }
+      
+      const isNumeric = cellIndex > 0 && value && !isNaN(parseFloat(value.replace(/[,$▶▼\s]/g, '')))
       const formattedValue = isNumeric ? formatCurrency(value) : value
       
       // Right-align all columns except the first column (account names)
@@ -138,11 +200,18 @@ export function transformYearlyDataToGrid(data: YearlyData): { rows: Row[], colu
       let fontWeight = 'normal'
       let fontSize = '12px'
       let paddingLeft = row.level * 12
+      let cursor = 'default'
       
       if (row.type === 'Header' || row.type === 'Section') {
         backgroundColor = '#f9fafb'
         fontWeight = 'bold'
         fontSize = '14px' // Smaller font for section headers like "Total Income"
+        
+        // Make section rows clickable in the first column
+        if (row.type === 'Section' && cellIndex === 0) {
+          cursor = 'pointer'
+          backgroundColor = '#e0f2fe'
+        }
       } else if (row.type === 'Summary') {
         backgroundColor = '#f3f4f6'
         fontWeight = 'bold'
@@ -162,6 +231,7 @@ export function transformYearlyDataToGrid(data: YearlyData): { rows: Row[], colu
           paddingBottom: '4px',
           textAlign: shouldRightAlign ? 'right' : 'left',
           fontSize: fontSize,
+          cursor: cursor,
           // Force text alignment with additional properties
           justifyContent: shouldRightAlign ? 'flex-end' : 'flex-start',
           display: 'flex',
@@ -170,8 +240,13 @@ export function transformYearlyDataToGrid(data: YearlyData): { rows: Row[], colu
       }
     })
     
+    const rowId = row.sectionId || `row-${index}`
+    if (row.type === 'Section') {
+      console.log('Generated section row with ID:', rowId, 'for text:', row.colData[0]?.value)
+    }
+    
     return {
-      rowId: `row-${index}`,
+      rowId,
       cells
     }
   })
@@ -188,11 +263,11 @@ export function transformYearlyDataToGrid(data: YearlyData): { rows: Row[], colu
 }
 
 // Load and transform the yearly data
-export async function loadYearlyGridData(): Promise<{ rows: Row[], columns: any[] }> {
+export async function loadYearlyGridData(collapsedSections: CollapsibleState = {}): Promise<{ rows: Row[], columns: any[] }> {
   try {
     // Import the JSON data
     const yearlyData = await import('../../../../../historical_data/2016-2024_yearly.json')
-    return transformYearlyDataToGrid(yearlyData.default || yearlyData)
+    return transformYearlyDataToGrid(yearlyData.default || yearlyData, collapsedSections)
   } catch (error) {
     console.error('Failed to load yearly data:', error)
     return { rows: [], columns: [] }
