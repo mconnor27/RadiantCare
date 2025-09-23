@@ -90,12 +90,17 @@ export default function YearlyDataGrid() {
           </div>
         ) : gridData.rows.length > 0 ? (
           <div style={{ 
-            height: '600px', 
+            height: '800px', 
             overflow: 'auto',
             border: '1px solid #e5e7eb',
             borderRadius: '4px'
           }}>
             <div 
+              style={{
+                paddingRight: '8px',
+                paddingBottom: '12px',
+                minWidth: 'fit-content'
+              }}
               onClick={(e) => {
                 // Backup click handler - try to detect section clicks manually
                 const target = e.target as HTMLElement
