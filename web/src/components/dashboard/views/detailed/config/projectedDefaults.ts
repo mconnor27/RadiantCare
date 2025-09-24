@@ -9,6 +9,17 @@
  * - Control the slider's initial value via `sliderInitial` either globally or per-row.
  */
 
+import {
+  UI_DEFAULTS,
+  DEFAULT_CONSULTING_SERVICES_2025,
+  ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
+  ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
+  DEFAULT_LOCUM_COSTS_2025,
+} from '../../../shared/defaults'
+
+// HW buyout cost constant
+export const HW_BUYOUT_COST_2025 = 51666.58
+
 export type SliderBounds =
   | { mode: 'standard' } // min = max(0, currentValue * 0.1), max = currentValue * 3
   | { mode: 'percentOfCurrent'; minPercent: number; maxMultiple: number }
@@ -75,25 +86,64 @@ export const projectedDefaultsGlobal: {
  * Examples below demonstrate the full syntax. Replace keys and numbers with your actual rows.
  */
 export const projectedDefaultsByAccount: Record<string, ProjectedAccountDefaults> = {
-  // Example rows — replace with your real account/row names
+  // Therapy Income
   'Total 7100 Therapy Income': {
-    //defaultValue: 125000,      // App default for this row
-    // Annualized is computed live from YTD; no need to store
-    bounds: { mode: 'absolute', min: 2000000, max: 4000000 },
-    sliderInitial: 'annualized',
-    sliderStep: 1000, // example: step by $1,000 for this row
-  },
-  'Medical Director Hours (Shared)': {
-    defaultValue: 119374,
-    bounds: { mode: 'absolute', min: 0, max: 120000 },
+    //defaultValue: DEFAULT_THERAPY_INCOME_2025,
+    bounds: { 
+      mode: 'absolute', 
+      min: UI_DEFAULTS.therapyIncomeMin, 
+      max: UI_DEFAULTS.therapyIncomeMax 
+    },
     sliderInitial: 'default',
-    // sliderStep: 'auto',
+    sliderStep: UI_DEFAULTS.therapyIncomeStep,
+  },
+  
+  // Medical Director Hours
+  'Medical Director Hours (Shared)': {
+    defaultValue: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
+    bounds: { 
+      mode: 'absolute', 
+      min: 0, 
+      max: UI_DEFAULTS.medicalDirectorHoursMax 
+    },
+    sliderInitial: 'default',
+    sliderStep: UI_DEFAULTS.medicalDirectorHoursStep,
   },
   'Medical Director Hours (PRCS)': {
-    bounds: { mode: 'absolute', min: 0, max: 120000 },
+    defaultValue: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
+    bounds: { 
+      mode: 'absolute', 
+      min: 0, 
+      max: UI_DEFAULTS.medicalDirectorHoursMax 
+    },
     sliderInitial: 'default',
-    // sliderStep: 'auto',
+    sliderStep: UI_DEFAULTS.medicalDirectorHoursStep,
   },
+  
+  // Consulting Services Agreement
+  'Consulting Agreement/Other': {
+    defaultValue: DEFAULT_CONSULTING_SERVICES_2025,
+    bounds: { mode: 'absolute', min: 0, max: 20000 },
+    sliderInitial: 'default',
+    sliderStep: 100,
+  },
+  
+  // Locum Costs
+  '8322 Locums - Salary': {
+    defaultValue: DEFAULT_LOCUM_COSTS_2025,
+    bounds: { mode: 'absolute', min: 0, max: 200000 },
+    sliderInitial: 'default',
+    sliderStep: 1000,
+  },
+
+  // HW Buyout Cost
+  '8343 Guaranteed Payments': {
+    defaultValue: HW_BUYOUT_COST_2025,
+    bounds: { mode: 'absolute', min: 0, max: 100000 },
+    sliderInitial: 'default',
+    sliderStep: 100,
+  }
+  
   // Add more rows here as needed...
 }
 

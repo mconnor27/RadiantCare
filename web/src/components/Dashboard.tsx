@@ -1112,7 +1112,8 @@ export function arePhysiciansChanged(
       current.bonusAmount !== defaultPhysician.bonusAmount ||
       current.hasMedicalDirectorHours !== (defaultPhysician as any).hasMedicalDirectorHours ||
       current.medicalDirectorHoursPercentage !== (defaultPhysician as any).medicalDirectorHoursPercentage ||
-      current.buyoutCost !== defaultPhysician.buyoutCost
+      current.buyoutCost !== defaultPhysician.buyoutCost ||
+      current.trailingSharedMdAmount !== defaultPhysician.trailingSharedMdAmount
     ) {
       return true
     }

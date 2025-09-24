@@ -5,19 +5,68 @@ import CollapsibleSection from '../../../shared/components/CollapsibleSection'
 import { loadYearlyGridData, type CollapsibleState } from '../utils/yearlyDataTransformer'
 import getDefaultValue from '../config/projectedDefaults'
 import ProjectedValueSlider from './ProjectedValueSlider'
+import { useDashboardStore } from '../../../../Dashboard'
+
+// Calculate projection ratio from 2025 data - same logic as yearlyDataTransformer
+async function calculateProjectionRatio(): Promise<number> {
+  try {
+    const data2025Module = await import('../../../../../historical_data/2025_summary.json')
+    const data2025 = data2025Module.default || data2025Module
+    
+    const startPeriod = data2025.Header.StartPeriod
+    const endPeriod = data2025.Header.EndPeriod
+    
+    if (!startPeriod || !endPeriod) {
+      console.warn('Missing date information in 2025 data, falling back to 1.5 multiplier')
+      return 1.5
+    }
+    
+    const startDate = new Date(startPeriod)
+    const endDate = new Date(endPeriod)
+    
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      console.warn('Invalid date format in 2025 data, falling back to 1.5 multiplier')
+      return 1.5
+    }
+    
+    if (endDate <= startDate) {
+      console.warn('Invalid date range in 2025 data, falling back to 1.5 multiplier')
+      return 1.5
+    }
+    
+    const dataPeriodDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    const fullYearDays = 365
+    const projectionRatio = fullYearDays / dataPeriodDays
+    
+    console.log(`YearlyDataGrid - Data period: ${startPeriod} to ${endPeriod} (${dataPeriodDays} days)`)
+    console.log(`YearlyDataGrid - Projection ratio: ${projectionRatio.toFixed(3)} (${fullYearDays}/${dataPeriodDays})`)
+    
+    return projectionRatio
+  } catch (error) {
+    console.warn('Failed to calculate projection ratio, falling back to 1.5 multiplier:', error)
+    return 1.5
+  }
+}
 
 export default function YearlyDataGrid() {
+  const store = useDashboardStore()
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const [gridData, setGridData] = useState<{ rows: Row[], columns: any[] }>({ rows: [], columns: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [collapsedSections, setCollapsedSections] = useState<CollapsibleState>({})
+  const [projectionRatio, setProjectionRatio] = useState<number>(1.5) // Default fallback
   const [tooltip, setTooltip] = useState<{ show: boolean; text: string; x: number; y: number }>({
     show: false,
     text: '',
     x: 0,
     y: 0
   })
+
+  // Debug tooltip state changes
+  useEffect(() => {
+    console.log('[tooltip state]', tooltip)
+  }, [tooltip])
   
   // Slider state for projected value editing
   const [slider, setSlider] = useState<{
@@ -50,24 +99,55 @@ export default function YearlyDataGrid() {
     'Non-Employment Costs': 'Insurance, Taxes, Communications, Licensure, Promotional, Billing, Office Overhead, Capital Expense',
     'MD Payroll': 'Employed MDs, Locums, Staff',
     'Misc Employment': 'Gifts, Profit Sharing, Relocation, Recruiting',
+    '8322 MD Associates - Salary': 'This value is automatically calculated from the sum of employee and part-employee physician salaries in the physician panel. This row is not editable.',
+    '8325 MD Associates - Benefits': 'This value is automatically calculated from the sum of employee and part-employee physician benefits in the physician panel. This row is not editable.',
+    '8330 MD Associates - Payroll Taxes': 'This value is automatically calculated from the sum of employee and part-employee physician payroll taxes in the physician panel. This row is not editable.',
+    '8343 Guaranteed Payments': 'This value is automatically calculated from the sum of retiring partner buyout costs in the physician panel. This row is not editable.',
+    '8322 Locums - Salary': 'This value is automatically calculated from the locums costs setting in the physician panel. This row is not editable.',
     '-$5,760,796': 'This 2016 asset disposal gain is displayed but excluded from all calculations and summaries to maintain operational focus.',
     '$5,760,796': 'This 2016 asset disposal gain is displayed but excluded from all calculations and summaries to maintain operational focus.',
     '$462,355': 'This 2016 interest income is displayed but excluded from all calculations and summaries to maintain operational focus.'
   }
 
+  // Helper function to check if account is a calculated row (MD Associates, Guaranteed Payments, or Locums)
+  const isCalculatedAccount = (accountName: string): boolean => {
+    const normalized = accountName.replace(/\s+/g, ' ').trim().replace(/\s*ⓘ\s*$/, '')
+    return normalized.match(/8322.*MD.*Associates.*Salary/i) ||
+           normalized.match(/8325.*MD.*Associates.*Benefits/i) ||
+           normalized.match(/8330.*MD.*Associates.*Payroll.*Tax/i) ||
+           normalized.match(/8343.*Guaranteed.*Payments/i) ||
+           normalized.match(/8322.*Locums.*Salary/i) ? true : false
+  }
+  
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await loadYearlyGridData(collapsedSections, customProjectedValues)
+      
+      // Get 2025 physician data and benefit growth rate from store
+      const fy2025 = store.scenarioA.future.find((f: any) => f.year === 2025)
+      const physicianData = fy2025 ? {
+        physicians: fy2025.physicians,
+        benefitGrowthPct: store.scenarioA.projection.benefitCostsGrowthPct,
+        locumCosts: fy2025.locumCosts
+      } : undefined
+      
+      // Load both the grid data and the projection ratio
+      const [data, ratio] = await Promise.all([
+        loadYearlyGridData(collapsedSections, customProjectedValues, physicianData),
+        calculateProjectionRatio()
+      ])
+      
       setGridData(data)
+      setProjectionRatio(ratio)
     } catch (err) {
       console.error('Error loading yearly data:', err)
       setError('Failed to load yearly financial data')
     } finally {
       setLoading(false)
     }
-  }, [collapsedSections, customProjectedValues])
+  }, [collapsedSections, customProjectedValues, store.scenarioA.future, store.scenarioA.projection.benefitCostsGrowthPct])
 
   useEffect(() => {
     loadData()
@@ -76,14 +156,24 @@ export default function YearlyDataGrid() {
   // After data is loaded, scroll the horizontal container all the way to the right by default
   useEffect(() => {
     if (!loading && !error && gridData.columns.length > 0) {
-      // Defer until after layout so widths are known
-      const id = window.setTimeout(() => {
+      // Defer until after layout so widths are known, with multiple attempts for sticky columns
+      const scrollToRight = () => {
         const el = scrollContainerRef.current
         if (el) {
-          el.scrollLeft = el.scrollWidth
+          console.log('Auto-scroll attempt:', { scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, currentScrollLeft: el.scrollLeft })
+          el.scrollLeft = el.scrollWidth - el.clientWidth
+          console.log('Auto-scroll result:', { newScrollLeft: el.scrollLeft })
         }
-      }, 0)
-      return () => window.clearTimeout(id)
+      }
+      
+      // Try immediately, then again after a short delay for sticky column rendering
+      const id1 = window.setTimeout(scrollToRight, 0)
+      const id2 = window.setTimeout(scrollToRight, 100)
+      
+      return () => {
+        window.clearTimeout(id1)
+        window.clearTimeout(id2)
+      }
     }
   }, [loading, error, gridData.columns])
 
@@ -123,7 +213,8 @@ export default function YearlyDataGrid() {
       const isSpacer = cell?.rowType === 'Spacer'
       const isTherapyTotalSummary = (cell?.rowType === 'Summary' && accountText === 'Total 7100 Therapy Income')
       const isTherapyComponent = accountText === '7105 Therapy - Lacey' || accountText === '7108 Therapy - Aberdeen' || accountText === '7110 Therapy - Centralia' || accountText === '7149 Refunds - Therapy'
-      if (cell && accountCell && !isSpacer && (((isRowTypeData && !isComputed) && !isTherapyComponent) || isTherapyTotalSummary)) {
+      const isCalculatedRow = isCalculatedAccount(accountText)
+      if (cell && accountCell && !isSpacer && !isCalculatedRow && (((isRowTypeData && !isComputed) && !isTherapyComponent) || isTherapyTotalSummary)) {
         console.log('Projected cell clicked:', { rowIndex, colIndex, accountName: accountCell.text })
         
         // Parse the displayed projected value (may be custom) and compute baseline
@@ -138,7 +229,7 @@ export default function YearlyDataGrid() {
           const ytdCell = row.cells?.[ytdColIndex] as any
           const ytdText = (ytdCell?.text || '0').toString()
           const ytdNumeric = parseFloat(ytdText.replace(/[$,\s]/g, '')) || 0
-          annualizedBaseline = ytdNumeric * 1.5
+          annualizedBaseline = ytdNumeric * projectionRatio
         } catch {
           annualizedBaseline = 0
         }
@@ -288,7 +379,8 @@ export default function YearlyDataGrid() {
                       const isSpacer = cell?.rowType === 'Spacer'
                       const isTherapyTotalSummary = (cell?.rowType === 'Summary' && accountText === 'Total 7100 Therapy Income')
                       const isTherapyComponent = accountText === '7105 Therapy - Lacey' || accountText === '7108 Therapy - Aberdeen' || accountText === '7110 Therapy - Centralia' || accountText === '7149 Refunds - Therapy'
-                      if (!isSpacer && (((cell?.rowType === 'Data' && cell?.computedRow !== true) && !isTherapyComponent) || isTherapyTotalSummary)) {
+                      const isCalculatedRow = isCalculatedAccount(accountText)
+                      if (!isSpacer && !isCalculatedRow && (((cell?.rowType === 'Data' && cell?.computedRow !== true) && !isTherapyComponent) || isTherapyTotalSummary)) {
                         handleCellClick(rowId, columnId, e)
                       }
                     }
@@ -317,6 +409,7 @@ export default function YearlyDataGrid() {
                     if (cell?.tooltip) {
                       console.log('[mouseover] tooltip found:', cell.tooltip)
                       const mouseEvent = (e as unknown as { clientX: number; clientY: number })
+                      console.log('[mouseover] tooltip positioning:', { clientX: mouseEvent.clientX, clientY: mouseEvent.clientY })
                       setTooltip({
                         show: true,
                         text: cell.tooltip,
@@ -333,10 +426,29 @@ export default function YearlyDataGrid() {
                         .replace(/\*+$/, '')        // strip trailing asterisks
                         .replace(/\s*ⓘ\s*$/, '')   // strip trailing info icons
                         .trim()
-                      const fallback = tooltipByLabel[normalized]
+                      
+                      let fallback = tooltipByLabel[normalized]
+                      
+                      // Special handling for calculated rows with info icons
+                      if (!fallback && isCalculatedAccount(rawText)) {
+                        console.log('[mouseover] Calculated row detected:', rawText)
+                        if (rawText.match(/8322.*MD.*Associates.*Salary/i)) {
+                          fallback = 'This value is automatically calculated from the sum of employee and part-employee physician salaries in the physician panel. This row is not editable.'
+                        } else if (rawText.match(/8325.*MD.*Associates.*Benefits/i)) {
+                          fallback = 'This value is automatically calculated from the sum of employee and part-employee physician benefits in the physician panel. This row is not editable.'
+                        } else if (rawText.match(/8330.*MD.*Associates.*Payroll.*Tax/i)) {
+                          fallback = 'This value is automatically calculated from the sum of employee and part-employee physician payroll taxes in the physician panel. This row is not editable.'
+                        } else if (rawText.match(/8343.*Guaranteed.*Payments/i)) {
+                          fallback = 'This value is automatically calculated from the sum of retiring partner buyout costs in the physician panel. This row is not editable.'
+                        } else if (rawText.match(/8322.*Locums.*Salary/i)) {
+                          fallback = 'This value is automatically calculated from the locums costs setting in the physician panel. This row is not editable.'
+                        }
+                      }
+                      
                       console.log('[mouseover] fallback after no tooltip:', { rawText, normalized, hasFallback: !!fallback })
                       if (fallback) {
                         const mouseEvent = (e as unknown as { clientX: number; clientY: number })
+                        console.log('[mouseover] setting fallback tooltip:', { text: fallback, x: mouseEvent.clientX + 14, y: mouseEvent.clientY + 8 })
                         setTooltip({
                           show: true,
                           text: fallback,
@@ -354,10 +466,29 @@ export default function YearlyDataGrid() {
                       .replace(/\*+$/, '')
                       .replace(/\s*ⓘ\s*$/, '')
                       .trim()
-                    const fallback = tooltipByLabel[normalized]
+                    
+                    let fallback = tooltipByLabel[normalized]
+                    
+                    // Special handling for calculated rows with info icons
+                    if (!fallback && isCalculatedAccount(rawText)) {
+                      console.log('[mouseover] Calculated row detected (no data attrs):', rawText)
+                      if (rawText.match(/8322.*MD.*Associates.*Salary/i)) {
+                        fallback = 'This value is automatically calculated from the sum of employee and part-employee physician salaries in the physician panel. This row is not editable.'
+                      } else if (rawText.match(/8325.*MD.*Associates.*Benefits/i)) {
+                        fallback = 'This value is automatically calculated from the sum of employee and part-employee physician benefits in the physician panel. This row is not editable.'
+                      } else if (rawText.match(/8330.*MD.*Associates.*Payroll.*Tax/i)) {
+                        fallback = 'This value is automatically calculated from the sum of employee and part-employee physician payroll taxes in the physician panel. This row is not editable.'
+                      } else if (rawText.match(/8343.*Guaranteed.*Payments/i)) {
+                        fallback = 'This value is automatically calculated from the sum of retiring partner buyout costs in the physician panel. This row is not editable.'
+                      } else if (rawText.match(/8322.*Locums.*Salary/i)) {
+                        fallback = 'This value is automatically calculated from the locums costs setting in the physician panel. This row is not editable.'
+                      }
+                    }
+                    
                     console.log('[mouseover] fallback no data attrs:', { rawText, normalized, hasFallback: !!fallback })
                     if (fallback) {
                       const mouseEvent = (e as unknown as { clientX: number; clientY: number })
+                      console.log('[mouseover] setting fallback tooltip (no data attrs):', { text: fallback, x: mouseEvent.clientX + 14, y: mouseEvent.clientY + 8 })
                       setTooltip({
                         show: true,
                         text: fallback,
@@ -390,8 +521,8 @@ export default function YearlyDataGrid() {
                 // Freeze first column and first row like Excel
                 stickyTopRows={1}
                 stickyLeftColumns={1}
-                // Freeze two right-most columns
-                stickyRightColumns={2}
+                // Freeze two right-most columns  
+                stickyRightColumns={1}
                 // Handle cell clicks
                 onFocusLocationChanged={(location) => {
                   console.log('Focus changed to:', location)
@@ -476,7 +607,7 @@ export default function YearlyDataGrid() {
         {tooltip.show && (
           <div
             style={{
-              position: 'absolute',
+              position: 'fixed', // Changed from absolute to fixed for proper positioning
               top: tooltip.y,
               left: tooltip.x,
               transform: 'none',
@@ -485,12 +616,15 @@ export default function YearlyDataGrid() {
               padding: '8px 12px',
               borderRadius: '6px',
               fontSize: '12px',
-              maxWidth: '250px',
+              maxWidth: '300px',
               textAlign: 'left',
-              zIndex: 1000,
+              zIndex: 9999, // Increased z-index to ensure it's on top
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-              pointerEvents: 'none'
+              pointerEvents: 'none',
+              wordWrap: 'break-word',
+              whiteSpace: 'normal'
             }}
+            onMouseEnter={() => console.log('[tooltip] tooltip rendered with text:', tooltip.text)}
           >
             {tooltip.text}
           </div>

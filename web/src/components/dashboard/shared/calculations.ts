@@ -349,6 +349,104 @@ export function getTotalIncome(yearData: YearRow | FutureYear): number {
   return therapyIncome + medicalDirectorIncome + prcsMedicalDirectorIncome + consultingServicesIncome
 }
 
+// Calculate guaranteed payments (buyout costs) from retiring partners for 2025 projected values
+export function calculateGuaranteedPayments(physicians: Physician[]): number {
+  const totalBuyoutCosts = physicians.reduce((sum, p) => {
+    if (p.type === 'partnerToRetire') {
+      // Only include buyout costs from retiring partners
+      return sum + (p.buyoutCost ?? 0)
+    }
+    return sum
+  }, 0)
+
+  return Math.round(totalBuyoutCosts)
+}
+
+// Calculate locums salary from physician panel locum costs for 2025 projected values
+export function calculateLocumsSalary(locumCosts: number): number {
+  return Math.round(locumCosts)
+}
+
+// Aggregate MD Associates costs from employee/part-employee physicians for 2025 projected values
+export function calculateMDAssociatesCosts(physicians: Physician[], year: number = 2025, benefitGrowthPct: number = 5.0): {
+  totalSalary: number;
+  totalBenefits: number;
+  totalPayrollTaxes: number;
+} {
+  let totalSalary = 0
+  let totalBenefits = 0
+  let totalPayrollTaxes = 0
+
+  // Filter for employees and part-employees who contribute to MD Associates costs
+  const relevantPhysicians = physicians.filter(p => 
+    p.type === 'employee' || 
+    p.type === 'employeeToPartner' || 
+    p.type === 'newEmployee' || 
+    p.type === 'employeeToTerminate'
+  )
+
+  for (const physician of relevantPhysicians) {
+    const employeePortion = getEmployeePortionOfYear(physician)
+    if (employeePortion <= 0) continue
+
+    let salary = physician.salary || 0
+    let benefits = 0
+    let payrollTaxes = 0
+
+    // Calculate prorated costs for partial-year employees
+    if (physician.type === 'newEmployee' || physician.type === 'employeeToTerminate') {
+      salary *= employeePortion
+    } else if (physician.type === 'employeeToPartner') {
+      // For mixed types, only count the employee portion
+      salary *= employeePortion
+    }
+
+    // Calculate benefits if physician receives them
+    if (physician.receivesBenefits) {
+      const yearlyBenefitCost = getBenefitCostsForYear(year, benefitGrowthPct)
+      
+      if (physician.type === 'newEmployee') {
+        const startDay = startPortionToStartDay(physician.startPortionOfYear ?? 0, year)
+        const benefitStartDay = calculateBenefitStartDay(startDay, year)
+        const totalDays = daysInYear(year)
+        
+        if (benefitStartDay <= totalDays) {
+          const benefitDays = Math.max(0, totalDays - benefitStartDay + 1)
+          const benefitPortion = benefitDays / totalDays
+          benefits = yearlyBenefitCost * benefitPortion
+        }
+      } else {
+        benefits = yearlyBenefitCost
+        
+        // For mixed types, prorate benefits by employee portion
+        if (physician.type === 'employeeToPartner') {
+          benefits *= employeePortion
+        }
+      }
+    }
+
+    // Calculate employer payroll taxes on the salary amount
+    payrollTaxes = calculateEmployerPayrollTaxes(salary, year)
+
+    // Add delayed W2 payments for employeeToPartner physicians
+    if (physician.type === 'employeeToPartner') {
+      const delayedW2 = calculateDelayedW2Payment(physician, year)
+      totalSalary += delayedW2.amount  // Add delayed W2 amount to salary total
+      totalPayrollTaxes += delayedW2.taxes  // Add delayed W2 taxes to payroll taxes total
+    }
+
+    totalSalary += salary
+    totalBenefits += benefits
+    totalPayrollTaxes += payrollTaxes
+  }
+
+  return {
+    totalSalary: Math.round(totalSalary),
+    totalBenefits: Math.round(totalBenefits),
+    totalPayrollTaxes: Math.round(totalPayrollTaxes)
+  }
+}
+
 // Helper function to calculate even medical director hour percentages among partners
 export function calculateMedicalDirectorHourPercentages(physicians: Physician[]): Physician[] {
   // Calculate total partner work time (sum of partner portions, ignoring vacation as requested)

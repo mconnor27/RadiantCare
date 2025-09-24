@@ -1,6 +1,8 @@
 import { type Row } from '@silevis/reactgrid'
 import { findAccountConfig } from '../config/projectedDefaults'
 import getDefaultValue from '../config/projectedDefaults'
+import { calculateMDAssociatesCosts, calculateGuaranteedPayments, calculateLocumsSalary } from '../../../shared/calculations'
+import { type Physician } from '../../../shared/types'
 
 // Type for tracking collapsed sections
 export type CollapsibleState = Record<string, boolean>
@@ -224,7 +226,7 @@ function calculateProjectionRatio(data2025: MonthlyData): number {
 }
 
 // Function to merge 2025 data into the historical data structure
-function merge2025Data(historicalData: YearlyData, data2025: Record<string, number>, projectionRatio: number): YearlyData {
+function merge2025Data(historicalData: YearlyData, data2025: Record<string, number>, projectionRatio: number, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number }): YearlyData {
   // Add 2025 YTD column
   historicalData.Columns.Column.push({
     ColTitle: '2025 (YTD)',
@@ -237,6 +239,8 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
     ColType: 'Money'
   })
   
+
+
   function traverseAndMerge(rows: any[]): any[] {
     return rows.map(row => {
       if (row.ColData?.[0]?.value) {
@@ -244,22 +248,108 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
         const value2025YTD = data2025[accountName] || data2025[accountName.replace(/Total\s+/, '')] || 0
         // Annualized: Project YTD data to full year using dynamic ratio
         const value2025Annualized = value2025YTD * projectionRatio
-        // Default: Use config default or fallback to annualized
-        const value2025Default = getDefaultValue(accountName, value2025Annualized)
+        
+        // Use calculated values if available and account matches
+        let value2025Default = value2025Annualized
+        let isCalculated = false
+        
+        if (physicianData) {
+          const calculatedInfo = isCalculatedRow(accountName)
+          if (calculatedInfo.isCalculated) {
+            const mdCosts = calculateMDAssociatesCosts(physicianData.physicians, 2025, physicianData.benefitGrowthPct)
+            const guaranteedPayments = calculateGuaranteedPayments(physicianData.physicians)
+            const locumsSalary = calculateLocumsSalary(physicianData.locumCosts)
+            
+            switch (calculatedInfo.type) {
+              case 'mdSalary':
+                value2025Default = mdCosts.totalSalary
+                break
+              case 'mdBenefits':
+                value2025Default = mdCosts.totalBenefits
+                break
+              case 'mdPayrollTax':
+                value2025Default = mdCosts.totalPayrollTaxes
+                break
+              case 'guaranteedPayments':
+                value2025Default = guaranteedPayments
+                break
+              case 'locumsSalary':
+                value2025Default = locumsSalary
+                break
+            }
+            isCalculated = true
+          } else {
+            // Use config default or fallback to annualized for other accounts
+            value2025Default = getDefaultValue(accountName, value2025Annualized)
+          }
+        } else {
+          // Use config default or fallback to annualized
+          value2025Default = getDefaultValue(accountName, value2025Annualized)
+        }
         
         row.ColData.push({ value: value2025YTD.toString() })
-        row.ColData.push({ value: value2025Default.toString() })
+        row.ColData.push({ 
+          value: value2025Default.toString(),
+          // Add metadata for calculated rows
+          ...(isCalculated && {
+            mdCalculated: true,
+            tooltip: getTooltipForCalculatedRow(isCalculatedRow(accountName).type!)
+          })
+        })
       }
       if (row.Summary?.ColData?.[0]?.value) {
         const accountName = row.Summary.ColData[0].value.trim()
         const value2025YTD = data2025[accountName] || data2025[accountName.replace(/Total\s+/, '')] || 0
         // Annualized: Project YTD data to full year using dynamic ratio
         const value2025Annualized = value2025YTD * projectionRatio
-        // Default: Use config default or fallback to annualized
-        const value2025Default = getDefaultValue(accountName, value2025Annualized)
+        
+        // Use calculated values if available and account matches
+        let value2025Default = value2025Annualized
+        let isCalculated = false
+        
+        if (physicianData) {
+          const calculatedInfo = isCalculatedRow(accountName)
+          if (calculatedInfo.isCalculated) {
+            const mdCosts = calculateMDAssociatesCosts(physicianData.physicians, 2025, physicianData.benefitGrowthPct)
+            const guaranteedPayments = calculateGuaranteedPayments(physicianData.physicians)
+            const locumsSalary = calculateLocumsSalary(physicianData.locumCosts)
+            
+            switch (calculatedInfo.type) {
+              case 'mdSalary':
+                value2025Default = mdCosts.totalSalary
+                break
+              case 'mdBenefits':
+                value2025Default = mdCosts.totalBenefits
+                break
+              case 'mdPayrollTax':
+                value2025Default = mdCosts.totalPayrollTaxes
+                break
+              case 'guaranteedPayments':
+                value2025Default = guaranteedPayments
+                break
+              case 'locumsSalary':
+                value2025Default = locumsSalary
+                break
+            }
+            isCalculated = true
+          } else {
+            // Use config default or fallback to annualized for other accounts
+            value2025Default = getDefaultValue(accountName, value2025Annualized)
+          }
+        } else {
+          // Use config default or fallback to annualized
+          value2025Default = getDefaultValue(accountName, value2025Annualized)
+        }
         
         row.Summary.ColData.push({ value: value2025YTD.toString() })
-        row.Summary.ColData.push({ value: value2025Default.toString() })
+        row.Summary.ColData.push({ 
+          value: value2025Default.toString(),
+          // Add metadata for calculated rows
+          ...(isCalculated && {
+            mdCalculated: true,
+            tooltip: getTooltipForCalculatedRow(isCalculatedRow(accountName).type!)
+          })
+        })
       }
       if (row.Header?.ColData) {
         row.Header.ColData.push({ value: '' })
@@ -372,6 +462,43 @@ function filterCollapsedRows(rows: any[], collapsedSections: CollapsibleState): 
   
   console.log(`Filtered from ${rows.length} to ${filteredRows.length} rows`)
   return filteredRows
+}
+
+// Helper function to check if account is a calculated row (MD Associates, Guaranteed Payments, or Locums)
+const isCalculatedRow = (accountName: string): { isCalculated: boolean; type: 'mdSalary' | 'mdBenefits' | 'mdPayrollTax' | 'guaranteedPayments' | 'locumsSalary' | null } => {
+  const normalized = accountName.replace(/\s+/g, ' ').trim()
+  
+  if (normalized.match(/8322.*MD.*Associates.*Salary/i)) {
+    return { isCalculated: true, type: 'mdSalary' }
+  } else if (normalized.match(/8325.*MD.*Associates.*Benefits/i)) {
+    return { isCalculated: true, type: 'mdBenefits' }
+  } else if (normalized.match(/8330.*MD.*Associates.*Payroll.*Tax/i)) {
+    return { isCalculated: true, type: 'mdPayrollTax' }
+  } else if (normalized.match(/8343.*Guaranteed.*Payments/i)) {
+    return { isCalculated: true, type: 'guaranteedPayments' }
+  } else if (normalized.match(/8322.*Locums.*Salary/i)) {
+    return { isCalculated: true, type: 'locumsSalary' }
+  }
+  
+  const isMatch = false
+  console.log('isCalculatedRow check:', { original: accountName, normalized, isMatch })
+  return { isCalculated: false, type: null }
+}
+
+// Helper function to get tooltip text for calculated rows
+const getTooltipForCalculatedRow = (type: 'mdSalary' | 'mdBenefits' | 'mdPayrollTax' | 'guaranteedPayments' | 'locumsSalary'): string => {
+  switch (type) {
+    case 'mdSalary':
+      return 'This value is automatically calculated from the sum of employee and part-employee physician salaries in the physician panel. This row is not editable.'
+    case 'mdBenefits':
+      return 'This value is automatically calculated from the sum of employee and part-employee physician benefits in the physician panel. This row is not editable.'
+    case 'mdPayrollTax':
+      return 'This value is automatically calculated from the sum of employee and part-employee physician payroll taxes in the physician panel. This row is not editable.'
+    case 'guaranteedPayments':
+      return 'This value is automatically calculated from the sum of retiring partner buyout costs in the physician panel. This row is not editable.'
+    case 'locumsSalary':
+      return 'This value is automatically calculated from the locums costs setting in the physician panel. This row is not editable.'
+  }
 }
 
 export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}): { rows: Row[], columns: any[] } {
@@ -566,18 +693,21 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
         value = indicator + value
       }
       
+      // Check if this is the projected column (last column)
+      const isProjectedColumn = cellIndex === columnTitles.length - 1
+      
       const isNumeric = cellIndex > 0 && value && !isNaN(parseFloat(value.replace(/[,$▶▼\s]/g, '')))
       
-      // Check if this is the projected column (last column) and if there's a custom value
-      const isProjectedColumn = cellIndex === columnTitles.length - 1
+      // Check if there's a custom value
       const hasCustomValue = isProjectedColumn && customProjectedValues[accountName] !== undefined
       
       // Apply custom projected value if available
       if (hasCustomValue) {
         value = customProjectedValues[accountName].toString()
       }
+      
       // Special calculated summaries (projected column only)
-      else if (isProjectedColumn && row.type === 'Summary') {
+      if (isProjectedColumn && row.type === 'Summary') {
         const computeSummaryByName = (pattern: RegExp): number => {
           // Find the summary row in flattenedRows and sum its section data
           const target = flattenedRows.find(r => {
@@ -679,7 +809,17 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
           value = adjustedValue.toString()
         }
       }
-      const formattedValue = (isNumeric || hasCustomValue) ? formatCurrency(value, accountName) : value
+      let formattedValue = (isNumeric || hasCustomValue) ? formatCurrency(value, accountName) : value
+      
+      // Add info icon for calculated rows AFTER formatting
+      const calculatedInfo = isCalculatedRow(accountName)
+      if (isProjectedColumn && calculatedInfo.isCalculated) {
+        console.log('Attempting to add info icon for calculated row:', accountName, 'type:', calculatedInfo.type, 'formatted value:', formattedValue)
+        formattedValue = formattedValue + ' ⓘ'
+        console.log('Added info icon to calculated projected cell:', accountName, '→', formattedValue)
+      } else if (isProjectedColumn) {
+        console.log('Projected column but not calculated row:', accountName)
+      }
       
       // Right-align all columns except the first column (account names)
       const shouldRightAlign = cellIndex > 0
@@ -708,6 +848,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
         fontSize = '14px' // Smaller font for summary rows
       }
       
+      
       // Style projected column cells to indicate they're clickable, with rules:
       const therapyComponentNames = new Set<string>([
         '7105 Therapy - Lacey',
@@ -717,22 +858,31 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       ])
       const isComputedCustomRow = (row.group && (row.group.startsWith('Summary') || row.group === 'SummaryIncome' || row.group === 'SummaryCosts' || row.group === 'SummaryNetIncome')) && row.type === 'Data'
       const isTherapyComponent = therapyComponentNames.has(accountName)
+      
       if (isProjectedColumn && row.type === 'Data' && cellIndex > 0 && !isComputedCustomRow && !isTherapyComponent) {
-        cursor = 'pointer'
-        const config = findAccountConfig(accountName)
-        const hasManualDefault = typeof config?.defaultValue === 'number'
-        if (hasCustomValue) {
-          // User has manually changed the projected value → red
-          backgroundColor = '#fef2f2'
-          border = '1px solid #fecaca'
-        } else if (hasManualDefault) {
-          // Row has a manual default in config (not falling back to annualized) → green
-          backgroundColor = '#f0fdf4'
-          border = '1px solid #bbf7d0'
+        // Special styling for calculated rows (MD Associates and Guaranteed Payments)
+        if (calculatedInfo.isCalculated) {
+          // Calculated values → blue/gray background, not clickable
+          cursor = 'default'
+          backgroundColor = '#e0f2fe' // Light blue for calculated
+          border = '1px solid #7dd3fc'
         } else {
-          // Falling back to computed annualized baseline → yellow
-          backgroundColor = '#fefce8'
-          border = '1px solid #fed7aa'
+          cursor = 'pointer'
+          const config = findAccountConfig(accountName)
+          const hasManualDefault = typeof config?.defaultValue === 'number'
+          if (hasCustomValue) {
+            // User has manually changed the projected value → red
+            backgroundColor = '#fef2f2'
+            border = '1px solid #fecaca'
+          } else if (hasManualDefault) {
+            // Row has a manual default in config (not falling back to annualized) → green
+            backgroundColor = '#f0fdf4'
+            border = '1px solid #bbf7d0'
+          } else {
+            // Falling back to computed annualized baseline → yellow
+            backgroundColor = '#fefce8'
+            border = '1px solid #fed7aa'
+          }
         }
       }
       // Make Therapy Total summary look clickable in Projected column
@@ -756,7 +906,8 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       // Also check for special cases in numeric columns (Asset Disposal and Interest Income)
       const isAssetDisposalCell = accountName.includes('8530') && accountName.includes('Asset Disposal') && formattedValue.includes('ⓘ')
       const isInterestIncomeCell = accountName.includes('7900') && accountName.includes('Interest') && formattedValue.includes('ⓘ')
-      const hasTooltip = (cellIndex === 0 && (!!row.tooltip || formattedValue.includes('ⓘ'))) || isAssetDisposalCell || isInterestIncomeCell
+      const isCalculatedInfoIcon = isProjectedColumn && formattedValue.includes('ⓘ') && calculatedInfo.isCalculated
+      const hasTooltip = (cellIndex === 0 && (!!row.tooltip || formattedValue.includes('ⓘ'))) || isAssetDisposalCell || isInterestIncomeCell || isCalculatedInfoIcon
       
       // Determine tooltip text
       let tooltipText = undefined
@@ -765,6 +916,11 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
           tooltipText = 'This 2016 asset disposal gain is displayed but excluded from all calculations and summaries to maintain operational focus.'
         } else if (isInterestIncomeCell) {
           tooltipText = 'Interest income is displayed but excluded from all calculations and summaries to maintain operational focus.'
+        } else if (isCalculatedInfoIcon) {
+          // Get the appropriate tooltip for the calculated row type
+          console.log('Setting calculated tooltip for:', accountName, 'type:', calculatedInfo.type, 'formattedValue:', formattedValue)
+          tooltipText = getTooltipForCalculatedRow(calculatedInfo.type!)
+          console.log('Calculated tooltip set to:', tooltipText)
         } else {
           tooltipText = row.tooltip
         }
@@ -1097,7 +1253,7 @@ function addSummaryRows(data: YearlyData, projectionRatio: number): any[] {
 }
 
 // Load and transform the yearly data
-export async function loadYearlyGridData(collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}): Promise<{ rows: Row[], columns: any[] }> {
+export async function loadYearlyGridData(collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number }): Promise<{ rows: Row[], columns: any[] }> {
   try {
     // Import the JSON data
     const yearlyDataPromise = import('../../../../../historical_data/2016-2024_yearly.json')
@@ -1116,7 +1272,7 @@ export async function loadYearlyGridData(collapsedSections: CollapsibleState = {
     const data2025Map = parse2025Data(data2025Raw)
     
     // Merge 2025 data into historical data
-    const data = merge2025Data(historicalData, data2025Map, projectionRatio)
+    const data = merge2025Data(historicalData, data2025Map, projectionRatio, physicianData)
     
     // Add summary rows to the data before transformation
     const summaryRows = addSummaryRows(data, projectionRatio)
