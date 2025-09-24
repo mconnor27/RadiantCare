@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { ReactGrid, type Row } from '@silevis/reactgrid'
 import '@silevis/reactgrid/styles.css'
 import CollapsibleSection from '../../../shared/components/CollapsibleSection'
@@ -7,6 +7,7 @@ import getDefaultValue from '../config/projectedDefaults'
 import ProjectedValueSlider from './ProjectedValueSlider'
 
 export default function YearlyDataGrid() {
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const [gridData, setGridData] = useState<{ rows: Row[], columns: any[] }>({ rows: [], columns: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -71,6 +72,20 @@ export default function YearlyDataGrid() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  // After data is loaded, scroll the horizontal container all the way to the right by default
+  useEffect(() => {
+    if (!loading && !error && gridData.columns.length > 0) {
+      // Defer until after layout so widths are known
+      const id = window.setTimeout(() => {
+        const el = scrollContainerRef.current
+        if (el) {
+          el.scrollLeft = el.scrollWidth
+        }
+      }, 0)
+      return () => window.clearTimeout(id)
+    }
+  }, [loading, error, gridData.columns])
 
   const handleCellClick = useCallback((rowId: string, columnId: string, event?: React.MouseEvent) => {
     console.log('handleCellClick called with:', { rowId, columnId })
@@ -222,7 +237,7 @@ export default function YearlyDataGrid() {
             {error}
           </div>
         ) : gridData.rows.length > 0 ? (
-          <div style={{ 
+          <div ref={scrollContainerRef} style={{ 
             height: '800px', 
             overflow: 'auto',
             border: '1px solid #e5e7eb',
@@ -366,6 +381,8 @@ export default function YearlyDataGrid() {
                 // Freeze first column and first row like Excel
                 stickyTopRows={1}
                 stickyLeftColumns={1}
+                // Freeze two right-most columns
+                stickyRightColumns={2}
                 // Handle cell clicks
                 onFocusLocationChanged={(location) => {
                   console.log('Focus changed to:', location)
@@ -418,7 +435,7 @@ export default function YearlyDataGrid() {
         {tooltip.show && (
           <div
             style={{
-              position: 'fixed',
+              position: 'absolute',
               top: tooltip.y,
               left: tooltip.x,
               transform: 'none',

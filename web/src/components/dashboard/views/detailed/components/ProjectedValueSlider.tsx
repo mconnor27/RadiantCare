@@ -247,7 +247,7 @@ export default function ProjectedValueSlider({
       {/* Backdrop */}
       <div 
         style={{
-          position: 'fixed',
+          position: 'absolute',
           top: 0,
           left: 0,
           right: 0,
@@ -268,7 +268,7 @@ export default function ProjectedValueSlider({
             Math.abs(originRect.bottom - (finalPosition.top - 10)) + 60
           )}
           style={{
-            position: 'fixed',
+            position: 'absolute',
             top: Math.min(originRect.top, finalPosition.top - 10),
             left: originRect.right - 5,
             pointerEvents: 'none',
@@ -350,7 +350,7 @@ export default function ProjectedValueSlider({
       {/* Slider Panel */}
       <div
         style={{
-          position: 'fixed',
+          position: 'absolute',
           ...(ANIMATION_CONFIG.style === 'two-stage' ? {
             // Two-stage animation styles
             top: animationStage === 'initial' ? startPosition.top : finalPosition.top,
