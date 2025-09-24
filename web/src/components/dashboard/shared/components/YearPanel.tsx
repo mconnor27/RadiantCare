@@ -82,19 +82,22 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
             physicians,
           } as FutureYear
         } else if (dataMode === '2025 Data' && last2025) {
-          const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
+          // Prefer store baseline edits from future[2025] for display while remaining read-only
+          const storeFy2025 = sc.future.find((f) => f.year === 2025)
+          const defaultPhysicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
+          const physicians = storeFy2025?.physicians ?? defaultPhysicians
           const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
           return {
             year: 2025,
             therapyIncome: last2025.therapyIncome,
             nonEmploymentCosts: last2025.nonEmploymentCosts,
             nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
-            locumCosts: DEFAULT_LOCUM_COSTS_2025,
+            locumCosts: storeFy2025?.locumCosts ?? DEFAULT_LOCUM_COSTS_2025,
             miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
             medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS, // 2025 shared medical director amount
             prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, // 2025 PRCS medical director amount (JS)
             consultingServicesAgreement: ACTUAL_2025_CONSULTING_SERVICES, // 2025 consulting services amount
-            prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
+            prcsDirectorPhysicianId: storeFy2025?.prcsDirectorPhysicianId ?? js?.id, // Prefer store selection
             physicians,
           } as FutureYear
         } else {
@@ -833,6 +836,9 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
         physiciansOverride={isReadOnly ? (() => {
           if (dataMode === '2024 Data') {
             return scenario2024Defaults()
+          } else if (dataMode === '2025 Data') {
+            // Reflect baseline edits from store if present
+            return fy.physicians
           } else {
             return scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
           }

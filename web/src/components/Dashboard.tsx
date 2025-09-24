@@ -892,13 +892,16 @@ export function usePartnerComp(year: number, scenario: ScenarioKey) {
             physicians,
           }
         } else if (dataMode === '2025 Data' && last2025) {
-          const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
+          // Prefer baseline edits from store future[2025] so YTD edits reflect here
+          const storeFy2025 = sc.future.find((f) => f.year === 2025)
+          const defaultPhysicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
+          const physicians = storeFy2025?.physicians ?? defaultPhysicians
           const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
           return {
             medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
             prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
             consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_2025, // 2025 consulting services amount
-            prcsDirectorPhysicianId: js?.id,
+            prcsDirectorPhysicianId: storeFy2025?.prcsDirectorPhysicianId ?? js?.id,
             physicians,
           }
         } else {

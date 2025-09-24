@@ -160,7 +160,7 @@ export const UI_DEFAULTS = {
 // Projection defaults
 export const PROJECTION_DEFAULTS = {
   A: {
-    incomeGrowthPct: 4.0,
+    incomeGrowthPct: 3.7,
     nonEmploymentCostsPct: 5.7,
     nonMdEmploymentCostsPct: 2.4,
     miscEmploymentCostsPct: 3.2,
@@ -172,7 +172,7 @@ export const PROJECTION_DEFAULTS = {
   },
   B: {
     incomeGrowthPct: 0,
-    nonEmploymentCostsPct: 7.0,
+    nonEmploymentCostsPct: 5.7,
     nonMdEmploymentCostsPct: 2.4,
     miscEmploymentCostsPct: 3.2,
     benefitCostsGrowthPct: 7.2,
