@@ -182,7 +182,7 @@ export default function ProjectedValueSlider({
     const sliderHeightDuration = ANIMATION_CONFIG.twoStage.heightDuration
     
     // Calculate funnel height duration based on absolute unfurling rate
-    const sliderHeightPixels = 424 - 20 // slider grows from 20px to 424px = 404px
+    const sliderHeightPixels = 324 - 20 // slider grows from 20px to 324px = 304px
     const funnelHeightPixels = 40 - 12 // funnel grows from ~12px to ~40px = 28px
     const pixelsPerMs = sliderHeightPixels / sliderHeightDuration // slider rate: ~2.69 px/ms
     const calculatedFunnelDuration = funnelHeightPixels / pixelsPerMs // funnel should take ~10.4ms
@@ -234,7 +234,7 @@ export default function ProjectedValueSlider({
   }
   
   // Calculate the actual height of the slider content for smooth animation
-  const sliderHeight = 52 + 20 + 320 + 20 + 24 + 8 // header + padding + content + padding + buttons + margin
+  const sliderHeight = 52 + 20 + 220 + 20 + 24 + 8 // header + padding + content + padding + buttons + margin
   const targetHeight = `${sliderHeight}px`
   
   const startPosition = originPosition ? {
@@ -247,7 +247,7 @@ export default function ProjectedValueSlider({
       {/* Backdrop */}
       <div 
         style={{
-          position: 'absolute',
+          position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
@@ -470,7 +470,7 @@ export default function ProjectedValueSlider({
             : (isAnimating ? 0 : 1),
           transition: 'opacity 0.1s ease-in-out',
           // Pre-size content to prevent layout shifts
-          minHeight: '320px',
+          minHeight: '220px',
           display: 'flex',
           flexDirection: 'column',
           gap: '20px'
@@ -568,19 +568,16 @@ export default function ProjectedValueSlider({
             </div>
           </div>
 
-          {/* Manual Adjustment Title */}
-          <div style={{
-            fontSize: '14px',
-            fontWeight: 600,
-            color: '#374151',
-            textAlign: 'center',
-            margin: '4px 0 8px 0'
-          }}>
-            Current Value
-          </div>
-
           {/* Input and Slider Row */}
           <div>
+            <div style={{
+              fontSize: '14px',
+              fontWeight: 600,
+              color: '#374151',
+              marginBottom: '12px'
+            }}>
+              Current Value
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div style={{ flex: 1 }}>
                 <input

@@ -186,8 +186,45 @@ function parse2025Data(data: MonthlyData): Record<string, number> {
   return accountMap
 }
 
+// Function to calculate projection ratio based on actual data period
+function calculateProjectionRatio(data2025: MonthlyData): number {
+  const startPeriod = data2025.Header.StartPeriod
+  const endPeriod = data2025.Header.EndPeriod
+  
+  if (!startPeriod || !endPeriod) {
+    throw new Error('Cannot calculate projection ratio: Missing date information in 2025 data. StartPeriod and EndPeriod are required for accurate projections.')
+  }
+  
+  const startDate = new Date(startPeriod)
+  const endDate = new Date(endPeriod)
+  
+  // Validate that the dates are valid
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    throw new Error(`Cannot calculate projection ratio: Invalid date format in 2025 data. StartPeriod: "${startPeriod}", EndPeriod: "${endPeriod}"`)
+  }
+  
+  // Validate that end date is after start date
+  if (endDate <= startDate) {
+    throw new Error(`Cannot calculate projection ratio: End date (${endPeriod}) must be after start date (${startPeriod})`)
+  }
+  
+  // Calculate the number of days in the data period
+  const dataPeriodDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  
+  // Calculate days in a full year (365 for simplicity, could be made more precise)
+  const fullYearDays = 365
+  
+  // Calculate the projection ratio
+  const projectionRatio = fullYearDays / dataPeriodDays
+  
+  console.log(`Data period: ${startPeriod} to ${endPeriod} (${dataPeriodDays} days)`)
+  console.log(`Projection ratio: ${projectionRatio.toFixed(3)} (${fullYearDays}/${dataPeriodDays})`)
+  
+  return projectionRatio
+}
+
 // Function to merge 2025 data into the historical data structure
-function merge2025Data(historicalData: YearlyData, data2025: Record<string, number>): YearlyData {
+function merge2025Data(historicalData: YearlyData, data2025: Record<string, number>, projectionRatio: number): YearlyData {
   // Add 2025 YTD column
   historicalData.Columns.Column.push({
     ColTitle: '2025 (YTD)',
@@ -205,8 +242,8 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
       if (row.ColData?.[0]?.value) {
         const accountName = row.ColData[0].value.trim()
         const value2025YTD = data2025[accountName] || data2025[accountName.replace(/Total\s+/, '')] || 0
-        // Annualized: Project 8 months of data to 12 months (multiply by 1.5)
-        const value2025Annualized = value2025YTD * 1.5
+        // Annualized: Project YTD data to full year using dynamic ratio
+        const value2025Annualized = value2025YTD * projectionRatio
         // Default: Use config default or fallback to annualized
         const value2025Default = getDefaultValue(accountName, value2025Annualized)
         
@@ -216,8 +253,8 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
       if (row.Summary?.ColData?.[0]?.value) {
         const accountName = row.Summary.ColData[0].value.trim()
         const value2025YTD = data2025[accountName] || data2025[accountName.replace(/Total\s+/, '')] || 0
-        // Annualized: Project 8 months of data to 12 months (multiply by 1.5)
-        const value2025Annualized = value2025YTD * 1.5
+        // Annualized: Project YTD data to full year using dynamic ratio
+        const value2025Annualized = value2025YTD * projectionRatio
         // Default: Use config default or fallback to annualized
         const value2025Default = getDefaultValue(accountName, value2025Annualized)
         
@@ -876,7 +913,7 @@ function createCalculatedRow(
 }
 
 // Helper function to add summary rows
-function addSummaryRows(data: YearlyData): any[] {
+function addSummaryRows(data: YearlyData, projectionRatio: number): any[] {
   const summaryRows: any[] = []
   // We now have 2016-2024 (9 years) + 2025 YTD + 2025 Projected = 11 columns total minus 1 for account name = 10 numeric columns
   const numYears = Math.max(0, (data.Columns?.Column?.length || 1) - 1)
@@ -898,11 +935,11 @@ function addSummaryRows(data: YearlyData): any[] {
   if (numYears >= 2) {
     const ytdIndex = numYears - 2  // 2025 YTD column index
     const projectedIndex = numYears - 1  // 2025 Projected column index
-    therapyValues[projectedIndex] = therapyValues[ytdIndex] * 1.5
-    medDirSharedValues[projectedIndex] = medDirSharedValues[ytdIndex] * 1.5
-    medDirPRCSValues[projectedIndex] = medDirPRCSValues[ytdIndex] * 1.5
-    consultingValues[projectedIndex] = consultingValues[ytdIndex] * 1.5
-    interestValues[projectedIndex] = interestValues[ytdIndex] * 1.5
+    therapyValues[projectedIndex] = therapyValues[ytdIndex] * projectionRatio
+    medDirSharedValues[projectedIndex] = medDirSharedValues[ytdIndex] * projectionRatio
+    medDirPRCSValues[projectedIndex] = medDirPRCSValues[ytdIndex] * projectionRatio
+    consultingValues[projectedIndex] = consultingValues[ytdIndex] * projectionRatio
+    interestValues[projectedIndex] = interestValues[ytdIndex] * projectionRatio
   }
   
   const medDirTotal = medDirSharedValues.map((v, i) => v + medDirPRCSValues[i])
@@ -936,9 +973,9 @@ function addSummaryRows(data: YearlyData): any[] {
   if (numYears >= 2) {
     const ytdIndex = numYears - 2
     const projectedIndex = numYears - 1
-    costOfGoodsValues[projectedIndex] = costOfGoodsValues[ytdIndex] * 1.5
-    otherExpensesValues[projectedIndex] = otherExpensesValues[ytdIndex] * 1.5
-    employeePayrollValues[projectedIndex] = employeePayrollValues[ytdIndex] * 1.5
+    costOfGoodsValues[projectedIndex] = costOfGoodsValues[ytdIndex] * projectionRatio
+    otherExpensesValues[projectedIndex] = otherExpensesValues[ytdIndex] * projectionRatio
+    employeePayrollValues[projectedIndex] = employeePayrollValues[ytdIndex] * projectionRatio
   }
   
   // Get raw Asset Disposal values to exclude from calculations (but not from display)
@@ -1005,14 +1042,14 @@ function addSummaryRows(data: YearlyData): any[] {
   if (numYears >= 2) {
     const ytdIndex = numYears - 2
     const projectedIndex = numYears - 1
-    mdSalaryValues[projectedIndex] = mdSalaryValues[ytdIndex] * 1.5
-    mdBenefitsValues[projectedIndex] = mdBenefitsValues[ytdIndex] * 1.5
-    mdPayrollTaxValues[projectedIndex] = mdPayrollTaxValues[ytdIndex] * 1.5
-    locumsSalaryValues[projectedIndex] = locumsSalaryValues[ytdIndex] * 1.5
-    staffSalaryValues[projectedIndex] = staffSalaryValues[ytdIndex] * 1.5
-    staffBenefitsValues[projectedIndex] = staffBenefitsValues[ytdIndex] * 1.5
-    staffPayrollTaxValues[projectedIndex] = staffPayrollTaxValues[ytdIndex] * 1.5
-    miscEmployment[projectedIndex] = miscEmployment[ytdIndex] * 1.5
+    mdSalaryValues[projectedIndex] = mdSalaryValues[ytdIndex] * projectionRatio
+    mdBenefitsValues[projectedIndex] = mdBenefitsValues[ytdIndex] * projectionRatio
+    mdPayrollTaxValues[projectedIndex] = mdPayrollTaxValues[ytdIndex] * projectionRatio
+    locumsSalaryValues[projectedIndex] = locumsSalaryValues[ytdIndex] * projectionRatio
+    staffSalaryValues[projectedIndex] = staffSalaryValues[ytdIndex] * projectionRatio
+    staffBenefitsValues[projectedIndex] = staffBenefitsValues[ytdIndex] * projectionRatio
+    staffPayrollTaxValues[projectedIndex] = staffPayrollTaxValues[ytdIndex] * projectionRatio
+    miscEmployment[projectedIndex] = miscEmployment[ytdIndex] * projectionRatio
   }
 
   const mdPayroll = mdSalaryValues.map((v, i) => v + mdBenefitsValues[i] + mdPayrollTaxValues[i] + locumsSalaryValues[i])
@@ -1043,8 +1080,8 @@ function addSummaryRows(data: YearlyData): any[] {
   if (numYears >= 2) {
     const ytdIndex = numYears - 2
     const projectedIndex = numYears - 1
-    netIncomeValues[projectedIndex] = netIncomeValues[ytdIndex] * 1.5
-    guaranteedPaymentsValues[projectedIndex] = guaranteedPaymentsValues[ytdIndex] * 1.5
+    netIncomeValues[projectedIndex] = netIncomeValues[ytdIndex] * projectionRatio
+    guaranteedPaymentsValues[projectedIndex] = guaranteedPaymentsValues[ytdIndex] * projectionRatio
   }
   
   // Adjust Net Income by removing the Asset Disposal gain and Interest Income
@@ -1072,14 +1109,17 @@ export async function loadYearlyGridData(collapsedSections: CollapsibleState = {
     const historicalData = JSON.parse(JSON.stringify(yearlyDataModule.default || yearlyDataModule))
     const data2025Raw = data2025Module.default || data2025Module
 
+    // Calculate projection ratio from 2025 data
+    const projectionRatio = calculateProjectionRatio(data2025Raw)
+    
     // Parse 2025 data
     const data2025Map = parse2025Data(data2025Raw)
     
     // Merge 2025 data into historical data
-    const data = merge2025Data(historicalData, data2025Map)
+    const data = merge2025Data(historicalData, data2025Map, projectionRatio)
     
     // Add summary rows to the data before transformation
-    const summaryRows = addSummaryRows(data)
+    const summaryRows = addSummaryRows(data, projectionRatio)
     
     // Create new data structure with summary rows added
     const extendedData = {
@@ -1095,6 +1135,13 @@ export async function loadYearlyGridData(collapsedSections: CollapsibleState = {
     return transformYearlyDataToGrid(extendedData, collapsedSections, customProjectedValues)
   } catch (error) {
     console.error('Failed to load yearly data:', error)
+    
+    // If it's a projection ratio error, provide more specific feedback
+    if (error instanceof Error && error.message.includes('projection ratio')) {
+      console.error('Projection calculation failed. This likely means the 2025 data is missing required date information.')
+      // You could also trigger a user-facing error dialog here if your app has that capability
+    }
+    
     return { rows: [], columns: [] }
   }
 }

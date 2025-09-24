@@ -809,6 +809,42 @@ export const useDashboardStore = create<Store>()(
           state.resetYearByYearValues('A')
           state.resetViewSettings('A')
         },
+
+        // Ensure baseline year exists in future years array for PhysiciansEditor
+        ensureBaselineYear: (scenario: ScenarioKey, year: number) => {
+          set((state) => {
+            const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
+            if (!sc) return
+            
+            // Check if year already exists
+            const existing = sc.future.find((f) => f.year === year)
+            if (existing) return
+            
+            // Create baseline entry with defaults - deep copy to avoid reference issues
+            const defaultPhysicians = scenario === 'A' 
+              ? (sc.dataMode === '2024 Data' ? scenario2024Defaults() : scenarioADefaultsByYear(year))
+              : (sc.dataMode === '2024 Data' ? scenario2024Defaults() : scenarioBDefaultsByYear(year))
+            const jsPhysician = defaultPhysicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+            
+            const baseline: FutureYear = {
+              year,
+              therapyIncome: state.historic.find(h => h.year === year)?.therapyIncome ?? DEFAULT_THERAPY_INCOME_2025,
+              nonEmploymentCosts: state.historic.find(h => h.year === year)?.nonEmploymentCosts ?? DEFAULT_NON_EMPLOYMENT_COSTS_2025,
+              nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(year),
+              locumCosts: DEFAULT_LOCUM_COSTS_2025,
+              miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+              medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
+              prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
+              consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_2025,
+              prcsDirectorPhysicianId: jsPhysician?.id,
+              // Deep copy physicians to avoid reference issues
+              physicians: defaultPhysicians.map(p => ({ ...p })),
+            }
+            
+            // Add to the beginning of future years array (since 2025 comes before 2026+)
+            sc.future.unshift(baseline)
+          })
+        },
       }
     }),
     {
@@ -1086,9 +1122,14 @@ export function arePhysiciansChanged(
   try {
     const sc = scenario === 'A' ? _store.scenarioA : _store.scenarioB
     const fy = sc?.future.find((f: any) => f.year === year)
-    const projectionPrcs = sc?.projection?.prcsMedicalDirectorHours ?? 80000
-    const currentPrcs = fy?.prcsMedicalDirectorHours ?? projectionPrcs
-    const amountChanged = Math.abs(currentPrcs - projectionPrcs) > 100 // small threshold for $ changes
+    
+    // For baseline years (2025), compare against actual values, not projection defaults
+    const defaultPrcsMedicalDirectorHours = year === 2025 
+      ? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS
+      : (sc?.projection?.prcsMedicalDirectorHours ?? DEFAULT_MD_PRCS_PROJECTION)
+    
+    const currentPrcs = fy?.prcsMedicalDirectorHours ?? defaultPrcsMedicalDirectorHours
+    const amountChanged = Math.abs(currentPrcs - defaultPrcsMedicalDirectorHours) > 100 // small threshold for $ changes
 
     // Determine default PRCS director for this year (JS from 2024+ if present in defaults)
     const jsDefault = year >= 2024

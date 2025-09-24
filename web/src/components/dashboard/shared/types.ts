@@ -100,4 +100,5 @@ export type Store = {
   resetYearByYearValues: (scenario: ScenarioKey) => void
   resetViewSettings: (scenario: ScenarioKey) => void
   setPrcsDirector: (scenario: ScenarioKey, year: number, physicianId?: string) => void
+  ensureBaselineYear: (scenario: ScenarioKey, year: number) => void
 }

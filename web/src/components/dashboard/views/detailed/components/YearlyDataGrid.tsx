@@ -151,17 +151,26 @@ export default function YearlyDataGrid() {
           const cellElement = target.closest('[data-cell-rowidx]') || target.closest('[role="gridcell"]') || target.closest('.rg-cell')
           if (cellElement) {
             const rect = cellElement.getBoundingClientRect()
-            cellPosition = { x: rect.right, y: rect.top + rect.height / 2 }
+            // Convert viewport-relative coordinates to document-relative coordinates
+            // by adding the current scroll position
+            cellPosition = { 
+              x: rect.right + window.scrollX, 
+              y: rect.top + rect.height / 2 + window.scrollY 
+            }
             cellRect = {
-              top: rect.top,
-              right: rect.right,
-              bottom: rect.bottom,
-              left: rect.left,
+              top: rect.top + window.scrollY,
+              right: rect.right + window.scrollX,
+              bottom: rect.bottom + window.scrollY,
+              left: rect.left + window.scrollX,
               width: rect.width,
               height: rect.height
             }
           } else {
-            cellPosition = { x: event.clientX, y: event.clientY }
+            // Also add scroll offset for fallback mouse position
+            cellPosition = { 
+              x: event.clientX + window.scrollX, 
+              y: event.clientY + window.scrollY 
+            }
           }
         }
         
@@ -422,12 +431,44 @@ export default function YearlyDataGrid() {
         
         {!loading && !error && gridData.rows.length > 0 && (
           <div style={{ 
-            marginTop: '8px',
+            marginTop: '12px',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '24px',
             fontSize: '12px',
-            color: '#6b7280',
-            textAlign: 'center'
+            color: '#374151'
           }}>
-            Read-only view • {gridData.rows.length - 1} data rows • Click ▶/▼ to expand/collapse sections • Click projected cells to adjust values
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{
+                width: '20px',
+                height: '12px',
+                backgroundColor: '#fef3c7',
+                border: '1px solid #fbbf24',
+                borderRadius: '2px'
+              }} />
+              <span>Annualized Projection</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{
+                width: '20px',
+                height: '12px',
+                backgroundColor: '#dcfce7',
+                border: '1px solid #22c55e',
+                borderRadius: '2px'
+              }} />
+              <span>Configured Default</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{
+                width: '20px',
+                height: '12px',
+                backgroundColor: '#fee2e2',
+                border: '1px solid #ef4444',
+                borderRadius: '2px'
+              }} />
+              <span>User Changed</span>
+            </div>
           </div>
         )}
         
