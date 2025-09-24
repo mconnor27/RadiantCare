@@ -78,7 +78,7 @@ export const ACTUAL_2024_PARTNER_POOL = 2008467
 
 // 2025 actual/projected values
 export const ACTUAL_2025_MEDICAL_DIRECTOR_HOURS = 119373.75
-export const ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS = 37792.5
+export const ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS = 32276
 
 // Projection defaults for medical director hours
 export const DEFAULT_MD_SHARED_PROJECTION = 110000

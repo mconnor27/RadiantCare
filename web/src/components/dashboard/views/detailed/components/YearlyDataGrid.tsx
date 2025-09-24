@@ -3,6 +3,7 @@ import { ReactGrid, type Row } from '@silevis/reactgrid'
 import '@silevis/reactgrid/styles.css'
 import CollapsibleSection from '../../../shared/components/CollapsibleSection'
 import { loadYearlyGridData, type CollapsibleState } from '../utils/yearlyDataTransformer'
+import getDefaultValue from '../config/projectedDefaults'
 import ProjectedValueSlider from './ProjectedValueSlider'
 
 export default function YearlyDataGrid() {
@@ -25,13 +26,15 @@ export default function YearlyDataGrid() {
     accountName: string
     rowIndex: number
     columnIndex: number
+    annualizedBaseline: number
   }>({
     isVisible: false,
     position: { x: 0, y: 0 },
     currentValue: 0,
     accountName: '',
     rowIndex: -1,
-    columnIndex: -1
+    columnIndex: -1,
+    annualizedBaseline: 0
   })
   
   // Store custom projected values that override the default calculations
@@ -94,15 +97,32 @@ export default function YearlyDataGrid() {
       const cell = row.cells[colIndex] as any
       const accountCell = row.cells[0] as any
       
-      // Only allow slider for Data rows (ignore Header/Summary) and not computed rows
+      // Allow slider for Data rows (not computed, not therapy components) OR for Therapy Total summary
       const isRowTypeData = (cell?.rowType === 'Data')
       const isComputed = cell?.computedRow === true
-      if (cell && accountCell && isRowTypeData && !isComputed) {
+      const accountText = (accountCell?.text || '').trim()
+      const isSpacer = cell?.rowType === 'Spacer'
+      const isTherapyTotalSummary = (cell?.rowType === 'Summary' && accountText === 'Total 7100 Therapy Income')
+      const isTherapyComponent = accountText === '7105 Therapy - Lacey' || accountText === '7108 Therapy - Aberdeen' || accountText === '7110 Therapy - Centralia' || accountText === '7149 Refunds - Therapy'
+      if (cell && accountCell && !isSpacer && (((isRowTypeData && !isComputed) && !isTherapyComponent) || isTherapyTotalSummary)) {
         console.log('Projected cell clicked:', { rowIndex, colIndex, accountName: accountCell.text })
         
-        // Parse the current value from the cell text
+        // Parse the displayed projected value (may be custom) and compute baseline
         const cellText = cell.text || '0'
         const currentValue = parseFloat(cellText.replace(/[$,\s]/g, '')) || 0
+        
+        // ALWAYS compute annualized baseline from YTD data (never changes based on overrides/defaults)
+        const numCols = gridData.columns?.length || 0
+        const ytdColIndex = numCols - 2
+        let annualizedBaseline = 0
+        try {
+          const ytdCell = row.cells?.[ytdColIndex] as any
+          const ytdText = (ytdCell?.text || '0').toString()
+          const ytdNumeric = parseFloat(ytdText.replace(/[$,\s]/g, '')) || 0
+          annualizedBaseline = ytdNumeric * 1.5
+        } catch {
+          annualizedBaseline = 0
+        }
         
         // Get click position for slider placement
         const clickPosition = event ? { x: event.clientX, y: event.clientY } : { x: 0, y: 0 }
@@ -113,7 +133,8 @@ export default function YearlyDataGrid() {
           currentValue,
           accountName: accountCell.text || '',
           rowIndex,
-          columnIndex: colIndex
+          columnIndex: colIndex,
+          annualizedBaseline
         })
       }
     }
@@ -125,16 +146,27 @@ export default function YearlyDataGrid() {
   
   const handleProjectedValueChange = useCallback((newValue: number) => {
     const accountName = slider.accountName
-    
-    // Store the custom value
-    setCustomProjectedValues(prev => ({
-      ...prev,
-      [accountName]: newValue
-    }))
-    
-    // Reload data to reflect the change
-    loadData()
-  }, [slider.accountName, loadData])
+    const annualizedBaseline = slider.annualizedBaseline
+    const defaultValue = getDefaultValue(accountName, annualizedBaseline)
+
+    const approximatelyEqual = (a: number, b: number) => Math.abs(Math.round(a) - Math.round(b)) <= 0
+
+    // If user applied without changing, do nothing
+    if (approximatelyEqual(newValue, slider.currentValue)) {
+      return
+    }
+
+    setCustomProjectedValues(prev => {
+      // Remove override only if matching default value
+      if (approximatelyEqual(newValue, defaultValue)) {
+        if (!prev[accountName]) return prev
+        const { [accountName]: _removed, ...rest } = prev
+        return rest
+      }
+      // Otherwise, set/replace override (including when set to annualized but different from default)
+      return { ...prev, [accountName]: newValue }
+    })
+  }, [slider.accountName, slider.currentValue, slider.annualizedBaseline])
 
   return (
     <CollapsibleSection 
@@ -202,7 +234,12 @@ export default function YearlyDataGrid() {
                       // Check row type from the cell to prevent non-Data rows and custom computed summary group rows
                       const row = gridData.rows[rowIndex]
                       const cell = row?.cells?.[colIndex] as any
-                      if (cell?.rowType === 'Data' && cell?.computedRow !== true) {
+                      const accountCell = row?.cells?.[0] as any
+                      const accountText = (accountCell?.text || '').trim()
+                      const isSpacer = cell?.rowType === 'Spacer'
+                      const isTherapyTotalSummary = (cell?.rowType === 'Summary' && accountText === 'Total 7100 Therapy Income')
+                      const isTherapyComponent = accountText === '7105 Therapy - Lacey' || accountText === '7108 Therapy - Aberdeen' || accountText === '7110 Therapy - Centralia' || accountText === '7149 Refunds - Therapy'
+                      if (!isSpacer && (((cell?.rowType === 'Data' && cell?.computedRow !== true) && !isTherapyComponent) || isTherapyTotalSummary)) {
                         handleCellClick(rowId, columnId, e)
                       }
                     }
@@ -378,12 +415,14 @@ export default function YearlyDataGrid() {
         
         {/* Projected Value Slider */}
         <ProjectedValueSlider
+          key={`slider-${slider.accountName}-${slider.annualizedBaseline}`}
           isVisible={slider.isVisible}
           onClose={handleSliderClose}
           currentValue={slider.currentValue}
           onValueChange={handleProjectedValueChange}
           accountName={slider.accountName}
           position={slider.position}
+          annualizedBaseline={slider.annualizedBaseline}
         />
       </div>
     </CollapsibleSection>

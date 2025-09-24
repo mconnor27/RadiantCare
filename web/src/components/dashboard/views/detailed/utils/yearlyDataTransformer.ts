@@ -1,4 +1,6 @@
 import { type Row } from '@silevis/reactgrid'
+import { findAccountConfig } from '../config/projectedDefaults'
+import getDefaultValue from '../config/projectedDefaults'
 
 // Type for tracking collapsed sections
 export type CollapsibleState = Record<string, boolean>
@@ -203,20 +205,24 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
       if (row.ColData?.[0]?.value) {
         const accountName = row.ColData[0].value.trim()
         const value2025YTD = data2025[accountName] || data2025[accountName.replace(/Total\s+/, '')] || 0
-        // Project 8 months of data to 12 months (multiply by 1.5)
-        const value2025Projected = value2025YTD * 1.5
+        // Annualized: Project 8 months of data to 12 months (multiply by 1.5)
+        const value2025Annualized = value2025YTD * 1.5
+        // Default: Use config default or fallback to annualized
+        const value2025Default = getDefaultValue(accountName, value2025Annualized)
         
         row.ColData.push({ value: value2025YTD.toString() })
-        row.ColData.push({ value: value2025Projected.toString() })
+        row.ColData.push({ value: value2025Default.toString() })
       }
       if (row.Summary?.ColData?.[0]?.value) {
         const accountName = row.Summary.ColData[0].value.trim()
         const value2025YTD = data2025[accountName] || data2025[accountName.replace(/Total\s+/, '')] || 0
-        // Project 8 months of data to 12 months (multiply by 1.5)
-        const value2025Projected = value2025YTD * 1.5
+        // Annualized: Project 8 months of data to 12 months (multiply by 1.5)
+        const value2025Annualized = value2025YTD * 1.5
+        // Default: Use config default or fallback to annualized
+        const value2025Default = getDefaultValue(accountName, value2025Annualized)
         
         row.Summary.ColData.push({ value: value2025YTD.toString() })
-        row.Summary.ColData.push({ value: value2025Projected.toString() })
+        row.Summary.ColData.push({ value: value2025Default.toString() })
       }
       if (row.Header?.ColData) {
         row.Header.ColData.push({ value: '' })
@@ -457,6 +463,60 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
     return num
   }
 
+  // Proportional scaling for Therapy section when Total is overridden via slider
+  const applyTherapyProportionalScaling = (rowsAll: any[]) => {
+    // Identify the Therapy section boundaries
+    let therapySectionStart = -1
+    let therapyTotalIndex = -1
+    for (let i = 0; i < rowsAll.length; i++) {
+      const r = rowsAll[i]
+      const name = r.colData?.[0]?.value || ''
+      if (r.type === 'Section' && /7100\s+Therapy\s+Income/i.test(name)) {
+        therapySectionStart = i
+      }
+      if (r.type === 'Summary' && /^Total\s+7100\s+Therapy\s+Income$/i.test(name)) {
+        therapyTotalIndex = i
+        break
+      }
+    }
+    if (therapySectionStart < 0 || therapyTotalIndex < 0) return
+    const totalName = 'Total 7100 Therapy Income'
+    if (customProjectedValues[totalName] === undefined) return
+
+    // Compute current sum of projected values for the component rows
+    const dataRowNames = new Set<string>([
+      '7105 Therapy - Lacey',
+      '7108 Therapy - Aberdeen',
+      '7110 Therapy - Centralia',
+      '7149 Refunds - Therapy'
+    ])
+    const lastIdx = columnTitles.length - 1
+    let currentSum = 0
+    const parts: { idx: number, name: string, value: number }[] = []
+    for (let i = therapySectionStart + 1; i < therapyTotalIndex; i++) {
+      const r = rowsAll[i]
+      if (r.type === 'Data') {
+        const nm = r.colData?.[0]?.value || ''
+        if (dataRowNames.has(nm)) {
+          const v = getProjectedNumericForRow(r)
+          parts.push({ idx: i, name: nm, value: v })
+          currentSum += v
+        }
+      }
+    }
+    if (currentSum === 0) return
+    const targetTotal = Number(customProjectedValues[totalName]) || 0
+    const scale = targetTotal / currentSum
+    for (const p of parts) {
+      const rowRef = rowsAll[p.idx]
+      const newVal = p.value * scale
+      rowRef.colData[lastIdx] = { value: newVal.toString() }
+    }
+  }
+
+  // Apply proportional scaling based on any custom override
+  applyTherapyProportionalScaling(flattenedRows)
+
   const dataRows: Row[] = visibleRows.map((row, index) => {
     const accountName = row.colData[0]?.value || ''
     const cells = row.colData.map((cellData: any, cellIndex: number) => {
@@ -595,7 +655,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       let cursor = 'default'
       let border = 'none'
       
-      if (row.type === 'Header' || row.type === 'Section') {
+      if (row.type === 'Header' || row.type === 'Section' || row.type === 'Spacer') {
         backgroundColor = '#f9fafb'
         fontWeight = 'bold'
         fontSize = '14px' // Smaller font for section headers like "Total Income"
@@ -611,12 +671,48 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
         fontSize = '14px' // Smaller font for summary rows
       }
       
-      // Style projected column cells to indicate they're clickable, except computed custom rows
+      // Style projected column cells to indicate they're clickable, with rules:
+      const therapyComponentNames = new Set<string>([
+        '7105 Therapy - Lacey',
+        '7108 Therapy - Aberdeen',
+        '7110 Therapy - Centralia',
+        '7149 Refunds - Therapy'
+      ])
       const isComputedCustomRow = (row.group && (row.group.startsWith('Summary') || row.group === 'SummaryIncome' || row.group === 'SummaryCosts' || row.group === 'SummaryNetIncome')) && row.type === 'Data'
-      if (isProjectedColumn && row.type === 'Data' && cellIndex > 0 && !isComputedCustomRow) {
+      const isTherapyComponent = therapyComponentNames.has(accountName)
+      if (isProjectedColumn && row.type === 'Data' && cellIndex > 0 && !isComputedCustomRow && !isTherapyComponent) {
         cursor = 'pointer'
-        backgroundColor = hasCustomValue ? '#f0fdf4' : '#fefce8' // Light green if custom, light yellow if default
-        border = hasCustomValue ? '1px solid #bbf7d0' : '1px solid #fed7aa'
+        const config = findAccountConfig(accountName)
+        const hasManualDefault = typeof config?.defaultValue === 'number'
+        if (hasCustomValue) {
+          // User has manually changed the projected value → red
+          backgroundColor = '#fef2f2'
+          border = '1px solid #fecaca'
+        } else if (hasManualDefault) {
+          // Row has a manual default in config (not falling back to annualized) → green
+          backgroundColor = '#f0fdf4'
+          border = '1px solid #bbf7d0'
+        } else {
+          // Falling back to computed annualized baseline → yellow
+          backgroundColor = '#fefce8'
+          border = '1px solid #fed7aa'
+        }
+      }
+      // Make Therapy Total summary look clickable in Projected column
+      if (isProjectedColumn && row.type === 'Summary' && accountName === 'Total 7100 Therapy Income') {
+        cursor = 'pointer'
+        const config = findAccountConfig(accountName)
+        const hasManualDefault = typeof config?.defaultValue === 'number'
+        if (hasCustomValue) {
+          backgroundColor = '#fef2f2'
+          border = '1px solid #fecaca'
+        } else if (hasManualDefault) {
+          backgroundColor = '#f0fdf4'
+          border = '1px solid #bbf7d0'
+        } else {
+          backgroundColor = '#fefce8'
+          border = '1px solid #fed7aa'
+        }
       }
       
       // Add tooltip info for first column if row carries tooltip metadata or has info icon
@@ -787,9 +883,9 @@ function addSummaryRows(data: YearlyData): any[] {
 
   const normalize = (vals: number[]): number[] => Array.from({ length: numYears }, (_, i) => vals[i] || 0)
 
-  // Two blank rows between native Net Income and our summary sections
-  summaryRows.push({ ColData: [ { value: '' }, ...Array.from({ length: numYears }, () => ({ value: '' })) ] })
-  summaryRows.push({ ColData: [ { value: '' }, ...Array.from({ length: numYears }, () => ({ value: '' })) ] })
+  // Two blank rows between native Net Income and our summary sections (non-interactive spacers)
+  summaryRows.push({ ColData: [ { value: '' }, ...Array.from({ length: numYears }, () => ({ value: '' })) ], type: 'Spacer', computed: true })
+  summaryRows.push({ ColData: [ { value: '' }, ...Array.from({ length: numYears }, () => ({ value: '' })) ], type: 'Spacer', computed: true })
 
   // INCOME SECTION
   const therapyValues = normalize(findAccountValues(data, /Total\s+7100\s+Therapy\s+Income/i))
