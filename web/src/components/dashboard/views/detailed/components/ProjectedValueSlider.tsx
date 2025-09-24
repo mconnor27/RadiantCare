@@ -1,6 +1,30 @@
 import React, { useState, useEffect } from 'react'
 import getDefaultValue, { getSliderBounds, getInitialSliderValue, getSliderStep } from '../config/projectedDefaults'
 
+// ========== ANIMATION CONFIGURATION ==========
+type AnimationStyle = 'two-stage' | 'scale-all'
+
+const ANIMATION_CONFIG = {
+  style: 'two-stage' as AnimationStyle, // Change this to switch animation styles
+  
+  // Two-stage animation (expand width first, then height)
+  twoStage: {
+    widthDuration: 200,
+    heightDuration: 150,
+    contentDelay: 50,
+    easing: 'ease-out'
+  },
+  
+  // Scale-all animation (all dimensions at once with spring)
+  scaleAll: {
+    duration: 250,
+    contentDelay: 50,
+    easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)', // Spring easing
+    noOvershoot: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' // Smooth easing without overshoot
+  }
+}
+// ============================================
+
 interface ProjectedValueSliderProps {
   isVisible: boolean
   onClose: () => void
@@ -12,6 +36,14 @@ interface ProjectedValueSliderProps {
    * Immutable baseline annualized value computed from YTD data in the grid. Never changes with user edits.
    */
   annualizedBaseline: number
+  /**
+   * Origin position of the clicked cell for animation
+   */
+  originPosition?: { x: number; y: number }
+  /**
+   * Optional rect of the origin cell to draw a funnel connector
+   */
+  originRect?: { top: number; right: number; bottom: number; left: number; width: number; height: number }
 }
 
 export default function ProjectedValueSlider({ 
@@ -21,10 +53,17 @@ export default function ProjectedValueSlider({
   onValueChange, 
   accountName,
   position,
-  annualizedBaseline
+  annualizedBaseline,
+  originPosition,
+  originRect
 }: ProjectedValueSliderProps) {
   const [sliderValue, setSliderValue] = useState(currentValue)
   const [inputValue, setInputValue] = useState(currentValue.toString())
+  const [animationStage, setAnimationStage] = useState<'initial' | 'width' | 'height' | 'complete'>('initial')
+  const [isAnimating, setIsAnimating] = useState(true) // For scale-all animation
+  
+  // Funnel animation progress (0 -> 1) for smooth transitions
+  const [funnelProgress, setFunnelProgress] = useState({ width: 0, height: 0 })
 
   useEffect(() => {
     setSliderValue(currentValue)
@@ -91,7 +130,96 @@ export default function ProjectedValueSlider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountName])
 
+  // Handle animation when slider becomes visible
+  useEffect(() => {
+    console.log('Animation effect triggered:', { isVisible, currentStage: animationStage })
+    if (isVisible) {
+      if (ANIMATION_CONFIG.style === 'two-stage') {
+        // Two-stage animation: width first, then height
+        const widthTimer = setTimeout(() => {
+          console.log('Setting stage to width')
+          setAnimationStage('width')
+        }, 10)
+        const heightTimer = setTimeout(() => {
+          console.log('Setting stage to height')
+          setAnimationStage('height')
+        }, 10 + ANIMATION_CONFIG.twoStage.widthDuration)
+        const completeTimer = setTimeout(() => {
+          console.log('Setting stage to complete')
+          setAnimationStage('complete')
+        }, 10 + ANIMATION_CONFIG.twoStage.widthDuration + ANIMATION_CONFIG.twoStage.heightDuration + ANIMATION_CONFIG.twoStage.contentDelay)
+        
+        return () => {
+          clearTimeout(widthTimer)
+          clearTimeout(heightTimer)
+          clearTimeout(completeTimer)
+        }
+      } else {
+        // Scale-all animation: all dimensions at once
+        const timer = setTimeout(() => setIsAnimating(false), ANIMATION_CONFIG.scaleAll.contentDelay)
+        return () => clearTimeout(timer)
+      }
+    } else {
+      console.log('Resetting animation stage to initial')
+      setAnimationStage('initial')
+      setIsAnimating(true)
+      setFunnelProgress({ width: 0, height: 0 })
+    }
+  }, [isVisible])
+
+  // Animate funnel progress smoothly using requestAnimationFrame
+  useEffect(() => {
+    if (!isVisible || ANIMATION_CONFIG.style !== 'two-stage') {
+      setFunnelProgress({ width: 0, height: 0 })
+      return
+    }
+
+    let rafId: number
+    const startTime = performance.now()
+    const widthDuration = ANIMATION_CONFIG.twoStage.widthDuration
+    const heightDuration = ANIMATION_CONFIG.twoStage.heightDuration
+    
+    // Easing function to match CSS ease-out
+    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3)
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime - 10 // Account for initial 10ms delay
+      
+      if (elapsed <= 0) {
+        setFunnelProgress({ width: 0, height: 0 })
+      } else if (elapsed <= widthDuration) {
+        // Width animation phase
+        const t = Math.min(1, elapsed / widthDuration)
+        setFunnelProgress({ width: easeOut(t), height: 0 })
+      } else if (elapsed <= widthDuration + heightDuration) {
+        // Height animation phase
+        const t = Math.min(1, (elapsed - widthDuration) / heightDuration)
+        setFunnelProgress({ width: 1, height: easeOut(t) })
+      } else {
+        // Animation complete
+        setFunnelProgress({ width: 1, height: 1 })
+        return
+      }
+      
+      rafId = requestAnimationFrame(animate)
+    }
+
+    rafId = requestAnimationFrame(animate)
+    return () => cancelAnimationFrame(rafId)
+  }, [isVisible])
+
   if (!isVisible) return null
+
+  // Calculate animation positions
+  const finalPosition = {
+    top: position.y - 50,
+    left: Math.min(position.x + 20, window.innerWidth - 350)
+  }
+  
+  const startPosition = originPosition ? {
+    top: originPosition.y - 10,
+    left: originPosition.x - 10
+  } : finalPosition
 
   return (
     <>
@@ -105,36 +233,143 @@ export default function ProjectedValueSlider({
           bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.2)',
           zIndex: 1500,
-          opacity: isVisible ? 1 : 0,
-          transition: 'opacity 0.3s ease-in-out'
+          opacity: 1
         }}
         onClick={handleCancel}
       />
+      
+      {/* Funnel connector (optional) */}
+      {originRect && ANIMATION_CONFIG.style === 'two-stage' && funnelProgress.width > 0 && (
+        <svg
+          width={Math.max(20, finalPosition.left - originRect.right + 10)}
+          height={Math.max(0, 60)}
+            style={{
+              position: 'fixed',
+              top: Math.round(finalPosition.top - 10), // Align with slider top
+              left: originRect.right - 5,
+              pointerEvents: 'none',
+              zIndex: 1599,
+              opacity: 0.9
+            }}
+        >
+          <defs>
+            <linearGradient id="funnelGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#f8fafc" stopOpacity="0.9" />
+              <stop offset="50%" stopColor="#f8fafc" stopOpacity="0.7" />
+              <stop offset="100%" stopColor="#f8fafc" stopOpacity="0.95" />
+            </linearGradient>
+          </defs>
+          {(() => {
+            // Animate funnel dimensions based on progress
+            const fullWidth = Math.max(20, finalPosition.left - originRect.right + 10)
+            const animatedWidth = Math.max(10, fullWidth * (0.1 + 0.9 * funnelProgress.width))
+            
+            const h = 60
+            const cellHeight = originRect.height
+            const startWidth = Math.min(cellHeight * 0.6, 16) // Cell side stays constant
+            
+            // Calculate positions relative to cell and slider alignment
+            const cellCenterY = (originRect.top + originRect.height / 2) - (finalPosition.top - 10)
+            const sliderTopY = 20 // 20px down from slider top to account for rounded corner
+            
+            console.log('Funnel connector (animated):', { 
+              fullWidth, animatedWidth, startWidth, cellCenterY, sliderTopY,
+              widthProgress: funnelProgress.width, heightProgress: funnelProgress.height 
+            })
+            
+            // Create tunnel from cell center to slider top edge
+            const startY1 = cellCenterY - startWidth/2
+            const startY2 = cellCenterY + startWidth/2
+            const endY1 = sliderTopY
+            const endY2 = sliderTopY + (startWidth + 20 * funnelProgress.height) // Expand downward during height phase
+            
+            // Control points for smooth curves - adjust based on width progress
+            const cp1x = animatedWidth * 0.3
+            const cp2x = animatedWidth * 0.7
+            
+            const path = `
+              M 5,${startY1}
+              C ${cp1x},${startY1} ${cp2x},${endY1} ${animatedWidth - 5},${endY1}
+              L ${animatedWidth - 5},${endY2}
+              C ${cp2x},${endY2} ${cp1x},${startY2} 5,${startY2}
+              Z
+            `
+            
+            return (
+              <path 
+                d={path} 
+                fill="url(#funnelGradient)" 
+                stroke="#e5e7eb" 
+                strokeWidth="1"
+                opacity="0.9"
+              />
+            )
+          })()}
+        </svg>
+      )}
       
       {/* Slider Panel */}
       <div
         style={{
           position: 'fixed',
-          top: position.y - 50,
-          left: Math.min(position.x + 20, window.innerWidth - 350),
-          width: '320px',
+          ...(ANIMATION_CONFIG.style === 'two-stage' ? {
+            // Two-stage animation styles
+            top: animationStage === 'initial' ? startPosition.top : finalPosition.top,
+            left: animationStage === 'initial' ? startPosition.left : finalPosition.left,
+            width: animationStage === 'initial' ? '20px' : '320px',
+            height: animationStage === 'initial' || animationStage === 'width' ? '20px' : 'auto',
+            transition: animationStage === 'width' 
+              ? `width ${ANIMATION_CONFIG.twoStage.widthDuration}ms ${ANIMATION_CONFIG.twoStage.easing}, top ${ANIMATION_CONFIG.twoStage.widthDuration}ms ${ANIMATION_CONFIG.twoStage.easing}, left ${ANIMATION_CONFIG.twoStage.widthDuration}ms ${ANIMATION_CONFIG.twoStage.easing}, box-shadow ${ANIMATION_CONFIG.twoStage.widthDuration}ms ${ANIMATION_CONFIG.twoStage.easing}`
+              : animationStage === 'height'
+              ? `height ${ANIMATION_CONFIG.twoStage.heightDuration}ms ${ANIMATION_CONFIG.twoStage.easing}`
+              : 'none',
+            overflow: animationStage === 'complete' ? 'visible' : 'hidden'
+          } : {
+            // Scale-all animation styles
+            top: isAnimating ? startPosition.top : finalPosition.top,
+            left: isAnimating ? startPosition.left : finalPosition.left,
+            width: isAnimating ? '20px' : '320px',
+            height: isAnimating ? '20px' : 'auto',
+            transform: isAnimating ? 'scale(0.1)' : 'scale(1)',
+            transition: `all ${ANIMATION_CONFIG.scaleAll.duration}ms ${ANIMATION_CONFIG.scaleAll.noOvershoot}`,
+            transformOrigin: originPosition ? 'top left' : 'center',
+            overflow: isAnimating ? 'hidden' : 'visible'
+          }),
           backgroundColor: '#ffffff',
+          // Enforce rounded corners during the entire animation
           borderRadius: '12px',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          // Ensure child content doesn't bleed past rounded corners while animating
+          overflow: (ANIMATION_CONFIG.style === 'two-stage' ? animationStage !== 'complete' : isAnimating) ? 'hidden' : 'visible',
+          // Extra rounding via clip-path to help some browsers respect corners while scaling
+          clipPath: 'inset(0 round 12px)',
+          // Hint GPU compositing to reduce aliasing on edges during transform
+          willChange: 'transform, width, height, top, left, box-shadow',
+          backfaceVisibility: 'hidden',
+          WebkitFontSmoothing: 'antialiased',
+          transformStyle: 'preserve-3d',
+          boxShadow: (ANIMATION_CONFIG.style === 'two-stage' ? animationStage === 'initial' : isAnimating)
+            ? '0 2px 4px rgba(0, 0, 0, 0.1)' 
+            : '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
           border: '1px solid #e5e7eb',
           zIndex: 1600,
-          transform: isVisible ? 'translateX(0) scale(1)' : 'translateX(20px) scale(0.95)',
-          opacity: isVisible ? 1 : 0,
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          maxHeight: '90vh',
-          overflow: 'hidden'
+          opacity: 1,
+          maxHeight: '90vh'
         }}
       >
         {/* Header */}
         <div style={{
           padding: '12px',
           borderBottom: '1px solid #f3f4f6',
-          backgroundColor: '#f8fafc'
+          backgroundColor: '#f8fafc',
+          opacity: ANIMATION_CONFIG.style === 'two-stage' 
+            ? (animationStage === 'initial' ? 0 : 1)
+            : (isAnimating ? 0 : 1),
+          transition: 'opacity 0.1s ease-in-out',
+          // Prevent layout reflow during animation
+          minHeight: '52px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center'
         }}>
           <div style={{
             display: 'flex',
@@ -189,12 +424,22 @@ export default function ProjectedValueSlider({
         </div>
 
         {/* Content */}
-        <div style={{ padding: '20px' }}>
+        <div style={{ 
+          padding: '20px',
+          opacity: ANIMATION_CONFIG.style === 'two-stage' 
+            ? (animationStage === 'initial' ? 0 : 1)
+            : (isAnimating ? 0 : 1),
+          transition: 'opacity 0.1s ease-in-out',
+          // Pre-size content to prevent layout shifts
+          minHeight: '320px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '20px'
+        }}>
           {/* Current vs New Value Display */}
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
-            marginBottom: '20px',
             padding: '12px 20px 12px 20px',
             backgroundColor: '#f8fafc',
             borderRadius: '8px',
@@ -296,7 +541,7 @@ export default function ProjectedValueSlider({
           </div>
 
           {/* Input and Slider Row */}
-          <div style={{ marginBottom: '24px' }}>
+          <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div style={{ flex: 1 }}>
                 <input

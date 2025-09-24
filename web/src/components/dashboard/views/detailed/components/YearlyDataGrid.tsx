@@ -22,6 +22,8 @@ export default function YearlyDataGrid() {
   const [slider, setSlider] = useState<{
     isVisible: boolean
     position: { x: number; y: number }
+    originPosition: { x: number; y: number }
+    originRect?: { top: number; right: number; bottom: number; left: number; width: number; height: number }
     currentValue: number
     accountName: string
     rowIndex: number
@@ -30,6 +32,8 @@ export default function YearlyDataGrid() {
   }>({
     isVisible: false,
     position: { x: 0, y: 0 },
+    originPosition: { x: 0, y: 0 },
+    originRect: undefined,
     currentValue: 0,
     accountName: '',
     rowIndex: -1,
@@ -124,12 +128,33 @@ export default function YearlyDataGrid() {
           annualizedBaseline = 0
         }
         
-        // Get click position for slider placement
-        const clickPosition = event ? { x: event.clientX, y: event.clientY } : { x: 0, y: 0 }
+        // Get cell position and rect for slider placement
+        let cellPosition = { x: 0, y: 0 }
+        let cellRect = undefined
+        if (event) {
+          const target = event.target as HTMLElement
+          const cellElement = target.closest('[data-cell-rowidx]') || target.closest('[role="gridcell"]') || target.closest('.rg-cell')
+          if (cellElement) {
+            const rect = cellElement.getBoundingClientRect()
+            cellPosition = { x: rect.right, y: rect.top + rect.height / 2 }
+            cellRect = {
+              top: rect.top,
+              right: rect.right,
+              bottom: rect.bottom,
+              left: rect.left,
+              width: rect.width,
+              height: rect.height
+            }
+          } else {
+            cellPosition = { x: event.clientX, y: event.clientY }
+          }
+        }
         
         setSlider({
           isVisible: true,
-          position: clickPosition,
+          position: cellPosition,
+          originPosition: cellPosition, // Use same position for origin
+          originRect: cellRect,
           currentValue,
           accountName: accountCell.text || '',
           rowIndex,
@@ -422,6 +447,8 @@ export default function YearlyDataGrid() {
           onValueChange={handleProjectedValueChange}
           accountName={slider.accountName}
           position={slider.position}
+          originPosition={slider.originPosition}
+          originRect={slider.originRect}
           annualizedBaseline={slider.annualizedBaseline}
         />
       </div>
