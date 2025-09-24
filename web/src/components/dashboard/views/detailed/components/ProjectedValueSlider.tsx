@@ -12,7 +12,9 @@ const ANIMATION_CONFIG = {
     widthDuration: 200,
     heightDuration: 150,
     contentDelay: 50,
-    easing: 'ease-out'
+    easing: 'ease-out',
+    // Funnel height animation scaling
+    funnelHeightScale: 1.0 // Adjust this to speed up (>1) or slow down (<1) funnel height animation
   },
   
   // Scale-all animation (all dimensions at once with spring)
@@ -177,7 +179,20 @@ export default function ProjectedValueSlider({
     let rafId: number
     const startTime = performance.now()
     const widthDuration = ANIMATION_CONFIG.twoStage.widthDuration
-    const heightDuration = ANIMATION_CONFIG.twoStage.heightDuration
+    const sliderHeightDuration = ANIMATION_CONFIG.twoStage.heightDuration
+    
+    // Calculate funnel height duration based on absolute unfurling rate
+    const sliderHeightPixels = 424 - 20 // slider grows from 20px to 424px = 404px
+    const funnelHeightPixels = 40 - 12 // funnel grows from ~12px to ~40px = 28px
+    const pixelsPerMs = sliderHeightPixels / sliderHeightDuration // slider rate: ~2.69 px/ms
+    const calculatedFunnelDuration = funnelHeightPixels / pixelsPerMs // funnel should take ~10.4ms
+    const funnelHeightDuration = calculatedFunnelDuration * ANIMATION_CONFIG.twoStage.funnelHeightScale
+    
+    console.log('Animation rates:', { 
+      sliderHeightPixels, funnelHeightPixels, pixelsPerMs, 
+      calculatedFunnelDuration, funnelHeightDuration, 
+      scale: ANIMATION_CONFIG.twoStage.funnelHeightScale 
+    })
     
     // Easing function to match CSS ease-out
     const easeOut = (t: number) => 1 - Math.pow(1 - t, 3)
@@ -191,10 +206,12 @@ export default function ProjectedValueSlider({
         // Width animation phase
         const t = Math.min(1, elapsed / widthDuration)
         setFunnelProgress({ width: easeOut(t), height: 0 })
-      } else if (elapsed <= widthDuration + heightDuration) {
-        // Height animation phase
-        const t = Math.min(1, (elapsed - widthDuration) / heightDuration)
-        setFunnelProgress({ width: 1, height: easeOut(t) })
+      } else if (elapsed <= widthDuration + funnelHeightDuration) {
+        // Height animation phase (using funnel-specific duration)
+        const t = Math.min(1, (elapsed - widthDuration) / funnelHeightDuration)
+        const heightProgress = easeOut(t)
+        console.log('Height phase:', { elapsed, widthDuration, funnelHeightDuration, t, heightProgress })
+        setFunnelProgress({ width: 1, height: heightProgress })
       } else {
         // Animation complete
         setFunnelProgress({ width: 1, height: 1 })
@@ -215,6 +232,10 @@ export default function ProjectedValueSlider({
     top: position.y - 50,
     left: Math.min(position.x + 20, window.innerWidth - 350)
   }
+  
+  // Calculate the actual height of the slider content for smooth animation
+  const sliderHeight = 52 + 20 + 320 + 20 + 24 + 8 // header + padding + content + padding + buttons + margin
+  const targetHeight = `${sliderHeight}px`
   
   const startPosition = originPosition ? {
     top: originPosition.y - 10,
@@ -242,15 +263,18 @@ export default function ProjectedValueSlider({
       {originRect && ANIMATION_CONFIG.style === 'two-stage' && funnelProgress.width > 0 && (
         <svg
           width={Math.max(20, finalPosition.left - originRect.right + 10)}
-          height={Math.max(0, 60)}
-            style={{
-              position: 'fixed',
-              top: Math.round(finalPosition.top - 10), // Align with slider top
-              left: originRect.right - 5,
-              pointerEvents: 'none',
-              zIndex: 1599,
-              opacity: 0.9
-            }}
+          height={Math.max(
+            originRect.height + 20,
+            Math.abs(originRect.bottom - (finalPosition.top - 10)) + 60
+          )}
+          style={{
+            position: 'fixed',
+            top: Math.min(originRect.top, finalPosition.top - 10),
+            left: originRect.right - 5,
+            pointerEvents: 'none',
+            zIndex: 1599,
+            opacity: 0.9
+          }}
         >
           <defs>
             <linearGradient id="funnelGradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -264,34 +288,49 @@ export default function ProjectedValueSlider({
             const fullWidth = Math.max(20, finalPosition.left - originRect.right + 10)
             const animatedWidth = Math.max(10, fullWidth * (0.1 + 0.9 * funnelProgress.width))
             
-            const h = 60
-            const cellHeight = originRect.height
-            const startWidth = Math.min(cellHeight * 0.6, 16) // Cell side stays constant
+            // Calculate positions relative to our SVG container
+            const svgTop = Math.min(originRect.top, finalPosition.top - 10)
+            const sliderJoinYAbs = (finalPosition.top - 10) + 20 // 20px down from slider top
             
-            // Calculate positions relative to cell and slider alignment
-            const cellCenterY = (originRect.top + originRect.height / 2) - (finalPosition.top - 10)
-            const sliderTopY = 20 // 20px down from slider top to account for rounded corner
+            // Left edge spans the full cell right border height
+            const startY1 = originRect.top - svgTop
+            const startY2 = originRect.bottom - svgTop - 2
+            const cellHeight = startY2 - startY1
             
-            console.log('Funnel connector (animated):', { 
-              fullWidth, animatedWidth, startWidth, cellCenterY, sliderTopY,
+            // Right edge animates smoothly from cell level to slider level during width phase
+            const cellCenterY = (startY1 + startY2) / 2
+            const finalSliderY = sliderJoinYAbs - svgTop
+            
+            // During width phase: interpolate from cell center to slider position
+            const endY1 = cellCenterY + (finalSliderY - cellCenterY) * funnelProgress.width
+            
+            // During height phase: grow downward from current position
+            const endHeightMax = 40
+            const endHeight = Math.min(endHeightMax, 12 + 28 * funnelProgress.height)
+            const endY2 = endY1 + endHeight
+            
+            console.log('Funnel connector (full height):', { 
+              fullWidth, animatedWidth, cellHeight, startY1, startY2, endY1, endY2,
               widthProgress: funnelProgress.width, heightProgress: funnelProgress.height 
             })
-            
-            // Create tunnel from cell center to slider top edge
-            const startY1 = cellCenterY - startWidth/2
-            const startY2 = cellCenterY + startWidth/2
-            const endY1 = sliderTopY
-            const endY2 = sliderTopY + (startWidth + 20 * funnelProgress.height) // Expand downward during height phase
             
             // Control points for smooth curves - adjust based on width progress
             const cp1x = animatedWidth * 0.3
             const cp2x = animatedWidth * 0.7
             
+            // Adjust control point Y positions to create smooth curves
+            // Top curve should curve downward toward slider
+            const cp1y_top = startY1 + Math.abs(endY1 - startY1) * 0.3 // Below start point for downward curve
+            const cp2y_top = endY1 - 5 // Slightly above target
+            // Bottom curve should be more controlled to avoid artifacts
+            const cp1y_bottom = startY2 - Math.abs(startY2 - endY2) * 0.2 // Slightly above start point
+            const cp2y_bottom = endY2 + 3 // Slightly below target for gentler curve
+            
             const path = `
               M 5,${startY1}
-              C ${cp1x},${startY1} ${cp2x},${endY1} ${animatedWidth - 5},${endY1}
+              C ${cp1x},${cp1y_top} ${cp2x},${cp2y_top} ${animatedWidth - 5},${endY1}
               L ${animatedWidth - 5},${endY2}
-              C ${cp2x},${endY2} ${cp1x},${startY2} 5,${startY2}
+              C ${cp2x},${cp2y_bottom} ${cp1x},${cp1y_bottom} 5,${startY2}
               Z
             `
             
@@ -317,7 +356,7 @@ export default function ProjectedValueSlider({
             top: animationStage === 'initial' ? startPosition.top : finalPosition.top,
             left: animationStage === 'initial' ? startPosition.left : finalPosition.left,
             width: animationStage === 'initial' ? '20px' : '320px',
-            height: animationStage === 'initial' || animationStage === 'width' ? '20px' : 'auto',
+            height: animationStage === 'initial' || animationStage === 'width' ? '20px' : targetHeight,
             transition: animationStage === 'width' 
               ? `width ${ANIMATION_CONFIG.twoStage.widthDuration}ms ${ANIMATION_CONFIG.twoStage.easing}, top ${ANIMATION_CONFIG.twoStage.widthDuration}ms ${ANIMATION_CONFIG.twoStage.easing}, left ${ANIMATION_CONFIG.twoStage.widthDuration}ms ${ANIMATION_CONFIG.twoStage.easing}, box-shadow ${ANIMATION_CONFIG.twoStage.widthDuration}ms ${ANIMATION_CONFIG.twoStage.easing}`
               : animationStage === 'height'
