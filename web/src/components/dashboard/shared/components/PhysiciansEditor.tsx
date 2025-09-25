@@ -44,7 +44,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
   const fyExisting = sc.future.find((f) => f.year === year)
   const defaultPhysiciansIfNeeded = physiciansOverride ?? (scenario === 'A' ? scenarioADefaultsByYear(year) : scenarioBDefaultsByYear(year))
-  const jsDefault = year >= 2024 ? defaultPhysiciansIfNeeded.find((p) => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire')) : undefined
+  const suszkoDefault = year >= 2024 ? defaultPhysiciansIfNeeded.find((p) => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire')) : undefined
   const fy: FutureYear = fyExisting ?? {
     year,
     therapyIncome: 0,
@@ -54,11 +54,11 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
     miscEmploymentCosts: 0,
     medicalDirectorHours: undefined,
     prcsMedicalDirectorHours: undefined,
-    prcsDirectorPhysicianId: jsDefault?.id,
+    prcsDirectorPhysicianId: suszkoDefault?.id,
     physicians: defaultPhysiciansIfNeeded,
   }
   const physicians = physiciansOverride ?? fy.physicians
-  const defaultPrcsDirectorId = jsDefault?.id
+  const defaultPrcsDirectorId = suszkoDefault?.id
   const prcsSelectedId = (fy.prcsDirectorPhysicianId ?? defaultPrcsDirectorId)
 
   const handleReorder = (fromIndex: number, toIndex: number) => {

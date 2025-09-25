@@ -114,7 +114,7 @@ export default function ParametersSummary() {
         // Merge grid overrides (from future[2025]) with 2025 historic baseline
         const storeFy2025 = sc.future.find(f => f.year === 2025)
         const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
-        const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+        const suszko = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
         return {
           year,
           therapyIncome: storeFy2025?.therapyIncome ?? historic2025.therapyIncome,
@@ -125,7 +125,7 @@ export default function ParametersSummary() {
           medicalDirectorHours: storeFy2025?.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
           prcsMedicalDirectorHours: storeFy2025?.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
           consultingServicesAgreement: storeFy2025?.consultingServicesAgreement ?? DEFAULT_CONSULTING_SERVICES_2025,
-          prcsDirectorPhysicianId: storeFy2025?.prcsDirectorPhysicianId ?? js?.id,
+          prcsDirectorPhysicianId: storeFy2025?.prcsDirectorPhysicianId ?? suszko?.id,
           physicians: storeFy2025?.physicians ?? physicians,
         } as FutureYear
       }

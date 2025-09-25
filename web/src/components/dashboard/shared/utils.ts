@@ -143,6 +143,23 @@ export function abbreviatePhysicianName(name: string): string {
     return '??'
   }
   
+  // Map specific physician names to their initials
+  const nameToInitials: { [key: string]: string } = {
+    'Connor': 'MC',
+    'Werner': 'HW', 
+    'Deig': 'CD',
+    'Tinnel': 'BT',
+    'Allen': 'GA',
+    'Suszko': 'JS',
+    'Kahn': 'LK'
+  }
+  
+  // Check if this is a mapped physician name
+  const initials = nameToInitials[name.trim()]
+  if (initials) {
+    return initials
+  }
+  
   // If name is 2 characters or less, return as-is
   if (name.trim().length <= 2) {
     return name.trim()

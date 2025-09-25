@@ -174,8 +174,8 @@ export function calculateDelayedW2Payment(physician: Physician, year: number): {
     return { amount: 0, taxes: 0, periodDetails: '' }
   }
   
-  // Manual override for MC in 2025
-  if (physician.name === 'MC' && year === 2025) {
+  // Manual override for Connor in 2025
+  if (physician.name === 'Connor' && year === 2025) {
     return {
       amount: 15289.23,
       taxes: 1493.36,

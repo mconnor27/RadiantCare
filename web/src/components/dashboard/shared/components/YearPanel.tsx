@@ -68,7 +68,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
         else if (dataMode === '2024 Data' && last2024) {
           const storeFy2025 = sc.future.find((f) => f.year === 2025)
           const physicians = scenario2024Defaults()
-          const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+          const suszko = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
           // Merge store overrides (from grid sync) into 2024 baseline for display
           return {
             year: 2025,
@@ -80,7 +80,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
             medicalDirectorHours: storeFy2025?.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS,
             prcsMedicalDirectorHours: storeFy2025?.prcsMedicalDirectorHours ?? ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS,
             consultingServicesAgreement: storeFy2025?.consultingServicesAgreement ?? ACTUAL_2024_CONSULTING_SERVICES,
-            prcsDirectorPhysicianId: storeFy2025?.prcsDirectorPhysicianId ?? js?.id,
+            prcsDirectorPhysicianId: storeFy2025?.prcsDirectorPhysicianId ?? suszko?.id,
             physicians,
           } as FutureYear
         } else if (dataMode === '2025 Data' && last2025) {
@@ -88,7 +88,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           const storeFy2025 = sc.future.find((f) => f.year === 2025)
           const defaultPhysicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
           const physicians = storeFy2025?.physicians ?? defaultPhysicians
-          const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+          const suszko = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
           return {
             year: 2025,
             therapyIncome: storeFy2025?.therapyIncome ?? last2025.therapyIncome,
@@ -99,13 +99,13 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
             medicalDirectorHours: storeFy2025?.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
             prcsMedicalDirectorHours: storeFy2025?.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
             consultingServicesAgreement: storeFy2025?.consultingServicesAgreement ?? ACTUAL_2025_CONSULTING_SERVICES,
-            prcsDirectorPhysicianId: storeFy2025?.prcsDirectorPhysicianId ?? js?.id,
+            prcsDirectorPhysicianId: storeFy2025?.prcsDirectorPhysicianId ?? suszko?.id,
             physicians,
           } as FutureYear
         } else {
           // Fallback
           const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
-          const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+          const suszko = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
           return {
             year: 2025,
             therapyIncome: last2025?.therapyIncome || DEFAULT_THERAPY_INCOME_2025,
@@ -114,9 +114,9 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
             locumCosts: DEFAULT_LOCUM_COSTS_2025,
             miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
             medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS, // 2025 shared medical director amount
-            prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, // 2025 PRCS medical director amount (JS)
+            prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, // 2025 PRCS medical director amount (Suszko)
             consultingServicesAgreement: ACTUAL_2025_CONSULTING_SERVICES, // 2025 consulting services amount
-            prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
+            prcsDirectorPhysicianId: suszko?.id, // Assign PRCS to Suszko
             physicians,
           } as FutureYear
         }
@@ -535,7 +535,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           <span style={{ fontWeight: 600 }}>
             {currency(((fy.therapyIncome || 0)
               + (fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback)
-              + (((fy.prcsDirectorPhysicianId ?? (year >= 2024 ? (fy.physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))?.id) : undefined))
+              + (((fy.prcsDirectorPhysicianId ?? (year >= 2024 ? (fy.physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))?.id) : undefined))
                   ? (fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback)
                   : 0))
               + (fy.consultingServicesAgreement ?? sc.projection.consultingServicesAgreement ?? DEFAULT_CONSULTING_SERVICES_PROJECTION)))}

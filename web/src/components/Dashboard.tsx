@@ -677,7 +677,7 @@ export const useDashboardStore = create<Store>()(
               } else {
                 // Fallback to 2025 defaults
                 const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
-                const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+                const js = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
                 baselineData = {
                   year: 2025,
                   therapyIncome: last2025?.therapyIncome || DEFAULT_THERAPY_INCOME_2025,
@@ -840,7 +840,7 @@ export const useDashboardStore = create<Store>()(
             const defaultPhysicians = scenario === 'A' 
               ? (sc.dataMode === '2024 Data' ? scenario2024Defaults() : scenarioADefaultsByYear(year))
               : (sc.dataMode === '2024 Data' ? scenario2024Defaults() : scenarioBDefaultsByYear(year))
-            const jsPhysician = defaultPhysicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+            const jsPhysician = defaultPhysicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
             
             const baseline: FutureYear = {
               year,
@@ -916,7 +916,7 @@ export function usePartnerComp(year: number, scenario: ScenarioKey) {
         
         if (dataMode === '2024 Data' && last2024) {
           const physicians = scenario2024Defaults()
-          const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+          const js = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
           return {
             medicalDirectorHours: ACTUAL_2024_MEDICAL_DIRECTOR_HOURS,
             prcsMedicalDirectorHours: ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS,
@@ -929,7 +929,7 @@ export function usePartnerComp(year: number, scenario: ScenarioKey) {
           const storeFy2025 = sc.future.find((f) => f.year === 2025)
           const defaultPhysicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
           const physicians = storeFy2025?.physicians ?? defaultPhysicians
-          const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+          const js = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
           return {
             medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
             prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
@@ -939,7 +939,7 @@ export function usePartnerComp(year: number, scenario: ScenarioKey) {
           }
         } else {
           const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
-          const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+          const js = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
           return {
             medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
             prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
@@ -1170,7 +1170,7 @@ export function arePhysiciansChanged(
 
     // Determine default PRCS director for this year (JS from 2024+ if present in defaults)
     const jsDefault = year >= 2024
-      ? defaultPhysicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+      ? defaultPhysicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
       : undefined
     const defaultDirectorId = jsDefault?.id
     const selectionChanged = (fy?.prcsDirectorPhysicianId ?? undefined) !== (defaultDirectorId ?? undefined)
@@ -1191,7 +1191,7 @@ export function computeAllCompensationsForYear(year: number, scenario: ScenarioK
     const last2025 = state.historic.find((h) => h.year === 2025)
     if (last2025) {
       const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
-      const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+      const js = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
       fy = {
         year: 2025,
         therapyIncome: last2025.therapyIncome,
@@ -1356,7 +1356,7 @@ export function computeAllCompensationsForYearWithRetired(year: number, scenario
     // regardless of the baseline data mode selection
     if (last2025) {
       const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
-      const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+      const js = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
       fy = {
         year: 2025,
         therapyIncome: last2025.therapyIncome,

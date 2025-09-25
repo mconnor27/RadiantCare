@@ -1,15 +1,24 @@
 import { useMemo, useState } from 'react'
 import equityData from '../../../../../historical_data/2025_equity.json'
+import summaryData from '../../../../../historical_data/2025_summary.json'
 import { PARTNER_COMPENSATION_CONFIG } from '../../../shared/defaults'
+import { useDashboardStore } from '../../../../Dashboard'
+import { calculateDelayedW2Payment } from '../../../shared/calculations'
+import type { Physician } from '../../../shared/types'
 
-interface PartnerData {
+interface PhysicianData {
   [rowName: string]: {
-    [partnerName: string]: number
+    [physicianName: string]: number
   }
 }
 
-interface PartnerTotals {
-  [partnerName: string]: number
+interface PhysicianTotals {
+  [physicianName: string]: number
+}
+
+interface YTDData {
+  wages: { [physicianName: string]: number }
+  benefits: { [physicianName: string]: number }
 }
 
 // Helper function to clean up row names
@@ -40,73 +49,253 @@ function cleanRowName(accountName: string): string {
   return cleaned.trim()
 }
 
-// Parse equity data to extract partner compensation
-function parsePartnerData(): { data: PartnerData; totals: PartnerTotals } {
-  const data: PartnerData = {}
-  const totals: PartnerTotals = {}
+// Parse YTD data from summary JSON for employee wages and benefits
+function parseYTDData(): YTDData {
+  const wages: { [physicianName: string]: number } = {}
+  const benefits: { [physicianName: string]: number } = {}
   
-  // Find the Members Equity section
+  // Get column headers to map column indices to physician names
+  const columns = summaryData.Columns.Column
+  const physicianColumns: { [name: string]: number } = {}
+  
+  // Find physician columns (starting after "2-Associates")
+  let foundAssociates = false
+  columns.forEach((col, index) => {
+    if (col.ColTitle === "2-Associates") {
+      foundAssociates = true
+      return
+    }
+    if (foundAssociates && col.ColTitle && !col.ColTitle.includes("Total") && col.ColTitle !== "TOTAL") {
+      physicianColumns[col.ColTitle] = index
+    }
+  })
+  
+  // Find rows in the summary data
+  const findRowByValue = (targetValue: string): any => {
+    const searchRows = (rows: any[]): any => {
+      for (const row of rows) {
+        if (row.ColData?.[0]?.value === targetValue) {
+          return row
+        }
+        if (row.Rows?.Row) {
+          const found = searchRows(row.Rows.Row)
+          if (found) return found
+        }
+      }
+      return null
+    }
+    return searchRows(summaryData.Rows.Row)
+  }
+  
+  // Parse salary data from "8321 Salary - MD Asso."
+  const salaryRow = findRowByValue("8321 Salary - MD Asso.")
+  if (salaryRow?.ColData) {
+    Object.entries(physicianColumns).forEach(([name, colIndex]) => {
+      const value = parseFloat(salaryRow.ColData[colIndex]?.value || '0')
+      wages[name] = value
+    })
+  }
+  
+  // Parse benefits data from "8325 Employee Benefits-Insurance"
+  const benefitsRow = findRowByValue("8325 Employee Benefits-Insurance")
+  if (benefitsRow?.ColData) {
+    Object.entries(physicianColumns).forEach(([name, colIndex]) => {
+      const value = parseFloat(benefitsRow.ColData[colIndex]?.value || '0')
+      benefits[name] = value
+    })
+  }
+  
+  return { wages, benefits }
+}
+
+// Parse projected data from physician panel (for "2025 Projected" row)
+function parseProjectedData(physicians: Physician[]): { data: PhysicianData; totals: PhysicianTotals } {
+  const data: PhysicianData = {}
+  const totals: PhysicianTotals = {}
+  
+  // Initialize totals for all physicians
+  physicians.forEach(physician => {
+    totals[physician.name] = 0
+  })
+
+  // For now, projected data will be implemented later
+  // This function is kept for future total projected income implementation
+  
+  return { data, totals }
+}
+
+// Parse YTD actual data from equity and summary files (for "Paid to Date" row)
+function parseYTDPhysicianData(physicians: Physician[]): { data: PhysicianData; totals: PhysicianTotals } {
+  const data: PhysicianData = {}
+  const totals: PhysicianTotals = {}
+  
+  // Initialize totals for all physicians
+  physicians.forEach(physician => {
+    totals[physician.name] = 0
+  })
+
+  // Find the Members Equity section for partner compensation data
   const equitySection = equityData.Rows.Row
     .find(row => row.Header?.ColData?.[0]?.value === "LIABILITIES AND EQUITY")?.Rows?.Row
     ?.find(row => row.Header?.ColData?.[0]?.value === "Equity")?.Rows?.Row
     ?.find(row => row.Header?.ColData?.[0]?.value === "3001 Member's Equity")
   
-  if (!equitySection?.Rows?.Row) {
-    return { data, totals }
-  }
-  
-  // Process each partner section
-  Object.entries(PARTNER_COMPENSATION_CONFIG).forEach(([partnerName, sectionName]) => {
-    const partnerSection = equitySection.Rows.Row.find(
-      row => row.Header?.ColData?.[0]?.value === sectionName
-    )
-    
-    if (!partnerSection?.Rows?.Row) return
-    
-    // Initialize partner total
-    totals[partnerName] = 0
-    
-    // Process each line item for this partner
-    partnerSection.Rows.Row.forEach(row => {
-      if (row.type === "Data" && row.ColData) {
-        const accountName = row.ColData[0]?.value || ''
-        const value = parseFloat(row.ColData[1]?.value || '0')
-        
-        if (accountName) {
-          const cleanName = cleanRowName(accountName)
+  // Process partner equity data if available
+  if (equitySection?.Rows?.Row) {
+    Object.entries(PARTNER_COMPENSATION_CONFIG).forEach(([partnerName, sectionName]) => {
+      const partnerSection = equitySection.Rows.Row.find(
+        row => row.Header?.ColData?.[0]?.value === sectionName
+      )
+      
+      if (!partnerSection?.Rows?.Row) return
+      
+      // Process each line item for this partner
+      partnerSection.Rows.Row.forEach(row => {
+        if (row.type === "Data" && row.ColData) {
+          const accountName = row.ColData[0]?.value || ''
+          const value = parseFloat(row.ColData[1]?.value || '0')
           
-          // Initialize row if it doesn't exist
-          if (!data[cleanName]) {
-            data[cleanName] = {}
+          if (accountName) {
+            const cleanName = cleanRowName(accountName)
+            
+            // Initialize row if it doesn't exist
+            if (!data[cleanName]) {
+              data[cleanName] = {}
+            }
+            
+            // Store the value for this partner
+            let adjustedValue = value
+            
+            // Manual override: reduce Connor's Member Draw by buy-in amount
+            if (partnerName === 'Connor' && cleanName === 'Member Draw') {
+              adjustedValue = value - 48304.76
+            }
+            
+            data[cleanName][partnerName] = adjustedValue
+            totals[partnerName] += adjustedValue
           }
-          
-          // Store the value for this partner
-          data[cleanName][partnerName] = value
-          totals[partnerName] += value
         }
-      }
+      })
     })
+  }
+
+  // Get YTD data from summary file
+  const ytdData = parseYTDData()
+
+  // Process YTD data for employees
+  physicians.forEach(physician => {
+    const isEmployee = ['employee', 'employeeToPartner', 'newEmployee', 'employeeToTerminate'].includes(physician.type)
+    const isRetiredPartner = physician.type === 'partnerToRetire' && (physician.partnerPortionOfYear ?? 0) === 0
+    
+    // Add YTD W2 income for employees (including employeeToPartner)
+    if (isEmployee) {
+      let w2Income = 0
+      
+      // Get base W2 income from summary data
+      if (ytdData.wages[physician.name]) {
+        w2Income += ytdData.wages[physician.name]
+      }
+      
+      // For employeeToPartner types, also add delayed W2 payments from prior year
+      if (physician.type === 'employeeToPartner') {
+        const delayedW2 = calculateDelayedW2Payment(physician, 2025)
+        w2Income += delayedW2.amount
+      }
+      
+      // Only add row if there's actual W2 income
+      if (w2Income > 0) {
+        if (!data['W2 Income']) {
+          data['W2 Income'] = {}
+        }
+        data['W2 Income'][physician.name] = w2Income
+        totals[physician.name] += w2Income
+      }
+    }
+    
+    // Add YTD W2 income for retired partners (if any - should be negative as money paid OUT)
+    if (isRetiredPartner && ytdData.wages[physician.name]) {
+      if (!data['W2 Income']) {
+        data['W2 Income'] = {}
+      }
+      data['W2 Income'][physician.name] = -ytdData.wages[physician.name]
+      totals[physician.name] -= ytdData.wages[physician.name]
+    }
+    
+    // Add YTD health insurance benefits for employees
+    if (isEmployee && ytdData.benefits[physician.name]) {
+      if (!data['Health Insurance']) {
+        data['Health Insurance'] = {}
+      }
+      data['Health Insurance'][physician.name] = ytdData.benefits[physician.name]
+      totals[physician.name] += ytdData.benefits[physician.name]
+    }
+    
+    // Add buyout costs for retired partners (negative - money paid OUT)
+    if (isRetiredPartner && physician.buyoutCost) {
+      if (!data['Buy In/Buy Out']) {
+        data['Buy In/Buy Out'] = {}
+      }
+      data['Buy In/Buy Out'][physician.name] = -physician.buyoutCost
+      totals[physician.name] -= physician.buyoutCost
+    }
+    
+    // Manual override for Connor's buy-in (positive - money coming IN)
+    if (physician.name === 'Connor') {
+      if (!data['Buy In/Buy Out']) {
+        data['Buy In/Buy Out'] = {}
+      }
+      data['Buy In/Buy Out'][physician.name] = 48304.76
+      totals[physician.name] += 48304.76
+    }
+    
+    // Add medical director amounts
+    if (isRetiredPartner && physician.trailingSharedMdAmount) {
+      // Trailing medical director amounts for retired partners (negative - money paid OUT)
+      if (!data['Medical Director']) {
+        data['Medical Director'] = {}
+      }
+      data['Medical Director'][physician.name] = -physician.trailingSharedMdAmount
+      totals[physician.name] -= physician.trailingSharedMdAmount
+    } else if (physician.hasMedicalDirectorHours && physician.medicalDirectorHoursPercentage) {
+      // Current medical director amounts for active partners
+      // This would need to be calculated from the total medical director budget
+      // For now, we'll add this as a placeholder for future implementation
+      // TODO: Calculate actual medical director amounts for current partners
+    }
   })
   
   return { data, totals }
 }
 
 export default function PartnerCompensation() {
-  const { data, totals } = useMemo(parsePartnerData, [])
-  const partnerNames = Object.keys(PARTNER_COMPENSATION_CONFIG)
+  const store = useDashboardStore()
   const [isExpanded, setIsExpanded] = useState(false)
   
-  // Filter out rows where all partner values are 0
-  const nonZeroRowNames = Object.keys(data)
+  // Get physician data from store (using 2025 and scenario A for now)
+  const year = 2025
+  const fy2025 = store.scenarioA.future.find((f) => f.year === year)
+  const physicians = fy2025?.physicians || []
+  
+  // Parse both projected and YTD data
+  const projectedData = useMemo(() => parseProjectedData(physicians), [physicians])
+  const ytdData = useMemo(() => parseYTDPhysicianData(physicians), [physicians])
+  const physicianNames = physicians.map(p => p.name)
+  
+  // Helper function to get value 
+  function getValue(rowName: string, physicianName: string, dataSource: PhysicianData): number {
+    return dataSource[rowName]?.[physicianName] ?? 0
+  }
+  
+  // Get all unique row names from both data sources and filter out rows where all physician values are 0
+  const allRowNames = new Set([...Object.keys(projectedData.data), ...Object.keys(ytdData.data)])
+  const nonZeroRowNames = Array.from(allRowNames)
     .filter(rowName => 
-      partnerNames.some(partner => getValue(rowName, partner, data) !== 0)
+      physicianNames.some(physician => 
+        getValue(rowName, physician, projectedData.data) !== 0 || 
+        getValue(rowName, physician, ytdData.data) !== 0
+      )
     )
     .sort()
-  
-  // Helper function to get value (moved up for filtering)
-  function getValue(rowName: string, partnerName: string, dataSource = data): number {
-    return dataSource[rowName]?.[partnerName] ?? 0
-  }
   
   // Format currency values
   const formatCurrency = (value: number) => {
@@ -121,7 +310,7 @@ export default function PartnerCompensation() {
   return (
     <div style={{ 
       marginTop: 16, 
-      maxWidth: 600,
+      maxWidth: 900,
       margin: '16px auto 0 auto',
       overflowX: 'auto', 
       border: '1px solid #e5e7eb', 
@@ -129,12 +318,35 @@ export default function PartnerCompensation() {
       padding: 8, 
       background: '#ffffff' 
     }}>
-      <div style={{ fontWeight: 600, marginBottom: 8 }}>Partner Compensation</div>
+      <div style={{ fontWeight: 600, marginBottom: 8 }}>Physician Compensation</div>
       
-      <div style={{ display: 'grid', gridTemplateColumns: `2.2fr repeat(${partnerNames.length}, 1fr)`, gap: 2, fontWeight: 600 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `2.2fr repeat(${physicianNames.length}, 1fr)`, gap: 2, fontWeight: 600 }}>
         <div style={{ textAlign: 'right' }}>Account</div>
-        {partnerNames.map(partner => (
-          <div key={partner} style={{ textAlign: 'right' }}>{partner}</div>
+        {physicianNames.map(physician => (
+          <div key={physician} style={{ textAlign: 'right' }}>{physician}</div>
+        ))}
+      </div>
+      
+      {/* 2025 Projected row */}
+      <div 
+        style={{ 
+          display: 'grid', 
+          gridTemplateColumns: `2.2fr repeat(${physicianNames.length}, 1fr)`, 
+          gap: 4, 
+          padding: '4px 0', 
+          borderTop: '1px solid #f0f0f0', 
+          background: '#f8f9fa', 
+          fontWeight: 600
+        }}
+      >
+        <div style={{ textAlign: 'right' }}>2025 Projected</div>
+        {physicianNames.map(physician => (
+          <div key={physician} style={{ 
+            textAlign: 'right',
+            color: projectedData.totals[physician] < 0 ? '#dc3545' : projectedData.totals[physician] > 0 ? '#28a745' : '#6c757d'
+          }}>
+            {projectedData.totals[physician] !== 0 ? formatCurrency(projectedData.totals[physician]) : '-'}
+          </div>
         ))}
       </div>
       
@@ -143,7 +355,7 @@ export default function PartnerCompensation() {
         className="table-row-total-hover" 
         style={{ 
           display: 'grid', 
-          gridTemplateColumns: `2.2fr repeat(${partnerNames.length}, 1fr)`, 
+          gridTemplateColumns: `2.2fr repeat(${physicianNames.length}, 1fr)`, 
           gap: 4, 
           padding: '4px 0', 
           borderTop: '1px solid #f0f0f0', 
@@ -168,13 +380,13 @@ export default function PartnerCompensation() {
           </span>
           Paid To Date
         </div>
-        {partnerNames.map(partner => (
-          <div key={partner} style={{ 
+        {physicianNames.map(physician => (
+          <div key={physician} style={{ 
             textAlign: 'right',
-            color: totals[partner] < 0 ? '#dc3545' : totals[partner] > 0 ? '#28a745' : '#6c757d',
+            color: ytdData.totals[physician] < 0 ? '#dc3545' : ytdData.totals[physician] > 0 ? '#28a745' : '#6c757d',
             fontWeight: 700
           }}>
-            {formatCurrency(totals[partner])}
+            {formatCurrency(ytdData.totals[physician])}
           </div>
         ))}
       </div>
@@ -194,7 +406,7 @@ export default function PartnerCompensation() {
             className="table-row-hover"
             style={{ 
               display: 'grid', 
-              gridTemplateColumns: `2.2fr repeat(${partnerNames.length}, 1fr)`, 
+              gridTemplateColumns: `2.2fr repeat(${physicianNames.length}, 1fr)`, 
               gap: 4, 
               padding: '1px 0', 
               borderTop: '1px solid #f0f0f0', 
@@ -206,10 +418,10 @@ export default function PartnerCompensation() {
             }}
           >
             <div style={{ textAlign: 'right', paddingLeft: '16px' }}>{rowName}</div>
-            {partnerNames.map(partner => {
-              const value = getValue(rowName, partner)
+            {physicianNames.map(physician => {
+              const value = getValue(rowName, physician, ytdData.data)
               return (
-                <div key={partner} style={{ 
+                <div key={physician} style={{ 
                   textAlign: 'right',
                   color: value < 0 ? '#dc3545' : value > 0 ? '#28a745' : '#6c757d'
                 }}>
@@ -224,3 +436,6 @@ export default function PartnerCompensation() {
     </div>
   )
 }
+
+
+
