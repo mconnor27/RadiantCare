@@ -135,28 +135,23 @@ function syncGridValuesToMultiyear(
       const hasCustomValue = customProjectedValues[gridAccountName] !== undefined || 
                             customProjectedValues[normalizedName] !== undefined
       
-      // Only sync if there's a custom grid override - preserve MultiYear edits otherwise
-      if (hasCustomValue) {
-        console.log(`✅ Syncing "${gridAccountName}" -> "${normalizedName}" (${value}) -> ${multiyearField}`)
-        
-        // Update both scenarios A and B for 2025
-        try {
-          store.setFutureValue('A', 2025, multiyearField, value)
-          if (store.scenarioBEnabled) {
-            store.setFutureValue('B', 2025, multiyearField, value)
-          }
-          console.log(`   ✅ Successfully updated ${multiyearField} = ${value}`)
-        } catch (error) {
-          console.error(`   ❌ Failed to update ${multiyearField}:`, error)
+      // ALWAYS sync grid values to store for compensation calculations
+      console.log(`✅ Syncing "${gridAccountName}" -> "${normalizedName}" (${value}) -> ${multiyearField}${hasCustomValue ? ' [CUSTOM]' : ' [DEFAULT]'}`)
+      
+      // Update both scenarios A and B for 2025
+      try {
+        store.setFutureValue('A', 2025, multiyearField, value)
+        if (store.scenarioBEnabled) {
+          store.setFutureValue('B', 2025, multiyearField, value)
         }
-      } else {
-        console.log(`⏭️ Preserving "${gridAccountName}" -> "${normalizedName}" (no custom grid override, keeping MultiYear value)`)
+        console.log(`   ✅ Successfully updated ${multiyearField} = ${value}`)
+      } catch (error) {
+        console.error(`   ❌ Failed to update ${multiyearField}:`, error)
       }
     })
 
     // Handle special case: Therapy Income (sum of two components) with robust normalization
     let therapyIncomeTotal = 0
-    let hasTherapyComponents = false
     const therapyComponents: { name: string, normalized: string, value: number }[] = []
     
     THERAPY_INCOME_COMPONENTS.forEach(componentName => {
@@ -168,35 +163,22 @@ function syncGridValuesToMultiyear(
         value: componentValue 
       })
       
-      // Check if we have a custom value for this component (either original or normalized name)
-      const hasCustomComponent = customProjectedValues[componentName] !== undefined || 
-                                customProjectedValues[normalizedComponentName] !== undefined
-      
-      if (componentValue !== 0 || hasCustomComponent) {
-        therapyIncomeTotal += componentValue
-        hasTherapyComponents = true
-      }
+      therapyIncomeTotal += componentValue
     })
     
     console.log('💰 Therapy Income Components:', therapyComponents)
+    console.log(`✅ Syncing Therapy Income total (${therapyIncomeTotal}) -> therapyIncome`)
+    console.log(`   Components: ${therapyComponents.map(c => `"${c.name}" -> "${c.normalized}" = ${c.value}`).join(', ')}`)
     
-    // Only sync therapy income if we have custom grid overrides for therapy components
-    if (hasTherapyComponents) {
-      console.log(`✅ Syncing Therapy Income total (${therapyIncomeTotal}) -> therapyIncome`)
-      console.log(`   Components: ${therapyComponents.map(c => `"${c.name}" -> "${c.normalized}" = ${c.value}`).join(', ')}`)
-      
-      // Update both scenarios A and B for 2025
-      try {
-        store.setFutureValue('A', 2025, 'therapyIncome', therapyIncomeTotal)
-        if (store.scenarioBEnabled) {
-          store.setFutureValue('B', 2025, 'therapyIncome', therapyIncomeTotal)
-        }
-        console.log(`   ✅ Successfully updated therapyIncome = ${therapyIncomeTotal}`)
-      } catch (error) {
-        console.error(`   ❌ Failed to update therapyIncome:`, error)
+    // ALWAYS sync therapy income total
+    try {
+      store.setFutureValue('A', 2025, 'therapyIncome', therapyIncomeTotal)
+      if (store.scenarioBEnabled) {
+        store.setFutureValue('B', 2025, 'therapyIncome', therapyIncomeTotal)
       }
-    } else {
-      console.log(`⏭️ Preserving therapy income (no custom grid overrides, keeping MultiYear value)`)
+      console.log(`   ✅ Successfully updated therapyIncome = ${therapyIncomeTotal}`)
+    } catch (error) {
+      console.error(`   ❌ Failed to update therapyIncome:`, error)
     }
     
   } catch (error) {
@@ -302,16 +284,10 @@ export default function YearlyDataGrid() {
       console.log('🔍 Running summary calculation debugging...')
       debugSummaryCalculations(data, store.customProjectedValues)
       
-      // Only sync on initial load if there are custom projected values to apply
-      // Don't sync on every navigation to avoid overwriting MultiYear edits
+      // ALWAYS sync grid values to store on initial load for compensation calculations
       setTimeout(() => {
-        const hasCustomValues = Object.keys(store.customProjectedValues).length > 0
-        if (hasCustomValues) {
-          console.log('⏰ Initial sync - applying existing custom grid values...')
-          syncGridValuesToMultiyear(store, store.customProjectedValues, data)
-        } else {
-          console.log('⏰ No custom grid values to sync on initial load')
-        }
+        console.log('⏰ Initial sync - syncing ALL grid values to store for compensation calculations...')
+        syncGridValuesToMultiyear(store, store.customProjectedValues, data)
       }, 100)
     } catch (err) {
       console.error('Error loading yearly data:', err)

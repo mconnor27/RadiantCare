@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import equityData from '../../../../../historical_data/2025_equity.json'
 import summaryData from '../../../../../historical_data/2025_summary.json'
-import { PARTNER_COMPENSATION_CONFIG } from '../../../shared/defaults'
+import { PARTNER_COMPENSATION_CONFIG, DEFAULT_MD_SHARED_PROJECTION, DEFAULT_MD_PRCS_PROJECTION } from '../../../shared/defaults'
 import { useDashboardStore } from '../../../../Dashboard'
-import { calculateDelayedW2Payment } from '../../../shared/calculations'
+import { calculateDelayedW2Payment, calculateEmployeeTotalCost, getPartnerFTEWeight, getEmployeePortionOfYear } from '../../../shared/calculations'
 import type { Physician } from '../../../shared/types'
 
 interface PhysicianData {
@@ -108,19 +108,101 @@ function parseYTDData(): YTDData {
   return { wages, benefits }
 }
 
-// Parse projected data from physician panel (for "2025 Projected" row)
-function parseProjectedData(physicians: Physician[]): { data: PhysicianData; totals: PhysicianTotals } {
+// Local 2025 projection using future[2025] values (mirrors non-2025 logic)
+function parseProjectedData(physicians: Physician[], fy2025: any): { data: PhysicianData; totals: PhysicianTotals } {
   const data: PhysicianData = {}
   const totals: PhysicianTotals = {}
-  
-  // Initialize totals for all physicians
-  physicians.forEach(physician => {
-    totals[physician.name] = 0
-  })
 
-  // For now, projected data will be implemented later
-  // This function is kept for future total projected income implementation
-  
+  if (!fy2025) {
+    physicians.forEach(p => { totals[p.name] = 0 })
+    return { data, totals }
+  }
+
+  // Separate partners and employees
+  const partners = physicians.filter((p) => p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire')
+  const employees = physicians.filter((p) => p.type === 'employee' || p.type === 'employeeToPartner' || p.type === 'newEmployee' || p.type === 'employeeToTerminate')
+
+  // Employee total costs (wages + benefits + employer taxes) respecting portions and benefit growth
+  const totalEmployeeCosts = employees.reduce((sum, e) => {
+    const employeePortion = getEmployeePortionOfYear(e)
+    if (employeePortion <= 0) return sum
+
+    if (e.type === 'newEmployee') {
+      const prorated = { ...e, salary: (e.salary ?? 0) * employeePortion }
+      return sum + calculateEmployeeTotalCost(prorated, 2025, fy2025?.benefitCostsGrowthPct ?? 5)
+    } else if (e.type === 'employeeToTerminate') {
+      const prorated = { ...e, salary: (e.salary ?? 0) * employeePortion }
+      return sum + calculateEmployeeTotalCost(prorated, 2025, fy2025?.benefitCostsGrowthPct ?? 5)
+    } else if (e.type === 'employeeToPartner') {
+      const employeePortionSalary = (e.salary ?? 0) * employeePortion
+      const employeePortionPhysician = { ...e, salary: employeePortionSalary }
+      return sum + calculateEmployeeTotalCost(employeePortionPhysician, 2025, fy2025?.benefitCostsGrowthPct ?? 5)
+    } else {
+      return sum + calculateEmployeeTotalCost(e, 2025, fy2025?.benefitCostsGrowthPct ?? 5)
+    }
+  }, 0)
+
+  // Buyouts only for partners who worked part of the year
+  const totalBuyoutCosts = partners.reduce((sum, p) => {
+    const weight = getPartnerFTEWeight(p)
+    return sum + (p.type === 'partnerToRetire' && weight > 0 ? (p.buyoutCost ?? 0) : 0)
+  }, 0)
+
+  // Delayed W2 costs for employeeToPartner
+  const totalDelayedW2Costs = physicians.reduce((sum, p) => {
+    if (p.type === 'employeeToPartner') {
+      const delayed = calculateDelayedW2Payment(p, 2025)
+      return sum + delayed.amount + delayed.taxes
+    }
+    return sum
+  }, 0)
+
+  // Medical Director allocations
+  const medicalDirectorIncome = fy2025.medicalDirectorHours ?? DEFAULT_MD_SHARED_PROJECTION
+  const prcsMedicalDirectorIncome = fy2025.prcsDirectorPhysicianId ? (fy2025.prcsMedicalDirectorHours ?? DEFAULT_MD_PRCS_PROJECTION) : 0
+  const partnerMedicalDirectorAllocations = new Map<string, number>()
+  for (const partner of partners) {
+    if (partner.hasMedicalDirectorHours && partner.medicalDirectorHoursPercentage) {
+      const allocation = (partner.medicalDirectorHoursPercentage / 100) * medicalDirectorIncome
+      partnerMedicalDirectorAllocations.set(partner.id, allocation)
+    }
+  }
+  if (fy2025.prcsDirectorPhysicianId && prcsMedicalDirectorIncome > 0) {
+    const current = partnerMedicalDirectorAllocations.get(fy2025.prcsDirectorPhysicianId) ?? 0
+    partnerMedicalDirectorAllocations.set(fy2025.prcsDirectorPhysicianId, current + prcsMedicalDirectorIncome)
+  }
+  const totalMedicalDirectorAllocations = Array.from(partnerMedicalDirectorAllocations.values()).reduce((s, a) => s + a, 0)
+
+  // Pool from future values - include ALL income sources
+  const totalIncome = (fy2025.therapyIncome ?? 0) + medicalDirectorIncome + prcsMedicalDirectorIncome + (fy2025.consultingServicesAgreement ?? 0)
+  const totalCosts = (fy2025.nonEmploymentCosts ?? 0) + (fy2025.nonMdEmploymentCosts ?? 0) + (fy2025.miscEmploymentCosts ?? 0) + (fy2025.locumCosts ?? 0) + totalEmployeeCosts + totalBuyoutCosts + totalDelayedW2Costs
+  const basePool = Math.max(0, totalIncome - totalCosts)
+  const pool = Math.max(0, basePool - totalMedicalDirectorAllocations)
+
+  // Distribute to partners by FTE weight and add MD allocations and buyouts
+  const partnerFTEs = partners.map((p) => ({ p, weight: getPartnerFTEWeight(p) }))
+  const totalWeight = partnerFTEs.reduce((s, x) => s + x.weight, 0) || 1
+  for (const { p, weight } of partnerFTEs) {
+    // Exclude prior-year retirees with no working portion
+    if (p.type === 'partnerToRetire' && weight === 0) {
+      totals[p.name] = (p.buyoutCost ?? 0) + (p.trailingSharedMdAmount ?? 0)
+      continue
+    }
+    const fteShare = (weight / totalWeight) * pool
+    const mdAllocation = partnerMedicalDirectorAllocations.get(p.id) ?? 0
+    const trailing = (p.type === 'partnerToRetire' && (p.partnerPortionOfYear ?? 0) === 0) ? (p.trailingSharedMdAmount ?? 0) : 0
+    totals[p.name] = fteShare + mdAllocation + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0) + trailing
+  }
+
+  // Employees: show their W2 comp as projected salary (mirroring summary behavior)
+  const employeeOnly = physicians.filter((p) => p.type === 'employee' || p.type === 'newEmployee' || p.type === 'employeeToTerminate')
+  for (const e of employeeOnly) {
+    // Salary portion for the year (respect portions for new/terminate)
+    const portion = getEmployeePortionOfYear(e)
+    const salary = (e.salary ?? 0) * (e.type === 'employee' ? 1 : portion)
+    totals[e.name] = salary
+  }
+
   return { data, totals }
 }
 
@@ -172,7 +254,10 @@ function parseYTDPhysicianData(physicians: Physician[]): { data: PhysicianData; 
             }
             
             data[cleanName][partnerName] = adjustedValue
-            totals[partnerName] += adjustedValue
+            // Only add to totals if it's not Beginning Equity (since that's shown separately)
+            if (cleanName !== 'Beginning Equity') {
+              totals[partnerName] += adjustedValue
+            }
           }
         }
       })
@@ -187,7 +272,7 @@ function parseYTDPhysicianData(physicians: Physician[]): { data: PhysicianData; 
     const isEmployee = ['employee', 'employeeToPartner', 'newEmployee', 'employeeToTerminate'].includes(physician.type)
     const isRetiredPartner = physician.type === 'partnerToRetire' && (physician.partnerPortionOfYear ?? 0) === 0
     
-    // Add YTD W2 income for employees (including employeeToPartner)
+    // Add YTD W2 income for employees (including employeeToPartner) - negative since it's money paid OUT
     if (isEmployee) {
       let w2Income = 0
       
@@ -202,13 +287,13 @@ function parseYTDPhysicianData(physicians: Physician[]): { data: PhysicianData; 
         w2Income += delayedW2.amount
       }
       
-      // Only add row if there's actual W2 income
+      // Only add row if there's actual W2 income - make it negative since it's money paid OUT
       if (w2Income > 0) {
         if (!data['W2 Income']) {
           data['W2 Income'] = {}
         }
-        data['W2 Income'][physician.name] = w2Income
-        totals[physician.name] += w2Income
+        data['W2 Income'][physician.name] = -w2Income
+        totals[physician.name] -= w2Income
       }
     }
     
@@ -277,7 +362,19 @@ export default function PartnerCompensation() {
   const physicians = fy2025?.physicians || []
   
   // Parse both projected and YTD data
-  const projectedData = useMemo(() => parseProjectedData(physicians), [physicians])
+  const projectedData = useMemo(() => parseProjectedData(physicians, fy2025), [
+    physicians,
+    fy2025?.therapyIncome,
+    fy2025?.nonEmploymentCosts,
+    fy2025?.nonMdEmploymentCosts,
+    fy2025?.miscEmploymentCosts,
+    fy2025?.medicalDirectorHours,
+    fy2025?.prcsMedicalDirectorHours,
+    fy2025?.consultingServicesAgreement,
+    fy2025?.locumCosts,
+    fy2025?.prcsDirectorPhysicianId,
+    store.scenarioA.projection?.benefitCostsGrowthPct,
+  ])
   const ytdData = useMemo(() => parseYTDPhysicianData(physicians), [physicians])
   const physicianNames = physicians.map(p => p.name)
   
@@ -286,16 +383,28 @@ export default function PartnerCompensation() {
     return dataSource[rowName]?.[physicianName] ?? 0
   }
   
+  // Define the desired row order (excluding Beginning Equity which will be separate)
+  const rowOrder = [
+    'Buy In/Buy Out',
+    'W2 Income',
+    'Member Draw',
+    'Draws Additional Days Worked',
+    'Medical Director',
+    'Retirement Contributions',
+    'HSA Contribution',
+    'Health Insurance'
+  ]
+  
   // Get all unique row names from both data sources and filter out rows where all physician values are 0
   const allRowNames = new Set([...Object.keys(projectedData.data), ...Object.keys(ytdData.data)])
-  const nonZeroRowNames = Array.from(allRowNames)
+  const nonZeroRowNames = rowOrder
     .filter(rowName => 
+      allRowNames.has(rowName) && 
       physicianNames.some(physician => 
         getValue(rowName, physician, projectedData.data) !== 0 || 
         getValue(rowName, physician, ytdData.data) !== 0
       )
     )
-    .sort()
   
   // Format currency values
   const formatCurrency = (value: number) => {
@@ -432,6 +541,106 @@ export default function PartnerCompensation() {
           </div>
         ))}
       </div>
+      
+      {/* Beginning Equity row - separate from Paid to Date */}
+      {allRowNames.has('Beginning Equity') && physicianNames.some(physician => getValue('Beginning Equity', physician, ytdData.data) !== 0) && (
+        <div 
+          style={{ 
+            display: 'grid', 
+            gridTemplateColumns: `2.2fr repeat(${physicianNames.length}, 1fr)`, 
+            gap: 4, 
+            padding: '4px 0', 
+            borderTop: '1px solid #f0f0f0', 
+            background: '#f8f9fa', 
+            fontWeight: 400
+          }}
+        >
+          <div style={{ textAlign: 'right' }}>Beginning Equity</div>
+          {physicianNames.map(physician => {
+            const value = getValue('Beginning Equity', physician, ytdData.data)
+            return (
+              <div key={physician} style={{ 
+                textAlign: 'right',
+                color: value < 0 ? '#dc3545' : value > 0 ? '#28a745' : '#6c757d'
+              }}>
+                {value !== 0 ? formatCurrency(value) : '-'}
+              </div>
+            )
+          })}
+        </div>
+      )}
+      
+      {/* Remaining row - sum of 2025 Projected + Paid to Date + Beginning Equity */}
+      <div 
+        style={{ 
+          display: 'grid', 
+          gridTemplateColumns: `2.2fr repeat(${physicianNames.length}, 1fr)`, 
+          gap: 4, 
+          padding: '4px 0', 
+          borderTop: '1px solid #f0f0f0', 
+          background: '#eef7ff', 
+          fontWeight: 700,
+          marginTop: '4px'
+        }}
+      >
+        <div style={{ textAlign: 'right' }}>Remaining</div>
+        {physicianNames.map(physician => {
+          const projected = projectedData.totals[physician] || 0
+          const paidToDate = ytdData.totals[physician] || 0
+          const beginningEquity = getValue('Beginning Equity', physician, ytdData.data)
+          const remaining = projected + paidToDate + beginningEquity
+          
+          return (
+            <div key={physician} style={{ 
+              textAlign: 'right',
+              color: remaining < 0 ? '#dc3545' : remaining > 0 ? '#28a745' : '#6c757d',
+              fontWeight: 700
+            }}>
+              {formatCurrency(remaining)}
+            </div>
+          )
+        })}
+      </div>
+      
+      {/* Debug section for fy2025 values */}
+      <details style={{ 
+        marginTop: '16px', 
+        padding: '8px', 
+        border: '1px solid #e5e7eb', 
+        borderRadius: '4px',
+        background: '#f9fafb',
+        fontSize: '12px'
+      }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#374151' }}>
+          Debug: FY2025 Values (for projected calculations)
+        </summary>
+        <div style={{ marginTop: '8px', fontSize: '11px' }}>
+          <strong>Custom Projected Values:</strong>
+          <pre style={{ 
+            marginTop: '4px', 
+            padding: '6px', 
+            background: '#fff', 
+            border: '1px solid #d1d5db',
+            borderRadius: '4px',
+            fontSize: '10px'
+          }}>
+            {JSON.stringify(store.customProjectedValues, null, 2)}
+          </pre>
+        </div>
+        <pre style={{ 
+          marginTop: '8px', 
+          padding: '8px', 
+          background: '#fff', 
+          border: '1px solid #d1d5db',
+          borderRadius: '4px',
+          overflow: 'auto',
+          maxHeight: '300px',
+          fontSize: '11px',
+          lineHeight: '1.4'
+        }}>
+          {JSON.stringify(fy2025, null, 2)}
+        </pre>
+      </details>
       
     </div>
   )
