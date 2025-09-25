@@ -10,6 +10,7 @@ import ChartControls from './components/ChartControls'
 import NavigationControls from './components/NavigationControls'
 import YearlyDataGrid from './components/YearlyDataGrid'
 import DetailedChart from './components/DetailedChart'
+import PartnerCompensation from './components/PartnerCompensation'
 
 // Import dashboard store and physicians editor
 import { useDashboardStore } from '../../../Dashboard'
@@ -131,6 +132,8 @@ export default function YTDDetailed() {
           showAllMonths={showAllMonths}
         />
       )}
+
+      <PartnerCompensation />
 
       <PhysiciansEditor
         year={2025}

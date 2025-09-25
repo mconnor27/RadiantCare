@@ -1,0 +1,1873 @@
+{
+    "Header": {
+     "Time": "2025-09-24T14:39:07-07:00",
+     "ReportName": "BalanceSheet",
+     "ReportBasis": "Cash",
+     "StartPeriod": "2025-01-01",
+     "EndPeriod": "2025-08-31",
+     "SummarizeColumnsBy": "Total",
+     "Currency": "USD",
+     "Option": [
+      {
+       "Name": "AccountingStandard",
+       "Value": "GAAP"
+      },
+      {
+       "Name": "NoReportData",
+       "Value": "false"
+      }
+     ]
+    },
+    "Columns": {
+     "Column": [
+      {
+       "ColTitle": "",
+       "ColType": "Account",
+       "MetaData": [
+        {
+         "Name": "ColKey",
+         "Value": "account"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Total",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "ColKey",
+         "Value": "total"
+        }
+       ]
+      }
+     ]
+    },
+    "Rows": {
+     "Row": [
+      {
+       "Header": {
+        "ColData": [
+         {
+          "value": "ASSETS"
+         },
+         {
+          "value": ""
+         }
+        ]
+       },
+       "Rows": {
+        "Row": [
+         {
+          "Header": {
+           "ColData": [
+            {
+             "value": "Current Assets"
+            },
+            {
+             "value": ""
+            }
+           ]
+          },
+          "Rows": {
+           "Row": [
+            {
+             "Header": {
+              "ColData": [
+               {
+                "value": "Bank Accounts"
+               },
+               {
+                "value": ""
+               }
+              ]
+             },
+             "Rows": {
+              "Row": [
+               {
+                "Header": {
+                 "ColData": [
+                  {
+                   "value": "1000 Cash",
+                   "id": "21"
+                  },
+                  {
+                   "value": ""
+                  }
+                 ]
+                },
+                "Rows": {
+                 "Row": [
+                  {
+                   "ColData": [
+                    {
+                     "value": "1020 SouthSound Bank Checking*5873",
+                     "id": "172"
+                    },
+                    {
+                     "value": "-35733.39"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "1023 SouthSound Bank MM *5907",
+                     "id": "173"
+                    },
+                    {
+                     "value": "219861.29"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "1024 IntraFi Sweep Account",
+                     "id": "370"
+                    },
+                    {
+                     "value": "47883.75"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "1025 Petty Cash Lacey",
+                     "id": "25"
+                    },
+                    {
+                     "value": "300.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "1027 Petty Cash Aberdeen",
+                     "id": "229"
+                    },
+                    {
+                     "value": "30.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "1028 Petty Cash Centralia",
+                     "id": "230"
+                    },
+                    {
+                     "value": "30.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "1029 Bus.Interest Acct 250013075",
+                     "id": "238"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "1037 Checking *10238 (RCP)",
+                     "id": "288"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  }
+                 ]
+                },
+                "Summary": {
+                 "ColData": [
+                  {
+                   "value": "Total 1000 Cash"
+                  },
+                  {
+                   "value": "232371.65"
+                  }
+                 ]
+                },
+                "type": "Section"
+               }
+              ]
+             },
+             "Summary": {
+              "ColData": [
+               {
+                "value": "Total Bank Accounts"
+               },
+               {
+                "value": "232371.65"
+               }
+              ]
+             },
+             "type": "Section",
+             "group": "BankAccounts"
+            },
+            {
+             "Header": {
+              "ColData": [
+               {
+                "value": "Accounts Receivable"
+               },
+               {
+                "value": ""
+               }
+              ]
+             },
+             "Rows": {
+              "Row": [
+               {
+                "Header": {
+                 "ColData": [
+                  {
+                   "value": "1030 A/R",
+                   "id": "26"
+                  },
+                  {
+                   "value": ""
+                  }
+                 ]
+                },
+                "Rows": {
+                 "Row": [
+                  {
+                   "ColData": [
+                    {
+                     "value": "1030.1 A/R - Employees",
+                     "id": "27"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "1030.2 AR /Employee 401K Loan",
+                     "id": "211"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  }
+                 ]
+                },
+                "Summary": {
+                 "ColData": [
+                  {
+                   "value": "Total 1030 A/R"
+                  },
+                  {
+                   "value": "0.00"
+                  }
+                 ]
+                },
+                "type": "Section"
+               }
+              ]
+             },
+             "Summary": {
+              "ColData": [
+               {
+                "value": "Total Accounts Receivable"
+               },
+               {
+                "value": "0.00"
+               }
+              ]
+             },
+             "type": "Section",
+             "group": "AR"
+            },
+            {
+             "Header": {
+              "ColData": [
+               {
+                "value": "Other Current Assets"
+               },
+               {
+                "value": ""
+               }
+              ]
+             },
+             "Rows": {
+              "Row": [
+               {
+                "ColData": [
+                 {
+                  "value": "1036 A/R - Member",
+                  "id": "185"
+                 },
+                 {
+                  "value": "0.00"
+                 }
+                ],
+                "type": "Data"
+               },
+               {
+                "ColData": [
+                 {
+                  "value": "1040 Deposits",
+                  "id": "28"
+                 },
+                 {
+                  "value": "0.00"
+                 }
+                ],
+                "type": "Data"
+               },
+               {
+                "ColData": [
+                 {
+                  "value": "1060 Due to/from Grays Harbor Prop.",
+                  "id": "171"
+                 },
+                 {
+                  "value": "0.00"
+                 }
+                ],
+                "type": "Data"
+               },
+               {
+                "ColData": [
+                 {
+                  "value": "1061 Due to/from RC Lewis Co",
+                  "id": "188"
+                 },
+                 {
+                  "value": "0.00"
+                 }
+                ],
+                "type": "Data"
+               },
+               {
+                "ColData": [
+                 {
+                  "value": "1065 COBRA receivable",
+                  "id": "234"
+                 },
+                 {
+                  "value": "0.00"
+                 }
+                ],
+                "type": "Data"
+               },
+               {
+                "ColData": [
+                 {
+                  "value": "1066 Employee Payroll Advance",
+                  "id": "268"
+                 },
+                 {
+                  "value": "0.00"
+                 }
+                ],
+                "type": "Data"
+               },
+               {
+                "ColData": [
+                 {
+                  "value": "1067 Employee Loan Receivable",
+                  "id": "279"
+                 },
+                 {
+                  "value": "0.00"
+                 }
+                ],
+                "type": "Data"
+               },
+               {
+                "ColData": [
+                 {
+                  "value": "1070 Due to/from RadiantCare Phys",
+                  "id": "186"
+                 },
+                 {
+                  "value": "0.00"
+                 }
+                ],
+                "type": "Data"
+               },
+               {
+                "ColData": [
+                 {
+                  "value": "1080 Receivable From Providence",
+                  "id": "286"
+                 },
+                 {
+                  "value": "0.00"
+                 }
+                ],
+                "type": "Data"
+               }
+              ]
+             },
+             "Summary": {
+              "ColData": [
+               {
+                "value": "Total Other Current Assets"
+               },
+               {
+                "value": "0.00"
+               }
+              ]
+             },
+             "type": "Section",
+             "group": "OtherCurrentAssets"
+            }
+           ]
+          },
+          "Summary": {
+           "ColData": [
+            {
+             "value": "Total Current Assets"
+            },
+            {
+             "value": "232371.65"
+            }
+           ]
+          },
+          "type": "Section",
+          "group": "CurrentAssets"
+         },
+         {
+          "Header": {
+           "ColData": [
+            {
+             "value": "Fixed Assets"
+            },
+            {
+             "value": ""
+            }
+           ]
+          },
+          "Rows": {
+           "Row": [
+            {
+             "ColData": [
+              {
+               "value": "2010 Leasehold Improvements",
+               "id": "30"
+              },
+              {
+               "value": "3925.37"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "ColData": [
+              {
+               "value": "2025 Medical Equipment",
+               "id": "60"
+              },
+              {
+               "value": "0.00"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "ColData": [
+              {
+               "value": "2030 Office Equipment",
+               "id": "59"
+              },
+              {
+               "value": "947.60"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "ColData": [
+              {
+               "value": "2035 Computer Equipment",
+               "id": "58"
+              },
+              {
+               "value": "17173.63"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "ColData": [
+              {
+               "value": "2040 Furniture and Fixtures",
+               "id": "57"
+              },
+              {
+               "value": "2970.24"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "ColData": [
+              {
+               "value": "2090 Accumulated Depreciation",
+               "id": "32"
+              },
+              {
+               "value": "-25016.84"
+              }
+             ],
+             "type": "Data"
+            }
+           ]
+          },
+          "Summary": {
+           "ColData": [
+            {
+             "value": "Total Fixed Assets"
+            },
+            {
+             "value": "0.00"
+            }
+           ]
+          },
+          "type": "Section",
+          "group": "FixedAssets"
+         },
+         {
+          "Header": {
+           "ColData": [
+            {
+             "value": "Other Assets"
+            },
+            {
+             "value": ""
+            }
+           ]
+          },
+          "Rows": {
+           "Row": [
+            {
+             "ColData": [
+              {
+               "value": "2400 RCP BUDGET ADJUSTMENTS",
+               "id": "191"
+              },
+              {
+               "value": "0.00"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "ColData": [
+              {
+               "value": "3050 Organization Start up Cost",
+               "id": "35"
+              },
+              {
+               "value": "2357.09"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "ColData": [
+              {
+               "value": "3051 Loan Fees",
+               "id": "227"
+              },
+              {
+               "value": "0.00"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "ColData": [
+              {
+               "value": "3052 Lease-Loan fees",
+               "id": "159"
+              },
+              {
+               "value": "0.00"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "ColData": [
+              {
+               "value": "3060 Accumulated  Amortization",
+               "id": "36"
+              },
+              {
+               "value": "-2357.09"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "ColData": [
+              {
+               "value": "3175 Buy-in Receivable - Suszko",
+               "id": "364"
+              },
+              {
+               "value": "0.00"
+              }
+             ],
+             "type": "Data"
+            }
+           ]
+          },
+          "Summary": {
+           "ColData": [
+            {
+             "value": "Total Other Assets"
+            },
+            {
+             "value": "0.00"
+            }
+           ]
+          },
+          "type": "Section",
+          "group": "OtherAssets"
+         }
+        ]
+       },
+       "Summary": {
+        "ColData": [
+         {
+          "value": "TOTAL ASSETS"
+         },
+         {
+          "value": "232371.65"
+         }
+        ]
+       },
+       "type": "Section",
+       "group": "TotalAssets"
+      },
+      {
+       "Header": {
+        "ColData": [
+         {
+          "value": "LIABILITIES AND EQUITY"
+         },
+         {
+          "value": ""
+         }
+        ]
+       },
+       "Rows": {
+        "Row": [
+         {
+          "Header": {
+           "ColData": [
+            {
+             "value": "Liabilities"
+            },
+            {
+             "value": ""
+            }
+           ]
+          },
+          "Rows": {
+           "Row": [
+            {
+             "Header": {
+              "ColData": [
+               {
+                "value": "Current Liabilities"
+               },
+               {
+                "value": ""
+               }
+              ]
+             },
+             "Rows": {
+              "Row": [
+               {
+                "Header": {
+                 "ColData": [
+                  {
+                   "value": "Accounts Payable"
+                  },
+                  {
+                   "value": ""
+                  }
+                 ]
+                },
+                "Rows": {
+                 "Row": [
+                  {
+                   "ColData": [
+                    {
+                     "value": "4000 A/P",
+                     "id": "39"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  }
+                 ]
+                },
+                "Summary": {
+                 "ColData": [
+                  {
+                   "value": "Total Accounts Payable"
+                  },
+                  {
+                   "value": "0.00"
+                  }
+                 ]
+                },
+                "type": "Section",
+                "group": "AP"
+               },
+               {
+                "Header": {
+                 "ColData": [
+                  {
+                   "value": "Credit Cards"
+                  },
+                  {
+                   "value": ""
+                  }
+                 ]
+                },
+                "Rows": {
+                 "Row": [
+                  {
+                   "ColData": [
+                    {
+                     "value": "3510 VISA Timberland",
+                     "id": "365"
+                    },
+                    {
+                     "value": "2925.42"
+                    }
+                   ],
+                   "type": "Data"
+                  }
+                 ]
+                },
+                "Summary": {
+                 "ColData": [
+                  {
+                   "value": "Total Credit Cards"
+                  },
+                  {
+                   "value": "2925.42"
+                  }
+                 ]
+                },
+                "type": "Section",
+                "group": "CreditCards"
+               },
+               {
+                "Header": {
+                 "ColData": [
+                  {
+                   "value": "Other Current Liabilities"
+                  },
+                  {
+                   "value": ""
+                  }
+                 ]
+                },
+                "Rows": {
+                 "Row": [
+                  {
+                   "ColData": [
+                    {
+                     "value": "4031 Net Payroll",
+                     "id": "41"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "4033 401-K Payable",
+                     "id": "42"
+                    },
+                    {
+                     "value": "-2000.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "4034 Roth 401k Payable",
+                     "id": "181"
+                    },
+                    {
+                     "value": "-4541.66"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "4043 401 K loan repayment",
+                     "id": "232"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "4085 Profit Sharing Payable",
+                     "id": "46"
+                    },
+                    {
+                     "value": "84500.04"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "4086 HSA Payable",
+                     "id": "273"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "4095 Deferred Gain on Sale to Provid",
+                     "id": "287"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "4150 Use Tax Payable",
+                     "id": "214"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "4151 Unclaimed Property Payable",
+                     "id": "264"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  }
+                 ]
+                },
+                "Summary": {
+                 "ColData": [
+                  {
+                   "value": "Total Other Current Liabilities"
+                  },
+                  {
+                   "value": "77958.38"
+                  }
+                 ]
+                },
+                "type": "Section",
+                "group": "OtherCurrentLiabilities"
+               }
+              ]
+             },
+             "Summary": {
+              "ColData": [
+               {
+                "value": "Total Current Liabilities"
+               },
+               {
+                "value": "80883.80"
+               }
+              ]
+             },
+             "type": "Section",
+             "group": "CurrentLiabilities"
+            },
+            {
+             "Header": {
+              "ColData": [
+               {
+                "value": "Long-Term Liabilities"
+               },
+               {
+                "value": ""
+               }
+              ]
+             },
+             "Rows": {
+              "Row": [
+               {
+                "Header": {
+                 "ColData": [
+                  {
+                   "value": "4100 Equipment Lease",
+                   "id": "149"
+                  },
+                  {
+                   "value": "0.00"
+                  }
+                 ]
+                },
+                "Rows": {
+                 "Row": [
+                  {
+                   "ColData": [
+                    {
+                     "value": "4101 DLL - Lacey 2 Var Lin Accel",
+                     "id": "150"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "4102 Discount-LinAcc Lease",
+                     "id": "151"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "4111 Min Lease Pymt-CT",
+                     "id": "152"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "4112 Discount-CT Lease",
+                     "id": "153"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "4115 DLL Lease - Aberdeen Clinac IX",
+                     "id": "182"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "4120 Lease-Other Equipmnt (Paid Off)",
+                     "id": "161"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "4125 DLL Lease-Lacey Eclipse/PV/OBI",
+                     "id": "189"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "4130 DLL Lease - Centralia Clinac IX",
+                     "id": "215"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "4135 DLL Lease - Centralia Board Img",
+                     "id": "228"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "4140 DLL Lease - Aberdeen OBI/FAS",
+                     "id": "282"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  }
+                 ]
+                },
+                "Summary": {
+                 "ColData": [
+                  {
+                   "value": "Total 4100 Equipment Lease"
+                  },
+                  {
+                   "value": "0.00"
+                  }
+                 ]
+                },
+                "type": "Section"
+               },
+               {
+                "ColData": [
+                 {
+                  "value": "5010 SSB Loan 227967 - Centralia TI",
+                  "id": "47"
+                 },
+                 {
+                  "value": "0.00"
+                 }
+                ],
+                "type": "Data"
+               },
+               {
+                "ColData": [
+                 {
+                  "value": "5015 SSB Loan 228346 - Lacey GE RC16",
+                  "id": "205"
+                 },
+                 {
+                  "value": "0.00"
+                 }
+                ],
+                "type": "Data"
+               }
+              ]
+             },
+             "Summary": {
+              "ColData": [
+               {
+                "value": "Total Long-Term Liabilities"
+               },
+               {
+                "value": "0.00"
+               }
+              ]
+             },
+             "type": "Section",
+             "group": "LongTermLiabilities"
+            }
+           ]
+          },
+          "Summary": {
+           "ColData": [
+            {
+             "value": "Total Liabilities"
+            },
+            {
+             "value": "80883.80"
+            }
+           ]
+          },
+          "type": "Section",
+          "group": "Liabilities"
+         },
+         {
+          "Header": {
+           "ColData": [
+            {
+             "value": "Equity"
+            },
+            {
+             "value": ""
+            }
+           ]
+          },
+          "Rows": {
+           "Row": [
+            {
+             "ColData": [
+              {
+               "value": "3000 Opening Bal Equity",
+               "id": "20"
+              },
+              {
+               "value": "0.00"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "Header": {
+              "ColData": [
+               {
+                "value": "3001 Member's Equity",
+                "id": "128"
+               },
+               {
+                "value": ""
+               }
+              ]
+             },
+             "Rows": {
+              "Row": [
+               {
+                "Header": {
+                 "ColData": [
+                  {
+                   "value": "3100 Dr. Hartman",
+                   "id": "326"
+                  },
+                  {
+                   "value": ""
+                  }
+                 ]
+                },
+                "Rows": {
+                 "Row": [
+                  {
+                   "ColData": [
+                    {
+                     "value": "3102 Beginning Equity - Hartman",
+                     "id": "329"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3105 Member Contribution - Hartman",
+                     "id": "327"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3110 Member Draw - Hartman",
+                     "id": "337"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3113 Med Dir - Hartman",
+                     "id": "332"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3115 ES Payments - Hartman",
+                     "id": "333"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3120 Retirement Contributions - Hart",
+                     "id": "334"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3125 Health Insurance - Hartman",
+                     "id": "328"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  }
+                 ]
+                },
+                "Summary": {
+                 "ColData": [
+                  {
+                   "value": "Total 3100 Dr. Hartman"
+                  },
+                  {
+                   "value": "0.00"
+                  }
+                 ]
+                },
+                "type": "Section"
+               },
+               {
+                "Header": {
+                 "ColData": [
+                  {
+                   "value": "3200 Dr. Connor",
+                   "id": "372"
+                  },
+                  {
+                   "value": ""
+                  }
+                 ]
+                },
+                "Rows": {
+                 "Row": [
+                  {
+                   "ColData": [
+                    {
+                     "value": "3205 Member Contribution - Connor",
+                     "id": "374"
+                    },
+                    {
+                     "value": "30000.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3207 Member Draw - Connor",
+                     "id": "375"
+                    },
+                    {
+                     "value": "-412783.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3213 Med Dir - Connor",
+                     "id": "376"
+                    },
+                    {
+                     "value": "-20992.50"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3220 Retirement Contributions",
+                     "id": "378"
+                    },
+                    {
+                     "value": "-37000.00"
+                    }
+                   ],
+                   "type": "Data"
+                  }
+                 ]
+                },
+                "Summary": {
+                 "ColData": [
+                  {
+                   "value": "Total 3200 Dr. Connor"
+                  },
+                  {
+                   "value": "-440775.50"
+                  }
+                 ]
+                },
+                "type": "Section"
+               },
+               {
+                "Header": {
+                 "ColData": [
+                  {
+                   "value": "3400 Dr. Werner",
+                   "id": "194"
+                  },
+                  {
+                   "value": ""
+                  }
+                 ]
+                },
+                "Rows": {
+                 "Row": [
+                  {
+                   "ColData": [
+                    {
+                     "value": "3402 Beginning Equity - Werner",
+                     "id": "195"
+                    },
+                    {
+                     "value": "179982.14"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3405 Member Contribution - Werner",
+                     "id": "196"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3410 Member Draw - Werner",
+                     "id": "197"
+                    },
+                    {
+                     "value": "-179982.14"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3413 Med Dir - Werner",
+                     "id": "295"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3415 ES Payments - Werner",
+                     "id": "198"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3420 Retirement Contributions - Wern",
+                     "id": "199"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3425 Health Insurance - Werner",
+                     "id": "200"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3426 HSA Contribution - Werner",
+                     "id": "271"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3430 Life Insurance - Werner",
+                     "id": "201"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3455 RC Lewis County - Werner",
+                     "id": "203"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  }
+                 ]
+                },
+                "Summary": {
+                 "ColData": [
+                  {
+                   "value": "Total 3400 Dr. Werner"
+                  },
+                  {
+                   "value": "0.00"
+                  }
+                 ]
+                },
+                "type": "Section"
+               },
+               {
+                "Header": {
+                 "ColData": [
+                  {
+                   "value": "3700 Dr. Allen",
+                   "id": "216"
+                  },
+                  {
+                   "value": "0.00"
+                  }
+                 ]
+                },
+                "Rows": {
+                 "Row": [
+                  {
+                   "ColData": [
+                    {
+                     "value": "3211 Draws - Additional Days Worked (Allen)",
+                     "id": "1150040001"
+                    },
+                    {
+                     "value": "-1000.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3702 Beginning equity - Allen",
+                     "id": "217"
+                    },
+                    {
+                     "value": "186918.89"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3710 Member draw - Allen",
+                     "id": "219"
+                    },
+                    {
+                     "value": "-515113.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3713 Med Dir - Allen",
+                     "id": "296"
+                    },
+                    {
+                     "value": "-29295.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3715 ES payments - Allen",
+                     "id": "220"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3720 Retirement contributions - Alle",
+                     "id": "221"
+                    },
+                    {
+                     "value": "-41333.33"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3725 Health insurance - Allen",
+                     "id": "222"
+                    },
+                    {
+                     "value": "-25335.05"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3726 HSA Contribution - Allen",
+                     "id": "272"
+                    },
+                    {
+                     "value": "-8550.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3730 Life insurance - Allen",
+                     "id": "223"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  }
+                 ]
+                },
+                "Summary": {
+                 "ColData": [
+                  {
+                   "value": "Total 3700 Dr. Allen"
+                  },
+                  {
+                   "value": "-433707.49"
+                  }
+                 ]
+                },
+                "type": "Section"
+               },
+               {
+                "Header": {
+                 "ColData": [
+                  {
+                   "value": "3900 Dr Suszko",
+                   "id": "353"
+                  },
+                  {
+                   "value": ""
+                  }
+                 ]
+                },
+                "Rows": {
+                 "Row": [
+                  {
+                   "ColData": [
+                    {
+                     "value": "3902 Beginning equity - Suszko",
+                     "id": "354"
+                    },
+                    {
+                     "value": "193145.07"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3905 Member Contribution - Suszko",
+                     "id": "355"
+                    },
+                    {
+                     "value": "0.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3910 Member Draw - Suszko",
+                     "id": "356"
+                    },
+                    {
+                     "value": "-584214.00"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3913 Med Dir - Suszko",
+                     "id": "357"
+                    },
+                    {
+                     "value": "-50812.50"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3920 Retirement Contributions - Suszko",
+                     "id": "359"
+                    },
+                    {
+                     "value": "-36958.33"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3925 Health Ins - Suszko",
+                     "id": "360"
+                    },
+                    {
+                     "value": "-21670.06"
+                    }
+                   ],
+                   "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3926 HSA Contribution - Suszko",
+                     "id": "361"
+                    },
+                    {
+                     "value": "-8550.00"
+                    }
+                   ],
+                   "type": "Data"
+                  }
+                 ]
+                },
+                "Summary": {
+                 "ColData": [
+                  {
+                   "value": "Total 3900 Dr Suszko"
+                  },
+                  {
+                   "value": "-509059.82"
+                  }
+                 ]
+                },
+                "type": "Section"
+               }
+              ]
+             },
+             "Summary": {
+              "ColData": [
+               {
+                "value": "Total 3001 Member's Equity"
+               },
+               {
+                "value": "-1383542.81"
+               }
+              ]
+             },
+             "type": "Section"
+            },
+            {
+             "ColData": [
+              {
+               "value": "3210 Member Draw - Do not use",
+               "id": "323"
+              },
+              {
+               "value": "0.00"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "ColData": [
+              {
+               "value": "3310 Member Draw - (Do not use)",
+               "id": "140"
+              },
+              {
+               "value": "0.00"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "ColData": [
+              {
+               "value": "6040 Retained Earnings",
+               "id": "17"
+              },
+              {
+               "value": "0.00"
+              }
+             ],
+             "type": "Data"
+            },
+            {
+             "ColData": [
+              {
+               "value": "Net Income"
+              },
+              {
+               "value": "1535030.66"
+              }
+             ],
+             "type": "Data",
+             "group": "NetIncome"
+            }
+           ]
+          },
+          "Summary": {
+           "ColData": [
+            {
+             "value": "Total Equity"
+            },
+            {
+             "value": "151487.85"
+            }
+           ]
+          },
+          "type": "Section",
+          "group": "Equity"
+         }
+        ]
+       },
+       "Summary": {
+        "ColData": [
+         {
+          "value": "TOTAL LIABILITIES AND EQUITY"
+         },
+         {
+          "value": "232371.65"
+         }
+        ]
+       },
+       "type": "Section",
+       "group": "TotalLiabilitiesAndEquity"
+      }
+     ]
+    }
+   }

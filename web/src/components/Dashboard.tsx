@@ -80,6 +80,7 @@ export const useDashboardStore = create<Store>()(
         },
         scenarioB: undefined,
         scenarioBEnabled: false,
+        customProjectedValues: {},
         setScenarioEnabled: (enabled) => {
           set((state) => {
             state.scenarioBEnabled = enabled
@@ -143,6 +144,14 @@ export const useDashboardStore = create<Store>()(
             const fy = sc.future.find((f) => f.year === year)
             if (fy) {
               ;(fy as any)[field] = value
+              
+              // If we're updating a 2025 baseline value, trigger projection recalculation 
+              // for future years without switching to Custom mode
+              if (year === 2025) {
+                setTimeout(() => {
+                  get().applyProjectionFromLastActual(scenario)
+                }, 0)
+              }
             }
           }),
         upsertPhysician: (scenario, year, physician) =>
@@ -693,6 +702,12 @@ export const useDashboardStore = create<Store>()(
               }
             }
             
+            // If switching AWAY FROM Custom mode, remove the custom baseline data to prevent persistence
+            if (mode !== 'Custom' && sc.dataMode === 'Custom') {
+              // Remove the custom baseline year (2025) from future years array
+              sc.future = sc.future.filter(f => f.year !== 2025)
+            }
+            
             sc.dataMode = mode
           }),
         loadSnapshot: (snapshot) =>
@@ -800,6 +815,7 @@ export const useDashboardStore = create<Store>()(
             // Reset app-level state (not handled by section resets)
             state.scenarioBEnabled = false
             state.scenarioB = undefined
+            state.customProjectedValues = {}
           }, false)
 
           // Use the dedicated reset functions to ensure consistency
@@ -845,6 +861,22 @@ export const useDashboardStore = create<Store>()(
             sc.future.unshift(baseline)
           })
         },
+        
+        // Custom projected values management
+        setCustomProjectedValue: (accountName: string, value: number) =>
+          set((state) => {
+            state.customProjectedValues[accountName] = value
+          }),
+        
+        removeCustomProjectedValue: (accountName: string) =>
+          set((state) => {
+            delete state.customProjectedValues[accountName]
+          }),
+        
+        resetCustomProjectedValues: () =>
+          set((state) => {
+            state.customProjectedValues = {}
+          }),
       }
     }),
     {
@@ -854,6 +886,7 @@ export const useDashboardStore = create<Store>()(
         scenarioA: state.scenarioA,
         scenarioBEnabled: state.scenarioBEnabled,
         scenarioB: state.scenarioB,
+        customProjectedValues: state.customProjectedValues,
       }),
     }
   )
@@ -1075,7 +1108,7 @@ export function usePartnerComp(year: number, scenario: ScenarioKey) {
               // Add trailing shared MD amount for prior-year retirees
               (p.type === 'partnerToRetire' && (p.partnerPortionOfYear ?? 0) === 0 ? (p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)) : 0),
       }))
-  }, [fy, sc, dataMode])
+  }, [fy, sc, dataMode, store])
 }
 
 // Helper function to check if physicians have been changed from defaults

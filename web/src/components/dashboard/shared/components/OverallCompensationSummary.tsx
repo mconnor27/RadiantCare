@@ -51,19 +51,17 @@ export default function OverallCompensationSummary() {
       }))
     : []
 
-  // Calculate locums data for both scenarios
+  // Calculate locums data for both scenarios (including grid overrides for 2025)
   const locumsSeriesA = years.map((y) => {
-    const fy = y === 2025
-      ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-      : store.scenarioA.future.find(f => f.year === y)
-    return fy?.locumCosts ?? 0
+    const fy = store.scenarioA.future.find(f => f.year === y)
+    // Use merged future[2025] data (includes grid overrides) or fallback to default
+    return fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
   })
   const locumsSeriesB = store.scenarioBEnabled && store.scenarioB
     ? years.map((y) => {
-        const fy = y === 2025
-          ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-          : store.scenarioB!.future.find(f => f.year === y)
-        return fy?.locumCosts ?? 0
+        const fy = store.scenarioB!.future.find(f => f.year === y)
+        // Use merged future[2025] data (includes grid overrides) or fallback to default
+        return fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
       })
     : []
 
@@ -346,18 +344,17 @@ export default function OverallCompensationSummary() {
         onClick={() => handleRowClick('A', 'Locums')}>
           <div style={{ paddingLeft: '8px' }}>{store.scenarioBEnabled ? 'Locums (Scenario A)' : 'Locums'}</div>
           {years.map((y, i) => {
-            const fy = y === 2025
-              ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-              : store.scenarioA.future.find(f => f.year === y)
-            const locumCost = fy?.locumCosts ?? 0
+            const fy = store.scenarioA.future.find(f => f.year === y)
+            // Use merged future[2025] data (includes grid overrides) or fallback to default
+            const locumCost = fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
             return <div key={`LA-${i}`} style={{ textAlign: 'right' }}>{currencyOrDash(locumCost)}</div>
           })}
           <div style={{ textAlign: 'right' }}>
             {currency(years.reduce((total, y) => {
-              const fy = y === 2025
-                ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-                : store.scenarioA.future.find(f => f.year === y)
-              return total + (fy?.locumCosts ?? 0)
+              const fy = store.scenarioA.future.find(f => f.year === y)
+              // Use merged future[2025] data (includes grid overrides) or fallback to default
+              const locumCost = fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
+              return total + locumCost
             }, 0))}
           </div>
         </div>
@@ -368,18 +365,17 @@ export default function OverallCompensationSummary() {
           onClick={() => handleRowClick('B', 'Locums')}>
             <div style={{ paddingLeft: '8px' }}>Locums (Scenario B)</div>
             {years.map((y, i) => {
-              const fy = y === 2025
-                ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-                : store.scenarioB!.future.find(f => f.year === y)
-              const locumCost = fy?.locumCosts ?? 0
+              const fy = store.scenarioB!.future.find(f => f.year === y)
+              // Use merged future[2025] data (includes grid overrides) or fallback to default
+              const locumCost = fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
               return <div key={`LB-${i}`} style={{ textAlign: 'right' }}>{currencyOrDash(locumCost)}</div>
             })}
             <div style={{ textAlign: 'right' }}>
               {currency(years.reduce((total, y) => {
-                const fy = y === 2025
-                  ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-                  : store.scenarioB!.future.find(f => f.year === y)
-                return total + (fy?.locumCosts ?? 0)
+                const fy = store.scenarioB!.future.find(f => f.year === y)
+                // Use merged future[2025] data (includes grid overrides) or fallback to default
+                const locumCost = fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
+                return total + locumCost
               }, 0))}
             </div>
           </div>
@@ -390,20 +386,19 @@ export default function OverallCompensationSummary() {
           <div>{store.scenarioBEnabled ? 'Net Income for MDs (Scenario A)' : 'Net Income for MDs'}</div>
           {years.map((y) => {
             const totalComp = perYearAWithRetired.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
-            const fy = y === 2025
-              ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-              : store.scenarioA.future.find(f => f.year === y)
-            const locumCost = fy?.locumCosts ?? 0
+            const fy = store.scenarioA.future.find(f => f.year === y)
+            // Use merged future[2025] data (includes grid overrides) or fallback to default
+            const locumCost = fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
             return <div key={`SAT-${y}`} style={{ textAlign: 'right' }}>{currency(totalComp + locumCost)}</div>
           })}
           <div style={{ textAlign: 'right' }}>
             {currency(
               perYearAWithRetired.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
               years.reduce((total, y) => {
-                const fy = y === 2025
-                  ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-                  : store.scenarioA.future.find(f => f.year === y)
-                return total + (fy?.locumCosts ?? 0)
+                const fy = store.scenarioA.future.find(f => f.year === y)
+                // Use merged future[2025] data (includes grid overrides) or fallback to default
+                const locumCost = fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
+                return total + locumCost
               }, 0)
             )}
           </div>
@@ -415,20 +410,19 @@ export default function OverallCompensationSummary() {
             <div>Net Income for MDs (Scenario B)</div>
             {years.map((y) => {
               const totalComp = perYearBWithRetired.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
-              const fy = y === 2025
-                ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-                : store.scenarioB!.future.find(f => f.year === y)
-              const locumCost = fy?.locumCosts ?? 0
+              const fy = store.scenarioB!.future.find(f => f.year === y)
+              // Use merged future[2025] data (includes grid overrides) or fallback to default
+              const locumCost = fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
               return <div key={`SBT-${y}`} style={{ textAlign: 'right' }}>{currency(totalComp + locumCost)}</div>
             })}
             <div style={{ textAlign: 'right' }}>
               {currency(
                 perYearBWithRetired.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
                 years.reduce((total, y) => {
-                  const fy = y === 2025
-                    ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-                    : store.scenarioB!.future.find(f => f.year === y)
-                  return total + (fy?.locumCosts ?? 0)
+                  const fy = store.scenarioB!.future.find(f => f.year === y)
+                  // Use merged future[2025] data (includes grid overrides) or fallback to default
+                  const locumCost = fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
+                  return total + locumCost
                 }, 0)
               )}
             </div>
@@ -476,18 +470,17 @@ export default function OverallCompensationSummary() {
           onClick={() => handleScenarioRowClick('A', 'Locums')}>
           <div style={{ paddingLeft: '16px' }}>Locums (Scenario A)</div>
           {years.map((y, i) => {
-            const fy = y === 2025
-              ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-              : store.scenarioA.future.find(f => f.year === y)
-            const locumCost = fy?.locumCosts ?? 0
+            const fy = store.scenarioA.future.find(f => f.year === y)
+            // Use merged future[2025] data (includes grid overrides) or fallback to default
+            const locumCost = fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
             return <div key={`SAL-${i}`} style={{ textAlign: 'right' }}>{currencyOrDash(locumCost)}</div>
           })}
           <div style={{ textAlign: 'right' }}>
             {currency(years.reduce((total, y) => {
-              const fy = y === 2025
-                ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-                : store.scenarioA.future.find(f => f.year === y)
-              return total + (fy?.locumCosts ?? 0)
+              const fy = store.scenarioA.future.find(f => f.year === y)
+              // Use merged future[2025] data (includes grid overrides) or fallback to default
+              const locumCost = fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
+              return total + locumCost
             }, 0))}
           </div>
         </div>
@@ -497,20 +490,19 @@ export default function OverallCompensationSummary() {
           <div>Net Income for MDs (Scenario A)</div>
           {years.map((y) => {
             const totalComp = perYearA.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
-            const fy = y === 2025
-              ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-              : store.scenarioA.future.find(f => f.year === y)
-            const locumCost = fy?.locumCosts ?? 0
+            const fy = store.scenarioA.future.find(f => f.year === y)
+            // Use merged future[2025] data (includes grid overrides) or fallback to default
+            const locumCost = fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
             return <div key={`SAT-${y}`} style={{ textAlign: 'right' }}>{currency(totalComp + locumCost)}</div>
           })}
           <div style={{ textAlign: 'right' }}>
             {currency(
               perYearA.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
               years.reduce((total, y) => {
-                const fy = y === 2025
-                  ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-                  : store.scenarioA.future.find(f => f.year === y)
-                return total + (fy?.locumCosts ?? 0)
+                const fy = store.scenarioA.future.find(f => f.year === y)
+                // Use merged future[2025] data (includes grid overrides) or fallback to default
+                const locumCost = fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
+                return total + locumCost
               }, 0)
             )}
           </div>
@@ -547,18 +539,17 @@ export default function OverallCompensationSummary() {
               onClick={() => handleScenarioRowClick('B', 'Locums')}>
               <div style={{ paddingLeft: '16px' }}>Locums (Scenario B)</div>
               {years.map((y, i) => {
-                const fy = y === 2025
-                  ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-                  : store.scenarioB!.future.find(f => f.year === y)
-                const locumCost = fy?.locumCosts ?? 0
+                const fy = store.scenarioB!.future.find(f => f.year === y)
+                // Use merged future[2025] data (includes grid overrides) or fallback to default
+                const locumCost = fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
                 return <div key={`SBL-${i}`} style={{ textAlign: 'right' }}>{currencyOrDash(locumCost)}</div>
               })}
               <div style={{ textAlign: 'right' }}>
                 {currency(years.reduce((total, y) => {
-                  const fy = y === 2025
-                    ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-                    : store.scenarioB!.future.find(f => f.year === y)
-                  return total + (fy?.locumCosts ?? 0)
+                  const fy = store.scenarioB!.future.find(f => f.year === y)
+                  // Use merged future[2025] data (includes grid overrides) or fallback to default
+                  const locumCost = fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
+                  return total + locumCost
                 }, 0))}
               </div>
             </div>
@@ -568,20 +559,19 @@ export default function OverallCompensationSummary() {
               <div>Net Income for MDs (Scenario B)</div>
               {years.map((y) => {
                 const totalComp = perYearB.find(py => py.year === y)?.comps.reduce((sum, c) => sum + c.comp, 0) ?? 0
-                const fy = y === 2025
-                  ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-                  : store.scenarioB!.future.find(f => f.year === y)
-                const locumCost = fy?.locumCosts ?? 0
+                const fy = store.scenarioB!.future.find(f => f.year === y)
+                // Use merged future[2025] data (includes grid overrides) or fallback to default
+                const locumCost = fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
                 return <div key={`SBT-${y}`} style={{ textAlign: 'right' }}>{currency(totalComp + locumCost)}</div>
               })}
               <div style={{ textAlign: 'right' }}>
                 {currency(
                   perYearB.reduce((total, py) => total + py.comps.reduce((sum, c) => sum + c.comp, 0), 0) +
                   years.reduce((total, y) => {
-                    const fy = y === 2025
-                      ? { locumCosts: DEFAULT_LOCUM_COSTS_2025 } // 2025 default
-                      : store.scenarioB!.future.find(f => f.year === y)
-                    return total + (fy?.locumCosts ?? 0)
+                    const fy = store.scenarioB!.future.find(f => f.year === y)
+                    // Use merged future[2025] data (includes grid overrides) or fallback to default
+                    const locumCost = fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
+                    return total + locumCost
                   }, 0)
                 )}
               </div>

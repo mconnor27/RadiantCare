@@ -31,18 +31,22 @@ export default function ParametersSummary() {
     const last2025 = store.historic.find((h) => h.year === 2025)
 
     if (dataMode === '2024 Data' && last2024) {
+      // Merge grid overrides (from future[2025]) with 2024 historic baseline
+      const storeFy2025 = sc.future.find(f => f.year === 2025)
       baselineData = {
-        therapyIncome: last2024.therapyIncome,
-        nonEmploymentCosts: last2024.nonEmploymentCosts,
-        miscEmploymentCosts: 24623.49,
-        nonMdEmploymentCosts: 164677.44,
+        therapyIncome: storeFy2025?.therapyIncome ?? last2024.therapyIncome,
+        nonEmploymentCosts: storeFy2025?.nonEmploymentCosts ?? last2024.nonEmploymentCosts,
+        miscEmploymentCosts: storeFy2025?.miscEmploymentCosts ?? 24623.49,
+        nonMdEmploymentCosts: storeFy2025?.nonMdEmploymentCosts ?? 164677.44,
       }
     } else if (last2025) {
+      // Merge grid overrides (from future[2025]) with 2025 historic baseline
+      const storeFy2025 = sc.future.find(f => f.year === 2025)
       baselineData = {
-        therapyIncome: last2025.therapyIncome,
-        nonEmploymentCosts: last2025.nonEmploymentCosts,
-        miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-        nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+        therapyIncome: storeFy2025?.therapyIncome ?? last2025.therapyIncome,
+        nonEmploymentCosts: storeFy2025?.nonEmploymentCosts ?? last2025.nonEmploymentCosts,
+        miscEmploymentCosts: storeFy2025?.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
+        nonMdEmploymentCosts: storeFy2025?.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
       }
     } else {
       baselineData = {
@@ -107,20 +111,22 @@ export default function ParametersSummary() {
     const years = Array.from(new Set([2025, ...sc.future.map((f) => f.year)]))
     return years.map((year) => {
       if (year === 2025) {
+        // Merge grid overrides (from future[2025]) with 2025 historic baseline
+        const storeFy2025 = sc.future.find(f => f.year === 2025)
         const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
         const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
         return {
           year,
-        therapyIncome: historic2025.therapyIncome,
-        nonEmploymentCosts: historic2025.nonEmploymentCosts,
-        nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
-        locumCosts: DEFAULT_LOCUM_COSTS_2025,
-        miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-        medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS, // 2025 shared medical director amount
-        prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, // 2025 PRCS medical director amount (JS)
-        consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_2025, // 2025 consulting services amount
-        prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
-        physicians,
+          therapyIncome: storeFy2025?.therapyIncome ?? historic2025.therapyIncome,
+          nonEmploymentCosts: storeFy2025?.nonEmploymentCosts ?? historic2025.nonEmploymentCosts,
+          nonMdEmploymentCosts: storeFy2025?.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
+          locumCosts: storeFy2025?.locumCosts ?? DEFAULT_LOCUM_COSTS_2025,
+          miscEmploymentCosts: storeFy2025?.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
+          medicalDirectorHours: storeFy2025?.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
+          prcsMedicalDirectorHours: storeFy2025?.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
+          consultingServicesAgreement: storeFy2025?.consultingServicesAgreement ?? DEFAULT_CONSULTING_SERVICES_2025,
+          prcsDirectorPhysicianId: storeFy2025?.prcsDirectorPhysicianId ?? js?.id,
+          physicians: storeFy2025?.physicians ?? physicians,
         } as FutureYear
       }
       return sc.future.find((f) => f.year === year) as FutureYear

@@ -614,16 +614,102 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
     }).format(Math.round(numValue))
   }
 
+  // --- Bottom custom section helpers (dynamic) ---
+  const normalizeLabel = (label: string): string => {
+    return (label || '')
+      .replace(/\s*ⓘ\s*$/, '')
+      .replace(/^\s+/, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+  }
+
+  const isBottomCustomGroup = (rowLike: any): boolean => {
+    const grp = rowLike?.group
+    return grp === 'SummaryIncome' || grp === 'SummaryCosts' || grp === 'SummaryNetIncome'
+  }
+
+  const getMainProjectedByPattern = (pattern: RegExp): number => {
+    const lastIdx = columnTitles.length - 1
+    for (const r of flattenedRows) {
+      const nm = r.colData?.[0]?.value
+      if (!nm) continue
+      if (isBottomCustomGroup(r)) continue
+      const normalized = normalizeLabel(nm)
+      if (pattern.test(normalized)) {
+        if (customProjectedValues[nm] !== undefined) {
+          return Number(customProjectedValues[nm]) || 0
+        }
+        const raw = r.colData?.[lastIdx]?.value
+        return parseFloat((raw ?? '0').toString().replace(/[,$\s]/g, '')) || 0
+      }
+    }
+    return 0
+  }
+
+  const sumMainProjectedByPatterns = (patterns: (string | RegExp)[]): number => {
+    let total = 0
+    for (const p of patterns) {
+      const rx = typeof p === 'string' ? new RegExp(p) : p
+      total += getMainProjectedByPattern(rx)
+    }
+    return total
+  }
+
+  const calculateNonEmploymentCostsDynamic = (): number => {
+    const costOfGoods = getMainProjectedByPattern(/^Total\s+Cost\s+of\s+Goods\s+Sold$/i)
+    const otherExpenses = getMainProjectedByPattern(/^Total\s+Other\s+Expenses$/i)
+    const employeePayroll = getMainProjectedByPattern(/^Total\s*8320.*Employee.*Payroll.*Expense$/i)
+    return costOfGoods + otherExpenses - employeePayroll
+  }
+
+  const calculateBottomCustomValue = (accountNameRaw: string): number => {
+    const accountName = normalizeLabel(accountNameRaw)
+    switch (accountName) {
+      // Income section data
+      case 'Therapy':
+        return getMainProjectedByPattern(/^Total\s+7100\s+Therapy\s+Income$/i)
+      case 'Medical Director Hours':
+        return sumMainProjectedByPatterns([/Medical\s*Director.*\(Shared\)/i, /Medical\s*Director.*\(PRCS\)/i])
+      case 'Consulting Agreement/Other':
+        return getMainProjectedByPattern(/^Consulting\s+Agreement\/Other$/i)
+      case 'Interest':
+        return getMainProjectedByPattern(/(7900).*Interest/i)
+
+      // Costs section data
+      case 'Non-Employment Costs':
+        return calculateNonEmploymentCostsDynamic()
+      case 'MD Payroll':
+        return sumMainProjectedByPatterns([/8322.*MD.*Associates.*Salary/i, /8325.*MD.*Associates.*Benefits/i, /8330.*MD.*Associates.*Payroll.*Tax/i, /8322.*Locums.*Salary/i])
+      case 'Staff Employment':
+        return sumMainProjectedByPatterns([/8322.*Staff.*Salary/i, /8325.*Staff.*Benefits/i, /8330.*Staff.*Payroll.*Tax/i])
+      case 'Misc Employment':
+        return sumMainProjectedByPatterns([/8334.*Employee.*gift/i, /8335.*Mileage.*reimbursement/i, /8338.*Profit.*Sharing.*Contribution/i, /8339.*Profit.*Sharing.*Plan.*Cost/i, /8340.*Recruiting.*Costs/i, /8342.*Relocation.*Cost/i])
+      default:
+        return 0
+    }
+  }
+
   // Helper: get numeric value for a row's Projected column (last numeric col)
   const getProjectedNumericForRow = (r: any): number => {
     const name = r.colData?.[0]?.value || ''
     const lastIdx = columnTitles.length - 1
+    // Dynamic calculation for bottom custom data rows
+    if (isBottomCustomGroup(r) && r.type === 'Data') {
+      const dynamicVal = calculateBottomCustomValue(name)
+      console.log(`    🔁 Bottom custom dynamic for "${normalizeLabel(name)}": ${dynamicVal}`)
+      return dynamicVal
+    }
     // Prefer custom override
     if (customProjectedValues[name] !== undefined) {
-      return Number(customProjectedValues[name]) || 0
+      const customValue = Number(customProjectedValues[name]) || 0
+      console.log(`    🎛️  Using custom override for "${name}": ${customValue}`)
+      return customValue
     }
     const raw = r.colData?.[lastIdx]?.value
     const num = parseFloat((raw ?? '0').toString().replace(/[,$\s]/g, '')) || 0
+    if (num !== 0) {
+      console.log(`    📊 Using calculated value for "${name}": ${num} (raw: "${raw}")`)
+    }
     return num
   }
 
@@ -701,52 +787,94 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       // Check if there's a custom value
       const hasCustomValue = isProjectedColumn && customProjectedValues[accountName] !== undefined
       
+      // Debug which calculation path each summary row takes
+      if (isProjectedColumn && row.type === 'Summary') {
+        console.log(`\n🔍 SUMMARY ROW PROCESSING: "${accountName}"`)
+        console.log(`  📊 Row type: ${row.type}`)
+        console.log(`  🎛️  Has custom value: ${hasCustomValue}`)
+        console.log(`  📈 Current value: "${value}"`)
+      }
+      
       // Apply custom projected value if available
       if (hasCustomValue) {
+        if (isProjectedColumn && row.type === 'Summary') {
+          console.log(`  ✅ Using custom override: ${customProjectedValues[accountName]}`)
+        }
         value = customProjectedValues[accountName].toString()
       }
       
       // Special calculated summaries (projected column only)
       if (isProjectedColumn && row.type === 'Summary') {
+        console.log('🔍 SUMMARY CALCULATION DEBUG:', accountName)
+        
         const computeSummaryByName = (pattern: RegExp): number => {
           // Find the summary row in flattenedRows and sum its section data
           const target = flattenedRows.find(r => {
             const n = r.colData?.[0]?.value || ''
             return r.type === 'Summary' && pattern.test(n)
           })
-          if (!target) return 0
+          if (!target) {
+            console.log('  ❌ Target summary row not found for pattern:', pattern)
+            return 0
+          }
           const originalIndex = flattenedRows.indexOf(target)
-          if (originalIndex < 0) return 0
+          if (originalIndex < 0) {
+            console.log('  ❌ Target not found in flattenedRows')
+            return 0
+          }
           // find nearest Section above at the same level
           let startIdx = 0
           for (let i = originalIndex - 1; i >= 0; i--) {
             const r = flattenedRows[i]
             if (r.type === 'Section' && r.level === target.level) {
               startIdx = i
+              console.log(`  📍 Found section at index ${i}:`, r.colData?.[0]?.value, `(level ${r.level})`)
               break
             }
           }
           let sum = 0
+          const dataRowsIncluded = []
           for (let i = startIdx + 1; i < originalIndex; i++) {
             const r = flattenedRows[i]
             if (r.type === 'Data') {
-              sum += getProjectedNumericForRow(r)
+              const value = getProjectedNumericForRow(r)
+              sum += value
+              dataRowsIncluded.push({ name: r.colData?.[0]?.value, value, index: i })
             }
           }
+          console.log(`  📊 Data rows included (${dataRowsIncluded.length}):`, dataRowsIncluded)
+          console.log(`  💰 Total sum: ${sum}`)
           return sum
         }
 
         if (/^net\s+operating\s+income$/i.test(accountName)) {
+          console.log(`  🧮 Using SPECIAL calculation: Net Operating Income`)
           const totalGrossIncome = computeSummaryByName(/^total\s+gross\s+income$/i)
           const totalCOGS = computeSummaryByName(/^total\s+cost\s+of\s+goods\s+sold$/i)
           const grossProfit = totalGrossIncome - totalCOGS
           const totalExpenses = computeSummaryByName(/^total\s+expenses$/i)
-          value = (grossProfit - totalExpenses).toString()
+          const result = grossProfit - totalExpenses
+          console.log(`    Gross Profit: ${grossProfit} - Total Expenses: ${totalExpenses} = ${result}`)
+          value = result.toString()
         } else if (/^net\s+other\s+income$/i.test(accountName)) {
+          console.log(`  🧮 Using SPECIAL calculation: Net Other Income`)
           const totalOtherIncome = computeSummaryByName(/^total\s+other\s+income$/i)
           const totalOtherExpenses = computeSummaryByName(/^total\s+other\s+expenses$/i)
-          value = (totalOtherIncome - totalOtherExpenses).toString()
+          const result = totalOtherIncome - totalOtherExpenses
+          console.log(`    Total Other Income: ${totalOtherIncome} - Total Other Expenses: ${totalOtherExpenses} = ${result}`)
+          value = result.toString()
+        } else if (/^net\s+income\s+for\s+mds$/i.test(accountName)) {
+          console.log(`  🧮 Using SPECIAL calculation: Net Income for MDs (dynamic from main data)`)
+          const netIncome = getMainProjectedByPattern(/^Net\s+Income$/i)
+          const mdSalary = getMainProjectedByPattern(/8322.*MD.*Associates.*Salary/i)
+          const mdBenefits = getMainProjectedByPattern(/8325.*MD.*Associates.*Benefits/i)
+          const locumsSalary = getMainProjectedByPattern(/8322.*Locums.*Salary/i)
+          const guaranteedPayments = getMainProjectedByPattern(/8343.*Guaranteed.*Payments/i)
+          const result = netIncome + mdSalary + mdBenefits + locumsSalary + guaranteedPayments
+          console.log(`    NetIncome(${netIncome}) + MDSalary(${mdSalary}) + MDBenefits(${mdBenefits}) + Locums(${locumsSalary}) + Guaranteed(${guaranteedPayments}) = ${result}`)
+          value = result.toString()
         } else if (/^net\s+income$/i.test(accountName)) {
+          console.log(`  🧮 Using SPECIAL calculation: Net Income`)
           // compute from NOI and Net Other Income
           // Compute NOI
           const totalGrossIncome = computeSummaryByName(/^total\s+gross\s+income$/i)
@@ -758,32 +886,64 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
           const totalOtherIncome = computeSummaryByName(/^total\s+other\s+income$/i)
           const totalOtherExpenses = computeSummaryByName(/^total\s+other\s+expenses$/i)
           const noiOther = totalOtherIncome - totalOtherExpenses
-          value = (noi + noiOther).toString()
+          const result = noi + noiOther
+          console.log(`    NOI: ${noi} + Net Other Income: ${noiOther} = ${result}`)
+          value = result.toString()
+        } else {
+          console.log(`  🔄 Using REGULAR calculation (fallback)`)
+          // For Summary rows that don't match special cases, dynamically sum all Data rows in the same section
+          // Find this summary row in the full flattenedRows array
+          const originalIndex = flattenedRows.indexOf(row)
+          console.log('  📍 Summary row index:', originalIndex)
+          
+          let startIdx = 0
+          if (originalIndex > -1) {
+            // Search for section header
+            for (let i = originalIndex - 1; i >= 0; i--) {
+              const r = flattenedRows[i]
+              console.log(`    Checking index ${i}: type=${r.type}, level=${r.level}, name="${r.colData?.[0]?.value}"`)
+              if (r.type === 'Section' && r.level === row.level) {
+                startIdx = i
+                console.log(`  🎯 Found matching section at index ${i}: "${r.colData?.[0]?.value}" (level ${r.level})`)
+                break
+              }
+            }
+            
+            // Sum Data rows between startIdx and originalIndex (exclusive)
+            let sum = 0
+            const includedRows = []
+            console.log(`  🔢 Summing data rows from index ${startIdx + 1} to ${originalIndex - 1}:`)
+            for (let i = startIdx + 1; i < originalIndex; i++) {
+              const r = flattenedRows[i]
+              console.log(`    Index ${i}: type="${r.type}", name="${r.colData?.[0]?.value}"`)
+              if (r.type === 'Data') {
+                const rowValue = getProjectedNumericForRow(r)
+                sum += rowValue
+                includedRows.push({ 
+                  index: i, 
+                  name: r.colData?.[0]?.value, 
+                  value: rowValue,
+                  hasCustomOverride: customProjectedValues[r.colData?.[0]?.value || ''] !== undefined
+                })
+              }
+            }
+            console.log('  📊 Included data rows:', includedRows)
+            console.log(`  💰 Final sum: ${sum}`)
+            value = sum.toString()
+          } else {
+            console.log('  ❌ Summary row not found in flattenedRows array')
+          }
         }
       }
-      // For Summary rows in Projected column, dynamically sum all Data rows in the same section
-      else if (isProjectedColumn && row.type === 'Summary') {
-        // Find this summary row in the full flattenedRows array
-        const originalIndex = flattenedRows.indexOf(row)
-        let startIdx = 0
-        if (originalIndex > -1) {
-          for (let i = originalIndex - 1; i >= 0; i--) {
-            const r = flattenedRows[i]
-            if (r.type === 'Section' && r.level === row.level) {
-              startIdx = i
-              break
-            }
-          }
-          // Sum Data rows between startIdx and originalIndex (exclusive)
-          let sum = 0
-          for (let i = startIdx + 1; i < originalIndex; i++) {
-            const r = flattenedRows[i]
-            if (r.type === 'Data') {
-              sum += getProjectedNumericForRow(r)
-            }
-          }
-          value = sum.toString()
-        }
+      // Dynamic render for bottom custom data rows
+      if (
+        isProjectedColumn &&
+        row.type === 'Data' &&
+        (row.group && (row.group.startsWith('Summary') || row.group === 'SummaryIncome' || row.group === 'SummaryCosts' || row.group === 'SummaryNetIncome'))
+      ) {
+        const dynamic = calculateBottomCustomValue(accountName)
+        console.log(`  🔁 Rendering bottom custom data "${normalizeLabel(accountName)}" = ${dynamic}`)
+        value = dynamic.toString()
       }
       // Apply display adjustments for specific labels (but not for custom projected values)
       else if (isNumeric) {
@@ -1250,6 +1410,56 @@ function addSummaryRows(data: YearlyData, projectionRatio: number): any[] {
   })
 
   return summaryRows
+}
+
+// Debug utility to analyze summary calculations
+export function debugSummaryCalculations(gridData: { rows: Row[], columns: any[] }, customProjectedValues: Record<string, number> = {}): void {
+  console.log('🔍 === SUMMARY CALCULATION ANALYSIS ===')
+  
+  const projectedColumnIndex = gridData.columns.length - 1
+  const summaryRows = gridData.rows.filter(row => {
+    const firstCell = row.cells?.[0] as any
+    return firstCell?.rowType === 'Summary'
+  })
+  
+  console.log(`📊 Found ${summaryRows.length} summary rows:`)
+  
+  summaryRows.forEach((row, index) => {
+    const firstCell = row.cells?.[0] as any
+    const projectedCell = row.cells?.[projectedColumnIndex] as any
+    const accountName = firstCell?.text || `Summary ${index}`
+    const projectedValue = projectedCell?.text || '0'
+    const numericValue = parseFloat(projectedValue.replace(/[$,\s]/g, '')) || 0
+    
+    console.log(`\n${index + 1}. "${accountName}":`)
+    console.log(`   💰 Projected Value: ${projectedValue} (numeric: ${numericValue})`)
+    console.log(`   🎛️  Has Custom Override: ${customProjectedValues[accountName] !== undefined}`)
+    if (customProjectedValues[accountName] !== undefined) {
+      console.log(`   ⚡ Custom Value: ${customProjectedValues[accountName]}`)
+    }
+    
+    // Determine calculation type
+    let calculationType = 'Unknown'
+    if (customProjectedValues[accountName] !== undefined) {
+      calculationType = 'Custom Override'
+    } else if (/^net\s+operating\s+income$/i.test(accountName)) {
+      calculationType = 'Special (Net Operating Income)'
+    } else if (/^net\s+other\s+income$/i.test(accountName)) {
+      calculationType = 'Special (Net Other Income)'
+    } else if (/^net\s+income$/i.test(accountName)) {
+      calculationType = 'Special (Net Income)'
+    } else {
+      calculationType = 'Regular (Sum of Data Rows)'
+    }
+    console.log(`   🧮 Calculation Type: ${calculationType}`)
+  })
+  
+  console.log('\n🎛️  All Custom Overrides:')
+  Object.entries(customProjectedValues).forEach(([name, value]) => {
+    console.log(`   "${name}": ${value}`)
+  })
+  
+  console.log('🔍 === END ANALYSIS ===\n')
 }
 
 // Load and transform the yearly data

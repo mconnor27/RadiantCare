@@ -84,6 +84,13 @@ export const ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS = 32321
 export const DEFAULT_MD_SHARED_PROJECTION = 110000
 export const DEFAULT_MD_PRCS_PROJECTION = 50000
 
+// Partner Compensation Configuration - can be modified for future years
+export const PARTNER_COMPENSATION_CONFIG = {
+  Connor: '3200 Dr. Connor',
+  Allen: '3700 Dr. Allen', 
+  Suszko: '3900 Dr Suszko'
+}
+
 // Contract terms for tooltips and calculations
 export const SHARED_MD_RATE = 270 // $/hour
 export const SHARED_MD_ANNUAL_MAX = 97200 // Annual maximum

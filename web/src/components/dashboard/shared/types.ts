@@ -78,6 +78,7 @@ export type Store = {
   scenarioA: ScenarioState
   scenarioB?: ScenarioState
   scenarioBEnabled: boolean
+  customProjectedValues: Record<string, number>
   setScenarioEnabled: (enabled: boolean) => void
   setFutureValue: (
     scenario: ScenarioKey,
@@ -101,4 +102,7 @@ export type Store = {
   resetViewSettings: (scenario: ScenarioKey) => void
   setPrcsDirector: (scenario: ScenarioKey, year: number, physicianId?: string) => void
   ensureBaselineYear: (scenario: ScenarioKey, year: number) => void
+  setCustomProjectedValue: (accountName: string, value: number) => void
+  removeCustomProjectedValue: (accountName: string) => void
+  resetCustomProjectedValues: () => void
 }

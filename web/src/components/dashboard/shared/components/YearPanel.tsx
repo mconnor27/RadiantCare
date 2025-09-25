@@ -66,38 +66,40 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
         }
         // Determine baseline data based on selected data mode
         else if (dataMode === '2024 Data' && last2024) {
+          const storeFy2025 = sc.future.find((f) => f.year === 2025)
           const physicians = scenario2024Defaults()
           const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+          // Merge store overrides (from grid sync) into 2024 baseline for display
           return {
             year: 2025,
-            therapyIncome: last2024.therapyIncome,
-            nonEmploymentCosts: last2024.nonEmploymentCosts,
-            nonMdEmploymentCosts: ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS, // 2024 actual staff employment costs
-            locumCosts: ACTUAL_2024_LOCUM_COSTS, // 2024 actual locums costs
-            miscEmploymentCosts: ACTUAL_2024_MISC_EMPLOYMENT_COSTS, // 2024 actual misc employment from image
-            medicalDirectorHours: ACTUAL_2024_MEDICAL_DIRECTOR_HOURS, // 2024 shared medical director amount
-            prcsMedicalDirectorHours: ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS, // 2024 PRCS medical director amount (JS)
-            consultingServicesAgreement: ACTUAL_2024_CONSULTING_SERVICES, // 2024 consulting services amount
-            prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
+            therapyIncome: storeFy2025?.therapyIncome ?? last2024.therapyIncome,
+            nonEmploymentCosts: storeFy2025?.nonEmploymentCosts ?? last2024.nonEmploymentCosts,
+            nonMdEmploymentCosts: storeFy2025?.nonMdEmploymentCosts ?? ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS,
+            locumCosts: storeFy2025?.locumCosts ?? ACTUAL_2024_LOCUM_COSTS,
+            miscEmploymentCosts: storeFy2025?.miscEmploymentCosts ?? ACTUAL_2024_MISC_EMPLOYMENT_COSTS,
+            medicalDirectorHours: storeFy2025?.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS,
+            prcsMedicalDirectorHours: storeFy2025?.prcsMedicalDirectorHours ?? ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS,
+            consultingServicesAgreement: storeFy2025?.consultingServicesAgreement ?? ACTUAL_2024_CONSULTING_SERVICES,
+            prcsDirectorPhysicianId: storeFy2025?.prcsDirectorPhysicianId ?? js?.id,
             physicians,
           } as FutureYear
         } else if (dataMode === '2025 Data' && last2025) {
-          // Prefer store baseline edits from future[2025] for display while remaining read-only
+          // Merge store baseline edits from future[2025] for display while remaining read-only
           const storeFy2025 = sc.future.find((f) => f.year === 2025)
           const defaultPhysicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
           const physicians = storeFy2025?.physicians ?? defaultPhysicians
           const js = physicians.find(p => p.name === 'JS' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
           return {
             year: 2025,
-            therapyIncome: last2025.therapyIncome,
-            nonEmploymentCosts: last2025.nonEmploymentCosts,
-            nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+            therapyIncome: storeFy2025?.therapyIncome ?? last2025.therapyIncome,
+            nonEmploymentCosts: storeFy2025?.nonEmploymentCosts ?? last2025.nonEmploymentCosts,
+            nonMdEmploymentCosts: storeFy2025?.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
             locumCosts: storeFy2025?.locumCosts ?? DEFAULT_LOCUM_COSTS_2025,
-            miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-            medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS, // 2025 shared medical director amount
-            prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, // 2025 PRCS medical director amount (JS)
-            consultingServicesAgreement: ACTUAL_2025_CONSULTING_SERVICES, // 2025 consulting services amount
-            prcsDirectorPhysicianId: storeFy2025?.prcsDirectorPhysicianId ?? js?.id, // Prefer store selection
+            miscEmploymentCosts: storeFy2025?.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
+            medicalDirectorHours: storeFy2025?.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
+            prcsMedicalDirectorHours: storeFy2025?.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
+            consultingServicesAgreement: storeFy2025?.consultingServicesAgreement ?? ACTUAL_2025_CONSULTING_SERVICES,
+            prcsDirectorPhysicianId: storeFy2025?.prcsDirectorPhysicianId ?? js?.id,
             physicians,
           } as FutureYear
         } else {
@@ -921,39 +923,27 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
             ))}
             <div style={{ gridColumn: '1 / -1', height: 1, background: '#e5e7eb', margin: '4px 0' }} />
             <div style={{ fontWeight: 700 }}>Net Income</div>
-            <div style={{ textAlign: 'right', fontWeight: 700 }}>
-              {currency((() => {
-                // For baseline year (2025), use dataMode to determine which baseline data to use
-                if (year === 2025) {
-                  if (dataMode === '2024 Data') {
-                    // Use 2024 baseline data
-                    const historic2024 = store.historic.find(h => h.year === 2024)!
-                    return getTotalIncome(historic2024) - historic2024.nonEmploymentCosts - (historic2024.employeePayroll ?? 0)
-                  } else {
-                    // Use 2025 baseline data (default for '2025 Data' and 'Custom')
-                    const historic2025 = store.historic.find(h => h.year === 2025)!
-                    return getTotalIncome(historic2025) - historic2025.nonEmploymentCosts - (historic2025.employeePayroll ?? 0)
-                  }
-                } else {
-                  // For future years, calculate from future year data
-                  return getTotalIncome(fy!) - (fy!.nonEmploymentCosts + fy!.nonMdEmploymentCosts + fy!.miscEmploymentCosts + fy!.locumCosts + 
-                    fy!.physicians.reduce((s, p) => {
-                      if (p.type === 'employee') return s + (p.salary ?? 0)
-                      if (p.type === 'newEmployee') return s + (p.salary ?? 0) * getEmployeePortionOfYear(p)
-                      if (p.type === 'employeeToPartner') return s + (p.salary ?? 0) * getEmployeePortionOfYear(p)
-                      return s
-                    }, 0) + 
-                    fy!.physicians.reduce((s, p) => s + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0), 0) +
-                    fy!.physicians.reduce((s, p) => {
-                      if (p.type === 'employeeToPartner') {
-                        const delayed = calculateDelayedW2Payment(p, year)
-                        return s + delayed.amount + delayed.taxes
-                      }
-                      return s
-                    }, 0))
-                }
-              })())}
-            </div>
+              <div style={{ textAlign: 'right', fontWeight: 700 }}>
+                {currency((() => {
+                 // Always use fy data for consistent calculation across all years
+                 // fy already includes the merged grid overrides for 2025 read-only mode
+                 return getTotalIncome(fy!) - (fy!.nonEmploymentCosts + fy!.nonMdEmploymentCosts + fy!.miscEmploymentCosts + fy!.locumCosts + 
+                   fy!.physicians.reduce((s, p) => {
+                     if (p.type === 'employee') return s + (p.salary ?? 0)
+                     if (p.type === 'newEmployee') return s + (p.salary ?? 0) * getEmployeePortionOfYear(p)
+                     if (p.type === 'employeeToPartner') return s + (p.salary ?? 0) * getEmployeePortionOfYear(p)
+                     return s
+                   }, 0) + 
+                   fy!.physicians.reduce((s, p) => s + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0), 0) +
+                   fy!.physicians.reduce((s, p) => {
+                     if (p.type === 'employeeToPartner') {
+                       const delayed = calculateDelayedW2Payment(p, year)
+                       return s + delayed.amount + delayed.taxes
+                     }
+                     return s
+                   }, 0))
+                })())}
+              </div>
           </div>
           </div>
         </div>

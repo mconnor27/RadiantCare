@@ -2,10 +2,24 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { ReactGrid, type Row } from '@silevis/reactgrid'
 import '@silevis/reactgrid/styles.css'
 import CollapsibleSection from '../../../shared/components/CollapsibleSection'
-import { loadYearlyGridData, type CollapsibleState } from '../utils/yearlyDataTransformer'
+import { loadYearlyGridData, debugSummaryCalculations, type CollapsibleState } from '../utils/yearlyDataTransformer'
 import getDefaultValue from '../config/projectedDefaults'
 import ProjectedValueSlider from './ProjectedValueSlider'
 import { useDashboardStore } from '../../../../Dashboard'
+
+// Mapping from grid account names to multiyear field names
+// Using normalized names to be robust against whitespace, info icons, etc.
+const GRID_TO_MULTIYEAR_MAPPING: Record<string, string> = {
+  'Misc Employment': 'miscEmploymentCosts',
+  'Medical Director Hours (Shared)': 'medicalDirectorHours', 
+  'Medical Director Hours (PRCS)': 'prcsMedicalDirectorHours',
+  'Consulting Agreement/Other': 'consultingServicesAgreement',
+  'Non-Employment Costs': 'nonEmploymentCosts',
+  'Staff Employment': 'nonMdEmploymentCosts'
+}
+
+// Special handling for Therapy Income (sum of two rows)
+const THERAPY_INCOME_COMPONENTS = ['Total 7100 Therapy Income', 'Total Other Income']
 
 // Calculate projection ratio from 2025 data - same logic as yearlyDataTransformer
 async function calculateProjectionRatio(): Promise<number> {
@@ -45,6 +59,148 @@ async function calculateProjectionRatio(): Promise<number> {
   } catch (error) {
     console.warn('Failed to calculate projection ratio, falling back to 1.5 multiplier:', error)
     return 1.5
+  }
+}
+
+// Robust normalization function matching the one used in yearlyDataTransformer
+const normalizeAccountName = (label: string): string => {
+  return (label || '')
+    .replace(/\s*ⓘ\s*$/, '') // Remove info icons
+    .replace(/^\s+/, '') // Remove leading whitespace
+    .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
+    .trim() // Remove trailing whitespace
+}
+
+// Function to sync grid projected values to multiyear store
+function syncGridValuesToMultiyear(
+  store: any,
+  customProjectedValues: Record<string, number>,
+  gridData: { rows: any[], columns: any[] }
+) {
+  console.log('🔄 Syncing grid values to multiyear store...')
+  console.log('📊 Grid data rows count:', gridData.rows?.length || 0)
+  console.log('🎛️ Custom projected values:', customProjectedValues)
+  
+  try {
+    // Helper to get current projected value for an account
+    const getProjectedValue = (accountName: string): number => {
+      // First check if there's a custom value (use normalized name as key)
+      const normalizedAccountName = normalizeAccountName(accountName)
+      
+      // Check both normalized and original name in custom values
+      if (customProjectedValues[accountName] !== undefined) {
+        return customProjectedValues[accountName]
+      }
+      if (customProjectedValues[normalizedAccountName] !== undefined) {
+        return customProjectedValues[normalizedAccountName]
+      }
+      
+      // Otherwise, get the value from the grid data (last column - projected)
+      const projectedColIndex = gridData.columns.length - 1
+      
+      // Find FIRST matching row (prioritizes main table over summary rows)
+      // This handles the duplicate names issue
+      const row = gridData.rows.find((row: any) => {
+        const accountCell = row.cells?.[0] as any
+        const cellText = accountCell?.text?.trim() || ''
+        
+        // Try exact match first
+        if (cellText === accountName) return true
+        
+        // Then try normalized match
+        const normalizedCellText = normalizeAccountName(cellText)
+        const normalizedSearchName = normalizeAccountName(accountName)
+        return normalizedCellText === normalizedSearchName
+      })
+      
+      if (row) {
+        const projectedCell = row.cells?.[projectedColIndex] as any
+        const cellText = projectedCell?.text || '0'
+        const value = parseFloat(cellText.replace(/[$,\s]/g, '')) || 0
+        console.log(`📋 Found "${accountName}" -> "${normalizeAccountName(accountName)}" = ${value}`)
+        return value
+      } else {
+        console.log(`❌ No match found for "${accountName}" -> "${normalizeAccountName(accountName)}"`)
+      }
+      
+      return 0
+    }
+
+    // Handle individual field mappings with robust normalization
+    Object.entries(GRID_TO_MULTIYEAR_MAPPING).forEach(([gridAccountName, multiyearField]) => {
+      const value = getProjectedValue(gridAccountName)
+      const normalizedName = normalizeAccountName(gridAccountName)
+      
+      // Check if we have a custom value for this account (either original or normalized name)
+      const hasCustomValue = customProjectedValues[gridAccountName] !== undefined || 
+                            customProjectedValues[normalizedName] !== undefined
+      
+      // Only sync if there's a custom grid override - preserve MultiYear edits otherwise
+      if (hasCustomValue) {
+        console.log(`✅ Syncing "${gridAccountName}" -> "${normalizedName}" (${value}) -> ${multiyearField}`)
+        
+        // Update both scenarios A and B for 2025
+        try {
+          store.setFutureValue('A', 2025, multiyearField, value)
+          if (store.scenarioBEnabled) {
+            store.setFutureValue('B', 2025, multiyearField, value)
+          }
+          console.log(`   ✅ Successfully updated ${multiyearField} = ${value}`)
+        } catch (error) {
+          console.error(`   ❌ Failed to update ${multiyearField}:`, error)
+        }
+      } else {
+        console.log(`⏭️ Preserving "${gridAccountName}" -> "${normalizedName}" (no custom grid override, keeping MultiYear value)`)
+      }
+    })
+
+    // Handle special case: Therapy Income (sum of two components) with robust normalization
+    let therapyIncomeTotal = 0
+    let hasTherapyComponents = false
+    const therapyComponents: { name: string, normalized: string, value: number }[] = []
+    
+    THERAPY_INCOME_COMPONENTS.forEach(componentName => {
+      const componentValue = getProjectedValue(componentName)
+      const normalizedComponentName = normalizeAccountName(componentName)
+      therapyComponents.push({ 
+        name: componentName, 
+        normalized: normalizedComponentName, 
+        value: componentValue 
+      })
+      
+      // Check if we have a custom value for this component (either original or normalized name)
+      const hasCustomComponent = customProjectedValues[componentName] !== undefined || 
+                                customProjectedValues[normalizedComponentName] !== undefined
+      
+      if (componentValue !== 0 || hasCustomComponent) {
+        therapyIncomeTotal += componentValue
+        hasTherapyComponents = true
+      }
+    })
+    
+    console.log('💰 Therapy Income Components:', therapyComponents)
+    
+    // Only sync therapy income if we have custom grid overrides for therapy components
+    if (hasTherapyComponents) {
+      console.log(`✅ Syncing Therapy Income total (${therapyIncomeTotal}) -> therapyIncome`)
+      console.log(`   Components: ${therapyComponents.map(c => `"${c.name}" -> "${c.normalized}" = ${c.value}`).join(', ')}`)
+      
+      // Update both scenarios A and B for 2025
+      try {
+        store.setFutureValue('A', 2025, 'therapyIncome', therapyIncomeTotal)
+        if (store.scenarioBEnabled) {
+          store.setFutureValue('B', 2025, 'therapyIncome', therapyIncomeTotal)
+        }
+        console.log(`   ✅ Successfully updated therapyIncome = ${therapyIncomeTotal}`)
+      } catch (error) {
+        console.error(`   ❌ Failed to update therapyIncome:`, error)
+      }
+    } else {
+      console.log(`⏭️ Preserving therapy income (no custom grid overrides, keeping MultiYear value)`)
+    }
+    
+  } catch (error) {
+    console.error('Error syncing grid values to multiyear store:', error)
   }
 }
 
@@ -91,8 +247,8 @@ export default function YearlyDataGrid() {
     annualizedBaseline: 0
   })
   
-  // Store custom projected values that override the default calculations
-  const [customProjectedValues, setCustomProjectedValues] = useState<Record<string, number>>({})
+  // Get custom projected values from store (now persisted across navigation)
+  const customProjectedValues = store.customProjectedValues
 
   // Fallback tooltip mapping by visible label text (without trailing asterisks and info icons)
   const tooltipByLabel: Record<string, string> = {
@@ -111,7 +267,7 @@ export default function YearlyDataGrid() {
 
   // Helper function to check if account is a calculated row (MD Associates, Guaranteed Payments, or Locums)
   const isCalculatedAccount = (accountName: string): boolean => {
-    const normalized = accountName.replace(/\s+/g, ' ').trim().replace(/\s*ⓘ\s*$/, '')
+    const normalized = normalizeAccountName(accountName)
     return normalized.match(/8322.*MD.*Associates.*Salary/i) ||
            normalized.match(/8325.*MD.*Associates.*Benefits/i) ||
            normalized.match(/8330.*MD.*Associates.*Payroll.*Tax/i) ||
@@ -135,19 +291,35 @@ export default function YearlyDataGrid() {
       
       // Load both the grid data and the projection ratio
       const [data, ratio] = await Promise.all([
-        loadYearlyGridData(collapsedSections, customProjectedValues, physicianData),
+        loadYearlyGridData(collapsedSections, store.customProjectedValues, physicianData),
         calculateProjectionRatio()
       ])
       
       setGridData(data)
       setProjectionRatio(ratio)
+      
+      // Debug summary calculations
+      console.log('🔍 Running summary calculation debugging...')
+      debugSummaryCalculations(data, store.customProjectedValues)
+      
+      // Only sync on initial load if there are custom projected values to apply
+      // Don't sync on every navigation to avoid overwriting MultiYear edits
+      setTimeout(() => {
+        const hasCustomValues = Object.keys(store.customProjectedValues).length > 0
+        if (hasCustomValues) {
+          console.log('⏰ Initial sync - applying existing custom grid values...')
+          syncGridValuesToMultiyear(store, store.customProjectedValues, data)
+        } else {
+          console.log('⏰ No custom grid values to sync on initial load')
+        }
+      }, 100)
     } catch (err) {
       console.error('Error loading yearly data:', err)
       setError('Failed to load yearly financial data')
     } finally {
       setLoading(false)
     }
-  }, [collapsedSections, customProjectedValues, store.scenarioA.future, store.scenarioA.projection.benefitCostsGrowthPct])
+  }, [collapsedSections, store.customProjectedValues, store.scenarioA.future, store.scenarioA.projection.benefitCostsGrowthPct, store])
 
   useEffect(() => {
     loadData()
@@ -296,17 +468,26 @@ export default function YearlyDataGrid() {
       return
     }
 
-    setCustomProjectedValues(prev => {
-      // Remove override only if matching default value
-      if (approximatelyEqual(newValue, defaultValue)) {
-        if (!prev[accountName]) return prev
-        const { [accountName]: _removed, ...rest } = prev
-        return rest
+    // Update custom projected values using store methods
+    if (approximatelyEqual(newValue, defaultValue)) {
+      // Remove override if matching default value
+      if (customProjectedValues[accountName] !== undefined) {
+        store.removeCustomProjectedValue(accountName)
       }
-      // Otherwise, set/replace override (including when set to annualized but different from default)
-      return { ...prev, [accountName]: newValue }
-    })
-  }, [slider.accountName, slider.currentValue, slider.annualizedBaseline])
+    } else {
+      // Set/replace override (including when set to annualized but different from default)
+      store.setCustomProjectedValue(accountName, newValue)
+    }
+    
+    // Trigger immediate sync to multiyear store after value change
+    // Use setTimeout to allow any dynamic recalculations to complete first
+    setTimeout(() => {
+      if (gridData.rows.length > 0) {
+        console.log('🎯 Syncing after projected value change...')
+        syncGridValuesToMultiyear(store, store.customProjectedValues, gridData)
+      }
+    }, 50) // Short delay to allow dynamic calculations to complete
+  }, [slider.accountName, slider.currentValue, slider.annualizedBaseline, store.customProjectedValues, gridData, store])
 
   return (
     <CollapsibleSection 
