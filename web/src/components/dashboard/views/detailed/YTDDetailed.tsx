@@ -130,6 +130,7 @@ export default function YTDDetailed() {
           is2025Visible={is2025Visible}
           setIs2025Visible={setIs2025Visible}
           showAllMonths={showAllMonths}
+          fy2025={fy2025}
         />
       )}
 

@@ -1,97 +1,110 @@
 import type { YTDPoint } from '../../../../../historical_data/therapyIncomeParser'
+import type { FutureYear } from '../../../shared/types'
+import { getTotalIncome } from '../../../shared/calculations'
 
 // Helper function to normalize data to percentage based on timeframe
 export const normalizeData = (
-  data: YTDPoint[], 
-  timeframe: 'year' | 'quarter' | 'month', 
-  currentPeriod?: { year: number, quarter?: number, month?: number }
+  data: YTDPoint[],
+  timeframe: 'year' | 'quarter' | 'month',
+  currentPeriod?: { year: number, quarter?: number, month?: number },
+  referenceTotal?: number
 ): YTDPoint[] => {
   if (data.length === 0) return data
   
   if (timeframe === 'year') {
-    // Use the final total of the year as 100%
-    const referenceTotal = data[data.length - 1]?.cumulativeIncome || 1
+    // Use provided reference total, or fall back to the final total of the year as 100%
+    const finalReferenceTotal = referenceTotal ?? (data[data.length - 1]?.cumulativeIncome || 1)
     return data.map(point => ({
       ...point,
-      cumulativeIncome: (point.cumulativeIncome / referenceTotal) * 100
+      cumulativeIncome: (point.cumulativeIncome / finalReferenceTotal) * 100
     }))
   } else if (timeframe === 'quarter' && currentPeriod?.quarter) {
     // For quarter mode: normalize so that the income within that quarter represents 0-100%
     const startMonth = (currentPeriod.quarter - 1) * 3 + 1
     const endMonth = startMonth + 2
-    
+
     // Find the income at the start and end of the quarter
     const quarterData = data.filter(point => {
       const [monthStr] = point.monthDay.split('-')
       const month = parseInt(monthStr, 10)
       return month >= startMonth && month <= endMonth
     })
-    
+
     if (quarterData.length === 0) {
       return data.map(point => ({ ...point, cumulativeIncome: 0 }))
     }
-    
+
     // Find income at start of quarter (end of previous quarter)
     const preQuarterData = data.filter(point => {
       const [monthStr] = point.monthDay.split('-')
       const month = parseInt(monthStr, 10)
       return month < startMonth
     })
-    const quarterStartIncome = preQuarterData.length > 0 ? 
+    const quarterStartIncome = preQuarterData.length > 0 ?
       Math.max(...preQuarterData.map(p => p.cumulativeIncome)) : 0
-    
+
     // Find income at end of quarter
     const quarterEndIncome = Math.max(...quarterData.map(p => p.cumulativeIncome))
-    const quarterTotalIncome = quarterEndIncome - quarterStartIncome
-    
-    if (quarterTotalIncome <= 0) {
+    const actualQuarterTotalIncome = quarterEndIncome - quarterStartIncome
+
+    // Use projected reference if available, otherwise use actual quarter total
+    // Note: referenceTotal for quarter should be the actual projected income for this quarter,
+    // not annual/4 (which would be wrong if income isn't evenly distributed)
+    const quarterReferenceTotal = referenceTotal || actualQuarterTotalIncome
+
+    if (quarterReferenceTotal <= 0) {
       return data.map(point => ({ ...point, cumulativeIncome: 0 }))
     }
-    
-    // Normalize: (current - quarter_start) / (quarter_end - quarter_start) * 100
+
+    // Normalize: (current - quarter_start) / quarter_reference_total * 100
     return data.map(point => ({
       ...point,
-      cumulativeIncome: Math.max(0, ((point.cumulativeIncome - quarterStartIncome) / quarterTotalIncome) * 100)
+      cumulativeIncome: Math.max(0, ((point.cumulativeIncome - quarterStartIncome) / quarterReferenceTotal) * 100)
     }))
   } else if (timeframe === 'month' && currentPeriod?.month) {
     // For month mode: normalize so that the income within that month represents 0-100%
     const monthStr = currentPeriod.month.toString().padStart(2, '0')
-    
+
     // Find the income at the start and end of the month
     const monthData = data.filter(point => point.monthDay.startsWith(monthStr))
-    
+
     if (monthData.length === 0) {
       return data.map(point => ({ ...point, cumulativeIncome: 0 }))
     }
-    
+
     // Find income at start of month (end of previous month)
     const preMonthData = data.filter(point => {
       const [monthStr] = point.monthDay.split('-')
       const month = parseInt(monthStr, 10)
       return month < currentPeriod.month!
     })
-    const monthStartIncome = preMonthData.length > 0 ? 
+    const monthStartIncome = preMonthData.length > 0 ?
       Math.max(...preMonthData.map(p => p.cumulativeIncome)) : 0
-    
+
     // Find income at end of month
     const monthEndIncome = Math.max(...monthData.map(p => p.cumulativeIncome))
-    const monthTotalIncome = monthEndIncome - monthStartIncome
-    
-    if (monthTotalIncome <= 0) {
+    const actualMonthTotalIncome = monthEndIncome - monthStartIncome
+
+    // Use projected reference if available, otherwise use actual month total
+    // Note: referenceTotal for month should be the actual projected income for this month,
+    // not annual/12 (which would be wrong if income isn't evenly distributed)
+    const monthReferenceTotal = referenceTotal || actualMonthTotalIncome
+
+    if (monthReferenceTotal <= 0) {
       return data.map(point => ({ ...point, cumulativeIncome: 0 }))
     }
-    
-    // Normalize: (current - month_start) / (month_end - month_start) * 100
+
+    // Normalize: (current - month_start) / month_reference_total * 100
     return data.map(point => ({
       ...point,
-      cumulativeIncome: Math.max(0, ((point.cumulativeIncome - monthStartIncome) / monthTotalIncome) * 100)
+      cumulativeIncome: Math.max(0, ((point.cumulativeIncome - monthStartIncome) / monthReferenceTotal) * 100)
     }))
   } else {
     // Fallback to year normalization
-    const referenceTotal = data[data.length - 1]?.cumulativeIncome || 1
+    const finalReferenceTotal = referenceTotal ?? (data[data.length - 1]?.cumulativeIncome || 1)
     return data.map(point => ({
       ...point,
-      cumulativeIncome: (point.cumulativeIncome / referenceTotal) * 100
+      cumulativeIncome: (point.cumulativeIncome / finalReferenceTotal) * 100
     }))
   }
 }
@@ -248,4 +261,78 @@ export const getCurrentDateInfo = () => {
     quarter: Math.floor(now.getMonth() / 3) + 1,
     month: now.getMonth() + 1
   }
+}
+
+// Generate projected income data from the last actual data point to Dec 31
+export const generateProjectedIncomeData = (
+  actualData: YTDPoint[], 
+  fy2025: FutureYear | undefined
+): YTDPoint[] => {
+  if (!actualData.length || !fy2025) return []
+
+  // Get the last actual data point
+  const lastActualPoint = actualData[actualData.length - 1]
+  if (!lastActualPoint) return []
+
+  // Get total projected income using the store's calculation method
+  const totalProjectedIncome = getTotalIncome(fy2025)
+
+  // Parse the last actual date to get month and day
+  const [lastMonth, lastDay] = lastActualPoint.monthDay.split('-').map(Number)
+  
+  // Start the projected data with the last actual point for seamless connection
+  const projectedPoints: YTDPoint[] = [lastActualPoint]
+  const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  
+  // Calculate total days from day after last actual point to end of year for interpolation
+  let totalDaysToEnd = 0
+  let tempMonth = lastMonth
+  let tempDay = lastDay + 1 // Count days after last actual data
+  
+  while (tempMonth <= 12) {
+    const maxDay = daysInMonth[tempMonth - 1]
+    if (tempMonth === lastMonth) {
+      // For the current month, count from tempDay to end of month
+      totalDaysToEnd += maxDay - tempDay + 1
+    } else {
+      // For subsequent months, count all days
+      totalDaysToEnd += maxDay
+    }
+    tempMonth++
+  }
+
+  if (totalDaysToEnd <= 0) return projectedPoints // Already at or past Dec 31, just return the connection point
+
+  // Calculate daily increment for linear interpolation
+  const incomeGap = totalProjectedIncome - lastActualPoint.cumulativeIncome
+  const dailyIncrement = incomeGap / totalDaysToEnd
+
+  // Generate interpolated points starting from the day after last actual data
+  let currentCumulative = lastActualPoint.cumulativeIncome
+  let month = lastMonth
+  let day = lastDay + 1
+
+  while (month <= 12) {
+    const maxDay = daysInMonth[month - 1]
+    
+    if (day > maxDay) {
+      month++
+      day = 1
+      continue
+    }
+
+    currentCumulative += dailyIncrement
+
+    const monthDay = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    
+    projectedPoints.push({
+      date: `2025-${monthDay}`,
+      monthDay,
+      cumulativeIncome: currentCumulative
+    })
+
+    day++
+  }
+
+  return projectedPoints
 }

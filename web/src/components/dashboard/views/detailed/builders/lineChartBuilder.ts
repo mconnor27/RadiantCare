@@ -11,6 +11,7 @@ interface LineChartBuilderProps {
   }
   processedHistoricalData: { year: string, data: YTDPoint[] }[]
   processedCurrentData: YTDPoint[]
+  projectedIncomeData: YTDPoint[]
   isNormalized: boolean
   is2025Visible: boolean
   timeframe: 'year' | 'quarter' | 'month'
@@ -21,6 +22,7 @@ export const buildStaticLineTraces = ({
   combinedStats,
   processedHistoricalData,
   processedCurrentData,
+  projectedIncomeData,
   isNormalized,
   is2025Visible,
   timeframe
@@ -105,6 +107,27 @@ export const buildStaticLineTraces = ({
       mode: 'lines' as const,
       name: '2025 Therapy Income (7-day avg)',
       line: { color: CURRENT_YEAR_COLOR, width: 4 },
+      visible: (is2025Visible ? true : 'legendonly') as boolean | 'legendonly',
+      hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
+    })
+  }
+
+  // Projected Total Income (2025) - dotted green line from last actual data to Dec 31
+  if (projectedIncomeData.length > 0) {
+    const projectedX = projectedIncomeData.map(p => p.monthDay)
+    const projectedY = projectedIncomeData.map(p => p.cumulativeIncome)
+    
+    traces.push({
+      x: projectedX,
+      y: projectedY,
+      type: 'scatter' as const,
+      mode: 'lines' as const,
+      name: '2025 Total Income Projection',
+      line: { 
+        color: '#4CAF50', // Green color
+        width: 3,
+        dash: 'dot' // Dotted line
+      },
       visible: (is2025Visible ? true : 'legendonly') as boolean | 'legendonly',
       hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
     })

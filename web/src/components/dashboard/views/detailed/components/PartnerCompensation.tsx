@@ -388,7 +388,7 @@ export default function PartnerCompensation() {
     'Buy In/Buy Out',
     'W2 Income',
     'Member Draw',
-    'Draws Additional Days Worked',
+    'Draws - Additional Days Worked',
     'Medical Director',
     'Retirement Contributions',
     'HSA Contribution',
