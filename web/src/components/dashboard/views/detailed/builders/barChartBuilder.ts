@@ -336,7 +336,7 @@ export const buildBarChartTraces = (
           type: 'bar' as const,
           name: 'Historical Mean (2016-2024)',
           marker: { color: HISTORICAL_MEAN_COLOR, opacity: 0.8 },
-          offsetgroup: 'historical',
+          offsetgroup: timeframe === 'year' ? undefined : 'historical',
           error_y: {
             type: 'data' as const,
             array: barChartData.combined.map((item: any) => item.error),
@@ -354,7 +354,7 @@ export const buildBarChartTraces = (
         y: barChartData.current.map((item: any) => item.income),
         type: 'bar' as const,
         name: '2025 Actual',
-        offsetgroup: '2025', // Group with 2025 projected
+        offsetgroup: timeframe === 'year' ? undefined : '2025', // Group with 2025 projected
         marker: { color: CURRENT_YEAR_COLOR, opacity: 0.9 },
         hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
       }] : []),
@@ -367,7 +367,7 @@ export const buildBarChartTraces = (
         type: 'bar' as const,
         name: '2025 Projected',
         base: barChartData.current.map((item: any) => item.income), // Stack on top of actual
-        offsetgroup: '2025', // Group with 2025 actual
+        offsetgroup: timeframe === 'year' ? undefined : '2025', // Group with 2025 actual
         marker: {
           color: PROJECTED_BAR_STYLE.color,
           pattern: PROJECTED_BAR_STYLE.pattern

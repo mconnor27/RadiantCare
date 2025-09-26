@@ -172,6 +172,16 @@ export const buildChartLayout = ({
       }
     }
 
+    // For year combined bar mode, manually set range to bring categories closer
+    if (chartMode === 'bar' && timeframe === 'year' && showCombined) {
+      return {
+        ...baseConfig,
+        automargin: true,
+        autorange: false,
+        range: [-1.9, 2.9] // Tighten range around the two categories (0 and 1)
+      }
+    }
+
     return {
       ...baseConfig,
       automargin: true
@@ -199,7 +209,7 @@ export const buildChartLayout = ({
     // Make bars wider and eliminate gaps in bar mode
     bargap: chartMode === 'bar' ? BAR_CONFIG[timeframe][showCombined ? 'combined' : 'individual'].bargap : undefined,
     bargroupgap: chartMode === 'bar' ? BAR_CONFIG[timeframe][showCombined ? 'combined' : 'individual'].bargroupgap : undefined,
-    barmode: chartMode === 'bar' ? ('group' as const) : undefined,
+    barmode: chartMode === 'bar' ? (timeframe === 'year' && showCombined ? 'stack' as const : 'group' as const) : undefined,
     yaxis: getYAxisConfig(),
     xaxis: getXAxisConfig(),
     showlegend: true,

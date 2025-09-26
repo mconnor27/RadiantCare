@@ -6,9 +6,9 @@ export const HISTORICAL_YEAR_LINE_WIDTH = 1.5
 export const BAR_CONFIG = {
   // Year mode
   year: {
-    individual: { bargap: 0.08, bargroupgap: 0.05 },
-    // Make historical vs 2025 bars sit tightly together (like quarter/month)
-    combined: { bargap: 0.02, bargroupgap: 0.01 }
+    individual: { bargap: 0.3, bargroupgap: 0.05 },
+    // Make historical vs 2025 bars sit tightly together but narrower
+    combined: { bargap: 0.1, bargroupgap: 0.1 }
   },
   // Quarter mode
   quarter: {
