@@ -1,6 +1,6 @@
 import type { YTDPoint } from '../../../../../historical_data/therapyIncomeParser'
 import { calculateRollingAverage } from '../../../../../historical_data/therapyIncomeParser'
-import { HISTORICAL_COLORS, CURRENT_YEAR_COLOR, HISTORICAL_MEAN_COLOR } from '../config/chartConfig'
+import { HISTORICAL_COLORS, CURRENT_YEAR_COLOR, HISTORICAL_MEAN_COLOR, PROJECTED_BAR_STYLE } from '../config/chartConfig'
 import { 
   getYearlyTotals, 
   getQuarterlyTotals, 
@@ -25,18 +25,22 @@ interface BarChartDataProps {
   historical2023Data: YTDPoint[]
   historical2024Data: YTDPoint[]
   isNormalized: boolean
+  projectedIncomeData: YTDPoint[]
 }
 
 // Helper function to normalize bar chart data
-const normalizeBarData = (data: any[], timeframe: string, isNormalized: boolean) => {
+// Optionally provide a mapping of year -> fixed annual total to use as denominator
+const normalizeBarData = (data: any[], timeframe: string, isNormalized: boolean, yearAnnualTotals?: Record<string, number>) => {
   if (!isNormalized) return data
   
   return data.map((yearData: any) => {
     const periods = timeframe === 'quarter' ? yearData.quarters : yearData.months
     if (!periods) return yearData
     
-    // Calculate total for this year
-    const yearTotal = periods.reduce((sum: number, period: any) => sum + period.income, 0)
+    // Calculate total for this year or use provided fixed denominator
+    const normalizedYearKey = typeof yearData.year === 'string' && yearData.year.includes('2025') ? '2025' : yearData.year
+    const providedTotal = yearAnnualTotals ? yearAnnualTotals[normalizedYearKey] : undefined
+    const yearTotal = providedTotal ?? periods.reduce((sum: number, period: any) => sum + period.income, 0)
     
     if (yearTotal === 0) return yearData
     
@@ -54,11 +58,12 @@ const normalizeBarData = (data: any[], timeframe: string, isNormalized: boolean)
 }
 
 // Helper function to normalize combined bar data
-const normalizeCombinedBarData = (data: any[], isNormalized: boolean) => {
+// Optionally provide a fixed total to use as denominator
+const normalizeCombinedBarData = (data: any[], isNormalized: boolean, fixedTotal?: number) => {
   if (!isNormalized || data.length === 0) return data
   
   // For combined data, normalize each period to percentage of the total across all periods
-  const totalIncome = data.reduce((sum, item) => sum + item.income, 0)
+  const totalIncome = (fixedTotal !== undefined ? fixedTotal : data.reduce((sum, item) => sum + item.income, 0))
   if (totalIncome === 0) return data
   
   return data.map(item => ({
@@ -83,12 +88,19 @@ export const buildBarChartData = ({
   historical2022Data,
   historical2023Data,
   historical2024Data,
-  isNormalized
+  isNormalized,
+  projectedIncomeData
 }: BarChartDataProps) => {
   if (timeframe === 'year') {
     // Year mode: each year is an x-axis tick
-    const yearly2025 = [{ year: '2025', income: currentYearData.length > 0 ? currentYearData[currentYearData.length - 1]?.cumulativeIncome || 0 : 0 }]
+    // Use RAW totals for 2025 so normalization is correct when bars are percent-based
+    const actualSmoothed2025 = calculateRollingAverage(data.filter(p => p.date !== 'Total'))
+    const actual2025Total = actualSmoothed2025.length > 0 ? actualSmoothed2025[actualSmoothed2025.length - 1]?.cumulativeIncome || 0 : 0
+    const projected2025Total = projectedIncomeData.length > 0 ? projectedIncomeData[projectedIncomeData.length - 1]?.cumulativeIncome || 0 : 0
+
+    const yearly2025 = [{ year: '2025', income: actual2025Total }]
     const yearlyHistorical = getYearlyTotals(processedHistoricalData)
+    const projected2025 = projectedIncomeData.length > 0 ? [{ year: '2025 Projected', income: projected2025Total }] : []
     
     if (showCombined) {
       // For combined/bar mode: show mean with std dev
@@ -97,59 +109,71 @@ export const buildBarChartData = ({
       const variance = allYearIncomes.reduce((sum, val) => sum + Math.pow(val - meanIncome, 2), 0) / allYearIncomes.length
       const stdDev = Math.sqrt(variance)
       
-      // For year mode normalization, normalize against the mean total
+      // For year mode normalization, normalize against the 2025 projected total for current/projection
       const combinedData = [{ period: 'Historical Mean (2016-2024)', income: meanIncome, error: stdDev }]
       const currentData = [{ period: '2025', income: yearly2025[0].income }]
-      
+      const projectedData = projected2025.length > 0 ? [{ period: '2025 Projected', income: projected2025[0].income - yearly2025[0].income }] : []
+
       if (isNormalized) {
-        const totalForNormalization = meanIncome
+        const denom2025 = projected2025Total
         return {
-          combined: totalForNormalization > 0 ? [{
-            period: 'Historical Mean (2016-2024)', 
-            income: 100, // Mean is always 100% of itself
-            error: (stdDev / totalForNormalization) * 100
+          combined: meanIncome > 0 ? [{
+            period: 'Historical Mean (2016-2024)',
+            income: 100,
+            error: (stdDev / meanIncome) * 100
           }] : combinedData,
-          current: totalForNormalization > 0 ? [{
-            period: '2025', 
-            income: (yearly2025[0].income / totalForNormalization) * 100
-          }] : currentData,
+          current: denom2025 > 0 ? [{ period: '2025', income: (actual2025Total / denom2025) * 100 }] : [{ period: '2025', income: 0 }],
+          projected: denom2025 > 0 && projectedData.length > 0 ? [{ period: '2025 Projected', income: ((projected2025Total - actual2025Total) / denom2025) * 100 }] : projectedData,
           individual: yearlyHistorical.concat(yearly2025).map(item => ({
             ...item,
-            income: totalForNormalization > 0 ? (item.income / totalForNormalization) * 100 : item.income
+            income: meanIncome > 0 ? (item.income / meanIncome) * 100 : item.income
           }))
         }
       }
-      
+
       return {
         combined: combinedData,
         current: currentData,
+        projected: projectedData,
         individual: yearlyHistorical.concat(yearly2025)
       }
     }
     
-    // For individual year mode, normalize against the mean of all years
+    // For individual year mode, show all historical years as 100%; 2025 splits into actual% + remainder%
     if (isNormalized) {
-      const allIncomes = yearlyHistorical.concat(yearly2025).map(y => y.income)
-      const meanIncome = allIncomes.reduce((sum, val) => sum + val, 0) / allIncomes.length
-      
+      const denom2025 = projected2025Total
+      const normalizedIndividuals = yearlyHistorical.concat(yearly2025).map(item => {
+        if (item.year === '2025') {
+          return { ...item, income: denom2025 > 0 ? (actual2025Total / denom2025) * 100 : 0 }
+        }
+        return { ...item, income: 100 }
+      })
+
+      const projectedPercent = denom2025 > 0 ? ((projected2025Total - actual2025Total) / denom2025) * 100 : 0
+
       return {
         combined: [],
-        current: meanIncome > 0 ? [{ ...yearly2025[0], income: (yearly2025[0].income / meanIncome) * 100 }] : yearly2025,
-        individual: meanIncome > 0 ? yearlyHistorical.concat(yearly2025).map(item => ({
-          ...item,
-          income: (item.income / meanIncome) * 100
-        })) : yearlyHistorical.concat(yearly2025)
+        current: [{ year: '2025', income: denom2025 > 0 ? (actual2025Total / denom2025) * 100 : 0 }],
+        projected: projected2025.length > 0 ? [{ year: '2025 Projected', income: projectedPercent }] : [],
+        individual: normalizedIndividuals
       }
     }
-    
+
     return {
       combined: [],
       current: yearly2025,
+      projected: projected2025.length > 0 ? [{ year: '2025 Projected', income: projected2025[0].income - yearly2025[0].income }] : [],
       individual: yearlyHistorical.concat(yearly2025)
     }
   } else if (timeframe === 'quarter') {
     // Quarter mode - use raw historical data (not smoothed/normalized) for bar charts
-    const quarterly2025 = getQuarterlyTotals(calculateRollingAverage(data.filter(p => p.date !== 'Total')))
+    const smoothedActual2025 = calculateRollingAverage(data.filter(p => p.date !== 'Total'))
+    const quarterly2025 = getQuarterlyTotals(smoothedActual2025)
+    // Build a full-year combined series (actual + projected) so period totals are correct
+    const combinedForBarsQuarter = projectedIncomeData && projectedIncomeData.length > 0
+      ? smoothedActual2025.concat(projectedIncomeData.slice(1))
+      : smoothedActual2025
+    const projectedQuarterly2025 = getQuarterlyTotals(combinedForBarsQuarter)
     const historicalDataRaw = [
       { year: '2016', data: calculateRollingAverage(historical2016Data) },
       { year: '2017', data: calculateRollingAverage(historical2017Data) },
@@ -165,9 +189,22 @@ export const buildBarChartData = ({
     const combinedQuarterlyStats = calculateCombinedQuarterlyStats(historicalData)
     
     if (showCombined) {
+      // Calculate projected quarterly amounts as the difference between projected and actual
+      const projectedQuarterlyData = projectedQuarterly2025.map((proj, index) => {
+        const actual = quarterly2025[index]
+        return {
+          period: proj.quarter,
+          income: proj.income - (actual?.income || 0)
+        }
+      })
+
+      // Use the full-year combined total as the denominator for normalization
+      const annualTotal2025 = projectedQuarterly2025.reduce((sum, q) => sum + q.income, 0)
+
       return {
         combined: normalizeCombinedBarData(combinedQuarterlyStats.mean, isNormalized),
-        current: normalizeCombinedBarData(quarterly2025.map(q => ({ period: q.quarter, income: q.income })), isNormalized),
+        current: normalizeCombinedBarData(quarterly2025.map(q => ({ period: q.quarter, income: q.income })), isNormalized, annualTotal2025),
+        projected: normalizeCombinedBarData(projectedQuarterlyData, isNormalized, annualTotal2025),
         individual: []
       }
     }
@@ -177,15 +214,40 @@ export const buildBarChartData = ({
       year,
       quarters: getQuarterlyTotals(data)
     })).concat([{ year: '2025', quarters: quarterly2025 }])
-    
+
+    // Add projected quarters for 2025
+    const projectedIndividualQuarterly = projectedQuarterly2025.length > 0 ? [{
+      year: '2025 Projected',
+      quarters: projectedQuarterly2025.map((proj, index) => {
+        const actual = quarterly2025[index]
+        return {
+          quarter: proj.quarter,
+          income: proj.income - (actual?.income || 0)
+        }
+      })
+    }] : []
+
+    // Normalize individual (per-year) bars using the full-year total as denominator
+    const yearAnnualTotals: Record<string, number> = {}
+    const annualTotal2025 = projectedQuarterly2025.reduce((sum, q) => sum + q.income, 0)
+    yearAnnualTotals['2025'] = annualTotal2025
+    yearAnnualTotals['2025 Projected'] = annualTotal2025
+
     return {
       combined: [],
       current: [],
-      individual: normalizeBarData(individualQuarterly, 'quarter', isNormalized)
+      projected: projectedIndividualQuarterly,
+      individual: normalizeBarData(individualQuarterly.concat(projectedIndividualQuarterly), 'quarter', isNormalized, yearAnnualTotals)
     }
   } else if (timeframe === 'month') {
     // Month mode - use raw historical data (not smoothed/normalized) for bar charts
-    const monthly2025 = getMonthlyTotals(calculateRollingAverage(data.filter(p => p.date !== 'Total')))
+    const smoothedActual2025Month = calculateRollingAverage(data.filter(p => p.date !== 'Total'))
+    const monthly2025 = getMonthlyTotals(smoothedActual2025Month)
+    // Build a full-year combined series (actual + projected) so period totals are correct
+    const combinedForBarsMonth = projectedIncomeData && projectedIncomeData.length > 0
+      ? smoothedActual2025Month.concat(projectedIncomeData.slice(1))
+      : smoothedActual2025Month
+    const projectedMonthly2025 = getMonthlyTotals(combinedForBarsMonth)
     const historicalDataRaw = [
       { year: '2016', data: calculateRollingAverage(historical2016Data) },
       { year: '2017', data: calculateRollingAverage(historical2017Data) },
@@ -201,9 +263,22 @@ export const buildBarChartData = ({
     const combinedMonthlyStats = calculateCombinedMonthlyStats(historicalData)
     
     if (showCombined) {
+      // Calculate projected monthly amounts as the difference between projected and actual
+      const projectedMonthlyData = projectedMonthly2025.map((proj, index) => {
+        const actual = monthly2025[index]
+        return {
+          period: proj.month,
+          income: proj.income - (actual?.income || 0)
+        }
+      })
+
+      // Use the full-year combined total as the denominator for normalization
+      const annualTotal2025 = projectedMonthly2025.reduce((sum, m) => sum + m.income, 0)
+
       return {
         combined: normalizeCombinedBarData(combinedMonthlyStats.mean, isNormalized),
-        current: normalizeCombinedBarData(monthly2025.map(m => ({ period: m.month, income: m.income })), isNormalized),
+        current: normalizeCombinedBarData(monthly2025.map(m => ({ period: m.month, income: m.income })), isNormalized, annualTotal2025),
+        projected: normalizeCombinedBarData(projectedMonthlyData, isNormalized, annualTotal2025),
         individual: []
       }
     }
@@ -213,15 +288,34 @@ export const buildBarChartData = ({
       year,
       months: getMonthlyTotals(data)
     })).concat([{ year: '2025', months: monthly2025 }])
-    
+
+    // Add projected months for 2025
+    const projectedIndividualMonthly = projectedMonthly2025.length > 0 ? [{
+      year: '2025 Projected',
+      months: projectedMonthly2025.map((proj, index) => {
+        const actual = monthly2025[index]
+        return {
+          month: proj.month,
+          income: proj.income - (actual?.income || 0)
+        }
+      })
+    }] : []
+
+    // Normalize individual bars with full-year total as denominator
+    const yearAnnualTotals: Record<string, number> = {}
+    const annualTotal2025 = projectedMonthly2025.reduce((sum, m) => sum + m.income, 0)
+    yearAnnualTotals['2025'] = annualTotal2025
+    yearAnnualTotals['2025 Projected'] = annualTotal2025
+
     return {
       combined: [],
       current: [],
-      individual: normalizeBarData(individualMonthly, 'month', isNormalized)
+      projected: projectedIndividualMonthly,
+      individual: normalizeBarData(individualMonthly.concat(projectedIndividualMonthly), 'month', isNormalized, yearAnnualTotals)
     }
   }
   
-  return { combined: [], current: [], individual: [] }
+  return { combined: [], current: [], projected: [], individual: [] }
 }
 
 export const buildBarChartTraces = (
@@ -242,6 +336,7 @@ export const buildBarChartTraces = (
           type: 'bar' as const,
           name: 'Historical Mean (2016-2024)',
           marker: { color: HISTORICAL_MEAN_COLOR, opacity: 0.8 },
+          offsetgroup: 'historical',
           error_y: {
             type: 'data' as const,
             array: barChartData.combined.map((item: any) => item.error),
@@ -258,29 +353,85 @@ export const buildBarChartTraces = (
         x: barChartData.current.map((item: any) => item.period),
         y: barChartData.current.map((item: any) => item.income),
         type: 'bar' as const,
-        name: '2025',
+        name: '2025 Actual',
+        offsetgroup: '2025', // Group with 2025 projected
         marker: { color: CURRENT_YEAR_COLOR, opacity: 0.9 },
+        hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
+      }] : []),
+      // Projected Data (stacked on top of current)
+      ...(barChartData.projected.length > 0 ? [{
+        x: (timeframe === 'year'
+          ? barChartData.current.map((item: any) => item.period) // stack on same x label '2025'
+          : barChartData.projected.map((item: any) => item.period)),
+        y: barChartData.projected.map((item: any) => item.income),
+        type: 'bar' as const,
+        name: '2025 Projected',
+        base: barChartData.current.map((item: any) => item.income), // Stack on top of actual
+        offsetgroup: '2025', // Group with 2025 actual
+        marker: {
+          color: PROJECTED_BAR_STYLE.color,
+          pattern: PROJECTED_BAR_STYLE.pattern
+        },
         hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
       }] : [])
     ]
   } else {
-    return [
-      // Non-combined bar chart - individual years
-      ...(barChartData.individual.length > 0 && timeframe === 'year' ? 
-        barChartData.individual.map((item: any, index: number) => ({
-          x: [item.year],
-          y: [item.income],
+    const traces = []
+
+    // Non-combined bar chart - individual years
+    if (barChartData.individual.length > 0 && timeframe === 'year') {
+      // Add historical years
+      barChartData.individual.forEach((item: any, index: number) => {
+        if (item.year !== '2025' && item.year !== '2025 Projected') {
+          traces.push({
+            x: [item.year],
+            y: [item.income],
+            type: 'bar' as const,
+            name: item.year,
+            marker: { color: HISTORICAL_COLORS[index % HISTORICAL_COLORS.length], opacity: 0.8 },
+            hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
+          })
+        }
+      })
+
+      // Add 2025 actual
+      const actual2025 = barChartData.individual.find((item: any) => item.year === '2025')
+      if (actual2025) {
+        traces.push({
+          x: [actual2025.year],
+          y: [actual2025.income],
           type: 'bar' as const,
-          name: item.year,
-          marker: { color: item.year === '2025' ? CURRENT_YEAR_COLOR : HISTORICAL_COLORS[index % HISTORICAL_COLORS.length], opacity: 0.8 },
+          name: '2025 Actual',
+          offsetgroup: '2025', // Group with 2025 projected
+          marker: { color: CURRENT_YEAR_COLOR, opacity: 0.9 },
           hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
-        })) : []
-      ),
-      // For quarter and month non-combined, group bars properly so bargroupgap works
-      ...(barChartData.individual.length > 0 && timeframe !== 'year' ?
-        barChartData.individual.map((yearData: any, yearIndex: number) => {
+        })
+      }
+
+      // Add 2025 projected (stacked)
+      if (barChartData.projected.length > 0 && barChartData.projected[0].income > 0 && actual2025) {
+        traces.push({
+          x: ['2025'],
+          y: [barChartData.projected[0].income],
+          type: 'bar' as const,
+          name: '2025 Projected',
+          base: [actual2025.income], // Stack on top of actual
+          offsetgroup: '2025', // Group with 2025 actual
+          marker: {
+            color: PROJECTED_BAR_STYLE.color,
+            pattern: PROJECTED_BAR_STYLE.pattern
+          },
+          hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
+        })
+      }
+    }
+
+    // For quarter and month non-combined, group bars properly so bargroupgap works
+    if (barChartData.individual.length > 0 && timeframe !== 'year') {
+      barChartData.individual.forEach((yearData: any, yearIndex: number) => {
+        if (yearData.year !== '2025 Projected') {
           const periods = timeframe === 'quarter' ? yearData.quarters : yearData.months
-          
+
           // For monthly individual mode, filter to single month if not showing all months
           const filteredPeriods = timeframe === 'month' && !showAllMonths && currentPeriod.month
             ? periods.filter((period: any) => {
@@ -289,20 +440,65 @@ export const buildBarChartTraces = (
                 return period.month === currentMonthName
               })
             : periods
-          
-          return {
+
+          traces.push({
             x: filteredPeriods.map((period: any) => period.quarter || period.month),
             y: filteredPeriods.map((period: any) => period.income),
             type: 'bar' as const,
-            name: yearData.year,
-            marker: { 
-              color: yearData.year === '2025' ? CURRENT_YEAR_COLOR : HISTORICAL_COLORS[yearIndex % HISTORICAL_COLORS.length], 
-              opacity: 0.8 
+            name: yearData.year === '2025' ? '2025 Actual' : yearData.year,
+            offsetgroup: yearData.year === '2025' ? '2025' : yearData.year, // Group 2025 actual with projected, others separate
+            marker: {
+              color: yearData.year === '2025' ? CURRENT_YEAR_COLOR : HISTORICAL_COLORS[yearIndex % HISTORICAL_COLORS.length],
+              opacity: 0.8
             },
             hovertemplate: isNormalized ? `${yearData.year} %{x}<br>%{y:.1f}%<extra></extra>` : `${yearData.year} %{x}<br>$%{y:,}<extra></extra>`
-          }
-        }) : []
-      )
-    ]
+          })
+        }
+      })
+
+      // Add projected data for quarter/month (stacked on 2025)
+      const projectedData = barChartData.individual.find((item: any) => item.year === '2025 Projected')
+      if (projectedData) {
+        const periods = timeframe === 'quarter' ? projectedData.quarters : projectedData.months
+
+        // For monthly individual mode, filter to single month if not showing all months
+        const filteredPeriods = timeframe === 'month' && !showAllMonths && currentPeriod.month
+          ? periods.filter((period: any) => {
+              const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+              const currentMonthName = monthNames[currentPeriod.month! - 1]
+              return period.month === currentMonthName
+            })
+          : periods
+
+        // Get the corresponding 2025 actual values for base stacking
+        const actual2025Data = barChartData.individual.find((item: any) => item.year === '2025')
+        const actual2025Periods = actual2025Data ? (timeframe === 'quarter' ? actual2025Data.quarters : actual2025Data.months) : []
+        
+        // Filter actual data to match projected periods for base values
+        const actualFilteredPeriods = timeframe === 'month' && !showAllMonths && currentPeriod.month
+          ? actual2025Periods.filter((period: any) => {
+              const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+              const currentMonthName = monthNames[currentPeriod.month! - 1]
+              return period.month === currentMonthName
+            })
+          : actual2025Periods
+
+        traces.push({
+          x: filteredPeriods.map((period: any) => period.quarter || period.month),
+          y: filteredPeriods.map((period: any) => period.income),
+          type: 'bar' as const,
+          name: '2025 Projected',
+          base: actualFilteredPeriods.map((period: any) => period.income), // Stack on top of 2025 actual
+          offsetgroup: '2025', // Group with 2025 actual
+          marker: {
+            color: PROJECTED_BAR_STYLE.color,
+            pattern: PROJECTED_BAR_STYLE.pattern
+          },
+          hovertemplate: isNormalized ? `2025 Projected %{x}<br>%{y:.1f}%<extra></extra>` : `2025 Projected %{x}<br>$%{y:,}<extra></extra>`
+        })
+      }
+    }
+
+    return traces
   }
 }

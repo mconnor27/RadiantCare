@@ -393,7 +393,7 @@ export default function DetailedChart({
     const projectedStartIndex = smoothedActual.length - 1 // Include connection point
     let processedProjectedData = processedCombinedData.slice(projectedStartIndex)
     
-    // Apply timeframe filtering to show only relevant portion
+    // Apply timeframe filtering to show only relevant portion (used by line charts)
     if (timeframe === 'quarter' && currentPeriod.quarter) {
       processedProjectedData = filterDataByQuarter(processedProjectedData, currentPeriod.year, currentPeriod.quarter)
     } else if (timeframe === 'month' && currentPeriod.month) {
@@ -403,6 +403,22 @@ export default function DetailedChart({
     return processedProjectedData
   }, [fy2025, currentYearData, data, isNormalized, timeframe, currentPeriod])
   
+  // Separate projected dataset for BAR charts: full-year, unfiltered and unnormalized totals
+  // This ensures quarter/month bar modes include all 4 quarters / 12 months of projections
+  const projectedIncomeDataForBars = useMemo(() => {
+    if (!fy2025 || currentYearData.length === 0) return []
+
+    const actualData = data.filter(p => p.date !== 'Total')
+    const smoothedActual = calculateRollingAverage(actualData)
+    const rawProjectedData = generateProjectedIncomeData(smoothedActual, fy2025)
+    if (rawProjectedData.length === 0) return []
+
+    // Build a full-year combined series (actual + projected) without filtering
+    // This lets bar aggregations compute totals for all quarters/months
+    const combinedData = [...smoothedActual, ...rawProjectedData.slice(1)]
+    return convertToPeriodData(combinedData, 'year', currentPeriod)
+  }, [fy2025, currentYearData, data, currentPeriod])
+
   // Historical data smoothing
   const historical2024Smoothed = useMemo(() => {
     const smoothed = calculateRollingAverage(historical2024Data)
@@ -567,9 +583,10 @@ export default function DetailedChart({
       historical2022Data,
       historical2023Data,
       historical2024Data,
-      isNormalized
+      isNormalized,
+      projectedIncomeData: projectedIncomeDataForBars
     })
-  }, [timeframe, currentYearData, processedHistoricalData, showCombined, chartMode, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, currentPeriod, showAllMonths])
+  }, [timeframe, currentYearData, processedHistoricalData, showCombined, chartMode, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, currentPeriod, showAllMonths, projectedIncomeDataForBars])
 
   // Create stable static traces (memoized separately from animated traces)
   const staticLineTraces = useMemo(() => {
@@ -661,7 +678,7 @@ export default function DetailedChart({
         </div>
       )}
       <Plot
-        data={chartMode === 'line' ? [
+        data={(chartMode === 'line' ? [
           // Static line traces (memoized for stable legend interaction)
           ...staticLineTraces,
           // Animated pulsing traces (separate memoization for animation)
@@ -673,7 +690,7 @@ export default function DetailedChart({
           isNormalized,
           showAllMonths,
           currentPeriod
-        )}
+        )) as any}
         layout={chartLayout}
         config={{
           responsive: true,

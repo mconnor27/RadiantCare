@@ -6,8 +6,9 @@ export const HISTORICAL_YEAR_LINE_WIDTH = 1.5
 export const BAR_CONFIG = {
   // Year mode
   year: {
-    individual: { bargap: 0.1, bargroupgap: 0.2 },
-    combined: { bargap: 0.2, bargroupgap: 0.3 }
+    individual: { bargap: 0.08, bargroupgap: 0.05 },
+    // Make historical vs 2025 bars sit tightly together (like quarter/month)
+    combined: { bargap: 0.02, bargroupgap: 0.01 }
   },
   // Quarter mode
   quarter: {
@@ -29,6 +30,16 @@ export const HISTORICAL_COLORS = [
 
 export const CURRENT_YEAR_COLOR = '#2e7d32'
 export const HISTORICAL_MEAN_COLOR = '#1e40af'
+
+// Projected data styling configuration
+export const PROJECTED_BAR_STYLE = {
+  color: 'rgba(34, 197, 94, 0.6)', // Lighter green with transparency
+  pattern: {
+    shape: '/',
+    size: 6, // Thicker lines (reduced from 8 for denser pattern)
+    solidity: 0.5 // Increased from 0.3 for thicker lines
+  }
+}
 
 // Chart dimensions and margins
 export const CHART_CONFIG = {
