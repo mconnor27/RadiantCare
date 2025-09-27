@@ -1,4 +1,5 @@
 import type { YTDPoint } from '../../../../../historical_data/therapyIncomeParser'
+import type { IncomeMode } from '../../../shared/types'
 import { BAR_CONFIG, CHART_CONFIG } from '../config/chartConfig'
 import { getTickConfiguration } from '../config/tickConfig'
 
@@ -13,6 +14,7 @@ interface LayoutBuilderProps {
   currentX: string[]
   currentY: number[]
   currentPeriod?: { year: number, quarter?: number, month?: number }
+  incomeMode?: IncomeMode
 }
 
 export const buildChartLayout = ({
@@ -25,7 +27,8 @@ export const buildChartLayout = ({
   staticLineTraces,
   currentX,
   currentY,
-  currentPeriod
+  currentPeriod,
+  incomeMode = 'total'
 }: LayoutBuilderProps) => {
   const getYAxisConfig = () => {
     const baseConfig = {
@@ -194,9 +197,13 @@ export const buildChartLayout = ({
         ? (isNormalized 
           ? `Daily Accumulated Income (${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Comparison - Normalized %)`
           : `Daily Accumulated Income (${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Comparison)`)
-        : (isNormalized
-          ? `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income Amounts: Historical Mean ± σ (Normalized %)`
-          : `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income Amounts: Historical Mean ± σ`),
+        : (incomeMode === 'per-site'
+          ? (isNormalized
+            ? `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income by Site: Lacey • Centralia • Aberdeen (Normalized %)`
+            : `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income by Site: Lacey • Centralia • Aberdeen`)
+          : (isNormalized
+            ? `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income Amounts: Historical Mean ± σ (Normalized %)`
+            : `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income Amounts: Historical Mean ± σ`)),
       font: { weight: 700 } 
     },
     dragmode: false as any,
@@ -209,7 +216,10 @@ export const buildChartLayout = ({
     // Make bars wider and eliminate gaps in bar mode
     bargap: chartMode === 'bar' ? BAR_CONFIG[timeframe][showCombined ? 'combined' : 'individual'].bargap : undefined,
     bargroupgap: chartMode === 'bar' ? BAR_CONFIG[timeframe][showCombined ? 'combined' : 'individual'].bargroupgap : undefined,
-    barmode: chartMode === 'bar' ? (timeframe === 'year' && showCombined ? 'stack' as const : 'group' as const) : undefined,
+    barmode: chartMode === 'bar' 
+      ? (incomeMode === 'per-site' ? 'stack' as const 
+        : (timeframe === 'year' && showCombined ? 'stack' as const : 'group' as const)) 
+      : undefined,
     yaxis: getYAxisConfig(),
     xaxis: getXAxisConfig(),
     showlegend: true,

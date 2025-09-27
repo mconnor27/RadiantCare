@@ -4,6 +4,7 @@ import {
   type YTDPoint 
 } from '../../../../historical_data/therapyIncomeParser'
 import { getCurrentDateInfo } from './utils/dataProcessing'
+import type { IncomeMode } from '../../shared/types'
 
 // Import modular components
 import ChartControls from './components/ChartControls'
@@ -30,6 +31,7 @@ export default function YTDDetailed() {
   const [currentPeriod, setCurrentPeriod] = useState<{ year: number, quarter?: number, month?: number }>({ year: new Date().getFullYear() })
   const [is2025Visible, setIs2025Visible] = useState(true)
   const [showAllMonths, setShowAllMonths] = useState(true)
+  const [incomeMode, setIncomeMode] = useState<IncomeMode>('total')
   
   // Parse 2025 data for loading into the chart component
   const historical2025Data = useMemo(() => parseTherapyIncome2025(), [])
@@ -77,6 +79,13 @@ export default function YTDDetailed() {
     }
   }, [timeframe])
 
+  // Auto-switch to bar mode when incomeMode changes to 'per-site'
+  useEffect(() => {
+    if (incomeMode === 'per-site') {
+      setChartMode('bar')
+    }
+  }, [incomeMode])
+
   // Reset 2025 visibility when switching chart modes
   useEffect(() => {
     if (chartMode === 'bar') {
@@ -100,6 +109,8 @@ export default function YTDDetailed() {
         setTimeframe={setTimeframe}
         showAllMonths={showAllMonths}
         setShowAllMonths={setShowAllMonths}
+        incomeMode={incomeMode}
+        setIncomeMode={setIncomeMode}
         loading={loading}
       />
 
@@ -130,6 +141,7 @@ export default function YTDDetailed() {
           is2025Visible={is2025Visible}
           setIs2025Visible={setIs2025Visible}
           showAllMonths={showAllMonths}
+          incomeMode={incomeMode}
           fy2025={fy2025}
         />
       )}

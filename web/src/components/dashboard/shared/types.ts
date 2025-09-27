@@ -6,6 +6,23 @@ export type YearRow = {
   employeePayroll?: number
 }
 
+// Site data for per-site income mode
+export type SiteData = {
+  lacey: number
+  centralia: number
+  aberdeen: number
+}
+
+export type YTDPointWithSites = { 
+  date: string
+  cumulativeIncome: number
+  monthDay: string
+  sites?: SiteData
+}
+
+// Income chart modes
+export type IncomeMode = 'total' | 'per-site'
+
 export type PhysicianType = 'partner' | 'employee' | 'employeeToPartner' | 'partnerToRetire' | 'newEmployee' | 'employeeToTerminate'
 
 export type Physician = {

@@ -1,4 +1,6 @@
 
+import type { IncomeMode } from '../../../shared/types'
+
 interface ChartControlsProps {
   environment: 'production' | 'sandbox'
   setEnvironment: (env: 'production' | 'sandbox') => void
@@ -12,6 +14,8 @@ interface ChartControlsProps {
   setTimeframe: (timeframe: 'year' | 'quarter' | 'month') => void
   showAllMonths: boolean
   setShowAllMonths: (show: boolean) => void
+  incomeMode: IncomeMode
+  setIncomeMode: (mode: IncomeMode) => void
   loading: boolean
 }
 
@@ -28,6 +32,8 @@ export default function ChartControls({
   setTimeframe,
   showAllMonths,
   setShowAllMonths,
+  incomeMode,
+  setIncomeMode,
   loading
 }: ChartControlsProps) {
   return (
@@ -75,6 +81,40 @@ export default function ChartControls({
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label style={{ fontSize: 14, fontWeight: 500 }}>Income Mode:</label>
+          <div style={{ display: 'flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
+            <button
+              onClick={() => setIncomeMode('total')}
+              style={{
+                padding: '4px 12px',
+                border: 'none',
+                background: incomeMode === 'total' ? '#1e40af' : '#fff',
+                color: incomeMode === 'total' ? '#fff' : '#333',
+                fontSize: 14,
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Total
+            </button>
+            <button
+              onClick={() => setIncomeMode('per-site')}
+              style={{
+                padding: '4px 12px',
+                border: 'none',
+                background: incomeMode === 'per-site' ? '#1e40af' : '#fff',
+                color: incomeMode === 'per-site' ? '#fff' : '#333',
+                fontSize: 14,
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Per Site
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <label style={{ fontSize: 14, fontWeight: 500 }}>Chart Type:</label>
           <div style={{ display: 'flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
             <button
@@ -88,6 +128,7 @@ export default function ChartControls({
                 cursor: 'pointer',
                 transition: 'all 0.2s'
               }}
+              disabled={incomeMode === 'per-site'} // Only bar charts for per-site mode
             >
               Line
             </button>
@@ -100,7 +141,8 @@ export default function ChartControls({
                 color: chartMode === 'bar' ? '#fff' : '#333',
                 fontSize: 14,
                 cursor: 'pointer',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                opacity: incomeMode === 'per-site' && chartMode !== 'bar' ? 0.5 : 1
               }}
             >
               Bar

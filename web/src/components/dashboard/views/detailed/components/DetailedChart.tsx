@@ -32,8 +32,10 @@ import {
 } from '../utils/aggregations'
 import { buildStaticLineTraces, buildPulsingTraces } from '../builders/lineChartBuilder'
 import { buildBarChartData, buildBarChartTraces } from '../builders/barChartBuilder'
+import { buildSiteBarChartData, buildSiteBarChartTraces } from '../builders/siteBarChartBuilder'
 import { buildChartLayout } from '../builders/layoutBuilder'
 import { RADAR_CONFIG, CHART_CONFIG } from '../config/chartConfig'
+import type { IncomeMode } from '../../../shared/types'
 
 interface DetailedChartProps {
   data: YTDPoint[]
@@ -45,6 +47,7 @@ interface DetailedChartProps {
   is2025Visible: boolean
   setIs2025Visible: (visible: boolean) => void
   showAllMonths: boolean
+  incomeMode: IncomeMode
   fy2025: FutureYear | undefined
 }
 
@@ -58,6 +61,7 @@ export default function DetailedChart({
   is2025Visible,
   setIs2025Visible,
   showAllMonths,
+  incomeMode,
   fy2025
 }: DetailedChartProps) {
   const isMobile = useIsMobile()
@@ -588,6 +592,30 @@ export default function DetailedChart({
     })
   }, [timeframe, currentYearData, processedHistoricalData, showCombined, chartMode, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, currentPeriod, showAllMonths, projectedIncomeDataForBars])
 
+
+  // Site-specific bar chart data processing
+  const siteBarChartData = useMemo(() => {
+    if (incomeMode !== 'per-site') return null
+    
+    return buildSiteBarChartData({
+      timeframe,
+      processedHistoricalData,
+      showCombined,
+      data,
+      historical2016Data,
+      historical2017Data,
+      historical2018Data,
+      historical2019Data,
+      historical2020Data,
+      historical2021Data,
+      historical2022Data,
+      historical2023Data,
+      historical2024Data,
+      projectedIncomeData: projectedIncomeDataForBars,
+      fy2025
+    })
+  }, [incomeMode, timeframe, currentYearData, processedHistoricalData, showCombined, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, projectedIncomeDataForBars, fy2025])
+
   // Create stable static traces (memoized separately from animated traces)
   const staticLineTraces = useMemo(() => {
     if (chartMode !== 'line') return []
@@ -631,11 +659,12 @@ export default function DetailedChart({
       staticLineTraces,
       currentX,
       currentY,
-      currentPeriod
+      currentPeriod,
+      incomeMode
     })
   }, [
     chartMode, timeframe, showCombined, isNormalized, processedCurrentData,
-    is2025Visible, staticLineTraces, currentX, currentY, currentPeriod
+    is2025Visible, staticLineTraces, currentX, currentY, currentPeriod, incomeMode
   ])
 
   // Check if we have any data to display
@@ -649,48 +678,56 @@ export default function DetailedChart({
     )
   }
 
-  return (
-    <div>
-      {/* DEBUG INFO */}
-      {debugInfo && (
-        <div style={{
-          position: 'absolute',
-          top: 10,
-          left: 10,
-          background: 'rgba(0,0,0,0.8)',
-          color: 'white',
-          padding: '8px',
-          borderRadius: '4px',
-          fontSize: '12px',
-          zIndex: 1000,
-          fontFamily: 'monospace'
-        }}>
-          <div><strong>DEBUG - Fixed for both quarters and months:</strong></div>
-          <div>Annual Projected Total: ${debugInfo.projectedTotal.toLocaleString()}</div>
-          <div>Actual {debugInfo.timeframe === 'quarter' ? `Q${debugInfo.currentPeriod?.quarter}` : debugInfo.timeframe === 'month' ? `M${debugInfo.currentPeriod?.month}` : 'Period'} Total: ${debugInfo.actualQuarterTotalIncome.toLocaleString()}</div>
-          <div>Combined {debugInfo.timeframe === 'quarter' ? `Q${debugInfo.currentPeriod?.quarter}` : debugInfo.timeframe === 'month' ? `M${debugInfo.currentPeriod?.month}` : 'Period'} Total: ${debugInfo.combinedQuarterTotalIncome.toLocaleString()}</div>
-          <div>{debugInfo.timeframe === 'quarter' ? `Q${debugInfo.currentPeriod?.quarter}` : debugInfo.timeframe === 'month' ? `M${debugInfo.currentPeriod?.month}` : 'Period'} Reference (=Combined): ${debugInfo.quarterProjectedTotal.toLocaleString()}</div>
-          <div>🔴 Actual at connection: {debugInfo.actualAtConnection.toFixed(2)}%</div>
-          <div>🔵 Combined at connection: {debugInfo.combinedAtConnection.toFixed(2)}%</div>
-          <div>🔴 Actual at {debugInfo.timeframe === 'quarter' ? `Q${debugInfo.currentPeriod?.quarter}` : debugInfo.timeframe === 'month' ? `M${debugInfo.currentPeriod?.month}` : 'period'} end: {debugInfo.actualAtQuarterEnd.toFixed(2)}%</div>
-          <div>🔵 Combined at {debugInfo.timeframe === 'quarter' ? `Q${debugInfo.currentPeriod?.quarter}` : debugInfo.timeframe === 'month' ? `M${debugInfo.currentPeriod?.month}` : 'period'} end: {debugInfo.combinedAtQuarterEnd.toFixed(2)}% ← Should be 100%!</div>
-          <div>Timeframe: {debugInfo.timeframe} {debugInfo.currentPeriod?.quarter ? `Q${debugInfo.currentPeriod.quarter}` : debugInfo.currentPeriod?.month ? `M${debugInfo.currentPeriod.month}` : ''}</div>
-        </div>
-      )}
+    return (
+      <div>
+        {/* DEBUG INFO */}
+        {debugInfo && (
+          <div style={{
+            position: 'absolute',
+            top: 10,
+            left: 10,
+            background: 'rgba(0,0,0,0.8)',
+            color: 'white',
+            padding: '8px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            zIndex: 1000,
+            fontFamily: 'monospace'
+          }}>
+            <div><strong>DEBUG - Fixed for both quarters and months:</strong></div>
+            <div>Annual Projected Total: ${debugInfo.projectedTotal.toLocaleString()}</div>
+            <div>Actual {debugInfo.timeframe === 'quarter' ? `Q${debugInfo.currentPeriod?.quarter}` : debugInfo.timeframe === 'month' ? `M${debugInfo.currentPeriod?.month}` : 'Period'} Total: ${debugInfo.actualQuarterTotalIncome.toLocaleString()}</div>
+            <div>Combined {debugInfo.timeframe === 'quarter' ? `Q${debugInfo.currentPeriod?.quarter}` : debugInfo.timeframe === 'month' ? `M${debugInfo.currentPeriod?.month}` : 'Period'} Total: ${debugInfo.combinedQuarterTotalIncome.toLocaleString()}</div>
+            <div>{debugInfo.timeframe === 'quarter' ? `Q${debugInfo.currentPeriod?.quarter}` : debugInfo.timeframe === 'month' ? `M${debugInfo.currentPeriod?.month}` : 'Period'} Reference (=Combined): ${debugInfo.quarterProjectedTotal.toLocaleString()}</div>
+            <div>🔴 Actual at connection: {debugInfo.actualAtConnection.toFixed(2)}%</div>
+            <div>🔵 Combined at connection: {debugInfo.combinedAtConnection.toFixed(2)}%</div>
+            <div>🔴 Actual at {debugInfo.timeframe === 'quarter' ? `Q${debugInfo.currentPeriod?.quarter}` : debugInfo.timeframe === 'month' ? `M${debugInfo.currentPeriod?.month}` : 'period'} end: {debugInfo.actualAtQuarterEnd.toFixed(2)}%</div>
+            <div>🔵 Combined at {debugInfo.timeframe === 'quarter' ? `Q${debugInfo.currentPeriod?.quarter}` : debugInfo.timeframe === 'month' ? `M${debugInfo.currentPeriod?.month}` : 'period'} end: {debugInfo.combinedAtQuarterEnd.toFixed(2)}% ← Should be 100%!</div>
+            <div>Timeframe: {debugInfo.timeframe} {debugInfo.currentPeriod?.quarter ? `Q${debugInfo.currentPeriod.quarter}` : debugInfo.currentPeriod?.month ? `M${debugInfo.currentPeriod.month}` : ''}</div>
+          </div>
+        )}
+        
       <Plot
         data={(chartMode === 'line' ? [
           // Static line traces (memoized for stable legend interaction)
           ...staticLineTraces,
           // Animated pulsing traces (separate memoization for animation)
           ...pulsingTraces
-        ] : buildBarChartTraces(
-          barChartData,
-          timeframe,
-          showCombined,
-          isNormalized,
-          showAllMonths,
-          currentPeriod
-        )) as any}
+        ] : incomeMode === 'per-site' 
+          ? buildSiteBarChartTraces(
+              siteBarChartData,
+              timeframe,
+              showCombined,
+              isNormalized
+            )
+          : buildBarChartTraces(
+              barChartData,
+              timeframe,
+              showCombined,
+              isNormalized,
+              showAllMonths,
+              currentPeriod
+            )) as any}
         layout={chartLayout}
         config={{
           responsive: true,
