@@ -307,9 +307,9 @@ export function generateProjectedSiteData(
 // Color scheme for sites (ggplot2 default colors)
 export const SITE_COLORS = {
   lacey: {
-    historical: 'rgba(248, 118, 109, 0.7)',    // Faded red
-    current: '#F8766D',                         // Bright red
-    projected: 'rgba(248, 118, 109, 0.6)'      // For textured pattern
+    historical: 'rgba(97, 156, 255, 0.7)',     // Faded blue
+    current: '#619CFF',                         // Bright blue  
+    projected: 'rgba(97, 156, 255, 0.6)'       // For textured pattern
   },
   centralia: {
     historical: 'rgba(0, 186, 56, 0.7)',       // Faded green  
@@ -317,9 +317,9 @@ export const SITE_COLORS = {
     projected: 'rgba(0, 186, 56, 0.6)'         // For textured pattern
   },
   aberdeen: {
-    historical: 'rgba(97, 156, 255, 0.7)',     // Faded blue
-    current: '#619CFF',                         // Bright blue  
-    projected: 'rgba(97, 156, 255, 0.6)'       // For textured pattern
+    historical: 'rgba(248, 118, 109, 0.7)',    // Faded red
+    current: '#F8766D',                         // Bright red
+    projected: 'rgba(248, 118, 109, 0.6)'      // For textured pattern
   }
 }
 

@@ -32,6 +32,7 @@ export default function YTDDetailed() {
   const [is2025Visible, setIs2025Visible] = useState(true)
   const [showAllMonths, setShowAllMonths] = useState(true)
   const [incomeMode, setIncomeMode] = useState<IncomeMode>('total')
+  const [smoothing, setSmoothing] = useState(5)
   
   // Parse 2025 data for loading into the chart component
   const historical2025Data = useMemo(() => parseTherapyIncome2025(), [])
@@ -120,6 +121,7 @@ export default function YTDDetailed() {
               setIs2025Visible={setIs2025Visible}
               showAllMonths={showAllMonths}
               incomeMode={incomeMode}
+              smoothing={smoothing}
               fy2025={fy2025}
             />
           )}
@@ -140,6 +142,8 @@ export default function YTDDetailed() {
             setShowAllMonths={setShowAllMonths}
             incomeMode={incomeMode}
             setIncomeMode={setIncomeMode}
+            smoothing={smoothing}
+            setSmoothing={setSmoothing}
             loading={loading}
             variant="sidebar"
           />

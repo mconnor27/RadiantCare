@@ -11,7 +11,8 @@ import {
 } from '../../../../../historical_data/therapyIncomeParser'
 import {
   getSiteMonthTotals,
-  estimateSiteBreakdownForYear
+  estimateSiteBreakdownForYear,
+  SITE_COLORS
 } from '../../../../../historical_data/siteIncomeParser'
 
 // Monthly proportion data structure
@@ -118,14 +119,44 @@ export function buildProportionData(): MonthlyProportionData[] {
   return results
 }
 
+// Helper function to apply moving average smoothing
+function applyMovingAverage(values: number[], windowSize: number = 3): number[] {
+  if (values.length < windowSize) return values
+  
+  const smoothed: number[] = []
+  const halfWindow = Math.floor(windowSize / 2)
+  
+  for (let i = 0; i < values.length; i++) {
+    const start = Math.max(0, i - halfWindow)
+    const end = Math.min(values.length - 1, i + halfWindow)
+    
+    let sum = 0
+    let count = 0
+    for (let j = start; j <= end; j++) {
+      sum += values[j]
+      count++
+    }
+    
+    smoothed.push(sum / count)
+  }
+  
+  return smoothed
+}
+
 // Build Plotly traces for stacked area proportions
-export function buildProportionTraces(data: MonthlyProportionData[]) {
+export function buildProportionTraces(data: MonthlyProportionData[], smoothingFactor: number = 5) {
   if (data.length === 0) return []
 
   const xLabels = data.map(d => `${d.year}-${String(d.month).padStart(2, '0')}`)
-  const laceyPercentages = data.map(d => d.laceyPercent)
-  const centraliaPercentages = data.map(d => d.centraliaPercent)
-  const aberdeenPercentages = data.map(d => d.aberdeenPercent)
+  
+  // Apply moving average smoothing to the percentage data
+  const rawLaceyPercentages = data.map(d => d.laceyPercent)
+  const rawCentraliaPercentages = data.map(d => d.centraliaPercent)
+  const rawAberdeenPercentages = data.map(d => d.aberdeenPercent)
+  
+  const laceyPercentages = smoothingFactor > 0 ? applyMovingAverage(rawLaceyPercentages, smoothingFactor) : rawLaceyPercentages
+  const centraliaPercentages = smoothingFactor > 0 ? applyMovingAverage(rawCentraliaPercentages, smoothingFactor) : rawCentraliaPercentages
+  const aberdeenPercentages = smoothingFactor > 0 ? applyMovingAverage(rawAberdeenPercentages, smoothingFactor) : rawAberdeenPercentages
 
   return [
     {
@@ -134,11 +165,12 @@ export function buildProportionTraces(data: MonthlyProportionData[]) {
       type: 'scatter',
       mode: 'lines',
       fill: 'tonexty',
-      fillcolor: 'rgba(59, 130, 246, 0.6)',
+      fillcolor: SITE_COLORS.lacey.historical,
       line: { 
-        color: 'rgb(59, 130, 246)', 
+        color: SITE_COLORS.lacey.current, 
         width: 2,
-        shape: 'spline'
+        shape: 'spline',
+        smoothing: 1.3
       },
       name: 'Lacey',
       stackgroup: 'one',
@@ -150,12 +182,11 @@ export function buildProportionTraces(data: MonthlyProportionData[]) {
       type: 'scatter',
       mode: 'lines',
       fill: 'tonexty',
-      fillcolor: 'rgba(16, 185, 129, 0.6)',
+      fillcolor: SITE_COLORS.centralia.historical,
       line: { 
-        color: 'rgb(16, 185, 129)', 
+        color: SITE_COLORS.centralia.current, 
         width: 2,
-        shape: 'spline',
-        smoothing: 1.3
+        shape: 'spline'
       },
       name: 'Centralia',
       stackgroup: 'one',
@@ -167,16 +198,26 @@ export function buildProportionTraces(data: MonthlyProportionData[]) {
       type: 'scatter',
       mode: 'lines',
       fill: 'tonexty',
-      fillcolor: 'rgba(251, 191, 36, 0.6)',
+      fillcolor: SITE_COLORS.aberdeen.historical,
       line: { 
-        color: 'rgb(251, 191, 36)', 
+        color: SITE_COLORS.aberdeen.current,
         width: 2,
-        shape: 'spline',
-        smoothing: 1.3
+        shape: 'spline'
       },
       name: 'Aberdeen',
       stackgroup: 'one',
       hovertemplate: 'Aberdeen: %{y:.1f}%<br>%{x}<extra></extra>'
+    },
+    // Invisible trace to activate the secondary y-axis
+    {
+      x: xLabels,
+      y: laceyPercentages,
+      type: 'scatter',
+      mode: 'lines',
+      line: { color: 'rgba(0,0,0,0)', width: 0 },
+      showlegend: false,
+      hoverinfo: 'skip',
+      yaxis: 'y2'
     }
   ]
 }
@@ -207,17 +248,28 @@ export function buildProportionLayout(isMobile: boolean = false) {
       showgrid: true,
       gridcolor: 'rgba(0,0,0,0.1)',
       range: [0, 100],
-      tickformat: '.0f'
+      tickformat: '.0f',
+      dtick: 10,
+      side: 'left'
+    },
+    yaxis2: {
+      title: { text: 'Relative proportion (%)' },
+      showgrid: false,
+      range: [0, 100],
+      tickformat: '.0f',
+      dtick: 10,
+      side: 'right',
+      overlaying: 'y'
     },
     legend: {
       orientation: isMobile ? 'h' : 'v',
-      x: isMobile ? 0.5 : 1.02,
+      x: isMobile ? 0.5 : 1.08,
       y: isMobile ? -0.1 : 0.5,
       xanchor: isMobile ? 'center' : 'left',
       yanchor: isMobile ? 'top' : 'middle'
     },
     hovermode: 'x unified' as const,
-    margin: { l: 60, r: isMobile ? 20 : 120, t: 60, b: isMobile ? 80 : 60 },
+    margin: { l: 60, r: isMobile ? 20 : 160, t: 60, b: isMobile ? 80 : 60 },
     plot_bgcolor: 'rgba(0,0,0,0)',
     paper_bgcolor: 'rgba(0,0,0,0)',
     showlegend: true

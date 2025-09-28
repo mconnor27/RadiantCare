@@ -16,6 +16,8 @@ interface ChartControlsProps {
   setShowAllMonths: (show: boolean) => void
   incomeMode: IncomeMode
   setIncomeMode: (mode: IncomeMode) => void
+  smoothing: number
+  setSmoothing: (smoothing: number) => void
   loading: boolean
   variant?: 'inline' | 'sidebar'
 }
@@ -35,6 +37,8 @@ export default function ChartControls({
   setShowAllMonths,
   incomeMode,
   setIncomeMode,
+  smoothing,
+  setSmoothing,
   loading,
   variant = 'inline'
 }: ChartControlsProps) {
@@ -166,6 +170,23 @@ export default function ChartControls({
               Projection
             </button>
           </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label style={{ fontSize: 14, fontWeight: 500 }}>Smoothing:</label>
+          <input
+            type="range"
+            min="0"
+            max="12"
+            value={smoothing}
+            onChange={(e) => setSmoothing(parseInt(e.target.value, 10))}
+            style={{
+              width: '80px',
+              height: '20px',
+              cursor: 'pointer'
+            }}
+          />
+          <span style={{ fontSize: 12, color: '#666', minWidth: '20px' }}>{smoothing}</span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

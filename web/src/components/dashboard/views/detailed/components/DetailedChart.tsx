@@ -50,6 +50,7 @@ interface DetailedChartProps {
   setIs2025Visible: (visible: boolean) => void
   showAllMonths: boolean
   incomeMode: IncomeMode
+  smoothing: number
   fy2025: FutureYear | undefined
 }
 
@@ -64,6 +65,7 @@ export default function DetailedChart({
   setIs2025Visible,
   showAllMonths,
   incomeMode,
+  smoothing,
   fy2025
 }: DetailedChartProps) {
   const isMobile = useIsMobile()
@@ -810,7 +812,7 @@ export default function DetailedChart({
           // Animated pulsing traces (separate memoization for animation)
           ...pulsingTraces
         ] : chartMode === 'proportion'
-          ? buildProportionTraces(proportionData)
+          ? buildProportionTraces(proportionData, smoothing)
           : incomeMode === 'per-site' 
             ? buildSiteBarChartTraces(
                 siteBarChartData,
