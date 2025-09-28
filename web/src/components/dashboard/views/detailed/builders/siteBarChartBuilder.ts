@@ -75,7 +75,13 @@ export const buildSiteBarChartData = ({
     
     // Get projected site data
     const projectedTotalIncome = fy2025 ? getTotalIncome(fy2025) : projected2025Total
-    const projected2025Sites = generateProjectedSiteData(projectedTotalIncome, current2025Sites)
+    const projected2025Sites: SiteData = (fy2025 && (typeof (fy2025 as any).therapyLacey === 'number' || typeof (fy2025 as any).therapyCentralia === 'number' || typeof (fy2025 as any).therapyAberdeen === 'number'))
+      ? {
+          lacey: Number((fy2025 as any).therapyLacey || 0),
+          centralia: Number((fy2025 as any).therapyCentralia || 0),
+          aberdeen: Number((fy2025 as any).therapyAberdeen || 0)
+        }
+      : generateProjectedSiteData(projectedTotalIncome, current2025Sites)
     
     // Calculate projected increment (projected - actual)
     const projectedIncrementSites = {
@@ -203,7 +209,13 @@ export const buildSiteBarChartData = ({
       // Get projected site data from grid/store (same as year mode)
       const current2025SitesQuarter = parseSiteIncomeFromSummary()[0]?.sites || { lacey: 0, centralia: 0, aberdeen: 0 }
       const projectedTotalIncome = fy2025 ? getTotalIncome(fy2025) : 0
-      const projected2025Sites = generateProjectedSiteData(projectedTotalIncome, current2025SitesQuarter)
+      const projected2025Sites: SiteData = (fy2025 && (typeof (fy2025 as any).therapyLacey === 'number' || typeof (fy2025 as any).therapyCentralia === 'number' || typeof (fy2025 as any).therapyAberdeen === 'number'))
+        ? {
+            lacey: Number((fy2025 as any).therapyLacey || 0),
+            centralia: Number((fy2025 as any).therapyCentralia || 0),
+            aberdeen: Number((fy2025 as any).therapyAberdeen || 0)
+          }
+        : generateProjectedSiteData(projectedTotalIncome, current2025SitesQuarter)
       
       // Calculate total projected increment per site for the year
       const projectedIncrementSites = {
@@ -282,7 +294,13 @@ export const buildSiteBarChartData = ({
     // Get projected site data from grid/store (same as year mode)
     const current2025SitesIndividual = parseSiteIncomeFromSummary()[0]?.sites || { lacey: 0, centralia: 0, aberdeen: 0 }
     const projectedTotalIncome = fy2025 ? getTotalIncome(fy2025) : 0
-    const projected2025Sites = generateProjectedSiteData(projectedTotalIncome, current2025SitesIndividual)
+    const projected2025Sites: SiteData = (fy2025 && (typeof (fy2025 as any).therapyLacey === 'number' || typeof (fy2025 as any).therapyCentralia === 'number' || typeof (fy2025 as any).therapyAberdeen === 'number'))
+      ? {
+          lacey: Number((fy2025 as any).therapyLacey || 0),
+          centralia: Number((fy2025 as any).therapyCentralia || 0),
+          aberdeen: Number((fy2025 as any).therapyAberdeen || 0)
+        }
+      : generateProjectedSiteData(projectedTotalIncome, current2025SitesIndividual)
     
     // Calculate total projected increment per site for the year
     const projectedIncrementSites = {
@@ -405,7 +423,13 @@ export const buildSiteBarChartData = ({
       // Get projected site data from grid/store (same as year mode)
       const current2025SitesMonth = parseSiteIncomeFromSummary()[0]?.sites || { lacey: 0, centralia: 0, aberdeen: 0 }
       const projectedTotalIncome = fy2025 ? getTotalIncome(fy2025) : 0
-      const projected2025Sites = generateProjectedSiteData(projectedTotalIncome, current2025SitesMonth)
+      const projected2025Sites: SiteData = (fy2025 && (typeof (fy2025 as any).therapyLacey === 'number' || typeof (fy2025 as any).therapyCentralia === 'number' || typeof (fy2025 as any).therapyAberdeen === 'number'))
+        ? {
+            lacey: Number((fy2025 as any).therapyLacey || 0),
+            centralia: Number((fy2025 as any).therapyCentralia || 0),
+            aberdeen: Number((fy2025 as any).therapyAberdeen || 0)
+          }
+        : generateProjectedSiteData(projectedTotalIncome, current2025SitesMonth)
       
       // Calculate total projected increment per site for the year
       const projectedIncrementSites = {
@@ -483,7 +507,13 @@ export const buildSiteBarChartData = ({
     // Get projected site data from grid/store (same as year mode)
     const current2025SitesMonthIndividual = parseSiteIncomeFromSummary()[0]?.sites || { lacey: 0, centralia: 0, aberdeen: 0 }
     const projectedTotalIncome = fy2025 ? getTotalIncome(fy2025) : 0
-    const projected2025Sites = generateProjectedSiteData(projectedTotalIncome, current2025SitesMonthIndividual)
+    const projected2025Sites: SiteData = (fy2025 && (typeof (fy2025 as any).therapyLacey === 'number' || typeof (fy2025 as any).therapyCentralia === 'number' || typeof (fy2025 as any).therapyAberdeen === 'number'))
+      ? {
+          lacey: Number((fy2025 as any).therapyLacey || 0),
+          centralia: Number((fy2025 as any).therapyCentralia || 0),
+          aberdeen: Number((fy2025 as any).therapyAberdeen || 0)
+        }
+      : generateProjectedSiteData(projectedTotalIncome, current2025SitesMonthIndividual)
     
     // Calculate total projected increment per site for the year
     const projectedIncrementSites = {

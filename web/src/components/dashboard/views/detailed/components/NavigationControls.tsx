@@ -1,6 +1,6 @@
 
 interface NavigationControlsProps {
-  chartMode: 'line' | 'bar'
+  chartMode: 'line' | 'bar' | 'proportion'
   timeframe: 'year' | 'quarter' | 'month'
   showCombined: boolean
   showAllMonths: boolean
@@ -17,8 +17,11 @@ export default function NavigationControls({
   setCurrentPeriod
 }: NavigationControlsProps) {
   // Only show navigation controls for quarter and month line modes, or month bar mode when not showing all months
-  const shouldShowControls = (chartMode === 'line' && (timeframe === 'quarter' || timeframe === 'month')) || 
+  // Proportion charts don't need navigation controls as they show all historical data
+  const shouldShowControls = chartMode !== 'proportion' && (
+    (chartMode === 'line' && (timeframe === 'quarter' || timeframe === 'month')) || 
     (chartMode === 'bar' && timeframe === 'month' && !showCombined && !showAllMonths)
+  )
 
   if (!shouldShowControls) {
     return null

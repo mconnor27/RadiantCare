@@ -8,8 +8,8 @@ interface ChartControlsProps {
   setIsNormalized: (normalized: boolean) => void
   showCombined: boolean
   setShowCombined: (combined: boolean) => void
-  chartMode: 'line' | 'bar'
-  setChartMode: (mode: 'line' | 'bar') => void
+  chartMode: 'line' | 'bar' | 'proportion'
+  setChartMode: (mode: 'line' | 'bar' | 'proportion') => void
   timeframe: 'year' | 'quarter' | 'month'
   setTimeframe: (timeframe: 'year' | 'quarter' | 'month') => void
   showAllMonths: boolean
@@ -17,6 +17,7 @@ interface ChartControlsProps {
   incomeMode: IncomeMode
   setIncomeMode: (mode: IncomeMode) => void
   loading: boolean
+  variant?: 'inline' | 'sidebar'
 }
 
 export default function ChartControls({
@@ -34,11 +35,14 @@ export default function ChartControls({
   setShowAllMonths,
   incomeMode,
   setIncomeMode,
-  loading
+  loading,
+  variant = 'inline'
 }: ChartControlsProps) {
+  const isSidebar = variant === 'sidebar'
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+    <div style={{ display: isSidebar ? 'block' : 'flex', alignItems: isSidebar ? undefined : 'center', justifyContent: isSidebar ? undefined : 'space-between', marginBottom: isSidebar ? 0 : 16 }}>
+      <div style={{ display: isSidebar ? 'flex' : 'flex', flexDirection: isSidebar ? 'column' as const : 'row' as const, alignItems: isSidebar ? 'stretch' : 'center', gap: isSidebar ? 12 : 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <label style={{ fontSize: 14, fontWeight: 500 }}>Environment:</label>
           <select 
@@ -147,6 +151,20 @@ export default function ChartControls({
             >
               Bar
             </button>
+            <button
+              onClick={() => setChartMode('proportion')}
+              style={{
+                padding: '4px 12px',
+                border: 'none',
+                background: chartMode === 'proportion' ? '#1e40af' : '#fff',
+                color: chartMode === 'proportion' ? '#fff' : '#333',
+                fontSize: 14,
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Projection
+            </button>
           </div>
         </div>
 
@@ -213,7 +231,8 @@ export default function ChartControls({
           </div>
         )}
       </div>
-      {loading && <div style={{ fontSize: 12, color: '#6b7280' }}>Loading…</div>}
+      {!isSidebar && loading && <div style={{ fontSize: 12, color: '#6b7280' }}>Loading…</div>}
+      {isSidebar && loading && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 8 }}>Loading…</div>}
     </div>
   )
 }

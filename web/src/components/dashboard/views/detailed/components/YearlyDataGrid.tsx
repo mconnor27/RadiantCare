@@ -180,6 +180,24 @@ function syncGridValuesToMultiyear(
     } catch (error) {
       console.error(`   ❌ Failed to update therapyIncome:`, error)
     }
+
+    // Additionally sync per-site therapy projected totals to store for per-site projections
+    try {
+      const lacey = getProjectedValue('7105 Therapy - Lacey')
+      const centralia = getProjectedValue('7110 Therapy - Centralia')
+      const aberdeen = getProjectedValue('7108 Therapy - Aberdeen')
+      console.log(`🏥 Per-site projected therapy from grid → Lacey=${lacey}, Centralia=${centralia}, Aberdeen=${aberdeen}`)
+      store.setFutureValue('A', 2025, 'therapyLacey', lacey)
+      store.setFutureValue('A', 2025, 'therapyCentralia', centralia)
+      store.setFutureValue('A', 2025, 'therapyAberdeen', aberdeen)
+      if (store.scenarioBEnabled) {
+        store.setFutureValue('B', 2025, 'therapyLacey', lacey)
+        store.setFutureValue('B', 2025, 'therapyCentralia', centralia)
+        store.setFutureValue('B', 2025, 'therapyAberdeen', aberdeen)
+      }
+    } catch (error) {
+      console.error('   ❌ Failed to sync per-site therapy values to store:', error)
+    }
     
   } catch (error) {
     console.error('Error syncing grid values to multiyear store:', error)

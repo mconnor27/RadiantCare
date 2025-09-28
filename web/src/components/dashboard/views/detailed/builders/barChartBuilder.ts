@@ -11,7 +11,6 @@ import {
 
 interface BarChartDataProps {
   timeframe: 'year' | 'quarter' | 'month'
-  currentYearData: YTDPoint[]
   processedHistoricalData: { year: string, data: YTDPoint[] }[]
   showCombined: boolean
   data: YTDPoint[]
@@ -75,7 +74,6 @@ const normalizeCombinedBarData = (data: any[], isNormalized: boolean, fixedTotal
 
 export const buildBarChartData = ({
   timeframe,
-  currentYearData,
   processedHistoricalData,
   showCombined,
   data,

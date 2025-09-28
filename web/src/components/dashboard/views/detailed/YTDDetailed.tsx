@@ -26,7 +26,7 @@ export default function YTDDetailed() {
   const [environment, setEnvironment] = useState<'production' | 'sandbox'>('production')
   const [isNormalized, setIsNormalized] = useState(false)
   const [showCombined, setShowCombined] = useState(false)
-  const [chartMode, setChartMode] = useState<'line' | 'bar'>('line')
+  const [chartMode, setChartMode] = useState<'line' | 'bar' | 'proportion'>('line')
   const [timeframe, setTimeframe] = useState<'year' | 'quarter' | 'month'>('year')
   const [currentPeriod, setCurrentPeriod] = useState<{ year: number, quarter?: number, month?: number }>({ year: new Date().getFullYear() })
   const [is2025Visible, setIs2025Visible] = useState(true)
@@ -79,12 +79,6 @@ export default function YTDDetailed() {
     }
   }, [timeframe])
 
-  // Auto-switch to bar mode when incomeMode changes to 'per-site'
-  useEffect(() => {
-    if (incomeMode === 'per-site') {
-      setChartMode('bar')
-    }
-  }, [incomeMode])
 
   // Reset 2025 visibility when switching chart modes
   useEffect(() => {
@@ -96,55 +90,61 @@ export default function YTDDetailed() {
 
   return (
     <div style={{ maxWidth: 1600, margin: '0 auto' }}>
-      <ChartControls
-        environment={environment}
-        setEnvironment={setEnvironment}
-        isNormalized={isNormalized}
-        setIsNormalized={setIsNormalized}
-        showCombined={showCombined}
-        setShowCombined={setShowCombined}
-        chartMode={chartMode}
-        setChartMode={setChartMode}
-        timeframe={timeframe}
-        setTimeframe={setTimeframe}
-        showAllMonths={showAllMonths}
-        setShowAllMonths={setShowAllMonths}
-        incomeMode={incomeMode}
-        setIncomeMode={setIncomeMode}
-        loading={loading}
-      />
+      <div style={{ display: 'flex', gap: 16 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <NavigationControls
+            chartMode={chartMode}
+            timeframe={timeframe}
+            showCombined={showCombined}
+            showAllMonths={showAllMonths}
+            currentPeriod={currentPeriod}
+            setCurrentPeriod={setCurrentPeriod}
+          />
 
-      <NavigationControls
-        chartMode={chartMode}
-        timeframe={timeframe}
-        showCombined={showCombined}
-        showAllMonths={showAllMonths}
-        currentPeriod={currentPeriod}
-        setCurrentPeriod={setCurrentPeriod}
-      />
-
-      {error === 'not_connected' ? (
-        <div>
-          <div style={{ marginBottom: 8 }}>Connect your QuickBooks to load real YTD data.</div>
-          <a href={`/api/qbo/connect?env=${environment}`} style={{ display: 'inline-block', border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', textDecoration: 'none' }}>Connect QuickBooks ({environment})</a>
+          {error === 'not_connected' ? (
+            <div>
+              <div style={{ marginBottom: 8 }}>Connect your QuickBooks to load real YTD data.</div>
+              <a href={`/api/qbo/connect?env=${environment}`} style={{ display: 'inline-block', border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', textDecoration: 'none' }}>Connect QuickBooks ({environment})</a>
+            </div>
+          ) : error ? (
+            <div style={{ color: '#991b1b' }}>{error}</div>
+          ) : (
+            <DetailedChart
+              data={data}
+              isNormalized={isNormalized}
+              showCombined={showCombined}
+              chartMode={chartMode}
+              timeframe={timeframe}
+              currentPeriod={currentPeriod}
+              is2025Visible={is2025Visible}
+              setIs2025Visible={setIs2025Visible}
+              showAllMonths={showAllMonths}
+              incomeMode={incomeMode}
+              fy2025={fy2025}
+            />
+          )}
         </div>
-      ) : error ? (
-        <div style={{ color: '#991b1b' }}>{error}</div>
-      ) : (
-        <DetailedChart
-          data={data}
-          isNormalized={isNormalized}
-          showCombined={showCombined}
-          chartMode={chartMode}
-          timeframe={timeframe}
-          currentPeriod={currentPeriod}
-          is2025Visible={is2025Visible}
-          setIs2025Visible={setIs2025Visible}
-          showAllMonths={showAllMonths}
-          incomeMode={incomeMode}
-          fy2025={fy2025}
-        />
-      )}
+        <div style={{ width: 300, flexShrink: 0 }}>
+          <ChartControls
+            environment={environment}
+            setEnvironment={setEnvironment}
+            isNormalized={isNormalized}
+            setIsNormalized={setIsNormalized}
+            showCombined={showCombined}
+            setShowCombined={setShowCombined}
+            chartMode={chartMode}
+            setChartMode={setChartMode}
+            timeframe={timeframe}
+            setTimeframe={setTimeframe}
+            showAllMonths={showAllMonths}
+            setShowAllMonths={setShowAllMonths}
+            incomeMode={incomeMode}
+            setIncomeMode={setIncomeMode}
+            loading={loading}
+            variant="sidebar"
+          />
+        </div>
+      </div>
 
       <PartnerCompensation />
 

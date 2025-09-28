@@ -31,8 +31,10 @@ import {
   generateDaysForMonth 
 } from '../utils/aggregations'
 import { buildStaticLineTraces, buildPulsingTraces } from '../builders/lineChartBuilder'
+import { buildSiteLineTraces, buildSitePulsingTraces } from '../builders/siteLineChartBuilder'
 import { buildBarChartData, buildBarChartTraces } from '../builders/barChartBuilder'
 import { buildSiteBarChartData, buildSiteBarChartTraces } from '../builders/siteBarChartBuilder'
+import { buildProportionData, buildProportionTraces, buildProportionLayout } from '../builders/proportionChartBuilder'
 import { buildChartLayout } from '../builders/layoutBuilder'
 import { RADAR_CONFIG, CHART_CONFIG } from '../config/chartConfig'
 import type { IncomeMode } from '../../../shared/types'
@@ -41,7 +43,7 @@ interface DetailedChartProps {
   data: YTDPoint[]
   isNormalized: boolean
   showCombined: boolean
-  chartMode: 'line' | 'bar'
+  chartMode: 'line' | 'bar' | 'proportion'
   timeframe: 'year' | 'quarter' | 'month'
   currentPeriod: { year: number, quarter?: number, month?: number }
   is2025Visible: boolean
@@ -88,6 +90,35 @@ export default function DetailedChart({
     
     return () => clearInterval(interval)
   }, [chartMode])
+
+  // Generate proportion data for proportion chart mode
+  const proportionData = useMemo(() => {
+    if (chartMode !== 'proportion') return []
+    return buildProportionData()
+  }, [chartMode])
+
+  // Debug info for proportion data
+  const proportionDebugInfo = useMemo(() => {
+    if (chartMode !== 'proportion' || proportionData.length === 0) return null
+    
+    const yearCounts = proportionData.reduce((acc, item) => {
+      acc[item.year] = (acc[item.year] || 0) + 1
+      return acc
+    }, {} as Record<number, number>)
+    
+    const firstFewItems = proportionData.slice(0, 3)
+    const lastFewItems = proportionData.slice(-3)
+    
+    return {
+      totalDataPoints: proportionData.length,
+      yearCounts,
+      dateRange: proportionData.length > 0 ? 
+        `${proportionData[0].year}-${proportionData[0].month} to ${proportionData[proportionData.length-1].year}-${proportionData[proportionData.length-1].month}` : 
+        'No data',
+      sampleFirst: firstFewItems,
+      sampleLast: lastFewItems
+    }
+  }, [chartMode, proportionData])
 
   // Process data for month-day overlay with rolling averages and optional normalization
   const currentYearData = useMemo(() => {
@@ -574,7 +605,6 @@ export default function DetailedChart({
   const barChartData = useMemo(() => {
     return buildBarChartData({
       timeframe,
-      currentYearData,
       processedHistoricalData,
       showCombined,
       data,
@@ -590,7 +620,7 @@ export default function DetailedChart({
       isNormalized,
       projectedIncomeData: projectedIncomeDataForBars
     })
-  }, [timeframe, currentYearData, processedHistoricalData, showCombined, chartMode, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, currentPeriod, showAllMonths, projectedIncomeDataForBars])
+  }, [timeframe, processedHistoricalData, showCombined, chartMode, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, currentPeriod, showAllMonths, projectedIncomeDataForBars])
 
 
   // Site-specific bar chart data processing
@@ -620,37 +650,69 @@ export default function DetailedChart({
   const staticLineTraces = useMemo(() => {
     if (chartMode !== 'line') return []
     
-    return buildStaticLineTraces({
-      showCombined,
-      combinedStats,
-      processedHistoricalData,
-      processedCurrentData,
-      projectedIncomeData,
-      isNormalized,
-      is2025Visible,
-      timeframe
-    })
+    if (incomeMode === 'per-site') {
+      // Use site-specific line traces
+      return buildSiteLineTraces({
+        showCombined,
+        processedHistoricalData,
+        isNormalized,
+        is2025Visible,
+        timeframe,
+        currentPeriod,
+        fy2025
+      })
+    } else {
+      // Use total income line traces
+      return buildStaticLineTraces({
+        showCombined,
+        combinedStats,
+        processedHistoricalData,
+        processedCurrentData,
+        projectedIncomeData,
+        isNormalized,
+        is2025Visible,
+        timeframe
+      })
+    }
   }, [
-    chartMode, showCombined, combinedStats, processedHistoricalData, 
-    processedCurrentData, projectedIncomeData, isNormalized, is2025Visible, timeframe
+    chartMode, incomeMode, showCombined, combinedStats, processedHistoricalData, 
+    processedCurrentData, projectedIncomeData, isNormalized, is2025Visible, timeframe, currentPeriod, fy2025
   ])
 
   // Create animated pulsing traces (separate from static traces)
   const pulsingTraces = useMemo(() => {
     if (chartMode !== 'line') return []
     
-    return buildPulsingTraces(
-      processedCurrentData,
-      is2025Visible,
-      pulsePhase,
-      isNormalized
-    )
-  }, [chartMode, processedCurrentData, is2025Visible, chartMode === 'line' ? pulsePhase : 0, isNormalized])
+    if (incomeMode === 'per-site') {
+      // Use site-specific pulsing traces
+      return buildSitePulsingTraces(
+        is2025Visible,
+        pulsePhase,
+        isNormalized,
+        timeframe,
+        currentPeriod,
+        fy2025
+      )
+    } else {
+      // Use total income pulsing traces
+      return buildPulsingTraces(
+        processedCurrentData,
+        is2025Visible,
+        pulsePhase,
+        isNormalized
+      )
+    }
+  }, [chartMode, incomeMode, processedCurrentData, is2025Visible, chartMode === 'line' ? pulsePhase : 0, isNormalized, timeframe, currentPeriod])
 
   // Build chart layout
   const chartLayout = useMemo(() => {
+    if (chartMode === 'proportion') {
+      // Proportion charts use their own layout
+      return null // Will be handled separately in render
+    }
+    
     return buildChartLayout({
-      chartMode,
+      chartMode: chartMode as 'line' | 'bar',
       timeframe,
       showCombined,
       isNormalized,
@@ -706,6 +768,40 @@ export default function DetailedChart({
             <div>Timeframe: {debugInfo.timeframe} {debugInfo.currentPeriod?.quarter ? `Q${debugInfo.currentPeriod.quarter}` : debugInfo.currentPeriod?.month ? `M${debugInfo.currentPeriod.month}` : ''}</div>
           </div>
         )}
+
+        {/* PROPORTION DEBUG INFO */}
+        {proportionDebugInfo && (
+          <div style={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            background: 'rgba(0,100,0,0.8)',
+            color: 'white',
+            padding: '8px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            zIndex: 1000,
+            fontFamily: 'monospace',
+            maxWidth: '300px'
+          }}>
+            <div><strong>PROPORTION DATA DEBUG:</strong></div>
+            <div>Total data points: {proportionDebugInfo.totalDataPoints}</div>
+            <div>Date range: {proportionDebugInfo.dateRange}</div>
+            <div>Data by year: {Object.entries(proportionDebugInfo.yearCounts).map(([year, count]) => `${year}:${count}`).join(', ')}</div>
+            <div><strong>First 3 items:</strong></div>
+            {proportionDebugInfo.sampleFirst.map((item, i) => (
+              <div key={i} style={{ fontSize: '10px' }}>
+                {item.year}-{item.month}: L:{item.laceyPercent.toFixed(1)}% C:{item.centraliaPercent.toFixed(1)}% A:{item.aberdeenPercent.toFixed(1)}%
+              </div>
+            ))}
+            <div><strong>Last 3 items:</strong></div>
+            {proportionDebugInfo.sampleLast.map((item, i) => (
+              <div key={i} style={{ fontSize: '10px' }}>
+                {item.year}-{item.month}: L:{item.laceyPercent.toFixed(1)}% C:{item.centraliaPercent.toFixed(1)}% A:{item.aberdeenPercent.toFixed(1)}%
+              </div>
+            ))}
+          </div>
+        )}
         
       <Plot
         data={(chartMode === 'line' ? [
@@ -713,22 +809,24 @@ export default function DetailedChart({
           ...staticLineTraces,
           // Animated pulsing traces (separate memoization for animation)
           ...pulsingTraces
-        ] : incomeMode === 'per-site' 
-          ? buildSiteBarChartTraces(
-              siteBarChartData,
-              timeframe,
-              showCombined,
-              isNormalized
-            )
-          : buildBarChartTraces(
-              barChartData,
-              timeframe,
-              showCombined,
-              isNormalized,
-              showAllMonths,
-              currentPeriod
-            )) as any}
-        layout={chartLayout}
+        ] : chartMode === 'proportion'
+          ? buildProportionTraces(proportionData)
+          : incomeMode === 'per-site' 
+            ? buildSiteBarChartTraces(
+                siteBarChartData,
+                timeframe,
+                showCombined,
+                isNormalized
+              )
+            : buildBarChartTraces(
+                barChartData,
+                timeframe,
+                showCombined,
+                isNormalized,
+                showAllMonths,
+                currentPeriod
+              )) as any}
+        layout={chartMode === 'proportion' ? buildProportionLayout(isMobile) : (chartLayout || {})}
         config={{
           responsive: true,
           displayModeBar: false,
@@ -748,7 +846,7 @@ export default function DetailedChart({
           }
           // Allow default behavior for all other traces in line mode
           return true
-        } : undefined}
+        } : chartMode === 'proportion' ? undefined : undefined}
         useResizeHandler={true}
         style={{ width: '100%', height: isMobile ? CHART_CONFIG.mobile.height : CHART_CONFIG.desktop.height }}
       />

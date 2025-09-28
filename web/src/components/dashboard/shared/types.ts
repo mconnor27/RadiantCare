@@ -62,6 +62,10 @@ export type FutureYear = {
   nonMdEmploymentCosts: number
   locumCosts: number
   miscEmploymentCosts: number
+  // Optional per-site therapy income totals for this year (from grid/store)
+  therapyLacey?: number
+  therapyCentralia?: number
+  therapyAberdeen?: number
   medicalDirectorHours?: number
   prcsMedicalDirectorHours?: number
   consultingServicesAgreement?: number // Consulting Services Agreement annual amount (overrides projection)
@@ -100,7 +104,7 @@ export type Store = {
   setFutureValue: (
     scenario: ScenarioKey,
     year: number,
-    field: 'therapyIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'locumCosts' | 'miscEmploymentCosts' | 'medicalDirectorHours' | 'prcsMedicalDirectorHours' | 'consultingServicesAgreement',
+    field: 'therapyIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'locumCosts' | 'miscEmploymentCosts' | 'medicalDirectorHours' | 'prcsMedicalDirectorHours' | 'consultingServicesAgreement' | 'therapyLacey' | 'therapyCentralia' | 'therapyAberdeen',
     value: number
   ) => void
   upsertPhysician: (scenario: ScenarioKey, year: number, physician: Physician) => void
