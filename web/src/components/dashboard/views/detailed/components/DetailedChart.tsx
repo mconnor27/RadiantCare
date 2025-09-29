@@ -13,7 +13,6 @@ import {
   parseTherapyIncome2018,
   parseTherapyIncome2017,
   parseTherapyIncome2016,
-  calculateRollingAverage, 
   type YTDPoint 
 } from '../../../../../historical_data/therapyIncomeParser'
 import {
@@ -122,10 +121,9 @@ export default function DetailedChart({
     }
   }, [chartMode, proportionData])
 
-  // Process data for month-day overlay with rolling averages and optional normalization
+  // Process data for month-day overlay with optional normalization
   const currentYearData = useMemo(() => {
     const filtered = data.filter(p => p.date !== 'Total')
-    const smoothed = calculateRollingAverage(filtered)
     if (isNormalized) {
       // Use projected total income as 100% reference for current year normalization
       const projectedTotalIncome = fy2025 ? getTotalIncome(fy2025) : undefined
@@ -133,7 +131,7 @@ export default function DetailedChart({
       let referenceForPeriod = projectedTotalIncome
       if (timeframe === 'quarter' && currentPeriod?.quarter && fy2025) {
         // Calculate what the combined data (actual + projected) would be for this quarter
-        const combinedData = [...smoothed, ...generateProjectedIncomeData(smoothed, fy2025).slice(1)]
+        const combinedData = [...filtered, ...generateProjectedIncomeData(filtered, fy2025).slice(1)]
         const startMonth = (currentPeriod.quarter - 1) * 3 + 1
         const endMonth = startMonth + 2
         const combinedQuarterData = combinedData.filter(point => {
@@ -154,7 +152,7 @@ export default function DetailedChart({
         }
       } else if (timeframe === 'month' && currentPeriod?.month && fy2025) {
         // Calculate what the combined data (actual + projected) would be for this month
-        const combinedData = [...smoothed, ...generateProjectedIncomeData(smoothed, fy2025).slice(1)]
+        const combinedData = [...filtered, ...generateProjectedIncomeData(filtered, fy2025).slice(1)]
         const monthStr = currentPeriod.month.toString().padStart(2, '0')
         const combinedMonthData = combinedData.filter(point => point.monthDay.startsWith(monthStr))
         
@@ -170,9 +168,9 @@ export default function DetailedChart({
           referenceForPeriod = combinedMonthEndIncome - combinedMonthStartIncome
         }
       }
-      return normalizeData(smoothed, timeframe, currentPeriod, referenceForPeriod)
+      return normalizeData(filtered, timeframe, currentPeriod, referenceForPeriod)
     } else {
-      return convertToPeriodData(smoothed, timeframe, currentPeriod)
+      return convertToPeriodData(filtered, timeframe, currentPeriod)
     }
   }, [data, isNormalized, timeframe, currentPeriod, fy2025])
 
@@ -182,10 +180,8 @@ export default function DetailedChart({
 
     const projectedTotalIncome = getTotalIncome(fy2025)
     const filtered = data.filter(p => p.date !== 'Total')
-    const smoothed = calculateRollingAverage(filtered)
-    const lastSmoothedPoint = smoothed[smoothed.length - 1]
 
-    const combinedData = [...smoothed, ...generateProjectedIncomeData(smoothed, fy2025).slice(1)]
+    const combinedData = [...filtered, ...generateProjectedIncomeData(filtered, fy2025).slice(1)]
     const lastCombinedPoint = combinedData[combinedData.length - 1]
 
     // Calculate quarter-specific values for Q3
@@ -197,15 +193,15 @@ export default function DetailedChart({
       const startMonth = (currentPeriod.quarter - 1) * 3 + 1
       const endMonth = startMonth + 2
 
-      // Calculate actual quarter total from smoothed data
-      const quarterData = smoothed.filter(point => {
+      // Calculate actual quarter total from filtered data
+      const quarterData = filtered.filter(point => {
         const [monthStr] = point.monthDay.split('-')
         const month = parseInt(monthStr, 10)
         return month >= startMonth && month <= endMonth
       })
 
       if (quarterData.length > 0) {
-        const preQuarterData = smoothed.filter(point => {
+        const preQuarterData = filtered.filter(point => {
           const [monthStr] = point.monthDay.split('-')
           const month = parseInt(monthStr, 10)
           return month < startMonth
@@ -238,12 +234,12 @@ export default function DetailedChart({
       // Use the combined quarter total as the reference (this is the actual projected income for this quarter)
       quarterProjectedTotal = combinedQuarterTotalIncome
     } else if (timeframe === 'month' && currentPeriod?.month) {
-      // Calculate actual month total from smoothed data
+      // Calculate actual month total from filtered data
       const monthStr = currentPeriod.month.toString().padStart(2, '0')
-      const monthData = smoothed.filter(point => point.monthDay.startsWith(monthStr))
+      const monthData = filtered.filter(point => point.monthDay.startsWith(monthStr))
 
       if (monthData.length > 0) {
-        const preMonthData = smoothed.filter(point => {
+        const preMonthData = filtered.filter(point => {
           const [monthStr] = point.monthDay.split('-')
           const month = parseInt(monthStr, 10)
           return month < currentPeriod.month!
@@ -278,9 +274,9 @@ export default function DetailedChart({
     const quarterOrMonthReference = timeframe === 'quarter' ? quarterProjectedTotal : 
                                    timeframe === 'month' ? quarterProjectedTotal : // quarterProjectedTotal is reused for month
                                    projectedTotalIncome
-    const normalizedActual = normalizeData(smoothed, timeframe, currentPeriod, quarterOrMonthReference)
+    const normalizedActual = normalizeData(filtered, timeframe, currentPeriod, quarterOrMonthReference)
     const normalizedCombined = normalizeData(combinedData, timeframe, currentPeriod, quarterOrMonthReference)
-    const connectionPointIndex = smoothed.length - 1
+    const connectionPointIndex = filtered.length - 1
     const actualAtConnection = normalizedActual[connectionPointIndex]
     const combinedAtConnection = normalizedCombined[connectionPointIndex]
 
@@ -354,7 +350,7 @@ export default function DetailedChart({
       quarterProjectedTotal,
       actualQuarterTotalIncome,
       combinedQuarterTotalIncome,
-      actualFinalRaw: lastSmoothedPoint?.cumulativeIncome || 0,
+      actualFinalRaw: filtered[filtered.length - 1]?.cumulativeIncome || 0,
       combinedFinalRaw: lastCombinedPoint?.cumulativeIncome || 0,
       actualAtConnection: actualAtConnection?.cumulativeIncome || 0,
       combinedAtConnection: combinedAtConnection?.cumulativeIncome || 0,
@@ -369,16 +365,15 @@ export default function DetailedChart({
   const projectedIncomeData = useMemo(() => {
     if (!fy2025 || currentYearData.length === 0) return []
     
-    // Get the raw actual data and smooth it (same as currentYearData processing)
+    // Get the raw actual data
     const actualData = data.filter(p => p.date !== 'Total')
-    const smoothedActual = calculateRollingAverage(actualData)
-    
-    // Generate projected data starting from the last smoothed actual point
-    const rawProjectedData = generateProjectedIncomeData(smoothedActual, fy2025)
+
+    // Generate projected data starting from the last actual point
+    const rawProjectedData = generateProjectedIncomeData(actualData, fy2025)
     if (rawProjectedData.length === 0) return []
     
     // Process actual and projected data together to ensure same baseline
-    const combinedData = [...smoothedActual, ...rawProjectedData.slice(1)] // Skip duplicate connection point
+    const combinedData = [...actualData, ...rawProjectedData.slice(1)] // Skip duplicate connection point
     
     let processedCombinedData
     if (isNormalized) {
@@ -427,7 +422,7 @@ export default function DetailedChart({
     }
     
     // Extract the projected portion (everything after the actual data)
-    const projectedStartIndex = smoothedActual.length - 1 // Include connection point
+    const projectedStartIndex = actualData.length - 1 // Include connection point
     let processedProjectedData = processedCombinedData.slice(projectedStartIndex)
     
     // Apply timeframe filtering to show only relevant portion (used by line charts)
@@ -446,95 +441,85 @@ export default function DetailedChart({
     if (!fy2025 || currentYearData.length === 0) return []
 
     const actualData = data.filter(p => p.date !== 'Total')
-    const smoothedActual = calculateRollingAverage(actualData)
-    const rawProjectedData = generateProjectedIncomeData(smoothedActual, fy2025)
+    const rawProjectedData = generateProjectedIncomeData(actualData, fy2025)
     if (rawProjectedData.length === 0) return []
 
     // Build a full-year combined series (actual + projected) without filtering
     // This lets bar aggregations compute totals for all quarters/months
-    const combinedData = [...smoothedActual, ...rawProjectedData.slice(1)]
+    const combinedData = [...actualData, ...rawProjectedData.slice(1)]
     return convertToPeriodData(combinedData, 'year', currentPeriod)
   }, [fy2025, currentYearData, data, currentPeriod])
 
   // Historical data smoothing
   const historical2024Smoothed = useMemo(() => {
-    const smoothed = calculateRollingAverage(historical2024Data)
     if (isNormalized) {
-      return normalizeData(smoothed, timeframe, currentPeriod)
+      return normalizeData(historical2024Data, timeframe, currentPeriod)
     } else {
-      return convertToPeriodData(smoothed, timeframe, currentPeriod)
+      return convertToPeriodData(historical2024Data, timeframe, currentPeriod)
     }
   }, [historical2024Data, isNormalized, timeframe, currentPeriod])
-  
+
   const historical2023Smoothed = useMemo(() => {
-    const smoothed = calculateRollingAverage(historical2023Data)
     if (isNormalized) {
-      return normalizeData(smoothed, timeframe, currentPeriod)
+      return normalizeData(historical2023Data, timeframe, currentPeriod)
     } else {
-      return convertToPeriodData(smoothed, timeframe, currentPeriod)
+      return convertToPeriodData(historical2023Data, timeframe, currentPeriod)
     }
   }, [historical2023Data, isNormalized, timeframe, currentPeriod])
-  
+
   const historical2022Smoothed = useMemo(() => {
-    const smoothed = calculateRollingAverage(historical2022Data)
     if (isNormalized) {
-      return normalizeData(smoothed, timeframe, currentPeriod)
+      return normalizeData(historical2022Data, timeframe, currentPeriod)
     } else {
-      return convertToPeriodData(smoothed, timeframe, currentPeriod)
+      return convertToPeriodData(historical2022Data, timeframe, currentPeriod)
     }
   }, [historical2022Data, isNormalized, timeframe, currentPeriod])
-  
+
   const historical2021Smoothed = useMemo(() => {
-    const smoothed = calculateRollingAverage(historical2021Data)
     if (isNormalized) {
-      return normalizeData(smoothed, timeframe, currentPeriod)
+      return normalizeData(historical2021Data, timeframe, currentPeriod)
     } else {
-      return convertToPeriodData(smoothed, timeframe, currentPeriod)
+      return convertToPeriodData(historical2021Data, timeframe, currentPeriod)
     }
   }, [historical2021Data, isNormalized, timeframe, currentPeriod])
-  
+
   const historical2020Smoothed = useMemo(() => {
-    const smoothed = calculateRollingAverage(historical2020Data)
     if (isNormalized) {
-      return normalizeData(smoothed, timeframe, currentPeriod)
+      return normalizeData(historical2020Data, timeframe, currentPeriod)
     } else {
-      return convertToPeriodData(smoothed, timeframe, currentPeriod)
+      return convertToPeriodData(historical2020Data, timeframe, currentPeriod)
     }
   }, [historical2020Data, isNormalized, timeframe, currentPeriod])
-  
+
   const historical2019Smoothed = useMemo(() => {
-    const smoothed = calculateRollingAverage(historical2019Data)
     if (isNormalized) {
-      return normalizeData(smoothed, timeframe, currentPeriod)
+      return normalizeData(historical2019Data, timeframe, currentPeriod)
     } else {
-      return convertToPeriodData(smoothed, timeframe, currentPeriod)
+      return convertToPeriodData(historical2019Data, timeframe, currentPeriod)
     }
   }, [historical2019Data, isNormalized, timeframe, currentPeriod])
   
   const historical2018Smoothed = useMemo(() => {
-    const smoothed = calculateRollingAverage(historical2018Data)
     if (isNormalized) {
-      return normalizeData(smoothed, timeframe, currentPeriod)
+      return normalizeData(historical2018Data, timeframe, currentPeriod)
     } else {
-      return convertToPeriodData(smoothed, timeframe, currentPeriod)
+      return convertToPeriodData(historical2018Data, timeframe, currentPeriod)
     }
   }, [historical2018Data, isNormalized, timeframe, currentPeriod])
-  
+
   const historical2017Smoothed = useMemo(() => {
-    const smoothed = calculateRollingAverage(historical2017Data)
     if (isNormalized) {
-      return normalizeData(smoothed, timeframe, currentPeriod)
+      return normalizeData(historical2017Data, timeframe, currentPeriod)
     } else {
-      return convertToPeriodData(smoothed, timeframe, currentPeriod)
+      return convertToPeriodData(historical2017Data, timeframe, currentPeriod)
     }
   }, [historical2017Data, isNormalized, timeframe, currentPeriod])
-  
+
   const historical2016Smoothed = useMemo(() => {
-    const smoothed = calculateRollingAverage(historical2016Data)
     if (isNormalized) {
-      return normalizeData(smoothed, timeframe, currentPeriod)
+      return normalizeData(historical2016Data, timeframe, currentPeriod)
     } else {
-      return convertToPeriodData(smoothed, timeframe, currentPeriod)
+      return convertToPeriodData(historical2016Data, timeframe, currentPeriod)
     }
   }, [historical2016Data, isNormalized, timeframe, currentPeriod])
 
@@ -673,12 +658,13 @@ export default function DetailedChart({
         projectedIncomeData,
         isNormalized,
         is2025Visible,
-        timeframe
+        timeframe,
+        smoothing
       })
     }
   }, [
-    chartMode, incomeMode, showCombined, combinedStats, processedHistoricalData, 
-    processedCurrentData, projectedIncomeData, isNormalized, is2025Visible, timeframe, currentPeriod, fy2025
+    chartMode, incomeMode, showCombined, combinedStats, processedHistoricalData,
+    processedCurrentData, projectedIncomeData, isNormalized, is2025Visible, timeframe, currentPeriod, fy2025, smoothing
   ])
 
   // Create animated pulsing traces (separate from static traces)
@@ -840,7 +826,7 @@ export default function DetailedChart({
           // Handle legend click to sync 2025 trace visibility with pulsing animation (line mode only)
           if (data.curveNumber !== undefined) {
             const clickedTrace = staticLineTraces[data.curveNumber]
-            if (clickedTrace && clickedTrace.name === '2025 Therapy Income (7-day avg)') {
+            if (clickedTrace && clickedTrace.name === '2025 Therapy Income') {
               setIs2025Visible(!is2025Visible)
               // Prevent Plotly default so both line and pulsing toggle together via state
               return false

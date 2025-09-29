@@ -1,6 +1,5 @@
 import type { YTDPoint } from '../../../../../historical_data/therapyIncomeParser'
 import type { SiteData, FutureYear } from '../../../shared/types'
-import { calculateRollingAverage } from '../../../../../historical_data/therapyIncomeParser'
 import { 
   estimateSiteBreakdownForYear,
   generateProjectedSiteData,
@@ -55,8 +54,8 @@ export const buildSiteBarChartData = ({
   
   if (timeframe === 'year') {
     // Year mode: each year is an x-axis tick with 3 stacked bars per site
-    const actualSmoothed2025 = calculateRollingAverage(data.filter(p => p.date !== 'Total'))
-    const actual2025Total = actualSmoothed2025.length > 0 ? actualSmoothed2025[actualSmoothed2025.length - 1]?.cumulativeIncome || 0 : 0
+    const actualData2025 = data.filter(p => p.date !== 'Total')
+    const actual2025Total = actualData2025.length > 0 ? actualData2025[actualData2025.length - 1]?.cumulativeIncome || 0 : 0
     const projected2025Total = projectedIncomeData.length > 0 ? projectedIncomeData[projectedIncomeData.length - 1]?.cumulativeIncome || 0 : 0
 
     // Get yearly totals for historical data
@@ -146,15 +145,15 @@ export const buildSiteBarChartData = ({
     
     // Get quarterly totals for historical data using RAW data (not filtered by current quarter)
     const historicalDataRaw = [
-      { year: '2016', data: calculateRollingAverage(historical2016Data) },
-      { year: '2017', data: calculateRollingAverage(historical2017Data) },
-      { year: '2018', data: calculateRollingAverage(historical2018Data) },
-      { year: '2019', data: calculateRollingAverage(historical2019Data) },
-      { year: '2020', data: calculateRollingAverage(historical2020Data) },
-      { year: '2021', data: calculateRollingAverage(historical2021Data) },
-      { year: '2022', data: calculateRollingAverage(historical2022Data) },
-      { year: '2023', data: calculateRollingAverage(historical2023Data) },
-      { year: '2024', data: calculateRollingAverage(historical2024Data) }
+      { year: '2016', data: historical2016Data },
+      { year: '2017', data: historical2017Data },
+      { year: '2018', data: historical2018Data },
+      { year: '2019', data: historical2019Data },
+      { year: '2020', data: historical2020Data },
+      { year: '2021', data: historical2021Data },
+      { year: '2022', data: historical2022Data },
+      { year: '2023', data: historical2023Data },
+      { year: '2024', data: historical2024Data }
     ]
     
     if (showCombined) {
@@ -355,20 +354,20 @@ export const buildSiteBarChartData = ({
   
   if (timeframe === 'month') {
     // Month mode: each month is an x-axis tick with 3 stacked bars per site
-    const actualSmoothed2025 = calculateRollingAverage(data.filter(p => p.date !== 'Total'))
-    const current2025MonthlyTotals = getMonthlyTotals(actualSmoothed2025)
-    
+    const actualData2025 = data.filter(p => p.date !== 'Total')
+    const current2025MonthlyTotals = getMonthlyTotals(actualData2025)
+
     // Get monthly totals for historical data using RAW data (not filtered by current month)
     const historicalDataRaw = [
-      { year: '2016', data: calculateRollingAverage(historical2016Data) },
-      { year: '2017', data: calculateRollingAverage(historical2017Data) },
-      { year: '2018', data: calculateRollingAverage(historical2018Data) },
-      { year: '2019', data: calculateRollingAverage(historical2019Data) },
-      { year: '2020', data: calculateRollingAverage(historical2020Data) },
-      { year: '2021', data: calculateRollingAverage(historical2021Data) },
-      { year: '2022', data: calculateRollingAverage(historical2022Data) },
-      { year: '2023', data: calculateRollingAverage(historical2023Data) },
-      { year: '2024', data: calculateRollingAverage(historical2024Data) }
+      { year: '2016', data: historical2016Data },
+      { year: '2017', data: historical2017Data },
+      { year: '2018', data: historical2018Data },
+      { year: '2019', data: historical2019Data },
+      { year: '2020', data: historical2020Data },
+      { year: '2021', data: historical2021Data },
+      { year: '2022', data: historical2022Data },
+      { year: '2023', data: historical2023Data },
+      { year: '2024', data: historical2024Data }
     ]
     
     

@@ -1,4 +1,5 @@
 
+import { useEffect } from 'react'
 import type { IncomeMode } from '../../../shared/types'
 
 interface ChartControlsProps {
@@ -42,7 +43,18 @@ export default function ChartControls({
   loading,
   variant = 'inline'
 }: ChartControlsProps) {
+  
+  // Clamp smoothing value when switching chart modes
+  const maxSmoothing = chartMode === 'proportion' ? 36 : 10
+  const clampedSmoothing = Math.min(smoothing, maxSmoothing)
   const isSidebar = variant === 'sidebar'
+  
+  // Auto-clamp smoothing when chart mode changes
+  useEffect(() => {
+    if (smoothing > maxSmoothing) {
+      setSmoothing(maxSmoothing)
+    }
+  }, [chartMode, smoothing, maxSmoothing, setSmoothing])
 
   return (
     <div style={{ display: isSidebar ? 'block' : 'flex', alignItems: isSidebar ? undefined : 'center', justifyContent: isSidebar ? undefined : 'space-between', marginBottom: isSidebar ? 0 : 16 }}>
@@ -177,17 +189,24 @@ export default function ChartControls({
           <input
             type="range"
             min="0"
-            max="36"
-            value={smoothing}
-            onChange={(e) => setSmoothing(parseInt(e.target.value, 10))}
+            max={maxSmoothing}
+            step="1"
+            value={clampedSmoothing}
+            onChange={(e) => {
+              const newValue = parseInt(e.target.value)
+              setSmoothing(newValue)
+            }}
             style={{
               width: '80px',
               height: '20px',
               cursor: 'pointer'
             }}
           />
-          <span style={{ fontSize: 11, color: '#666', minWidth: '20px' }}>{smoothing} month window</span>
+          <span style={{ fontSize: 11, color: '#666', minWidth: '20px' }}>
+            {chartMode === 'proportion' ? `${clampedSmoothing} month window` : `${clampedSmoothing}`}
+          </span>
         </div>
+
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <label style={{ fontSize: 14, fontWeight: 500 }}>Timeframe:</label>

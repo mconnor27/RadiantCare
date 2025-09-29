@@ -32,7 +32,7 @@ export default function YTDDetailed() {
   const [is2025Visible, setIs2025Visible] = useState(true)
   const [showAllMonths, setShowAllMonths] = useState(true)
   const [incomeMode, setIncomeMode] = useState<IncomeMode>('total')
-  const [smoothing, setSmoothing] = useState(5)
+  const [smoothing, setSmoothing] = useState(5.0)
   
   // Parse 2025 data for loading into the chart component
   const historical2025Data = useMemo(() => parseTherapyIncome2025(), [])

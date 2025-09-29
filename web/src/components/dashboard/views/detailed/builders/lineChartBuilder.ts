@@ -1,6 +1,7 @@
 import type { YTDPoint } from '../../../../../historical_data/therapyIncomeParser'
 import { HISTORICAL_COLORS, CURRENT_YEAR_COLOR, HISTORICAL_MEAN_COLOR, HISTORICAL_YEAR_LINE_WIDTH, RADAR_CONFIG } from '../config/chartConfig'
 import { sortDataChronologically } from '../utils/dataProcessing'
+import { applySmoothingToYTDData } from '../../../shared/splineSmoothing'
 
 interface LineChartBuilderProps {
   showCombined: boolean
@@ -15,6 +16,7 @@ interface LineChartBuilderProps {
   isNormalized: boolean
   is2025Visible: boolean
   timeframe: 'year' | 'quarter' | 'month'
+  smoothing: number
 }
 
 export const buildStaticLineTraces = ({
@@ -25,16 +27,22 @@ export const buildStaticLineTraces = ({
   projectedIncomeData,
   isNormalized,
   is2025Visible,
-  timeframe
+  timeframe,
+  smoothing
 }: LineChartBuilderProps) => {
   const traces = []
   
   // Combined statistics (when enabled)
   if (showCombined && combinedStats.mean.length > 0) {
-    const combinedMeanX = combinedStats.mean.map(p => p.monthDay)
-    const combinedMeanY = combinedStats.mean.map(p => p.cumulativeIncome)
-    const combinedUpperY = combinedStats.upperBound.map(p => p.cumulativeIncome)
-    const combinedLowerY = combinedStats.lowerBound.map(p => p.cumulativeIncome)
+    // Apply smoothing to combined statistics
+    const smoothedMean = applySmoothingToYTDData(combinedStats.mean, smoothing)
+    const smoothedUpper = applySmoothingToYTDData(combinedStats.upperBound, smoothing)
+    const smoothedLower = applySmoothingToYTDData(combinedStats.lowerBound, smoothing)
+    
+    const combinedMeanX = smoothedMean.map(p => p.monthDay)
+    const combinedMeanY = smoothedMean.map(p => p.cumulativeIncome)
+    const combinedUpperY = smoothedUpper.map(p => p.cumulativeIncome)
+    const combinedLowerY = smoothedLower.map(p => p.cumulativeIncome)
     
     traces.push(
       // Standard deviation band (upper)
@@ -79,15 +87,16 @@ export const buildStaticLineTraces = ({
     processedHistoricalData.forEach(({ year, data }, index) => {
       if (data.length > 0) {
         const sortedData = timeframe === 'year' ? sortDataChronologically(data) : data
-        const xData = sortedData.map((p: YTDPoint) => p.monthDay)
-        const yData = sortedData.map((p: YTDPoint) => p.cumulativeIncome)
+        const smoothedData = applySmoothingToYTDData(sortedData, smoothing)
+        const xData = smoothedData.map((p: YTDPoint) => p.monthDay)
+        const yData = smoothedData.map((p: YTDPoint) => p.cumulativeIncome)
         
         traces.push({
           x: xData,
           y: yData,
           type: 'scatter' as const,
           mode: 'lines' as const,
-          name: `${year} Therapy Income (7-day avg)`,
+          name: `${year} Therapy Income`,
           line: { color: HISTORICAL_COLORS[index % HISTORICAL_COLORS.length], width: HISTORICAL_YEAR_LINE_WIDTH },
           hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
         })
@@ -97,15 +106,16 @@ export const buildStaticLineTraces = ({
   
   // Current Year Data (2025) - always show
   if (processedCurrentData.length > 0) {
-    const currentX = processedCurrentData.map(p => p.monthDay)
-    const currentY = processedCurrentData.map(p => p.cumulativeIncome)
+    const smoothedCurrentData = applySmoothingToYTDData(processedCurrentData, smoothing)
+    const currentX = smoothedCurrentData.map(p => p.monthDay)
+    const currentY = smoothedCurrentData.map(p => p.cumulativeIncome)
     
     traces.push({
       x: currentX,
       y: currentY,
       type: 'scatter' as const,
       mode: 'lines' as const,
-      name: '2025 Therapy Income (7-day avg)',
+      name: '2025 Therapy Income',
       line: { color: CURRENT_YEAR_COLOR, width: 4 },
       visible: (is2025Visible ? true : 'legendonly') as boolean | 'legendonly',
       hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
@@ -114,6 +124,7 @@ export const buildStaticLineTraces = ({
 
   // Projected Total Income (2025) - dotted green line from last actual data to Dec 31
   if (projectedIncomeData.length > 0) {
+    // Do NOT smooth projection curves - they should remain as straight lines
     const projectedX = projectedIncomeData.map(p => p.monthDay)
     const projectedY = projectedIncomeData.map(p => p.cumulativeIncome)
     

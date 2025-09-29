@@ -1,5 +1,4 @@
 import type { YTDPoint } from '../../../../../historical_data/therapyIncomeParser'
-import { calculateRollingAverage } from '../../../../../historical_data/therapyIncomeParser'
 import { HISTORICAL_COLORS, CURRENT_YEAR_COLOR, HISTORICAL_MEAN_COLOR, PROJECTED_BAR_STYLE } from '../config/chartConfig'
 import { 
   getYearlyTotals, 
@@ -92,8 +91,8 @@ export const buildBarChartData = ({
   if (timeframe === 'year') {
     // Year mode: each year is an x-axis tick
     // Use RAW totals for 2025 so normalization is correct when bars are percent-based
-    const actualSmoothed2025 = calculateRollingAverage(data.filter(p => p.date !== 'Total'))
-    const actual2025Total = actualSmoothed2025.length > 0 ? actualSmoothed2025[actualSmoothed2025.length - 1]?.cumulativeIncome || 0 : 0
+    const actualData2025 = data.filter(p => p.date !== 'Total')
+    const actual2025Total = actualData2025.length > 0 ? actualData2025[actualData2025.length - 1]?.cumulativeIncome || 0 : 0
     const projected2025Total = projectedIncomeData.length > 0 ? projectedIncomeData[projectedIncomeData.length - 1]?.cumulativeIncome || 0 : 0
 
     const yearly2025 = [{ year: '2025', income: actual2025Total }]
@@ -165,23 +164,23 @@ export const buildBarChartData = ({
     }
   } else if (timeframe === 'quarter') {
     // Quarter mode - use raw historical data (not smoothed/normalized) for bar charts
-    const smoothedActual2025 = calculateRollingAverage(data.filter(p => p.date !== 'Total'))
-    const quarterly2025 = getQuarterlyTotals(smoothedActual2025)
+    const actualData2025 = data.filter(p => p.date !== 'Total')
+    const quarterly2025 = getQuarterlyTotals(actualData2025)
     // Build a full-year combined series (actual + projected) so period totals are correct
     const combinedForBarsQuarter = projectedIncomeData && projectedIncomeData.length > 0
-      ? smoothedActual2025.concat(projectedIncomeData.slice(1))
-      : smoothedActual2025
+      ? actualData2025.concat(projectedIncomeData.slice(1))
+      : actualData2025
     const projectedQuarterly2025 = getQuarterlyTotals(combinedForBarsQuarter)
     const historicalDataRaw = [
-      { year: '2016', data: calculateRollingAverage(historical2016Data) },
-      { year: '2017', data: calculateRollingAverage(historical2017Data) },
-      { year: '2018', data: calculateRollingAverage(historical2018Data) },
-      { year: '2019', data: calculateRollingAverage(historical2019Data) },
-      { year: '2020', data: calculateRollingAverage(historical2020Data) },
-      { year: '2021', data: calculateRollingAverage(historical2021Data) },
-      { year: '2022', data: calculateRollingAverage(historical2022Data) },
-      { year: '2023', data: calculateRollingAverage(historical2023Data) },
-      { year: '2024', data: calculateRollingAverage(historical2024Data) }
+      { year: '2016', data: historical2016Data },
+      { year: '2017', data: historical2017Data },
+      { year: '2018', data: historical2018Data },
+      { year: '2019', data: historical2019Data },
+      { year: '2020', data: historical2020Data },
+      { year: '2021', data: historical2021Data },
+      { year: '2022', data: historical2022Data },
+      { year: '2023', data: historical2023Data },
+      { year: '2024', data: historical2024Data }
     ]
     const historicalData = historicalDataRaw.map(({ data }) => data).filter(data => data.length > 0)
     const combinedQuarterlyStats = calculateCombinedQuarterlyStats(historicalData)
@@ -239,23 +238,23 @@ export const buildBarChartData = ({
     }
   } else if (timeframe === 'month') {
     // Month mode - use raw historical data (not smoothed/normalized) for bar charts
-    const smoothedActual2025Month = calculateRollingAverage(data.filter(p => p.date !== 'Total'))
-    const monthly2025 = getMonthlyTotals(smoothedActual2025Month)
+    const actualData2025Month = data.filter(p => p.date !== 'Total')
+    const monthly2025 = getMonthlyTotals(actualData2025Month)
     // Build a full-year combined series (actual + projected) so period totals are correct
     const combinedForBarsMonth = projectedIncomeData && projectedIncomeData.length > 0
-      ? smoothedActual2025Month.concat(projectedIncomeData.slice(1))
-      : smoothedActual2025Month
+      ? actualData2025Month.concat(projectedIncomeData.slice(1))
+      : actualData2025Month
     const projectedMonthly2025 = getMonthlyTotals(combinedForBarsMonth)
     const historicalDataRaw = [
-      { year: '2016', data: calculateRollingAverage(historical2016Data) },
-      { year: '2017', data: calculateRollingAverage(historical2017Data) },
-      { year: '2018', data: calculateRollingAverage(historical2018Data) },
-      { year: '2019', data: calculateRollingAverage(historical2019Data) },
-      { year: '2020', data: calculateRollingAverage(historical2020Data) },
-      { year: '2021', data: calculateRollingAverage(historical2021Data) },
-      { year: '2022', data: calculateRollingAverage(historical2022Data) },
-      { year: '2023', data: calculateRollingAverage(historical2023Data) },
-      { year: '2024', data: calculateRollingAverage(historical2024Data) }
+      { year: '2016', data: historical2016Data },
+      { year: '2017', data: historical2017Data },
+      { year: '2018', data: historical2018Data },
+      { year: '2019', data: historical2019Data },
+      { year: '2020', data: historical2020Data },
+      { year: '2021', data: historical2021Data },
+      { year: '2022', data: historical2022Data },
+      { year: '2023', data: historical2023Data },
+      { year: '2024', data: historical2024Data }
     ]
     const historicalData = historicalDataRaw.map(({ data }) => data).filter(data => data.length > 0)
     const combinedMonthlyStats = calculateCombinedMonthlyStats(historicalData)
