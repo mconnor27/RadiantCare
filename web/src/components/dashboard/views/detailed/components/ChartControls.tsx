@@ -177,7 +177,7 @@ export default function ChartControls({
           <input
             type="range"
             min="0"
-            max="12"
+            max="36"
             value={smoothing}
             onChange={(e) => setSmoothing(parseInt(e.target.value, 10))}
             style={{
@@ -186,7 +186,7 @@ export default function ChartControls({
               cursor: 'pointer'
             }}
           />
-          <span style={{ fontSize: 12, color: '#666', minWidth: '20px' }}>{smoothing}</span>
+          <span style={{ fontSize: 11, color: '#666', minWidth: '20px' }}>{smoothing} month window</span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

@@ -250,7 +250,7 @@ export function buildProportionLayout(isMobile: boolean = false) {
       range: [0, 100],
       tickformat: '.0f',
       dtick: 10,
-      side: 'left'
+      side: 'left' as const
     },
     yaxis2: {
       title: { text: 'Relative proportion (%)' },
@@ -258,7 +258,7 @@ export function buildProportionLayout(isMobile: boolean = false) {
       range: [0, 100],
       tickformat: '.0f',
       dtick: 10,
-      side: 'right',
+      side: 'right' as const,
       overlaying: 'y'
     },
     legend: {

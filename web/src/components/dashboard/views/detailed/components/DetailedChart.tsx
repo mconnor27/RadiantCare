@@ -828,7 +828,7 @@ export default function DetailedChart({
                 showAllMonths,
                 currentPeriod
               )) as any}
-        layout={chartMode === 'proportion' ? buildProportionLayout(isMobile) : (chartLayout || {})}
+        layout={chartMode === 'proportion' ? buildProportionLayout(isMobile) : (chartLayout || {}) as any}
         config={{
           responsive: true,
           displayModeBar: false,
