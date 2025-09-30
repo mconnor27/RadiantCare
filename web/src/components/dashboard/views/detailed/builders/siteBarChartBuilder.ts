@@ -32,6 +32,7 @@ interface SiteBarChartDataProps {
   fy2025: FutureYear | undefined
   combineStatistic?: 'mean' | 'median' | null
   combineError?: 'std' | 'ci' | null
+  selectedYears?: number[]
 }
 
 
@@ -52,8 +53,14 @@ export const buildSiteBarChartData = ({
   projectedIncomeData,
   fy2025,
   combineStatistic = null,
-  combineError = null
+  combineError = null,
+  selectedYears = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]
 }: SiteBarChartDataProps) => {
+
+  // Filter processedHistoricalData by selectedYears
+  const filteredHistoricalData = processedHistoricalData.filter(({ year }) =>
+    selectedYears.includes(parseInt(year))
+  )
   
   if (timeframe === 'year') {
     // Year mode: each year is an x-axis tick with 3 stacked bars per site
@@ -62,7 +69,7 @@ export const buildSiteBarChartData = ({
     const projected2025Total = projectedIncomeData.length > 0 ? projectedIncomeData[projectedIncomeData.length - 1]?.cumulativeIncome || 0 : 0
 
     // Get yearly totals for historical data
-    const yearlyHistorical = getYearlyTotals(processedHistoricalData)
+    const yearlyHistorical = getYearlyTotals(filteredHistoricalData)
     
     // Convert to site-specific data using actual historical site totals
     const historicalSiteData = yearlyHistorical.map(yearData => ({
@@ -170,7 +177,7 @@ export const buildSiteBarChartData = ({
       { year: '2022', data: historical2022Data },
       { year: '2023', data: historical2023Data },
       { year: '2024', data: historical2024Data }
-    ]
+    ].filter(({ year }) => selectedYears.includes(parseInt(year)))
     
     if (showCombined) {
       // For combined mode: calculate quarterly statistics across all years for each site using REAL SITE DATA
@@ -395,7 +402,7 @@ export const buildSiteBarChartData = ({
       { year: '2022', data: historical2022Data },
       { year: '2023', data: historical2023Data },
       { year: '2024', data: historical2024Data }
-    ]
+    ].filter(({ year }) => selectedYears.includes(parseInt(year)))
     
     
     if (showCombined) {
@@ -615,10 +622,16 @@ export const buildSiteBarChartTraces = (
   showCombined: boolean,
   isNormalized: boolean,
   combineStatistic: 'mean' | 'median' | null = null,
-  combineError: 'std' | 'ci' | null = null
+  combineError: 'std' | 'ci' | null = null,
+  visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean }
 ) => {
   const traces: any[] = []
-  
+
+  // Helper to check if a site is visible
+  const isSiteVisible = (siteKey: keyof SiteData) => {
+    return visibleSites ? visibleSites[siteKey] : true
+  }
+
   // Helpers for normalization
   const sumSites = (sites: SiteData) => (sites?.lacey || 0) + (sites?.centralia || 0) + (sites?.aberdeen || 0)
   const percentArray = (values: number[], denom: number) => {
@@ -685,9 +698,10 @@ export const buildSiteBarChartTraces = (
             type: 'bar' as const,
             name: `${site} Historical ${labelSuffix} (2016-2024)`,
             offsetgroup: 'historical', // Separate group from 2025 data
-            marker: { 
+            visible: isSiteVisible(siteKey),
+            marker: {
               color: SITE_COLORS[siteKey].historical,
-              opacity: 0.9 
+              opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
             },
             error_y: combineError ? {
               type: 'data' as const,
@@ -697,7 +711,7 @@ export const buildSiteBarChartTraces = (
               thickness: 2,
               width: 3
             } : undefined,
-            hovertemplate: isNormalized 
+            hovertemplate: isNormalized
               ? combineError
                 ? `${site} Historical ${labelSuffix}<br>%{x}: %{y:.1f}%<br>±%{error_y.array:.1f}% (${errorLabel})<extra></extra>`
                 : `${site} Historical ${labelSuffix}<br>%{x}: %{y:.1f}%<extra></extra>`
@@ -730,11 +744,12 @@ export const buildSiteBarChartTraces = (
             type: 'bar' as const,
             name: `${site} 2025 Actual`,
             offsetgroup: '2025', // Same group for stacking
-            marker: { 
+            visible: isSiteVisible(siteKey),
+            marker: {
               color: SITE_COLORS[siteKey].current,
-              opacity: 0.9 
+              opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
             },
-            hovertemplate: isNormalized 
+            hovertemplate: isNormalized
               ? `${site} 2025 Actual<br>%{x}: %{y:.1f}%<extra></extra>`
               : `${site} 2025 Actual<br>%{x}: $%{y:,}<extra></extra>`
           })
@@ -760,11 +775,13 @@ export const buildSiteBarChartTraces = (
               type: 'bar' as const,
               name: `${site} 2025 Projected`,
               offsetgroup: '2025', // Same group for stacking
+              visible: isSiteVisible(siteKey),
               marker: {
                 color: SITE_COLORS[siteKey].projected,
+                opacity: isSiteVisible(siteKey) ? 0.9 : 0.2,
                 pattern: SITE_PROJECTED_PATTERNS[siteKey]
               },
-              hovertemplate: isNormalized 
+              hovertemplate: isNormalized
                 ? `${site} 2025 Projected<br>%{x}: %{y:.1f}%<extra></extra>`
                 : `${site} 2025 Projected<br>%{x}: $%{y:,}<extra></extra>`
             })
@@ -799,11 +816,12 @@ export const buildSiteBarChartTraces = (
               type: 'bar' as const,
               name: `${site} ${yearData.year}`,
               offsetgroup: yearData.year, // Each year gets its own group
-              marker: { 
+              visible: isSiteVisible(siteKey),
+              marker: {
                 color: SITE_COLORS[siteKey].historical,
-                opacity: 0.6 + (parseInt(yearData.year) - 2016) * 0.04 // Gradually lighter over time
+                opacity: isSiteVisible(siteKey) ? 0.6 + (parseInt(yearData.year) - 2016) * 0.04 : 0.2 // Gradually lighter over time
               },
-              hovertemplate: isNormalized 
+              hovertemplate: isNormalized
                 ? `${site} ${yearData.year}<br>%{x}: %{y:.1f}%<extra></extra>`
                 : `${site} ${yearData.year}<br>%{x}: $%{y:,}<extra></extra>`
             })
@@ -828,11 +846,12 @@ export const buildSiteBarChartTraces = (
             type: 'bar' as const,
             name: `${site} 2025 Actual`,
             offsetgroup: '2025', // Same group for stacking with projected
-            marker: { 
+            visible: isSiteVisible(siteKey),
+            marker: {
               color: SITE_COLORS[siteKey].current,
-              opacity: 0.9 
+              opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
             },
-            hovertemplate: isNormalized 
+            hovertemplate: isNormalized
               ? `${site} 2025 Actual<br>%{x}: %{y:.1f}%<extra></extra>`
               : `${site} 2025 Actual<br>%{x}: $%{y:,}<extra></extra>`
           })
@@ -858,11 +877,13 @@ export const buildSiteBarChartTraces = (
                 type: 'bar' as const,
                 name: `${site} 2025 Projected`,
                 offsetgroup: '2025', // Same group for stacking
+                visible: isSiteVisible(siteKey),
                 marker: {
                   color: SITE_COLORS[siteKey].projected,
+                  opacity: isSiteVisible(siteKey) ? 0.9 : 0.2,
                   pattern: SITE_PROJECTED_PATTERNS[siteKey]
                 },
-                hovertemplate: isNormalized 
+                hovertemplate: isNormalized
                   ? `${site} 2025 Projected<br>%{x}: %{y:.1f}%<extra></extra>`
                   : `${site} 2025 Projected<br>%{x}: $%{y:,}<extra></extra>`
               })
@@ -912,9 +933,10 @@ export const buildSiteBarChartTraces = (
             type: 'bar' as const,
             name: `${site} Historical ${labelSuffix} (2016-2024)`,
             offsetgroup: 'historical', // Separate group from 2025 data
-            marker: { 
+            visible: isSiteVisible(siteKey),
+            marker: {
               color: SITE_COLORS[siteKey].historical,
-              opacity: 0.9 
+              opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
             },
             error_y: combineError ? {
               type: 'data' as const,
@@ -955,11 +977,12 @@ export const buildSiteBarChartTraces = (
             type: 'bar' as const,
             name: `${site} 2025 Actual`,
             offsetgroup: '2025', // Same group for stacking
-            marker: { 
+            visible: isSiteVisible(siteKey),
+            marker: {
               color: SITE_COLORS[siteKey].current,
-              opacity: 0.9 
+              opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
             },
-            hovertemplate: isNormalized 
+            hovertemplate: isNormalized
               ? `${site} 2025 Actual<br>%{x}: %{y:.1f}%<extra></extra>`
               : `${site} 2025 Actual<br>%{x}: $%{y:,}<extra></extra>`
           })
@@ -983,11 +1006,13 @@ export const buildSiteBarChartTraces = (
               type: 'bar' as const,
               name: `${site} 2025 Projected`,
               offsetgroup: '2025', // Same group for stacking
+              visible: isSiteVisible(siteKey),
               marker: {
                 color: SITE_COLORS[siteKey].projected,
+                opacity: isSiteVisible(siteKey) ? 0.9 : 0.2,
                 pattern: SITE_PROJECTED_PATTERNS[siteKey]
               },
-              hovertemplate: isNormalized 
+              hovertemplate: isNormalized
                 ? `${site} 2025 Projected<br>%{x}: %{y:.1f}%<extra></extra>`
                 : `${site} 2025 Projected<br>%{x}: $%{y:,}<extra></extra>`
             })
@@ -1021,11 +1046,12 @@ export const buildSiteBarChartTraces = (
               type: 'bar' as const,
               name: `${site} ${yearData.year}`,
               offsetgroup: yearData.year, // Each year gets its own group
-              marker: { 
+              visible: isSiteVisible(siteKey),
+              marker: {
                 color: SITE_COLORS[siteKey].historical,
-                opacity: 0.6 + (parseInt(yearData.year) - 2016) * 0.04 // Gradually lighter over time
+                opacity: isSiteVisible(siteKey) ? 0.6 + (parseInt(yearData.year) - 2016) * 0.04 : 0.2 // Gradually lighter over time
               },
-              hovertemplate: isNormalized 
+              hovertemplate: isNormalized
                 ? `${site} ${yearData.year}<br>%{x}: %{y:.1f}%<extra></extra>`
                 : `${site} ${yearData.year}<br>%{x}: $%{y:,}<extra></extra>`
             })
@@ -1051,11 +1077,12 @@ export const buildSiteBarChartTraces = (
             type: 'bar' as const,
             name: `${site} 2025 Actual`,
             offsetgroup: '2025', // Same group for stacking with projected
-            marker: { 
+            visible: isSiteVisible(siteKey),
+            marker: {
               color: SITE_COLORS[siteKey].current,
-              opacity: 0.9 
+              opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
             },
-            hovertemplate: isNormalized 
+            hovertemplate: isNormalized
               ? `${site} 2025 Actual<br>%{x}: %{y:.1f}%<extra></extra>`
               : `${site} 2025 Actual<br>%{x}: $%{y:,}<extra></extra>`
           })
@@ -1078,11 +1105,13 @@ export const buildSiteBarChartTraces = (
                 type: 'bar' as const,
                 name: `${site} 2025 Projected`,
                 offsetgroup: '2025', // Same group for stacking
+                visible: isSiteVisible(siteKey),
                 marker: {
                   color: SITE_COLORS[siteKey].projected,
+                  opacity: isSiteVisible(siteKey) ? 0.9 : 0.2,
                   pattern: SITE_PROJECTED_PATTERNS[siteKey]
                 },
-                hovertemplate: isNormalized 
+                hovertemplate: isNormalized
                   ? `${site} 2025 Projected<br>%{x}: %{y:.1f}%<extra></extra>`
                   : `${site} 2025 Projected<br>%{x}: $%{y:,}<extra></extra>`
               })
@@ -1115,9 +1144,10 @@ export const buildSiteBarChartTraces = (
             y: percentArray([historicalData.income || 0], historicalDenom),
             type: 'bar' as const,
             name: `${site} Historical`,
-            marker: { 
+            visible: isSiteVisible(siteKey),
+            marker: {
               color: SITE_COLORS[siteKey].historical,
-              opacity: 0.9 
+              opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
             },
             error_y: combineError ? {
               type: 'data' as const,
@@ -1149,11 +1179,12 @@ export const buildSiteBarChartTraces = (
             y: percentArray([currentData.income || 0], denom2025),
             type: 'bar' as const,
             name: `${site} 2025 Actual`,
-            marker: { 
+            visible: isSiteVisible(siteKey),
+            marker: {
               color: SITE_COLORS[siteKey].current,
-              opacity: 0.9 
+              opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
             },
-            hovertemplate: isNormalized 
+            hovertemplate: isNormalized
               ? `${site} 2025 Actual<br>%{y:.1f}%<extra></extra>`
               : `${site} 2025 Actual<br>$%{y:,}<extra></extra>`
           })
@@ -1172,11 +1203,13 @@ export const buildSiteBarChartTraces = (
             y: percentArray([projectedData.income], denom2025), // This is the projected increment (projected - actual)
             type: 'bar' as const,
             name: `${site} 2025 Projected`,
+            visible: isSiteVisible(siteKey),
             marker: {
               color: SITE_COLORS[siteKey].projected,
+              opacity: isSiteVisible(siteKey) ? 0.9 : 0.2,
               pattern: SITE_PROJECTED_PATTERNS[siteKey]
             },
-            hovertemplate: isNormalized 
+            hovertemplate: isNormalized
               ? `${site} 2025 Projected<br>%{y:.1f}%<extra></extra>`
               : `${site} 2025 Projected<br>$%{y:,}<extra></extra>`
           })
@@ -1212,11 +1245,12 @@ export const buildSiteBarChartTraces = (
           y: historicalValues,
           type: 'bar' as const,
           name: `${site}`,
-          marker: { 
+          visible: isSiteVisible(siteKey),
+          marker: {
             color: SITE_COLORS[siteKey].historical,
-            opacity: 0.9 
+            opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
           },
-          hovertemplate: isNormalized 
+          hovertemplate: isNormalized
             ? `${site} %{x}<br>%{y:.1f}%<extra></extra>`
             : `${site} %{x}<br>$%{y:,}<extra></extra>`
         })
@@ -1234,11 +1268,12 @@ export const buildSiteBarChartTraces = (
           y: percentArray([actual2025.sites[siteKey] || 0], denom2025),
           type: 'bar' as const,
           name: `${site} 2025 Actual`,
-          marker: { 
+          visible: isSiteVisible(siteKey),
+          marker: {
             color: SITE_COLORS[siteKey].current,
-            opacity: 0.9 
+            opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
           },
-          hovertemplate: isNormalized 
+          hovertemplate: isNormalized
             ? `${site} 2025 Actual<br>%{y:.1f}%<extra></extra>`
             : `${site} 2025 Actual<br>$%{y:,}<extra></extra>`
         })
@@ -1254,11 +1289,13 @@ export const buildSiteBarChartTraces = (
             y: percentArray([projectedData.sites[siteKey]], denom2025), // This should be the projected increment (projected - actual)
             type: 'bar' as const,
             name: `${site} 2025 Projected`,
+            visible: isSiteVisible(siteKey),
             marker: {
               color: SITE_COLORS[siteKey].projected,
+              opacity: isSiteVisible(siteKey) ? 0.9 : 0.2,
               pattern: SITE_PROJECTED_PATTERNS[siteKey]
             },
-            hovertemplate: isNormalized 
+            hovertemplate: isNormalized
               ? `${site} 2025 Projected<br>%{y:.1f}%<extra></extra>`
               : `${site} 2025 Projected<br>$%{y:,}<extra></extra>`
           })

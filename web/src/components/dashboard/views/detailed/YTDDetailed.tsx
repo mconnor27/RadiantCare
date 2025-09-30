@@ -36,6 +36,7 @@ export default function YTDDetailed() {
   const [incomeMode, setIncomeMode] = useState<IncomeMode>('total')
   const [smoothing, setSmoothing] = useState(5.0)
   const [selectedYears, setSelectedYears] = useState<number[]>(Array.from({ length: 9 }, (_, i) => 2016 + i)) // Default: all years (2016-2024)
+  const [visibleSites, setVisibleSites] = useState<{ lacey: boolean, centralia: boolean, aberdeen: boolean }>({ lacey: true, centralia: true, aberdeen: true })
   
   // Parse 2025 data for loading into the chart component
   const historical2025Data = useMemo(() => parseTherapyIncome2025(), [])
@@ -129,10 +130,11 @@ export default function YTDDetailed() {
               smoothing={smoothing}
               fy2025={fy2025}
               selectedYears={selectedYears}
+              visibleSites={visibleSites}
             />
           )}
         </div>
-        <div style={{ width: 300, flexShrink: 0 }}>
+        <div style={{ width: 340, flexShrink: 0 }}>
           <ChartControls
             environment={environment}
             setEnvironment={setEnvironment}
@@ -158,6 +160,8 @@ export default function YTDDetailed() {
             variant="sidebar"
             selectedYears={selectedYears}
             setSelectedYears={setSelectedYears}
+            visibleSites={visibleSites}
+            setVisibleSites={setVisibleSites}
           />
         </div>
       </div>

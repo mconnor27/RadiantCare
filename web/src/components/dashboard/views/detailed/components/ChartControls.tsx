@@ -1,7 +1,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import type { IncomeMode } from '../../../shared/types'
-import { HISTORICAL_COLORS } from '../config/chartConfig'
+import { HISTORICAL_COLORS, SITE_COLORS } from '../config/chartConfig'
 
 interface ChartControlsProps {
   environment: 'production' | 'sandbox'
@@ -28,6 +28,8 @@ interface ChartControlsProps {
   variant?: 'inline' | 'sidebar'
   selectedYears: number[]
   setSelectedYears: (years: number[]) => void
+  visibleSites: { lacey: boolean, centralia: boolean, aberdeen: boolean }
+  setVisibleSites: (sites: { lacey: boolean, centralia: boolean, aberdeen: boolean }) => void
 }
 
 export default function ChartControls({
@@ -54,7 +56,9 @@ export default function ChartControls({
   loading,
   variant = 'inline',
   selectedYears,
-  setSelectedYears
+  setSelectedYears,
+  visibleSites,
+  setVisibleSites
 }: ChartControlsProps) {
   
   // Clamp smoothing value when switching chart modes
@@ -124,40 +128,90 @@ export default function ChartControls({
           </select>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontSize: 14, fontWeight: 500 }}>Income Mode:</label>
-          <div style={{ display: 'flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
-            <button
-              onClick={() => setIncomeMode('total')}
-              style={{
-                padding: '4px 12px',
-                border: 'none',
-                background: incomeMode === 'total' ? '#1e40af' : '#fff',
-                color: incomeMode === 'total' ? '#fff' : '#333',
-                fontSize: 14,
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              Total
-            </button>
-            <button
-              onClick={() => setIncomeMode('per-site')}
-              style={{
-                padding: '4px 12px',
-                border: 'none',
-                background: incomeMode === 'per-site' ? '#1e40af' : '#fff',
-                color: incomeMode === 'per-site' ? '#fff' : '#333',
-                fontSize: 14,
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              Per Site
-            </button>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+          <label style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', marginTop: 6 }}>Income Mode:</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+            <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
+              <button
+                onClick={() => setIncomeMode('total')}
+                style={{
+                  padding: '4px 12px',
+                  border: 'none',
+                  background: incomeMode === 'total' ? '#1e40af' : '#fff',
+                  color: incomeMode === 'total' ? '#fff' : '#333',
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Total
+              </button>
+              <button
+                onClick={() => setIncomeMode('per-site')}
+                style={{
+                  padding: '4px 12px',
+                  border: 'none',
+                  background: incomeMode === 'per-site' ? '#1e40af' : '#fff',
+                  color: incomeMode === 'per-site' ? '#fff' : '#333',
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Per Site
+              </button>
+            </div>
+
+            {/* Site visibility legend - show in per-site mode or proportion mode */}
+            {(incomeMode === 'per-site' || chartMode === 'proportion') && (
+              <div style={{ display: 'flex', gap: 6, paddingLeft: 0 }}>
+                {[
+                  { key: 'lacey' as const, label: 'Lacey', color: SITE_COLORS.lacey.current },
+                  { key: 'centralia' as const, label: 'Centralia', color: SITE_COLORS.centralia.current },
+                  { key: 'aberdeen' as const, label: 'Aberdeen', color: SITE_COLORS.aberdeen.current }
+                ].map(site => {
+                  const visibleCount = Object.values(visibleSites).filter(v => v).length
+                  const isLastVisible = visibleSites[site.key] && visibleCount === 1
+
+                  return (
+                    <button
+                      key={site.key}
+                      onClick={() => {
+                        if (!isLastVisible) {
+                          setVisibleSites({ ...visibleSites, [site.key]: !visibleSites[site.key] })
+                        }
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '2px 6px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 3,
+                        background: '#fff',
+                        cursor: isLastVisible ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s',
+                        opacity: visibleSites[site.key] ? 1 : 0.4
+                      }}
+                    >
+                      <div style={{
+                        width: 12,
+                        height: 12,
+                        background: site.color,
+                        border: '1px solid #ccc',
+                        borderRadius: 2
+                      }} />
+                      <span style={{ fontSize: 11, color: '#333' }}>{site.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
-        
+
         {/* Historical Data Popup */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
           <label style={{ fontSize: 14, fontWeight: 500 }}>Historical Data:</label>

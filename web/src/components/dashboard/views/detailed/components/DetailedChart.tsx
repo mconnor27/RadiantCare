@@ -54,6 +54,7 @@ interface DetailedChartProps {
   smoothing: number
   fy2025: FutureYear | undefined
   selectedYears: number[]
+  visibleSites: { lacey: boolean, centralia: boolean, aberdeen: boolean }
 }
 
 export default function DetailedChart({
@@ -71,7 +72,8 @@ export default function DetailedChart({
   incomeMode,
   smoothing,
   fy2025,
-  selectedYears
+  selectedYears,
+  visibleSites
 }: DetailedChartProps) {
   const isMobile = useIsMobile()
   const [pulsePhase, setPulsePhase] = useState(0)
@@ -649,9 +651,10 @@ export default function DetailedChart({
       projectedIncomeData: projectedIncomeDataForBars,
       fy2025,
       combineStatistic: combineStatistic,
-      combineError: combineError
+      combineError: combineError,
+      selectedYears: selectedYears
     })
-  }, [incomeMode, timeframe, currentYearData, processedHistoricalData, showCombined, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, projectedIncomeDataForBars, fy2025, combineStatistic, combineError])
+  }, [incomeMode, timeframe, currentYearData, processedHistoricalData, showCombined, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, projectedIncomeDataForBars, fy2025, combineStatistic, combineError, selectedYears])
 
   // Create stable static traces (memoized separately from animated traces)
   const staticLineTraces = useMemo(() => {
@@ -668,7 +671,8 @@ export default function DetailedChart({
         currentPeriod,
         fy2025,
         combineStatistic: combineStatistic,
-        combineError: combineError
+        combineError: combineError,
+        visibleSites
       })
     } else {
       // Use total income line traces
@@ -689,7 +693,7 @@ export default function DetailedChart({
   }, [
     chartMode, incomeMode, showCombined, combinedStats, processedHistoricalData,
     processedCurrentData, projectedIncomeData, isNormalized, is2025Visible, timeframe, currentPeriod, fy2025, smoothing,
-    combineStatistic, combineError
+    combineStatistic, combineError, visibleSites
   ])
 
   // Create animated pulsing traces (separate from static traces)
@@ -704,7 +708,8 @@ export default function DetailedChart({
         isNormalized,
         timeframe,
         currentPeriod,
-        fy2025
+        fy2025,
+        visibleSites
       )
     } else {
       // Use total income pulsing traces
@@ -715,7 +720,7 @@ export default function DetailedChart({
         isNormalized
       )
     }
-  }, [chartMode, incomeMode, processedCurrentData, is2025Visible, chartMode === 'line' ? pulsePhase : 0, isNormalized, timeframe, currentPeriod])
+  }, [chartMode, incomeMode, processedCurrentData, is2025Visible, chartMode === 'line' ? pulsePhase : 0, isNormalized, timeframe, currentPeriod, fy2025, visibleSites])
 
   // Build chart layout
   const chartLayout = useMemo(() => {
@@ -823,7 +828,7 @@ export default function DetailedChart({
           // Animated pulsing traces (separate memoization for animation)
           ...pulsingTraces
         ] : chartMode === 'proportion'
-          ? buildProportionTraces(proportionData, smoothing)
+          ? buildProportionTraces(proportionData, smoothing, visibleSites)
           : incomeMode === 'per-site' 
             ? buildSiteBarChartTraces(
                 siteBarChartData,
@@ -831,7 +836,8 @@ export default function DetailedChart({
                 showCombined,
                 isNormalized,
                 combineStatistic,
-                combineError
+                combineError,
+                visibleSites
               )
             : buildBarChartTraces(
                 barChartData,

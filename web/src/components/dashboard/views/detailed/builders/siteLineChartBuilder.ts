@@ -21,6 +21,7 @@ interface SiteLineChartBuilderProps {
   fy2025: any
   combineStatistic?: 'mean' | 'median' | null
   combineError?: 'std' | 'ci' | null
+  visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean }
 }
 
 // Helper function to process site data for different timeframes
@@ -402,9 +403,15 @@ export const buildSiteLineTraces = ({
   currentPeriod,
   fy2025,
   combineStatistic = null,
-  combineError = null
+  combineError = null,
+  visibleSites
 }: SiteLineChartBuilderProps) => {
   const traces: any[] = []
+
+  // Helper to check if a site is visible
+  const isSiteVisible = (siteKey: 'lacey' | 'centralia' | 'aberdeen') => {
+    return visibleSites ? visibleSites[siteKey] : true
+  }
   
   // Get historical site data for all years
   const allHistoricalSiteData: YTDPointWithSites[][] = []
@@ -493,6 +500,7 @@ export const buildSiteLineTraces = ({
               mode: 'lines' as const,
               name: `${name} ${labelSuffix} + ${errorLabel}`,
               line: { color: 'rgba(0,0,0,0)' },
+              visible: isSiteVisible(key),
               showlegend: false,
               hoverinfo: 'skip' as const
             },
@@ -506,6 +514,7 @@ export const buildSiteLineTraces = ({
               line: { color: 'rgba(0,0,0,0)' },
               fill: 'tonexty' as const,
               fillcolor: color.historical.replace('0.7)', '0.2)'), // Make fill more transparent
+              visible: isSiteVisible(key),
               showlegend: false,
               hoverinfo: 'skip' as const
             }
@@ -520,8 +529,10 @@ export const buildSiteLineTraces = ({
           mode: 'lines' as const,
           name: `${name} Historical ${labelSuffix} (2016-2024)`,
           line: { color: color.historical, width: 2 },
-          hovertemplate: isNormalized 
-            ? `${name} Historical ${labelSuffix}<br>%{x}<br>%{y:.1f}%<extra></extra>` 
+          visible: isSiteVisible(key),
+          opacity: isSiteVisible(key) ? 1 : 0.2,
+          hovertemplate: isNormalized
+            ? `${name} Historical ${labelSuffix}<br>%{x}<br>%{y:.1f}%<extra></extra>`
             : `${name} Historical ${labelSuffix}<br>%{x}<br>$%{y:,}<extra></extra>`
         })
       }
@@ -540,7 +551,7 @@ export const buildSiteLineTraces = ({
       sites.forEach(({ key, name, color }) => {
         const xData = yearSiteData.map(p => p.monthDay)
         const yData = yearSiteData.map(p => p.sites?.[key] || 0)
-        
+
         traces.push({
           x: xData,
           y: yData,
@@ -548,8 +559,10 @@ export const buildSiteLineTraces = ({
           mode: 'lines' as const,
           name: `${name} ${year}`,
           line: { color: color.historical, width: HISTORICAL_YEAR_LINE_WIDTH },
-          hovertemplate: isNormalized 
-            ? `${name} ${year}<br>%{x}<br>%{y:.1f}%<extra></extra>` 
+          visible: isSiteVisible(key),
+          opacity: isSiteVisible(key) ? 1 : 0.2,
+          hovertemplate: isNormalized
+            ? `${name} ${year}<br>%{x}<br>%{y:.1f}%<extra></extra>`
             : `${name} ${year}<br>%{x}<br>$%{y:,}<extra></extra>`
         })
       })
@@ -567,7 +580,7 @@ export const buildSiteLineTraces = ({
     sites.forEach(({ key, name, color }) => {
       const xData = processed2025Data.map(p => p.monthDay)
       const yData = processed2025Data.map(p => p.sites?.[key] || 0)
-      
+
       traces.push({
         x: xData,
         y: yData,
@@ -575,9 +588,10 @@ export const buildSiteLineTraces = ({
         mode: 'lines' as const,
         name: `${name} 2025 Therapy Income`,
         line: { color: color.current, width: 3 },
-        visible: (is2025Visible ? true : 'legendonly') as boolean | 'legendonly',
-        hovertemplate: isNormalized 
-          ? `${name} 2025<br>%{x}<br>%{y:.1f}%<extra></extra>` 
+        visible: (is2025Visible && isSiteVisible(key)) ? true : 'legendonly',
+        opacity: isSiteVisible(key) ? 1 : 0.2,
+        hovertemplate: isNormalized
+          ? `${name} 2025<br>%{x}<br>%{y:.1f}%<extra></extra>`
           : `${name} 2025<br>%{x}<br>$%{y:,}<extra></extra>`
       })
     })
@@ -601,14 +615,15 @@ export const buildSiteLineTraces = ({
         type: 'scatter' as const,
         mode: 'lines' as const,
         name: `${name} 2025 Projected`,
-        line: { 
-          color: color.current, 
+        line: {
+          color: color.current,
           width: 2,
           dash: 'dot' // Dotted line for projections
         },
-        visible: (is2025Visible ? true : 'legendonly') as boolean | 'legendonly',
-        hovertemplate: isNormalized 
-          ? `${name} 2025 Projected<br>%{x}<br>%{y:.1f}%<extra></extra>` 
+        visible: (is2025Visible && isSiteVisible(key)) ? true : 'legendonly',
+        opacity: isSiteVisible(key) ? 1 : 0.2,
+        hovertemplate: isNormalized
+          ? `${name} 2025 Projected<br>%{x}<br>%{y:.1f}%<extra></extra>`
           : `${name} 2025 Projected<br>%{x}<br>$%{y:,}<extra></extra>`
       })
     })
@@ -624,10 +639,16 @@ export const buildSitePulsingTraces = (
   isNormalized: boolean,
   timeframe: 'year' | 'quarter' | 'month',
   currentPeriod: { year: number, quarter?: number, month?: number },
-  fy2025: any
+  fy2025: any,
+  visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean }
 ) => {
   if (!is2025Visible) return []
-  
+
+  // Helper to check if a site is visible
+  const isSiteVisible = (siteKey: 'lacey' | 'centralia' | 'aberdeen') => {
+    return visibleSites ? visibleSites[siteKey] : true
+  }
+
   const actual2025SiteData = get2025SiteMonthlyEndPoints()
   
   // Calculate projected total for normalization using combined series (same as line traces)
@@ -687,8 +708,8 @@ export const buildSitePulsingTraces = (
       const size = RADAR_CONFIG.rings.baseSize + progress * RADAR_CONFIG.rings.maxGrowth
       const opacity = Math.max(0, RADAR_CONFIG.rings.baseOpacity * (1 - progress)) // Fade out as it expands
       
-      // Only show ring if it has meaningful opacity
-      if (opacity > 0.01) {
+      // Only show ring if it has meaningful opacity and site is visible
+      if (opacity > 0.01 && isSiteVisible(key)) {
         rings.push({
           x: [lastActualPoint.monthDay],
           y: [yValue],
@@ -707,22 +728,24 @@ export const buildSitePulsingTraces = (
     }
     
     // Add the solid center marker (same as total mode)
-    rings.push({
-      x: [lastActualPoint.monthDay],
-      y: [yValue],
-      type: 'scatter' as const,
-      mode: 'markers' as const,
-      name: `${name} Current Position`,
-      marker: {
-        color: color.current,
-        size: RADAR_CONFIG.rings.baseSize,
-        line: { color: '#ffffff', width: 1 }
-      },
-      showlegend: false,
-      hovertemplate: isNormalized 
-        ? `${name} Latest: %{x}<br>%{y:.1f}%<extra></extra>` 
-        : `${name} Latest: %{x}<br>$%{y:,}<extra></extra>`
-    })
+    if (isSiteVisible(key)) {
+      rings.push({
+        x: [lastActualPoint.monthDay],
+        y: [yValue],
+        type: 'scatter' as const,
+        mode: 'markers' as const,
+        name: `${name} Current Position`,
+        marker: {
+          color: color.current,
+          size: RADAR_CONFIG.rings.baseSize,
+          line: { color: '#ffffff', width: 1 }
+        },
+        showlegend: false,
+        hovertemplate: isNormalized
+          ? `${name} Latest: %{x}<br>%{y:.1f}%<extra></extra>`
+          : `${name} Latest: %{x}<br>$%{y:,}<extra></extra>`
+      })
+    }
   })
   
   return rings

@@ -222,21 +222,6 @@ export const buildChartLayout = ({
       : undefined,
     yaxis: getYAxisConfig(),
     xaxis: getXAxisConfig(),
-    showlegend: true,
-    legend: chartMode === 'bar' ? {
-      x: 1.02,
-      y: 1,
-      xanchor: 'left' as const,
-      yanchor: 'top' as const,
-      bgcolor: 'rgba(255,255,255,0.8)',
-      bordercolor: '#ccc',
-      borderwidth: 1
-    } : {
-      x: 0,
-      y: 1,
-      bgcolor: 'rgba(255,255,255,0.8)',
-      bordercolor: '#ccc',
-      borderwidth: 1
-    }
+    showlegend: false
   }
 }

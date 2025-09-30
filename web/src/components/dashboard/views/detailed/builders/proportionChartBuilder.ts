@@ -144,16 +144,25 @@ function applyMovingAverage(values: number[], windowSize: number = 3): number[] 
 }
 
 // Build Plotly traces for stacked area proportions
-export function buildProportionTraces(data: MonthlyProportionData[], smoothingFactor: number = 5) {
+export function buildProportionTraces(
+  data: MonthlyProportionData[],
+  smoothingFactor: number = 5,
+  visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean }
+) {
   if (data.length === 0) return []
 
+  // Helper to check if a site is visible
+  const isSiteVisible = (siteKey: 'lacey' | 'centralia' | 'aberdeen') => {
+    return visibleSites ? visibleSites[siteKey] : true
+  }
+
   const xLabels = data.map(d => `${d.year}-${String(d.month).padStart(2, '0')}`)
-  
+
   // Apply moving average smoothing to the percentage data
   const rawLaceyPercentages = data.map(d => d.laceyPercent)
   const rawCentraliaPercentages = data.map(d => d.centraliaPercent)
   const rawAberdeenPercentages = data.map(d => d.aberdeenPercent)
-  
+
   const laceyPercentages = smoothingFactor > 0 ? applyMovingAverage(rawLaceyPercentages, smoothingFactor) : rawLaceyPercentages
   const centraliaPercentages = smoothingFactor > 0 ? applyMovingAverage(rawCentraliaPercentages, smoothingFactor) : rawCentraliaPercentages
   const aberdeenPercentages = smoothingFactor > 0 ? applyMovingAverage(rawAberdeenPercentages, smoothingFactor) : rawAberdeenPercentages
@@ -166,14 +175,16 @@ export function buildProportionTraces(data: MonthlyProportionData[], smoothingFa
       mode: 'lines',
       fill: 'tonexty',
       fillcolor: SITE_COLORS.lacey.historical,
-      line: { 
-        color: SITE_COLORS.lacey.current, 
+      line: {
+        color: SITE_COLORS.lacey.current,
         width: 2,
         shape: 'spline',
         smoothing: 1.3
       },
       name: 'Lacey',
       stackgroup: 'one',
+      visible: isSiteVisible('lacey'),
+      opacity: isSiteVisible('lacey') ? 1 : 0.2,
       hovertemplate: 'Lacey: %{y:.1f}%<br>%{x}<extra></extra>'
     },
     {
@@ -183,13 +194,15 @@ export function buildProportionTraces(data: MonthlyProportionData[], smoothingFa
       mode: 'lines',
       fill: 'tonexty',
       fillcolor: SITE_COLORS.centralia.historical,
-      line: { 
-        color: SITE_COLORS.centralia.current, 
+      line: {
+        color: SITE_COLORS.centralia.current,
         width: 2,
         shape: 'spline'
       },
       name: 'Centralia',
       stackgroup: 'one',
+      visible: isSiteVisible('centralia'),
+      opacity: isSiteVisible('centralia') ? 1 : 0.2,
       hovertemplate: 'Centralia: %{y:.1f}%<br>%{x}<extra></extra>'
     },
     {
@@ -199,13 +212,15 @@ export function buildProportionTraces(data: MonthlyProportionData[], smoothingFa
       mode: 'lines',
       fill: 'tonexty',
       fillcolor: SITE_COLORS.aberdeen.historical,
-      line: { 
+      line: {
         color: SITE_COLORS.aberdeen.current,
         width: 2,
         shape: 'spline'
       },
       name: 'Aberdeen',
       stackgroup: 'one',
+      visible: isSiteVisible('aberdeen'),
+      opacity: isSiteVisible('aberdeen') ? 1 : 0.2,
       hovertemplate: 'Aberdeen: %{y:.1f}%<br>%{x}<extra></extra>'
     },
     // Invisible trace to activate the secondary y-axis
@@ -261,17 +276,10 @@ export function buildProportionLayout(isMobile: boolean = false) {
       side: 'right' as const,
       overlaying: 'y'
     },
-    legend: {
-      orientation: isMobile ? 'h' : 'v',
-      x: isMobile ? 0.5 : 1.08,
-      y: isMobile ? -0.1 : 0.5,
-      xanchor: isMobile ? 'center' : 'left',
-      yanchor: isMobile ? 'top' : 'middle'
-    },
     hovermode: 'x unified' as const,
-    margin: { l: 60, r: isMobile ? 20 : 160, t: 60, b: isMobile ? 80 : 60 },
+    margin: { l: 60, r: 20, t: 60, b: isMobile ? 80 : 60 },
     plot_bgcolor: 'rgba(0,0,0,0)',
     paper_bgcolor: 'rgba(0,0,0,0)',
-    showlegend: true
+    showlegend: false
   }
 }
