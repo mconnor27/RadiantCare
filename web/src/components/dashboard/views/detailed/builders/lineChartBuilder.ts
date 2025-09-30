@@ -26,6 +26,7 @@ interface LineChartBuilderProps {
   smoothing: number
   combineStatistic?: 'mean' | 'median' | null
   combineError?: 'std' | 'ci' | null
+  selectedYears?: number[]
 }
 
 export const buildStaticLineTraces = ({
@@ -39,7 +40,8 @@ export const buildStaticLineTraces = ({
   timeframe,
   smoothing,
   combineStatistic = null,
-  combineError = null
+  combineError = null,
+  selectedYears = []
 }: LineChartBuilderProps) => {
   const traces = []
   
@@ -102,20 +104,23 @@ export const buildStaticLineTraces = ({
   
   // Individual years (when not showing combined)
   if (!showCombined) {
+    // Use thicker line if only one year is selected
+    const lineWidth = selectedYears.length === 1 ? 3 : HISTORICAL_YEAR_LINE_WIDTH
+
     processedHistoricalData.forEach(({ year, data }, index) => {
       if (data.length > 0) {
         const sortedData = timeframe === 'year' ? sortDataChronologically(data) : data
         const smoothedData = applySmoothingToYTDData(sortedData, smoothing)
         const xData = smoothedData.map((p: YTDPoint) => p.monthDay)
         const yData = smoothedData.map((p: YTDPoint) => p.cumulativeIncome)
-        
+
         traces.push({
           x: xData,
           y: yData,
           type: 'scatter' as const,
           mode: 'lines' as const,
           name: `${year} Therapy Income`,
-          line: { color: HISTORICAL_COLORS[index % HISTORICAL_COLORS.length], width: HISTORICAL_YEAR_LINE_WIDTH },
+          line: { color: HISTORICAL_COLORS[index % HISTORICAL_COLORS.length], width: lineWidth },
           hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
         })
       }

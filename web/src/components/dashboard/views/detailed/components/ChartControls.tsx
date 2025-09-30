@@ -91,6 +91,11 @@ export default function ChartControls({
     }
   }, [isHistoricalPopupOpen])
   
+  // Range slider state for projection mode
+  const sortedSelectedYears = [...selectedYears].sort((a, b) => a - b)
+  const rangeStart = sortedSelectedYears.length > 0 ? sortedSelectedYears[0] : 2016
+  const rangeEnd = 2024 // Fixed end at 2024 (always includes up to 2024)
+
   // Year selection handlers
   const handleYearToggle = (year: number) => {
     if (selectedYears.includes(year)) {
@@ -99,11 +104,24 @@ export default function ChartControls({
       setSelectedYears([...selectedYears, year])
     }
   }
-  
+
+  const handleRangeChange = (start: number) => {
+    if (start > 2024) {
+      // If moved all the way to the right, select nothing
+      setSelectedYears([])
+    } else {
+      const range: number[] = []
+      for (let year = start; year <= 2024; year++) {
+        range.push(year)
+      }
+      setSelectedYears(range)
+    }
+  }
+
   const handleSelectAll = () => {
     setSelectedYears([...years])
   }
-  
+
   const handleSelectNone = () => {
     setSelectedYears([])
   }
@@ -263,121 +281,340 @@ export default function ChartControls({
                 boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                 padding: '6px',
                 zIndex: 1000,
-                minWidth: '120px',
-                width: '120px'
+                minWidth: chartMode === 'proportion' ? '220px' : '120px',
+                width: chartMode === 'proportion' ? '220px' : '120px'
               }}
             >
+              {chartMode === 'proportion' ? (
+                /* Range slider mode for projection */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 500, color: '#666' }}>
+                    {selectedYears.length === 0 ? 'No historical data' : `Year Range: ${rangeStart}–2024`}
+                  </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 6, paddingBottom: 6, borderBottom: '1px solid #e5e7eb' }}>
-                <button
-                  onClick={handleSelectAll}
-                  style={{
-                    padding: '3px 6px',
-                    border: '1px solid #ccc',
-                    borderRadius: 2,
-                    background: '#f0f9ff',
-                    color: '#333',
-                    fontSize: 11,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    fontWeight: 500,
-                    width: '100%'
-                  }}
-                >
-                  Select All
-                </button>
-                <button
-                  onClick={handleSelectNone}
-                  style={{
-                    padding: '3px 6px',
-                    border: '1px solid #ccc',
-                    borderRadius: 2,
-                    background: '#fef2f2',
-                    color: '#333',
-                    fontSize: 11,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    fontWeight: 500,
-                    width: '100%'
-                  }}
-                >
-                  Select None
-                </button>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {years.map((year, index) => {
-                  const yearColor = HISTORICAL_COLORS[index % HISTORICAL_COLORS.length]
-                  return (
-                    <label
-                      key={year}
+                  {/* Dual-handle range slider (right handle fixed) */}
+                  <div style={{ position: 'relative', padding: '10px 0' }}>
+                    <style>{`
+                      .dual-range-slider {
+                        position: absolute;
+                        width: 100%;
+                        height: 6px;
+                        top: 0;
+                        left: 0;
+                        -webkit-appearance: none;
+                        appearance: none;
+                        background: transparent;
+                        outline: none;
+                        pointer-events: none;
+                        margin: 0;
+                        padding: 0;
+                      }
+                      .dual-range-slider::-webkit-slider-thumb {
+                        -webkit-appearance: none;
+                        appearance: none;
+                        width: 20px;
+                        height: 20px;
+                        border-radius: 50%;
+                        background: #1e40af;
+                        border: 3px solid white;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                        cursor: grab;
+                        pointer-events: auto;
+                        margin-top: -7px;
+                      }
+                      .dual-range-slider::-webkit-slider-thumb:active {
+                        cursor: grabbing;
+                        box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+                      }
+                      .dual-range-slider::-moz-range-thumb {
+                        width: 20px;
+                        height: 20px;
+                        border-radius: 50%;
+                        background: #1e40af;
+                        border: 3px solid white;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                        cursor: grab;
+                        pointer-events: auto;
+                      }
+                      .dual-range-slider::-moz-range-thumb:active {
+                        cursor: grabbing;
+                        box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+                      }
+                      .dual-range-slider::-webkit-slider-runnable-track {
+                        width: 100%;
+                        height: 6px;
+                        background: #e5e7eb;
+                        border-radius: 3px;
+                      }
+                      .dual-range-slider::-moz-range-track {
+                        width: 100%;
+                        height: 6px;
+                        background: #e5e7eb;
+                        border-radius: 3px;
+                      }
+                      .dual-range-slider.range-min::-webkit-slider-runnable-track {
+                        background: linear-gradient(to right,
+                          #e5e7eb 0%,
+                          #e5e7eb ${selectedYears.length === 0 ? 100 : ((rangeStart - 2016) / 9) * 100}%,
+                          #1e40af ${selectedYears.length === 0 ? 100 : ((rangeStart - 2016) / 9) * 100}%,
+                          #1e40af ${(8 / 9) * 100}%,
+                          #e5e7eb ${(8 / 9) * 100}%,
+                          #e5e7eb 100%);
+                      }
+                      .dual-range-slider.range-max::-webkit-slider-runnable-track {
+                        background: transparent;
+                      }
+                      .dual-range-slider.range-max::-webkit-slider-thumb {
+                        cursor: default;
+                        pointer-events: none;
+                      }
+                      .dual-range-slider.range-max::-moz-range-thumb {
+                        cursor: default;
+                        pointer-events: none;
+                      }
+                    `}</style>
+
+                    {/* Container for both sliders on same track */}
+                    <div style={{ position: 'relative', height: 6 }}>
+                      {/* Min slider with colored track - movable */}
+                      <input
+                        type="range"
+                        className="dual-range-slider range-min"
+                        min="2016"
+                        max="2025"
+                        value={selectedYears.length === 0 ? 2025 : rangeStart}
+                        onChange={(e) => {
+                          handleRangeChange(parseInt(e.target.value))
+                        }}
+                        style={{ zIndex: 5 }}
+                      />
+
+                      {/* Max slider (transparent track) - fixed at 2025, not movable */}
+                      <input
+                        type="range"
+                        className="dual-range-slider range-max"
+                        min="2016"
+                        max="2025"
+                        value={2025}
+                        readOnly
+                        style={{ zIndex: 5 }}
+                      />
+                    </div>
+
+                    {/* Year labels */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginTop: 12,
+                      fontSize: 9,
+                      color: '#999'
+                    }}>
+                      <span>2016</span>
+                      <span>2020</span>
+                      <span>2024</span>
+                      <span>2025</span>
+                    </div>
+                  </div>
+
+                  {/* Quick select buttons */}
+                  <div style={{ display: 'flex', gap: 4, paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
+                    <button
+                      onClick={() => handleRangeChange(2016)}
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        fontSize: 12,
-                        cursor: 'pointer',
-                        padding: '3px 4px',
+                        flex: 1,
+                        padding: '3px 6px',
+                        border: '1px solid #ccc',
                         borderRadius: 2,
-                        transition: 'background 0.2s',
-                        background: selectedYears.includes(year) ? '#f0f9ff' : 'transparent'
+                        background: '#f0f9ff',
+                        color: '#333',
+                        fontSize: 10,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        fontWeight: 500
                       }}
                     >
-                      <input
-                        type="checkbox"
-                        checked={selectedYears.includes(year)}
-                        onChange={() => handleYearToggle(year)}
-                        style={{ margin: 0, cursor: 'pointer', flexShrink: 0 }}
-                      />
-                      <span style={{ flex: 1 }}>{year}</span>
-                      <div
-                        style={{
-                          width: '14px',
-                          height: '14px',
-                          background: yearColor,
-                          border: '1px solid #ccc',
-                          borderRadius: 2,
-                          flexShrink: 0
-                        }}
-                      />
-                    </label>
-                  )
-                })}
-              </div>
+                      All
+                    </button>
+                    <button
+                      onClick={() => handleRangeChange(2019)}
+                      style={{
+                        flex: 1,
+                        padding: '3px 6px',
+                        border: '1px solid #ccc',
+                        borderRadius: 2,
+                        background: '#fff',
+                        color: '#333',
+                        fontSize: 10,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        fontWeight: 500
+                      }}
+                    >
+                      Last 6
+                    </button>
+                    <button
+                      onClick={() => handleRangeChange(2025)}
+                      style={{
+                        flex: 1,
+                        padding: '3px 6px',
+                        border: '1px solid #ccc',
+                        borderRadius: 2,
+                        background: '#fef2f2',
+                        color: '#333',
+                        fontSize: 10,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        fontWeight: 500
+                      }}
+                    >
+                      2025
+                    </button>
+                  </div>
 
-              {/* Apply button */}
-              <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px solid #e5e7eb' }}>
-                <button
-                  onClick={() => setIsHistoricalPopupOpen(false)}
-                  style={{
-                    width: '100%',
-                    padding: '4px 8px',
-                    border: '1px solid #ccc',
-                    borderRadius: 2,
-                    background: '#1e40af',
-                    color: '#fff',
-                    fontSize: 11,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    fontWeight: 500
-                  }}
-                >
-                  Apply
-                </button>
-              </div>
+                  {/* Apply button */}
+                  <div style={{ paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
+                    <button
+                      onClick={() => setIsHistoricalPopupOpen(false)}
+                      style={{
+                        width: '100%',
+                        padding: '4px 8px',
+                        border: '1px solid #ccc',
+                        borderRadius: 2,
+                        background: '#1e40af',
+                        color: '#fff',
+                        fontSize: 11,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        fontWeight: 500
+                      }}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Checkbox list mode for other chart types */
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 6, paddingBottom: 6, borderTop: '1px solid #e5e7eb' }}>
+                    <button
+                      onClick={handleSelectAll}
+                      style={{
+                        padding: '3px 6px',
+                        border: '1px solid #ccc',
+                        borderRadius: 2,
+                        background: '#f0f9ff',
+                        color: '#333',
+                        fontSize: 11,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        fontWeight: 500,
+                        width: '100%'
+                      }}
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={handleSelectNone}
+                      style={{
+                        padding: '3px 6px',
+                        border: '1px solid #ccc',
+                        borderRadius: 2,
+                        background: '#fef2f2',
+                        color: '#333',
+                        fontSize: 11,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        fontWeight: 500,
+                        width: '100%'
+                      }}
+                    >
+                      Select None
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {years.map((year, index) => {
+                      const yearColor = HISTORICAL_COLORS[index % HISTORICAL_COLORS.length]
+                      return (
+                        <label
+                          key={year}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            fontSize: 12,
+                            cursor: 'pointer',
+                            padding: '3px 4px',
+                            borderRadius: 2,
+                            transition: 'background 0.2s',
+                            background: selectedYears.includes(year) ? '#f0f9ff' : 'transparent'
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedYears.includes(year)}
+                            onChange={() => handleYearToggle(year)}
+                            style={{ margin: 0, cursor: 'pointer', flexShrink: 0 }}
+                          />
+                          <span style={{ flex: 1 }}>{year}</span>
+                          <div
+                            style={{
+                              width: '14px',
+                              height: '14px',
+                              background: yearColor,
+                              border: '1px solid #ccc',
+                              borderRadius: 2,
+                              flexShrink: 0
+                            }}
+                          />
+                        </label>
+                      )
+                    })}
+                  </div>
+
+                  {/* Apply button */}
+                  <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px solid #e5e7eb' }}>
+                    <button
+                      onClick={() => setIsHistoricalPopupOpen(false)}
+                      style={{
+                        width: '100%',
+                        padding: '4px 8px',
+                        border: '1px solid #ccc',
+                        borderRadius: 2,
+                        background: '#1e40af',
+                        color: '#fff',
+                        fontSize: 11,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        fontWeight: 500
+                      }}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
 
         {/* Combine options */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 , marginLeft: 38}}>
-          <label style={{ fontSize: 14, fontWeight: 500, marginTop: 8 }}>Combine:</label>
+          <label style={{ fontSize: 14, fontWeight: 500, marginTop: 8, opacity: (chartMode === 'proportion' || selectedYears.length <= 1) ? 0.5 : 1 }}>Combine:</label>
           <div style={{ display: 'flex', gap: 12 }}>
             {/* Statistic group */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 13,
+                cursor: (chartMode === 'proportion' || selectedYears.length <= 1) ? 'not-allowed' : 'pointer',
+                opacity: (chartMode === 'proportion' || selectedYears.length <= 1) ? 0.5 : 1
+              }}>
                 <input
                   type="checkbox"
                   checked={combineStatistic === 'mean'}
+                  disabled={chartMode === 'proportion' || selectedYears.length <= 1}
                   onChange={(e) => {
                     if (e.target.checked) {
                       setCombineStatistic('mean')
@@ -393,14 +630,22 @@ export default function ChartControls({
                       setShowCombined(false)
                     }
                   }}
-                  style={{ margin: 0, cursor: 'pointer' }}
+                  style={{ margin: 0, cursor: (chartMode === 'proportion' || selectedYears.length <= 1) ? 'not-allowed' : 'pointer' }}
                 />
                 Mean
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 13,
+                cursor: (chartMode === 'proportion' || selectedYears.length <= 1) ? 'not-allowed' : 'pointer',
+                opacity: (chartMode === 'proportion' || selectedYears.length <= 1) ? 0.5 : 1
+              }}>
                 <input
                   type="checkbox"
                   checked={combineStatistic === 'median'}
+                  disabled={chartMode === 'proportion' || selectedYears.length <= 1}
                   onChange={(e) => {
                     if (e.target.checked) {
                       setCombineStatistic('median')
@@ -416,26 +661,26 @@ export default function ChartControls({
                       setShowCombined(false)
                     }
                   }}
-                  style={{ margin: 0, cursor: 'pointer' }}
+                  style={{ margin: 0, cursor: (chartMode === 'proportion' || selectedYears.length <= 1) ? 'not-allowed' : 'pointer' }}
                 />
                 Median
               </label>
             </div>
-            
-            {/* Error group - disabled if no statistic selected */}
+
+            {/* Error group - disabled if no statistic selected, in projection mode, or only one year selected */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 4, 
-                fontSize: 13, 
-                cursor: combineStatistic ? 'pointer' : 'not-allowed',
-                opacity: combineStatistic ? 1 : 0.5
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 13,
+                cursor: (combineStatistic && chartMode !== 'proportion' && selectedYears.length > 1) ? 'pointer' : 'not-allowed',
+                opacity: (combineStatistic && chartMode !== 'proportion' && selectedYears.length > 1) ? 1 : 0.5
               }}>
                 <input
                   type="checkbox"
                   checked={combineError === 'std'}
-                  disabled={!combineStatistic}
+                  disabled={!combineStatistic || chartMode === 'proportion' || selectedYears.length <= 1}
                   onChange={(e) => {
                     if (e.target.checked) {
                       setCombineError('std')
@@ -443,22 +688,22 @@ export default function ChartControls({
                       setCombineError(null)
                     }
                   }}
-                  style={{ margin: 0, cursor: combineStatistic ? 'pointer' : 'not-allowed' }}
+                  style={{ margin: 0, cursor: (combineStatistic && chartMode !== 'proportion' && selectedYears.length > 1) ? 'pointer' : 'not-allowed' }}
                 />
                 Std Dev
               </label>
-              <label style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 4, 
-                fontSize: 13, 
-                cursor: combineStatistic ? 'pointer' : 'not-allowed',
-                opacity: combineStatistic ? 1 : 0.5
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 13,
+                cursor: (combineStatistic && chartMode !== 'proportion' && selectedYears.length > 1) ? 'pointer' : 'not-allowed',
+                opacity: (combineStatistic && chartMode !== 'proportion' && selectedYears.length > 1) ? 1 : 0.5
               }}>
                 <input
                   type="checkbox"
                   checked={combineError === 'ci'}
-                  disabled={!combineStatistic}
+                  disabled={!combineStatistic || chartMode === 'proportion' || selectedYears.length <= 1}
                   onChange={(e) => {
                     if (e.target.checked) {
                       setCombineError('ci')
@@ -466,7 +711,7 @@ export default function ChartControls({
                       setCombineError(null)
                     }
                   }}
-                  style={{ margin: 0, cursor: combineStatistic ? 'pointer' : 'not-allowed' }}
+                  style={{ margin: 0, cursor: (combineStatistic && chartMode !== 'proportion' && selectedYears.length > 1) ? 'pointer' : 'not-allowed' }}
                 />
                 95% CI
               </label>
@@ -525,7 +770,7 @@ export default function ChartControls({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 85}}>
-          <label style={{ fontSize: 14, fontWeight: 500 }}>Smoothing:</label>
+          <label style={{ fontSize: 14, fontWeight: 500, opacity: chartMode === 'bar' ? 0.5 : 1 }}>Smoothing:</label>
           <input
             type="range"
             min="0"
@@ -536,13 +781,15 @@ export default function ChartControls({
               const newValue = parseInt(e.target.value)
               setSmoothing(newValue)
             }}
+            disabled={chartMode === 'bar'}
             style={{
               width: '80px',
               height: '20px',
-              cursor: 'pointer'
+              cursor: chartMode === 'bar' ? 'not-allowed' : 'pointer',
+              opacity: chartMode === 'bar' ? 0.5 : 1
             }}
           />
-          <span style={{ fontSize: 11, color: '#666', minWidth: '20px' }}>
+          <span style={{ fontSize: 11, color: '#666', minWidth: '20px', opacity: chartMode === 'bar' ? 0.5 : 1 }}>
             {chartMode === 'proportion' ? `${clampedSmoothing} month window` : `${clampedSmoothing}`}
           </span>
         </div>

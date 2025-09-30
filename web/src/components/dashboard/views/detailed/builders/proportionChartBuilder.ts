@@ -37,7 +37,7 @@ const monthNameToIndex: Record<string, number> = {
 }
 
 // Generate monthly proportion data from 2016 to present (uses real monthly site data when available)
-export function buildProportionData(): MonthlyProportionData[] {
+export function buildProportionData(selectedYears: number[] = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]): MonthlyProportionData[] {
   const results: MonthlyProportionData[] = []
 
   // Historical totals by year (for fallback when no site data available)
@@ -54,7 +54,8 @@ export function buildProportionData(): MonthlyProportionData[] {
   }
 
   // Process all years (2016-2025) using getSiteMonthTotals first, fall back to estimates
-  const allYears = [...Object.keys(historicalParsers).map(Number), 2025]
+  // Filter historical years by selectedYears, but always include 2025
+  const allYears = [...Object.keys(historicalParsers).map(Number).filter(year => selectedYears.includes(year)), 2025]
   
   for (const year of allYears) {
     try {

@@ -103,8 +103,8 @@ export default function DetailedChart({
   // Generate proportion data for proportion chart mode
   const proportionData = useMemo(() => {
     if (chartMode !== 'proportion') return []
-    return buildProportionData()
-  }, [chartMode])
+    return buildProportionData(selectedYears)
+  }, [chartMode, selectedYears])
 
   // Debug info for proportion data
   const proportionDebugInfo = useMemo(() => {
@@ -672,7 +672,8 @@ export default function DetailedChart({
         fy2025,
         combineStatistic: combineStatistic,
         combineError: combineError,
-        visibleSites
+        visibleSites,
+        selectedYears
       })
     } else {
       // Use total income line traces
@@ -687,7 +688,8 @@ export default function DetailedChart({
         timeframe,
         smoothing,
         combineStatistic,
-        combineError
+        combineError,
+        selectedYears
       })
     }
   }, [

@@ -22,6 +22,7 @@ interface SiteLineChartBuilderProps {
   combineStatistic?: 'mean' | 'median' | null
   combineError?: 'std' | 'ci' | null
   visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean }
+  selectedYears?: number[]
 }
 
 // Helper function to process site data for different timeframes
@@ -404,7 +405,8 @@ export const buildSiteLineTraces = ({
   fy2025,
   combineStatistic = null,
   combineError = null,
-  visibleSites
+  visibleSites,
+  selectedYears = []
 }: SiteLineChartBuilderProps) => {
   const traces: any[] = []
 
@@ -412,6 +414,9 @@ export const buildSiteLineTraces = ({
   const isSiteVisible = (siteKey: 'lacey' | 'centralia' | 'aberdeen') => {
     return visibleSites ? visibleSites[siteKey] : true
   }
+
+  // Use thicker line if only one year is selected
+  const lineWidth = selectedYears.length === 1 ? 3 : HISTORICAL_YEAR_LINE_WIDTH
   
   // Get historical site data for all years
   const allHistoricalSiteData: YTDPointWithSites[][] = []
@@ -558,7 +563,7 @@ export const buildSiteLineTraces = ({
           type: 'scatter' as const,
           mode: 'lines' as const,
           name: `${name} ${year}`,
-          line: { color: color.historical, width: HISTORICAL_YEAR_LINE_WIDTH },
+          line: { color: color.historical, width: lineWidth },
           visible: isSiteVisible(key),
           opacity: isSiteVisible(key) ? 1 : 0.2,
           hovertemplate: isNormalized
