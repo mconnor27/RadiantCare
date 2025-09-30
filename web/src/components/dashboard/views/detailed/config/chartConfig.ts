@@ -5,10 +5,7 @@ export const HISTORICAL_YEAR_LINE_WIDTH = 1.5
 export const COLOR_SCHEMES = {
   // Current red-based scheme (ggplot2 2-trace default)
   ggplot2: {
-    historical: [
-      '#e0f7fa', '#b2ebf2', '#80deea', '#4dd0e1',
-      '#26c6da', '#00acc1', '#0097a7', '#00838f', '#006064'
-    ],
+    historical: Array(9).fill('#00BFC4'),
     current: '#F8766D',
     projectedBar: 'rgba(248, 118, 109, 0.6)'
   },
@@ -92,7 +89,7 @@ export const BAR_CONFIG = {
 export const HISTORICAL_COLORS = ACTIVE_COLOR_SCHEME.historical
 
 export const CURRENT_YEAR_COLOR = ACTIVE_COLOR_SCHEME.current
-export const HISTORICAL_MEAN_COLOR = '#1e40af'
+export const HISTORICAL_MEAN_COLOR = HISTORICAL_COLORS[Math.floor(HISTORICAL_COLORS.length / 2)]
 
 // Projected data styling configuration - uses active color scheme
 export const PROJECTED_BAR_STYLE = {
