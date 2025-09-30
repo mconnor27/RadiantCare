@@ -1,8 +1,21 @@
 import type { YTDPoint } from '../../../../../historical_data/therapyIncomeParser'
 import { generateAllDaysOfYear, generateDaysForQuarter, generateDaysForMonth } from './dataProcessing'
 
-// Helper function to calculate combined statistics (mean and std dev) across all years
-export const calculateCombinedStats = (allYearData: YTDPoint[][], allowedDays?: string[]): { 
+// Helper function to calculate median
+const calculateMedian = (values: number[]): number => {
+  if (values.length === 0) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+}
+
+// Helper function to calculate combined statistics (mean/median and std dev/CI) across all years
+export const calculateCombinedStats = (
+  allYearData: YTDPoint[][], 
+  allowedDays?: string[],
+  statistic: 'mean' | 'median' | null = 'mean',
+  errorType: 'std' | 'ci' | null = 'ci'
+): { 
   mean: YTDPoint[], 
   upperBound: YTDPoint[], 
   lowerBound: YTDPoint[] 
@@ -78,31 +91,40 @@ export const calculateCombinedStats = (allYearData: YTDPoint[][], allowedDays?: 
   
   sortedDays.forEach(monthDay => {
     const values = dayValueMap.get(monthDay)!
-    const meanValue = values.reduce((sum, val) => sum + val, 0) / values.length
     
-    // Calculate standard deviation
+    // Calculate center statistic (mean or median), default to mean if null
+    const centerValue = statistic === 'median' 
+      ? calculateMedian(values)
+      : values.reduce((sum, val) => sum + val, 0) / values.length
+    
+    // Calculate standard deviation (needed for both std and CI)
+    const meanValue = values.reduce((sum, val) => sum + val, 0) / values.length
     const variance = values.reduce((sum, val) => sum + Math.pow(val - meanValue, 2), 0) / values.length
     const stdDev = Math.sqrt(variance)
     
     mean.push({
       date: monthDay,
       monthDay,
-      cumulativeIncome: meanValue
+      cumulativeIncome: centerValue
     })
     
-    // Use 95% confidence interval (±1.96 * stdDev) for more visible variation
-    const confidence95 = 1.96 * stdDev
+    // Calculate error bounds based on type (if errorType is not null)
+    const errorMargin = errorType === 'ci'
+      ? 1.96 * stdDev  // 95% confidence interval
+      : errorType === 'std'
+      ? stdDev         // Standard deviation
+      : 0              // No error if null
     
     upperBound.push({
       date: monthDay,
       monthDay,
-      cumulativeIncome: meanValue + confidence95
+      cumulativeIncome: centerValue + errorMargin
     })
     
     lowerBound.push({
       date: monthDay,
       monthDay,
-      cumulativeIncome: Math.max(0, meanValue - confidence95) // Don't go below 0
+      cumulativeIncome: Math.max(0, centerValue - errorMargin) // Don't go below 0
     })
   })
   
@@ -149,7 +171,11 @@ export const getMonthlyTotals = (data: YTDPoint[]): { month: string, income: num
 }
 
 // Helper function to calculate combined monthly statistics across all years
-export const calculateCombinedMonthlyStats = (allYearData: YTDPoint[][]): {
+export const calculateCombinedMonthlyStats = (
+  allYearData: YTDPoint[][],
+  statistic: 'mean' | 'median' | null = 'mean',
+  errorType: 'std' | 'ci' | null = 'ci'
+): {
   mean: { month: string, income: number, error: number }[],
   monthlyData: Map<string, number[]>
 } => {
@@ -167,19 +193,31 @@ export const calculateCombinedMonthlyStats = (allYearData: YTDPoint[][]): {
     })
   })
   
-  // Calculate mean and standard deviation for each month
+  // Calculate center statistic and error for each month
   const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   const mean = Array.from(monthlyData.entries())
     .map(([month, values]) => {
+      // Calculate center statistic (mean or median), default to mean if null
+      const centerIncome = statistic === 'median'
+        ? calculateMedian(values)
+        : values.reduce((sum, val) => sum + val, 0) / values.length
+      
+      // Calculate standard deviation (needed for both std and CI)
       const meanIncome = values.reduce((sum, val) => sum + val, 0) / values.length
       const variance = values.reduce((sum, val) => sum + Math.pow(val - meanIncome, 2), 0) / values.length
       const stdDev = Math.sqrt(variance)
-      const error = stdDev // Standard deviation
+      
+      // Calculate error based on type (if errorType is not null)
+      const errorValue = errorType === 'ci'
+        ? 1.96 * stdDev  // 95% confidence interval
+        : errorType === 'std'
+        ? stdDev         // Standard deviation
+        : 0              // No error if null
       
       return {
         month,
-        income: meanIncome,
-        error
+        income: centerIncome,
+        error: errorValue
       }
     })
     .sort((a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month))
@@ -215,7 +253,11 @@ export const getQuarterlyTotals = (data: YTDPoint[]): { quarter: string, income:
 }
 
 // Helper function to calculate combined quarterly statistics across all years
-export const calculateCombinedQuarterlyStats = (allYearData: YTDPoint[][]): {
+export const calculateCombinedQuarterlyStats = (
+  allYearData: YTDPoint[][],
+  statistic: 'mean' | 'median' | null = 'mean',
+  errorType: 'std' | 'ci' | null = 'ci'
+): {
   mean: { quarter: string, income: number, error: number }[],
   quarterlyData: Map<string, number[]>
 } => {
@@ -233,20 +275,33 @@ export const calculateCombinedQuarterlyStats = (allYearData: YTDPoint[][]): {
     })
   })
   
-  // Calculate mean and standard deviation for each quarter
+  // Calculate center statistic and error for each quarter
   const quarterOrder = ['Q1', 'Q2', 'Q3', 'Q4']
   const mean = quarterOrder.map(quarter => {
     const values = quarterlyData.get(quarter) || []
     if (values.length === 0) return { quarter, income: 0, error: 0 }
     
+    // Calculate center statistic (mean or median), default to mean if null
+    const centerIncome = statistic === 'median'
+      ? calculateMedian(values)
+      : values.reduce((sum, val) => sum + val, 0) / values.length
+    
+    // Calculate standard deviation (needed for both std and CI)
     const meanIncome = values.reduce((sum, val) => sum + val, 0) / values.length
     const variance = values.reduce((sum, val) => sum + Math.pow(val - meanIncome, 2), 0) / values.length
     const stdDev = Math.sqrt(variance)
     
+    // Calculate error based on type (if errorType is not null)
+    const errorValue = errorType === 'ci'
+      ? 1.96 * stdDev  // 95% confidence interval
+      : errorType === 'std'
+      ? stdDev         // Standard deviation
+      : 0              // No error if null
+    
     return {
       quarter,
-      income: meanIncome,
-      error: stdDev
+      income: centerIncome,
+      error: errorValue
     }
   })
   

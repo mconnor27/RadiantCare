@@ -1,10 +1,10 @@
 import type { YTDPointWithSites } from '../../../shared/types'
-import { 
-  getSiteMonthlyEndPoints, 
-  get2025SiteMonthlyEndPoints, 
-  generateProjectedSiteMonthlyPoints,
-  SITE_COLORS 
+import {
+  getSiteMonthlyEndPoints,
+  get2025SiteMonthlyEndPoints,
+  generateProjectedSiteMonthlyPoints
 } from '../../../../../historical_data/siteIncomeParser'
+import { SITE_COLORS } from '../config/chartConfig'
 import { HISTORICAL_YEAR_LINE_WIDTH, RADAR_CONFIG } from '../config/chartConfig'
 import { 
   filterDataByQuarter,
@@ -19,6 +19,8 @@ interface SiteLineChartBuilderProps {
   timeframe: 'year' | 'quarter' | 'month'
   currentPeriod: { year: number, quarter?: number, month?: number }
   fy2025: any
+  combineStatistic?: 'mean' | 'median' | null
+  combineError?: 'std' | 'ci' | null
 }
 
 // Helper function to process site data for different timeframes
@@ -284,9 +286,19 @@ function calculatePeriodStartSites(
   }
 }
 
+// Helper function to calculate median
+const calculateMedian = (values: number[]): number => {
+  if (values.length === 0) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+}
+
 // Calculate combined statistics for historical site data
 function calculateSiteCombinedStats(
-  allHistoricalSiteData: YTDPointWithSites[][]
+  allHistoricalSiteData: YTDPointWithSites[][],
+  statistic: 'mean' | 'median' | null = null,
+  errorType: 'std' | 'ci' | null = null
 ): { 
   lacey: { mean: YTDPointWithSites[], upperBound: YTDPointWithSites[], lowerBound: YTDPointWithSites[] },
   centralia: { mean: YTDPointWithSites[], upperBound: YTDPointWithSites[], lowerBound: YTDPointWithSites[] },
@@ -331,34 +343,48 @@ function calculateSiteCombinedStats(
       const values = dayData[site]
       if (values.length === 0) return
       
+      // Calculate center statistic (mean or median), default to mean if null
+      const center = statistic === 'median'
+        ? calculateMedian(values)
+        : values.reduce((sum, val) => sum + val, 0) / values.length
+      
+      // Calculate standard deviation (needed for both std and CI)
       const mean = values.reduce((sum, val) => sum + val, 0) / values.length
       const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length
       const stdDev = Math.sqrt(variance)
-      const upperBound = mean + 1.96 * stdDev // 95% CI
-      const lowerBound = mean - 1.96 * stdDev
       
-      const totalMean = mean + siteCombinedStats.lacey.mean.reduce((sum, p) => sum + (p.sites?.[site] || 0), 0) +
+      // Calculate error margin based on type (if errorType is not null)
+      const errorMargin = errorType === 'ci'
+        ? 1.96 * stdDev  // 95% confidence interval
+        : errorType === 'std'
+        ? stdDev         // Standard deviation
+        : 0              // No error if null
+      
+      const upperBound = center + errorMargin
+      const lowerBound = center - errorMargin
+      
+      const totalCenter = center + siteCombinedStats.lacey.mean.reduce((sum, p) => sum + (p.sites?.[site] || 0), 0) +
                        siteCombinedStats.centralia.mean.reduce((sum, p) => sum + (p.sites?.[site] || 0), 0) +
                        siteCombinedStats.aberdeen.mean.reduce((sum, p) => sum + (p.sites?.[site] || 0), 0)
       
       siteCombinedStats[site].mean.push({
         date: `2025-${monthDay}`, // Approximate date
         monthDay,
-        cumulativeIncome: totalMean,
-        sites: { lacey: site === 'lacey' ? mean : 0, centralia: site === 'centralia' ? mean : 0, aberdeen: site === 'aberdeen' ? mean : 0 }
+        cumulativeIncome: totalCenter,
+        sites: { lacey: site === 'lacey' ? center : 0, centralia: site === 'centralia' ? center : 0, aberdeen: site === 'aberdeen' ? center : 0 }
       })
       
       siteCombinedStats[site].upperBound.push({
         date: `2025-${monthDay}`,
         monthDay,
-        cumulativeIncome: totalMean,
+        cumulativeIncome: totalCenter,
         sites: { lacey: site === 'lacey' ? upperBound : 0, centralia: site === 'centralia' ? upperBound : 0, aberdeen: site === 'aberdeen' ? upperBound : 0 }
       })
       
       siteCombinedStats[site].lowerBound.push({
         date: `2025-${monthDay}`,
         monthDay,
-        cumulativeIncome: totalMean,
+        cumulativeIncome: totalCenter,
         sites: { lacey: site === 'lacey' ? lowerBound : 0, centralia: site === 'centralia' ? lowerBound : 0, aberdeen: site === 'aberdeen' ? lowerBound : 0 }
       })
     })
@@ -374,7 +400,9 @@ export const buildSiteLineTraces = ({
   is2025Visible,
   timeframe,
   currentPeriod,
-  fy2025
+  fy2025,
+  combineStatistic = null,
+  combineError = null
 }: SiteLineChartBuilderProps) => {
   const traces: any[] = []
   
@@ -433,8 +461,8 @@ export const buildSiteLineTraces = ({
   
   // Build traces based on showCombined setting
   if (showCombined && allHistoricalSiteData.length > 0) {
-    // Combined mode: show historical mean with confidence bands for each site
-    const siteCombinedStats = calculateSiteCombinedStats(allHistoricalSiteData)
+    // Combined mode: show historical mean/median with confidence bands for each site
+    const siteCombinedStats = calculateSiteCombinedStats(allHistoricalSiteData, combineStatistic, combineError)
     
     const sites = [
       { key: 'lacey' as const, name: 'Lacey', color: SITE_COLORS.lacey },
@@ -451,43 +479,50 @@ export const buildSiteLineTraces = ({
         const upperY = stats.upperBound.map(p => p.sites?.[key] || 0)
         const lowerY = stats.lowerBound.map(p => p.sites?.[key] || 0)
         
-        // Confidence band (upper)
-        traces.push({
-          x: meanX,
-          y: upperY,
-          type: 'scatter' as const,
-          mode: 'lines' as const,
-          name: `${name} Mean + 95% CI`,
-          line: { color: 'rgba(0,0,0,0)' },
-          showlegend: false,
-          hoverinfo: 'skip' as const
-        })
+        const labelSuffix = combineStatistic === 'median' ? 'Median' : 'Mean'
+        const errorLabel = combineError === 'ci' ? '95% CI' : combineError === 'std' ? 'Std Dev' : ''
         
-        // Confidence band (lower)
-        traces.push({
-          x: meanX,
-          y: lowerY,
-          type: 'scatter' as const,
-          mode: 'lines' as const,
-          name: `${name} Mean - 95% CI`,
-          line: { color: 'rgba(0,0,0,0)' },
-          fill: 'tonexty' as const,
-          fillcolor: color.historical.replace('0.7)', '0.2)'), // Make fill more transparent
-          showlegend: false,
-          hoverinfo: 'skip' as const
-        })
+        // Only add error bands if combineError is not null
+        if (combineError) {
+          traces.push(
+            // Error band (upper)
+            {
+              x: meanX,
+              y: upperY,
+              type: 'scatter' as const,
+              mode: 'lines' as const,
+              name: `${name} ${labelSuffix} + ${errorLabel}`,
+              line: { color: 'rgba(0,0,0,0)' },
+              showlegend: false,
+              hoverinfo: 'skip' as const
+            },
+            // Error band (lower)
+            {
+              x: meanX,
+              y: lowerY,
+              type: 'scatter' as const,
+              mode: 'lines' as const,
+              name: `${name} ${labelSuffix} - ${errorLabel}`,
+              line: { color: 'rgba(0,0,0,0)' },
+              fill: 'tonexty' as const,
+              fillcolor: color.historical.replace('0.7)', '0.2)'), // Make fill more transparent
+              showlegend: false,
+              hoverinfo: 'skip' as const
+            }
+          )
+        }
         
-        // Mean line
+        // Mean/Median line
         traces.push({
           x: meanX,
           y: meanY,
           type: 'scatter' as const,
           mode: 'lines' as const,
-          name: `${name} Historical Mean (2016-2024)`,
+          name: `${name} Historical ${labelSuffix} (2016-2024)`,
           line: { color: color.historical, width: 2 },
           hovertemplate: isNormalized 
-            ? `${name} Historical Mean<br>%{x}<br>%{y:.1f}%<extra></extra>` 
-            : `${name} Historical Mean<br>%{x}<br>$%{y:,}<extra></extra>`
+            ? `${name} Historical ${labelSuffix}<br>%{x}<br>%{y:.1f}%<extra></extra>` 
+            : `${name} Historical ${labelSuffix}<br>%{x}<br>$%{y:,}<extra></extra>`
         })
       }
     })

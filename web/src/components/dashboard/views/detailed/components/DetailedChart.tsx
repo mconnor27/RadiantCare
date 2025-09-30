@@ -42,6 +42,8 @@ interface DetailedChartProps {
   data: YTDPoint[]
   isNormalized: boolean
   showCombined: boolean
+  combineStatistic: 'mean' | 'median' | null
+  combineError: 'std' | 'ci' | null
   chartMode: 'line' | 'bar' | 'proportion'
   timeframe: 'year' | 'quarter' | 'month'
   currentPeriod: { year: number, quarter?: number, month?: number }
@@ -51,12 +53,15 @@ interface DetailedChartProps {
   incomeMode: IncomeMode
   smoothing: number
   fy2025: FutureYear | undefined
+  selectedYears: number[]
 }
 
 export default function DetailedChart({
   data,
   isNormalized,
   showCombined,
+  combineStatistic,
+  combineError,
   chartMode,
   timeframe,
   currentPeriod,
@@ -65,7 +70,8 @@ export default function DetailedChart({
   showAllMonths,
   incomeMode,
   smoothing,
-  fy2025
+  fy2025,
+  selectedYears
 }: DetailedChartProps) {
   const isMobile = useIsMobile()
   const [pulsePhase, setPulsePhase] = useState(0)
@@ -549,25 +555,30 @@ export default function DetailedChart({
       { year: '2024', data: historical2024Smoothed }
     ]
 
+    // Filter by selected years
+    const filteredHistoricalData = allHistoricalData.filter(({ year }) => 
+      selectedYears.includes(parseInt(year))
+    )
+
     if (timeframe === 'year') {
-      return allHistoricalData
+      return filteredHistoricalData
     } else if (timeframe === 'quarter' && currentPeriod.quarter) {
-      return allHistoricalData.map(({ year, data }) => ({
+      return filteredHistoricalData.map(({ year, data }) => ({
         year,
         data: filterDataByQuarter(data, parseInt(year), currentPeriod.quarter!)
       }))
     } else if (timeframe === 'month' && currentPeriod.month) {
-      return allHistoricalData.map(({ year, data }) => ({
+      return filteredHistoricalData.map(({ year, data }) => ({
         year,
         data: filterDataByMonth(data, parseInt(year), currentPeriod.month!)
       }))
     }
-    return allHistoricalData
+    return filteredHistoricalData
   }, [
     historical2016Smoothed, historical2017Smoothed, historical2018Smoothed,
     historical2019Smoothed, historical2020Smoothed, historical2021Smoothed,
     historical2022Smoothed, historical2023Smoothed, historical2024Smoothed,
-    timeframe, currentPeriod
+    timeframe, currentPeriod, selectedYears
   ])
 
   // For current year (2025), don't interpolate - just use actual data points to avoid plateau
@@ -585,8 +596,13 @@ export default function DetailedChart({
       : timeframe === 'month' && currentPeriod.month ? generateDaysForMonth(currentPeriod.month)
       : undefined
 
-    return calculateCombinedStats(allHistoricalData, allowedDays)
-  }, [processedHistoricalData, timeframe, currentPeriod])
+    return calculateCombinedStats(
+      allHistoricalData, 
+      allowedDays,
+      combineStatistic ?? 'mean',
+      combineError ?? 'std'
+    )
+  }, [processedHistoricalData, timeframe, currentPeriod, combineStatistic, combineError])
 
   // Bar chart data processing based on timeframe
   const barChartData = useMemo(() => {
@@ -605,9 +621,11 @@ export default function DetailedChart({
       historical2023Data,
       historical2024Data,
       isNormalized,
-      projectedIncomeData: projectedIncomeDataForBars
+      projectedIncomeData: projectedIncomeDataForBars,
+      combineStatistic: combineStatistic,
+      combineError: combineError
     })
-  }, [timeframe, processedHistoricalData, showCombined, chartMode, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, currentPeriod, showAllMonths, projectedIncomeDataForBars])
+  }, [timeframe, processedHistoricalData, showCombined, chartMode, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, currentPeriod, showAllMonths, projectedIncomeDataForBars, combineStatistic, combineError])
 
 
   // Site-specific bar chart data processing
@@ -629,9 +647,11 @@ export default function DetailedChart({
       historical2023Data,
       historical2024Data,
       projectedIncomeData: projectedIncomeDataForBars,
-      fy2025
+      fy2025,
+      combineStatistic: combineStatistic,
+      combineError: combineError
     })
-  }, [incomeMode, timeframe, currentYearData, processedHistoricalData, showCombined, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, projectedIncomeDataForBars, fy2025])
+  }, [incomeMode, timeframe, currentYearData, processedHistoricalData, showCombined, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, projectedIncomeDataForBars, fy2025, combineStatistic, combineError])
 
   // Create stable static traces (memoized separately from animated traces)
   const staticLineTraces = useMemo(() => {
@@ -646,7 +666,9 @@ export default function DetailedChart({
         is2025Visible,
         timeframe,
         currentPeriod,
-        fy2025
+        fy2025,
+        combineStatistic: combineStatistic,
+        combineError: combineError
       })
     } else {
       // Use total income line traces
@@ -659,12 +681,15 @@ export default function DetailedChart({
         isNormalized,
         is2025Visible,
         timeframe,
-        smoothing
+        smoothing,
+        combineStatistic,
+        combineError
       })
     }
   }, [
     chartMode, incomeMode, showCombined, combinedStats, processedHistoricalData,
-    processedCurrentData, projectedIncomeData, isNormalized, is2025Visible, timeframe, currentPeriod, fy2025, smoothing
+    processedCurrentData, projectedIncomeData, isNormalized, is2025Visible, timeframe, currentPeriod, fy2025, smoothing,
+    combineStatistic, combineError
   ])
 
   // Create animated pulsing traces (separate from static traces)
@@ -804,7 +829,9 @@ export default function DetailedChart({
                 siteBarChartData,
                 timeframe,
                 showCombined,
-                isNormalized
+                isNormalized,
+                combineStatistic,
+                combineError
               )
             : buildBarChartTraces(
                 barChartData,
@@ -812,7 +839,9 @@ export default function DetailedChart({
                 showCombined,
                 isNormalized,
                 showAllMonths,
-                currentPeriod
+                currentPeriod,
+                combineStatistic,
+                combineError
               )) as any}
         layout={chartMode === 'proportion' ? buildProportionLayout(isMobile) : (chartLayout || {}) as any}
         config={{

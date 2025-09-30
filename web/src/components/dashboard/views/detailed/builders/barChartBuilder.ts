@@ -24,6 +24,16 @@ interface BarChartDataProps {
   historical2024Data: YTDPoint[]
   isNormalized: boolean
   projectedIncomeData: YTDPoint[]
+  combineStatistic?: 'mean' | 'median' | null
+  combineError?: 'std' | 'ci' | null
+}
+
+// Helper function to calculate median
+const calculateMedian = (values: number[]): number => {
+  if (values.length === 0) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
 }
 
 // Helper function to normalize bar chart data
@@ -86,7 +96,9 @@ export const buildBarChartData = ({
   historical2023Data,
   historical2024Data,
   isNormalized,
-  projectedIncomeData
+  projectedIncomeData,
+  combineStatistic = null,
+  combineError = null
 }: BarChartDataProps) => {
   if (timeframe === 'year') {
     // Year mode: each year is an x-axis tick
@@ -100,30 +112,46 @@ export const buildBarChartData = ({
     const projected2025 = projectedIncomeData.length > 0 ? [{ year: '2025 Projected', income: projected2025Total }] : []
     
     if (showCombined) {
-      // For combined/bar mode: show mean with std dev
+      // For combined/bar mode: show mean/median with std dev/CI
       const allYearIncomes = yearlyHistorical.map(y => y.income)
+
+      // Calculate center statistic (mean or median), default to mean if null
+      const centerIncome = combineStatistic === 'median'
+        ? calculateMedian(allYearIncomes)
+        : allYearIncomes.reduce((sum, val) => sum + val, 0) / allYearIncomes.length
+
+      // Calculate standard deviation (needed for both std and CI)
       const meanIncome = allYearIncomes.reduce((sum, val) => sum + val, 0) / allYearIncomes.length
       const variance = allYearIncomes.reduce((sum, val) => sum + Math.pow(val - meanIncome, 2), 0) / allYearIncomes.length
       const stdDev = Math.sqrt(variance)
-      
+
+      // Calculate error based on type (if errorType is not null)
+      const errorValue = combineError === 'ci'
+        ? 1.96 * stdDev
+        : combineError === 'std'
+        ? stdDev
+        : 0  // No error if null
+
+      const labelSuffix = combineStatistic === 'median' ? 'Median' : 'Mean'
+
       // For year mode normalization, normalize against the 2025 projected total for current/projection
-      const combinedData = [{ period: 'Historical Mean (2016-2024)', income: meanIncome, error: stdDev }]
+      const combinedData = [{ period: `Historical ${labelSuffix} (2016-2024)`, income: centerIncome, error: errorValue }]
       const currentData = [{ period: '2025', income: yearly2025[0].income }]
       const projectedData = projected2025.length > 0 ? [{ period: '2025 Projected', income: projected2025[0].income - yearly2025[0].income }] : []
 
       if (isNormalized) {
         const denom2025 = projected2025Total
         return {
-          combined: meanIncome > 0 ? [{
-            period: 'Historical Mean (2016-2024)',
+          combined: centerIncome > 0 ? [{
+            period: `Historical ${labelSuffix} (2016-2024)`,
             income: 100,
-            error: (stdDev / meanIncome) * 100
+            error: (errorValue / centerIncome) * 100
           }] : combinedData,
           current: denom2025 > 0 ? [{ period: '2025', income: (actual2025Total / denom2025) * 100 }] : [{ period: '2025', income: 0 }],
           projected: denom2025 > 0 && projectedData.length > 0 ? [{ period: '2025 Projected', income: ((projected2025Total - actual2025Total) / denom2025) * 100 }] : projectedData,
           individual: yearlyHistorical.concat(yearly2025).map(item => ({
             ...item,
-            income: meanIncome > 0 ? (item.income / meanIncome) * 100 : item.income
+            income: centerIncome > 0 ? (item.income / centerIncome) * 100 : item.income
           }))
         }
       }
@@ -183,7 +211,7 @@ export const buildBarChartData = ({
       { year: '2024', data: historical2024Data }
     ]
     const historicalData = historicalDataRaw.map(({ data }) => data).filter(data => data.length > 0)
-    const combinedQuarterlyStats = calculateCombinedQuarterlyStats(historicalData)
+    const combinedQuarterlyStats = calculateCombinedQuarterlyStats(historicalData, combineStatistic, combineError)
     
     if (showCombined) {
       // Calculate projected quarterly amounts as the difference between projected and actual
@@ -257,7 +285,7 @@ export const buildBarChartData = ({
       { year: '2024', data: historical2024Data }
     ]
     const historicalData = historicalDataRaw.map(({ data }) => data).filter(data => data.length > 0)
-    const combinedMonthlyStats = calculateCombinedMonthlyStats(historicalData)
+    const combinedMonthlyStats = calculateCombinedMonthlyStats(historicalData, combineStatistic, combineError)
     
     if (showCombined) {
       // Calculate projected monthly amounts as the difference between projected and actual
@@ -321,28 +349,39 @@ export const buildBarChartTraces = (
   showCombined: boolean,
   isNormalized: boolean,
   showAllMonths: boolean,
-  currentPeriod: { year: number, quarter?: number, month?: number }
+  currentPeriod: { year: number, quarter?: number, month?: number },
+  combineStatistic: 'mean' | 'median' | null = null,
+  combineError: 'std' | 'ci' | null = null
 ) => {
   if (showCombined) {
+    const labelSuffix = combineStatistic === 'median' ? 'Median' : 'Mean'
+    const errorLabel = combineError === 'ci' ? '95% CI' : combineError === 'std' ? 'σ' : ''
+
     return [
-      // Historical Mean with error bars
+      // Historical Mean/Median with error bars (if combineError is not null)
       ...(barChartData.combined.length > 0 ? [
         {
           x: barChartData.combined.map((item: any) => item.period || item.month || item.quarter),
           y: barChartData.combined.map((item: any) => item.income),
           type: 'bar' as const,
-          name: 'Historical Mean (2016-2024)',
+          name: `Historical ${labelSuffix} (2016-2024)`,
           marker: { color: HISTORICAL_MEAN_COLOR, opacity: 0.8 },
           offsetgroup: timeframe === 'year' ? undefined : 'historical',
-          error_y: {
+          error_y: combineError ? {
             type: 'data' as const,
             array: barChartData.combined.map((item: any) => item.error),
             visible: true,
             color: HISTORICAL_MEAN_COLOR,
             thickness: 2,
             width: 3
-          },
-          hovertemplate: isNormalized ? '%{x}<br>Mean: %{y:.1f}%<br>±%{error_y.array:.1f}% (σ)<extra></extra>' : '%{x}<br>Mean: $%{y:,}<br>±$%{error_y.array:,} (σ)<extra></extra>'
+          } : undefined,
+          hovertemplate: isNormalized
+            ? combineError 
+              ? `%{x}<br>${labelSuffix}: %{y:.1f}%<br>±%{error_y.array:.1f}% (${errorLabel})<extra></extra>`
+              : `%{x}<br>${labelSuffix}: %{y:.1f}%<extra></extra>`
+            : combineError
+              ? `%{x}<br>${labelSuffix}: $%{y:,}<br>±$%{error_y.array:,} (${errorLabel})<extra></extra>`
+              : `%{x}<br>${labelSuffix}: $%{y:,}<extra></extra>`
         }
       ] : []),
       // Current Year Data (2025)

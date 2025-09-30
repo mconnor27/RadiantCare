@@ -41,9 +41,6 @@ export function testSmoothingAlgorithms() {
     console.log(`Improved rolling average (display: ${factor}, dataset: ${testDataLength} pts, max effective: ${maxEffectiveSmoothing.toFixed(1)}, effective: ${effectiveFactor.toFixed(1)}):`, improvedRolled);
     console.log('Improved rolling average endpoints preserved:', Math.abs(improvedRolled[0] - y[0]) < 0.01, Math.abs(improvedRolled[improvedRolled.length - 1] - y[y.length - 1]) < 0.01);
 
-    // Test Savitzky-Golay smoothing
-    const savitzkySmoothed = applySmoothing(x, y, factor, SmoothingMethod.SAVITZKY_GOLAY);
-    console.log('Savitzky-Golay smoothed:', savitzkySmoothed);
 
     // Compare the methods
     const diffRolling = bSplineSmoothed.map((val, i) => Math.abs(val - rollingSmoothed[i]));
@@ -376,154 +373,10 @@ function applyOriginalRollingAverageSmoothing(
   return smoothed;
 }
 
-/**
- * Apply Savitzky-Golay smoothing filter.
- * Uses polynomial fitting within a moving window to smooth data while preserving features.
- *
- * @param y - Y coordinates (values to smooth)
- * @param smoothingFactor - Window size factor from 0 to 10 (higher = larger window = more smoothing)
- * @returns Smoothed y values using Savitzky-Golay filtering
- */
-function applySavitzkyGolaySmoothing(
-  y: number[],
-  smoothingFactor: number
-): number[] {
-  const n = y.length;
-
-  // No smoothing for factor 0 or insufficient data
-  if (smoothingFactor <= 0 || n < 5) {
-    return y.slice();
-  }
-
-  // Use a moderate window size for Savitzky-Golay
-  const windowSize = Math.min(7, 5 + Math.floor((smoothingFactor / 10) * 2));
-  const degree = 2; // Quadratic polynomial
-
-  const smoothed = new Array(n);
-
-  for (let i = 0; i < n; i++) {
-    const halfWindow = Math.floor(windowSize / 2);
-    const start = Math.max(0, i - halfWindow);
-    const end = Math.min(n - 1, i + halfWindow);
-
-    // Extract the window of data
-    const windowData: number[] = [];
-    for (let j = start; j <= end; j++) {
-      windowData.push(y[j]);
-    }
-
-    // Fit a polynomial to the window and evaluate at center
-    smoothed[i] = fitPolynomialAndEvaluate(windowData, degree, halfWindow);
-  }
-
-  return smoothed;
-}
-
-/**
- * Fit a polynomial of given degree to data and evaluate at a specific point
- */
-function fitPolynomialAndEvaluate(data: number[], degree: number, evalIndex: number): number {
-  const n = data.length;
-  if (n < degree + 1) {
-    // Not enough data points, return the center value
-    return data[evalIndex] || data[Math.floor(n / 2)];
-  }
-
-  // Create the Vandermonde matrix
-  const A: number[][] = [];
-  for (let i = 0; i < n; i++) {
-    const row: number[] = [];
-    for (let d = 0; d <= degree; d++) {
-      row.push(Math.pow(i - evalIndex, d)); // x coordinates relative to evaluation point
-    }
-    A.push(row);
-  }
-
-  // Solve A * coeffs = data using least squares
-  const coeffs = solveLeastSquares(A, data);
-
-  // Evaluate the polynomial at x = 0 (the evaluation point)
-  let result = 0;
-  for (let d = 0; d <= degree; d++) {
-    result += coeffs[d] * Math.pow(0, d); // x^0 = 1 for all terms when evaluating at center
-  }
-
-  return result;
-}
-
-/**
- * Solve least squares problem A * x = b
- */
-function solveLeastSquares(A: number[][], b: number[]): number[] {
-  const rows = A.length;
-  const cols = A[0].length;
-
-  // Compute A^T * A
-  const ATA: number[][] = [];
-  for (let i = 0; i < cols; i++) {
-    ATA[i] = new Array(cols).fill(0);
-    for (let j = 0; j < cols; j++) {
-      for (let k = 0; k < rows; k++) {
-        ATA[i][j] += A[k][i] * A[k][j];
-      }
-    }
-  }
-
-  // Compute A^T * b
-  const ATb: number[] = [];
-  for (let i = 0; i < cols; i++) {
-    ATb[i] = 0;
-    for (let k = 0; k < rows; k++) {
-      ATb[i] += A[k][i] * b[k];
-    }
-  }
-
-  // Solve ATA * x = ATb using Gaussian elimination
-  return gaussianElimination(ATA, ATb);
-}
 
 
-/**
- * Gaussian elimination solver for linear systems
- */
-function gaussianElimination(A: number[][], b: number[]): number[] {
-  const n = b.length;
-  const augmented = A.map((row, i) => [...row, b[i]]);
 
-  // Forward elimination
-  for (let i = 0; i < n; i++) {
-    // Find pivot
-    let maxRow = i;
-    for (let k = i + 1; k < n; k++) {
-      if (Math.abs(augmented[k][i]) > Math.abs(augmented[maxRow][i])) {
-        maxRow = k;
-      }
-    }
 
-    // Swap rows
-    [augmented[i], augmented[maxRow]] = [augmented[maxRow], augmented[i]];
-
-    // Eliminate
-    for (let k = i + 1; k < n; k++) {
-      const factor = augmented[k][i] / augmented[i][i];
-      for (let j = i; j <= n; j++) {
-        augmented[k][j] -= factor * augmented[i][j];
-      }
-    }
-  }
-
-  // Back substitution
-  const x = new Array(n).fill(0);
-  for (let i = n - 1; i >= 0; i--) {
-    x[i] = augmented[i][n];
-    for (let j = i + 1; j < n; j++) {
-      x[i] -= augmented[i][j] * x[j];
-    }
-    x[i] /= augmented[i][i];
-  }
-
-  return x;
-}
 
 /**
  * Smoothing method enumeration for easy configuration
@@ -531,8 +384,7 @@ function gaussianElimination(A: number[][], b: number[]): number[] {
 export enum SmoothingMethod {
   B_SPLINE = 'b_spline',
   ROLLING_AVERAGE = 'rolling_average',
-  IMPROVED_ROLLING_AVERAGE = 'improved_rolling_average',
-  SAVITZKY_GOLAY = 'savitzky_golay'
+  IMPROVED_ROLLING_AVERAGE = 'improved_rolling_average'
 }
 
 /**
@@ -574,8 +426,6 @@ export function applySmoothing(
       const maxEffectiveSmoothing = baseEffectiveRange * datasetScalingFactor;
       const effectiveSmoothing = (smoothingFactor / 100) * maxEffectiveSmoothing;
       return applyImprovedRollingAverageSmoothing(y, effectiveSmoothing);
-    case SmoothingMethod.SAVITZKY_GOLAY:
-      return applySavitzkyGolaySmoothing(y, smoothingFactor);
     case SmoothingMethod.B_SPLINE:
     default:
       return applyBSplineSmoothing(x, y, 1, smoothingFactor);

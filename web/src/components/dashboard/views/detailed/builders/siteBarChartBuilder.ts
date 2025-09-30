@@ -1,12 +1,11 @@
 import type { YTDPoint } from '../../../../../historical_data/therapyIncomeParser'
 import type { SiteData, FutureYear } from '../../../shared/types'
-import { 
+import {
   estimateSiteBreakdownForYear,
   generateProjectedSiteData,
-  parseSiteIncomeFromSummary,
-  SITE_COLORS,
-  SITE_PROJECTED_PATTERNS
+  parseSiteIncomeFromSummary
 } from '../../../../../historical_data/siteIncomeParser'
+import { SITE_COLORS, SITE_PROJECTED_PATTERNS } from '../config/chartConfig'
 import { getSiteYearTotals, getSiteQuarterTotals, getSiteMonthTotals } from '../../../../../historical_data/siteIncomeParser'
 import { 
   getYearlyTotals, 
@@ -31,6 +30,8 @@ interface SiteBarChartDataProps {
   historical2024Data: YTDPoint[]
   projectedIncomeData: YTDPoint[]
   fy2025: FutureYear | undefined
+  combineStatistic?: 'mean' | 'median' | null
+  combineError?: 'std' | 'ci' | null
 }
 
 
@@ -49,7 +50,9 @@ export const buildSiteBarChartData = ({
   historical2023Data,
   historical2024Data,
   projectedIncomeData,
-  fy2025
+  fy2025,
+  combineStatistic = null,
+  combineError = null
 }: SiteBarChartDataProps) => {
   
   if (timeframe === 'year') {
@@ -90,27 +93,40 @@ export const buildSiteBarChartData = ({
     }
     
     if (showCombined) {
-      // For combined mode: show mean with std dev for each site
+      // For combined mode: show mean/median with std dev/CI for each site
       const laceyIncomes = historicalSiteData.map(h => h.sites.lacey)
       const centraliaIncomes = historicalSiteData.map(h => h.sites.centralia)  
       const aberdeenIncomes = historicalSiteData.map(h => h.sites.aberdeen)
       
+      const calculateMedian = (values: number[]): number => {
+        if (values.length === 0) return 0
+        const sorted = [...values].sort((a, b) => a - b)
+        const mid = Math.floor(sorted.length / 2)
+        return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+      }
+      
       const calculateStats = (values: number[]) => {
+        const center = combineStatistic === 'median' 
+          ? calculateMedian(values)
+          : values.reduce((sum, val) => sum + val, 0) / values.length
         const mean = values.reduce((sum, val) => sum + val, 0) / values.length
         const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length
         const stdDev = Math.sqrt(variance)
-        return { mean, stdDev }
+        const error = combineError === 'ci' ? 1.96 * stdDev : stdDev
+        return { center, error }
       }
       
       const laceyStats = calculateStats(laceyIncomes)
       const centraliaStats = calculateStats(centraliaIncomes)
       const aberdeenStats = calculateStats(aberdeenIncomes)
       
+      const labelSuffix = combineStatistic === 'median' ? 'Median' : 'Mean'
+      
       return {
         historical: [
-          { site: 'Lacey', period: 'Historical Mean (2016-2024)', income: laceyStats.mean, error: laceyStats.stdDev },
-          { site: 'Centralia', period: 'Historical Mean (2016-2024)', income: centraliaStats.mean, error: centraliaStats.stdDev },
-          { site: 'Aberdeen', period: 'Historical Mean (2016-2024)', income: aberdeenStats.mean, error: aberdeenStats.stdDev }
+          { site: 'Lacey', period: `Historical ${labelSuffix} (2016-2024)`, income: laceyStats.center, error: laceyStats.error },
+          { site: 'Centralia', period: `Historical ${labelSuffix} (2016-2024)`, income: centraliaStats.center, error: centraliaStats.error },
+          { site: 'Aberdeen', period: `Historical ${labelSuffix} (2016-2024)`, income: aberdeenStats.center, error: aberdeenStats.error }
         ],
         current: [
           { site: 'Lacey', period: '2025', income: current2025Sites.lacey },
@@ -166,12 +182,23 @@ export const buildSiteBarChartData = ({
           return yearQuarters.find(q => q.quarter === quarter)?.sites || { lacey: 0, centralia: 0, aberdeen: 0 }
         })
         
-        // Calculate mean and std dev for each site
+        // Calculate center statistic and error for each site
+        const calculateMedian = (values: number[]): number => {
+          if (values.length === 0) return 0
+          const sorted = [...values].sort((a, b) => a - b)
+          const mid = Math.floor(sorted.length / 2)
+          return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+        }
+        
         const calculateStats = (values: number[]) => {
+          const center = combineStatistic === 'median' 
+            ? calculateMedian(values)
+            : values.reduce((sum, val) => sum + val, 0) / values.length
           const mean = values.reduce((sum, val) => sum + val, 0) / values.length
           const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length
           const stdDev = Math.sqrt(variance)
-          return { mean, stdDev }
+          const error = combineError === 'ci' ? 1.96 * stdDev : stdDev
+          return { center, error }
         }
         
         const laceyStats = calculateStats(siteSamples.map(s => s.lacey))
@@ -181,14 +208,14 @@ export const buildSiteBarChartData = ({
         return {
           quarter,
           sites: {
-            lacey: laceyStats.mean,
-            centralia: centraliaStats.mean,
-            aberdeen: aberdeenStats.mean
+            lacey: laceyStats.center,
+            centralia: centraliaStats.center,
+            aberdeen: aberdeenStats.center
           },
           errors: {
-            lacey: laceyStats.stdDev,
-            centralia: centraliaStats.stdDev,
-            aberdeen: aberdeenStats.stdDev
+            lacey: laceyStats.error,
+            centralia: centraliaStats.error,
+            aberdeen: aberdeenStats.error
           }
         }
       })
@@ -381,12 +408,23 @@ export const buildSiteBarChartData = ({
           return yearMonths.find(m => m.month === month)?.sites || { lacey: 0, centralia: 0, aberdeen: 0 }
         })
         
-        // Calculate mean and std dev for each site
+        // Calculate center statistic and error for each site
+        const calculateMedian = (values: number[]): number => {
+          if (values.length === 0) return 0
+          const sorted = [...values].sort((a, b) => a - b)
+          const mid = Math.floor(sorted.length / 2)
+          return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+        }
+        
         const calculateStats = (values: number[]) => {
+          const center = combineStatistic === 'median' 
+            ? calculateMedian(values)
+            : values.reduce((sum, val) => sum + val, 0) / values.length
           const mean = values.reduce((sum, val) => sum + val, 0) / values.length
           const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length
           const stdDev = Math.sqrt(variance)
-          return { mean, stdDev }
+          const error = combineError === 'ci' ? 1.96 * stdDev : stdDev
+          return { center, error }
         }
         
         const laceyStats = calculateStats(siteSamples.map(s => s.lacey))
@@ -396,14 +434,14 @@ export const buildSiteBarChartData = ({
         return {
           month,
           sites: {
-            lacey: laceyStats.mean,
-            centralia: centraliaStats.mean,
-            aberdeen: aberdeenStats.mean
+            lacey: laceyStats.center,
+            centralia: centraliaStats.center,
+            aberdeen: aberdeenStats.center
           },
           errors: {
-            lacey: laceyStats.stdDev,
-            centralia: centraliaStats.stdDev,
-            aberdeen: aberdeenStats.stdDev
+            lacey: laceyStats.error,
+            centralia: centraliaStats.error,
+            aberdeen: aberdeenStats.error
           }
         }
       })
@@ -575,7 +613,9 @@ export const buildSiteBarChartTraces = (
   siteBarChartData: any,
   timeframe: 'year' | 'quarter' | 'month',
   showCombined: boolean,
-  isNormalized: boolean
+  isNormalized: boolean,
+  combineStatistic: 'mean' | 'median' | null = null,
+  combineError: 'std' | 'ci' | null = null
 ) => {
   const traces: any[] = []
   
@@ -636,27 +676,34 @@ export const buildSiteBarChartTraces = (
             }
           })
           
+          const labelSuffix = combineStatistic === 'median' ? 'Median' : 'Mean'
+          const errorLabel = combineError === 'ci' ? '95% CI' : combineError === 'std' ? 'σ' : ''
+          
           traces.push({
             x: quarters,
             y: historicalValues,
             type: 'bar' as const,
-            name: `${site} Historical Mean (2016-2024)`,
+            name: `${site} Historical ${labelSuffix} (2016-2024)`,
             offsetgroup: 'historical', // Separate group from 2025 data
             marker: { 
               color: SITE_COLORS[siteKey].historical,
               opacity: 0.9 
             },
-            error_y: {
+            error_y: combineError ? {
               type: 'data' as const,
               array: historicalErrors,
               visible: true,
               color: SITE_COLORS[siteKey].historical,
               thickness: 2,
               width: 3
-            },
+            } : undefined,
             hovertemplate: isNormalized 
-              ? `${site} Historical Mean<br>%{x}: %{y:.1f}%<br>±%{error_y.array:.1f}% (σ)<extra></extra>`
-              : `${site} Historical Mean<br>%{x}: $%{y:,}<br>±$%{error_y.array:,} (σ)<extra></extra>`
+              ? combineError
+                ? `${site} Historical ${labelSuffix}<br>%{x}: %{y:.1f}%<br>±%{error_y.array:.1f}% (${errorLabel})<extra></extra>`
+                : `${site} Historical ${labelSuffix}<br>%{x}: %{y:.1f}%<extra></extra>`
+              : combineError
+                ? `${site} Historical ${labelSuffix}<br>%{x}: $%{y:,}<br>±$%{error_y.array:,} (${errorLabel})<extra></extra>`
+                : `${site} Historical ${labelSuffix}<br>%{x}: $%{y:,}<extra></extra>`
           })
         }
       })
@@ -856,27 +903,34 @@ export const buildSiteBarChartTraces = (
             }
           })
           
+          const labelSuffix = combineStatistic === 'median' ? 'Median' : 'Mean'
+          const errorLabel = combineError === 'ci' ? '95% CI' : combineError === 'std' ? 'σ' : ''
+          
           traces.push({
             x: months,
             y: percentArray(historicalValues, historicalDenom),
             type: 'bar' as const,
-            name: `${site} Historical Mean (2016-2024)`,
+            name: `${site} Historical ${labelSuffix} (2016-2024)`,
             offsetgroup: 'historical', // Separate group from 2025 data
             marker: { 
               color: SITE_COLORS[siteKey].historical,
               opacity: 0.9 
             },
-            error_y: {
+            error_y: combineError ? {
               type: 'data' as const,
               array: percentErrors(historicalErrors, historicalDenom),
               visible: true,
               color: SITE_COLORS[siteKey].historical,
               thickness: 2,
               width: 3
-            },
+            } : undefined,
             hovertemplate: isNormalized 
-              ? `${site} Historical Mean<br>%{x}: %{y:.1f}%<br>±%{error_y.array:.1f}% (σ)<extra></extra>`
-              : `${site} Historical Mean<br>%{x}: $%{y:,}<br>±$%{error_y.array:,} (σ)<extra></extra>`
+              ? combineError
+                ? `${site} Historical ${labelSuffix}<br>%{x}: %{y:.1f}%<br>±%{error_y.array:.1f}% (${errorLabel})<extra></extra>`
+                : `${site} Historical ${labelSuffix}<br>%{x}: %{y:.1f}%<extra></extra>`
+              : combineError
+                ? `${site} Historical ${labelSuffix}<br>%{x}: $%{y:,}<br>±$%{error_y.array:,} (${errorLabel})<extra></extra>`
+                : `${site} Historical ${labelSuffix}<br>%{x}: $%{y:,}<extra></extra>`
           })
         }
       })
@@ -1053,8 +1107,11 @@ export const buildSiteBarChartTraces = (
         const historicalData = siteBarChartData.historical.find((h: any) => h.site === site)
         const historicalDenom = (siteBarChartData.historical || []).reduce((acc: number, h: any) => acc + (h.income || 0), 0)
         if (historicalData) {
+          const labelSuffix = combineStatistic === 'median' ? 'Median' : 'Mean'
+          const errorLabel = combineError === 'ci' ? '95% CI' : combineError === 'std' ? 'σ' : ''
+          
           traces.push({
-            x: ['Historical Mean (2016-2024)'],
+            x: [`Historical ${labelSuffix} (2016-2024)`],
             y: percentArray([historicalData.income || 0], historicalDenom),
             type: 'bar' as const,
             name: `${site} Historical`,
@@ -1062,17 +1119,21 @@ export const buildSiteBarChartTraces = (
               color: SITE_COLORS[siteKey].historical,
               opacity: 0.9 
             },
-            error_y: {
+            error_y: combineError ? {
               type: 'data' as const,
               array: percentErrors([historicalData.error || 0], historicalDenom),
               visible: true,
               color: SITE_COLORS[siteKey].historical,
               thickness: 2,
               width: 3
-            },
+            } : undefined,
             hovertemplate: isNormalized 
-              ? `${site} Historical<br>%{y:.1f}%<br>±%{error_y.array:.1f}% (σ)<extra></extra>`
-              : `${site} Historical<br>$%{y:,}<br>±$%{error_y.array:,} (σ)<extra></extra>`
+              ? combineError
+                ? `${site} Historical<br>%{y:.1f}%<br>±%{error_y.array:.1f}% (${errorLabel})<extra></extra>`
+                : `${site} Historical<br>%{y:.1f}%<extra></extra>`
+              : combineError
+                ? `${site} Historical<br>$%{y:,}<br>±$%{error_y.array:,} (${errorLabel})<extra></extra>`
+                : `${site} Historical<br>$%{y:,}<extra></extra>`
           })
         }
       }

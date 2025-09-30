@@ -8,6 +8,7 @@ import historical2019Data from './2019.json'
 import historical2018Data from './2018.json'
 import historical2017Data from './2017.json'
 import historical2016Data from './2016.json'
+import { SITE_COLORS } from '../components/dashboard/views/detailed/config/chartConfig'
 import type { YTDPointWithSites, SiteData } from '../components/dashboard/shared/types'
 import { getTotalIncome } from '../components/dashboard/shared/calculations'
 
@@ -304,43 +305,7 @@ export function generateProjectedSiteData(
   return estimateSiteBreakdownForYear(projectedTotalIncome, '2025')
 }
 
-// Color scheme for sites (ggplot2 default colors)
-export const SITE_COLORS = {
-  lacey: {
-    historical: 'rgba(97, 156, 255, 0.7)',     // Faded blue
-    current: '#619CFF',                         // Bright blue  
-    projected: 'rgba(97, 156, 255, 0.6)'       // For textured pattern
-  },
-  centralia: {
-    historical: 'rgba(0, 186, 56, 0.7)',       // Faded green  
-    current: '#00BA38',                         // Bright green
-    projected: 'rgba(0, 186, 56, 0.6)'         // For textured pattern
-  },
-  aberdeen: {
-    historical: 'rgba(248, 118, 109, 0.7)',    // Faded red
-    current: '#F8766D',                         // Bright red
-    projected: 'rgba(248, 118, 109, 0.6)'      // For textured pattern
-  }
-}
 
-// Pattern configuration for projected data (same pattern for all sites)
-export const SITE_PROJECTED_PATTERNS = {
-  lacey: {
-    shape: '/',
-    size: 6,
-    solidity: 0.5
-  },
-  centralia: {
-    shape: '/',
-    size: 6, 
-    solidity: 0.5
-  },
-  aberdeen: {
-    shape: '/',
-    size: 6,
-    solidity: 0.5
-  }
-}
 
 // Function to extract end-of-month site data points for line charts
 // Since site data is only accurate monthly, we create smooth daily interpolation for better charting

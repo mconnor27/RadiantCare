@@ -26,6 +26,8 @@ export default function YTDDetailed() {
   const [environment, setEnvironment] = useState<'production' | 'sandbox'>('production')
   const [isNormalized, setIsNormalized] = useState(false)
   const [showCombined, setShowCombined] = useState(false)
+  const [combineStatistic, setCombineStatistic] = useState<'mean' | 'median' | null>(null) // Off by default
+  const [combineError, setCombineError] = useState<'std' | 'ci' | null>(null) // Off by default
   const [chartMode, setChartMode] = useState<'line' | 'bar' | 'proportion'>('line')
   const [timeframe, setTimeframe] = useState<'year' | 'quarter' | 'month'>('year')
   const [currentPeriod, setCurrentPeriod] = useState<{ year: number, quarter?: number, month?: number }>({ year: new Date().getFullYear() })
@@ -33,6 +35,7 @@ export default function YTDDetailed() {
   const [showAllMonths, setShowAllMonths] = useState(true)
   const [incomeMode, setIncomeMode] = useState<IncomeMode>('total')
   const [smoothing, setSmoothing] = useState(5.0)
+  const [selectedYears, setSelectedYears] = useState<number[]>(Array.from({ length: 9 }, (_, i) => 2016 + i)) // Default: all years (2016-2024)
   
   // Parse 2025 data for loading into the chart component
   const historical2025Data = useMemo(() => parseTherapyIncome2025(), [])
@@ -114,6 +117,8 @@ export default function YTDDetailed() {
               data={data}
               isNormalized={isNormalized}
               showCombined={showCombined}
+              combineStatistic={combineStatistic}
+              combineError={combineError}
               chartMode={chartMode}
               timeframe={timeframe}
               currentPeriod={currentPeriod}
@@ -123,6 +128,7 @@ export default function YTDDetailed() {
               incomeMode={incomeMode}
               smoothing={smoothing}
               fy2025={fy2025}
+              selectedYears={selectedYears}
             />
           )}
         </div>
@@ -134,6 +140,10 @@ export default function YTDDetailed() {
             setIsNormalized={setIsNormalized}
             showCombined={showCombined}
             setShowCombined={setShowCombined}
+            combineStatistic={combineStatistic}
+            setCombineStatistic={setCombineStatistic}
+            combineError={combineError}
+            setCombineError={setCombineError}
             chartMode={chartMode}
             setChartMode={setChartMode}
             timeframe={timeframe}
@@ -146,6 +156,8 @@ export default function YTDDetailed() {
             setSmoothing={setSmoothing}
             loading={loading}
             variant="sidebar"
+            selectedYears={selectedYears}
+            setSelectedYears={setSelectedYears}
           />
         </div>
       </div>

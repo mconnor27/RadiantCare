@@ -1,6 +1,7 @@
 
-import { useEffect } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import type { IncomeMode } from '../../../shared/types'
+import { HISTORICAL_COLORS } from '../config/chartConfig'
 
 interface ChartControlsProps {
   environment: 'production' | 'sandbox'
@@ -9,6 +10,10 @@ interface ChartControlsProps {
   setIsNormalized: (normalized: boolean) => void
   showCombined: boolean
   setShowCombined: (combined: boolean) => void
+  combineStatistic: 'mean' | 'median' | null
+  setCombineStatistic: (stat: 'mean' | 'median' | null) => void
+  combineError: 'std' | 'ci' | null
+  setCombineError: (error: 'std' | 'ci' | null) => void
   chartMode: 'line' | 'bar' | 'proportion'
   setChartMode: (mode: 'line' | 'bar' | 'proportion') => void
   timeframe: 'year' | 'quarter' | 'month'
@@ -21,6 +26,8 @@ interface ChartControlsProps {
   setSmoothing: (smoothing: number) => void
   loading: boolean
   variant?: 'inline' | 'sidebar'
+  selectedYears: number[]
+  setSelectedYears: (years: number[]) => void
 }
 
 export default function ChartControls({
@@ -30,6 +37,10 @@ export default function ChartControls({
   setIsNormalized,
   showCombined,
   setShowCombined,
+  combineStatistic,
+  setCombineStatistic,
+  combineError,
+  setCombineError,
   chartMode,
   setChartMode,
   timeframe,
@@ -41,7 +52,9 @@ export default function ChartControls({
   smoothing,
   setSmoothing,
   loading,
-  variant = 'inline'
+  variant = 'inline',
+  selectedYears,
+  setSelectedYears
 }: ChartControlsProps) {
   
   // Clamp smoothing value when switching chart modes
@@ -49,55 +62,66 @@ export default function ChartControls({
   const clampedSmoothing = Math.min(smoothing, maxSmoothing)
   const isSidebar = variant === 'sidebar'
   
+  // Historical data popup state
+  const [isHistoricalPopupOpen, setIsHistoricalPopupOpen] = useState(false)
+  const popupRef = useRef<HTMLDivElement>(null)
+  const years = Array.from({ length: 9 }, (_, i) => 2024 - i) // 2024-2016 (reverse order)
+  
   // Auto-clamp smoothing when chart mode changes
   useEffect(() => {
     if (smoothing > maxSmoothing) {
       setSmoothing(maxSmoothing)
     }
   }, [chartMode, smoothing, maxSmoothing, setSmoothing])
+  
+  // Close popup when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+        setIsHistoricalPopupOpen(false)
+      }
+    }
+    if (isHistoricalPopupOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isHistoricalPopupOpen])
+  
+  // Year selection handlers
+  const handleYearToggle = (year: number) => {
+    if (selectedYears.includes(year)) {
+      setSelectedYears(selectedYears.filter(y => y !== year))
+    } else {
+      setSelectedYears([...selectedYears, year])
+    }
+  }
+  
+  const handleSelectAll = () => {
+    setSelectedYears([...years])
+  }
+  
+  const handleSelectNone = () => {
+    setSelectedYears([])
+  }
 
   return (
     <div style={{ display: isSidebar ? 'block' : 'flex', alignItems: isSidebar ? undefined : 'center', justifyContent: isSidebar ? undefined : 'space-between', marginBottom: isSidebar ? 0 : 16 }}>
       <div style={{ display: isSidebar ? 'flex' : 'flex', flexDirection: isSidebar ? 'column' as const : 'row' as const, alignItems: isSidebar ? 'stretch' : 'center', gap: isSidebar ? 12 : 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <label style={{ fontSize: 14, fontWeight: 500 }}>Environment:</label>
-          <select 
-            value={environment} 
+          <select
+            value={environment}
             onChange={(e) => setEnvironment(e.target.value as 'production' | 'sandbox')}
-            style={{ 
-              padding: '4px 8px', 
-              border: '1px solid #ccc', 
-              borderRadius: 4, 
-              fontSize: 14 
+            style={{
+              padding: '4px 8px',
+              border: '1px solid #ccc',
+              borderRadius: 4,
+              fontSize: 14
             }}
           >
             <option value="production">Production</option>
             <option value="sandbox">Sandbox</option>
           </select>
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontSize: 14, fontWeight: 500 }}>
-            <input 
-              type="checkbox"
-              checked={isNormalized}
-              onChange={(e) => setIsNormalized(e.target.checked)}
-              style={{ marginRight: 6 }}
-            />
-            Normalize (% of year total)
-          </label>
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontSize: 14, fontWeight: 500 }}>
-            <input 
-              type="checkbox"
-              checked={showCombined}
-              onChange={(e) => setShowCombined(e.target.checked)}
-              style={{ marginRight: 6 }}
-            />
-            {chartMode === 'line' ? 'Show combined (mean ± 95% CI)' : 'Show combined (mean ± σ)'}
-          </label>
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -131,6 +155,268 @@ export default function ChartControls({
             >
               Per Site
             </button>
+          </div>
+        </div>
+        
+        {/* Historical Data Popup */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
+          <label style={{ fontSize: 14, fontWeight: 500 }}>Historical Data:</label>
+          <button
+            onClick={() => setIsHistoricalPopupOpen(!isHistoricalPopupOpen)}
+            style={{
+              padding: '4px 12px',
+              border: '1px solid #ccc',
+              borderRadius: 4,
+              background: '#fff',
+              color: '#333',
+              fontSize: 13,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              minWidth: '120px',
+              textAlign: 'left'
+            }}
+          >
+            {(() => {
+              if (selectedYears.length === 0) return 'None';
+              if (selectedYears.length === years.length) return 'All (2016-24)';
+
+              // Check if selected years form a continuous range
+              const sortedYears = [...selectedYears].sort((a, b) => a - b);
+              const isContinuous = sortedYears.every((year, index) =>
+                index === 0 || year === sortedYears[index - 1] + 1
+              );
+
+              if (isContinuous && sortedYears.length >= 2) {
+                return `${sortedYears[0]}-${sortedYears[sortedYears.length - 1]}`;
+              }
+
+              return `${selectedYears.length} selected`;
+            })()}
+            <span style={{ float: 'right' }}>▾</span>
+          </button>
+          
+          {isHistoricalPopupOpen && (
+            <div
+              ref={popupRef}
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: 110,
+                marginTop: 4,
+                background: '#fff',
+                border: '1px solid #ccc',
+                borderRadius: 4,
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                padding: '6px',
+                zIndex: 1000,
+                minWidth: '120px',
+                width: '120px'
+              }}
+            >
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 6, paddingBottom: 6, borderBottom: '1px solid #e5e7eb' }}>
+                <button
+                  onClick={handleSelectAll}
+                  style={{
+                    padding: '3px 6px',
+                    border: '1px solid #ccc',
+                    borderRadius: 2,
+                    background: '#f0f9ff',
+                    color: '#333',
+                    fontSize: 11,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    fontWeight: 500,
+                    width: '100%'
+                  }}
+                >
+                  Select All
+                </button>
+                <button
+                  onClick={handleSelectNone}
+                  style={{
+                    padding: '3px 6px',
+                    border: '1px solid #ccc',
+                    borderRadius: 2,
+                    background: '#fef2f2',
+                    color: '#333',
+                    fontSize: 11,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    fontWeight: 500,
+                    width: '100%'
+                  }}
+                >
+                  Select None
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {years.map((year, index) => {
+                  const yearColor = HISTORICAL_COLORS[index % HISTORICAL_COLORS.length]
+                  return (
+                    <label
+                      key={year}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        padding: '3px 4px',
+                        borderRadius: 2,
+                        transition: 'background 0.2s',
+                        background: selectedYears.includes(year) ? '#f0f9ff' : 'transparent'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedYears.includes(year)}
+                        onChange={() => handleYearToggle(year)}
+                        style={{ margin: 0, cursor: 'pointer', flexShrink: 0 }}
+                      />
+                      <span style={{ flex: 1 }}>{year}</span>
+                      <div
+                        style={{
+                          width: '14px',
+                          height: '14px',
+                          background: yearColor,
+                          border: '1px solid #ccc',
+                          borderRadius: 2,
+                          flexShrink: 0
+                        }}
+                      />
+                    </label>
+                  )
+                })}
+              </div>
+
+              {/* Apply button */}
+              <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px solid #e5e7eb' }}>
+                <button
+                  onClick={() => setIsHistoricalPopupOpen(false)}
+                  style={{
+                    width: '100%',
+                    padding: '4px 8px',
+                    border: '1px solid #ccc',
+                    borderRadius: 2,
+                    background: '#1e40af',
+                    color: '#fff',
+                    fontSize: 11,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    fontWeight: 500
+                  }}
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Combine options */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 , marginLeft: 38}}>
+          <label style={{ fontSize: 14, fontWeight: 500, marginTop: 8 }}>Combine:</label>
+          <div style={{ display: 'flex', gap: 12 }}>
+            {/* Statistic group */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={combineStatistic === 'mean'}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setCombineStatistic('mean')
+                      // Auto-select std dev as default if no error type selected
+                      if (combineError === null) {
+                        setCombineError('std')
+                      }
+                      setShowCombined(true)
+                    } else {
+                      setCombineStatistic(null)
+                      // Also clear error selection when turning off statistic
+                      setCombineError(null)
+                      setShowCombined(false)
+                    }
+                  }}
+                  style={{ margin: 0, cursor: 'pointer' }}
+                />
+                Mean
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={combineStatistic === 'median'}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setCombineStatistic('median')
+                      // Auto-select std dev as default if no error type selected
+                      if (combineError === null) {
+                        setCombineError('std')
+                      }
+                      setShowCombined(true)
+                    } else {
+                      setCombineStatistic(null)
+                      // Also clear error selection when turning off statistic
+                      setCombineError(null)
+                      setShowCombined(false)
+                    }
+                  }}
+                  style={{ margin: 0, cursor: 'pointer' }}
+                />
+                Median
+              </label>
+            </div>
+            
+            {/* Error group - disabled if no statistic selected */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 4, 
+                fontSize: 13, 
+                cursor: combineStatistic ? 'pointer' : 'not-allowed',
+                opacity: combineStatistic ? 1 : 0.5
+              }}>
+                <input
+                  type="checkbox"
+                  checked={combineError === 'std'}
+                  disabled={!combineStatistic}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setCombineError('std')
+                    } else {
+                      setCombineError(null)
+                    }
+                  }}
+                  style={{ margin: 0, cursor: combineStatistic ? 'pointer' : 'not-allowed' }}
+                />
+                Std Dev
+              </label>
+              <label style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 4, 
+                fontSize: 13, 
+                cursor: combineStatistic ? 'pointer' : 'not-allowed',
+                opacity: combineStatistic ? 1 : 0.5
+              }}>
+                <input
+                  type="checkbox"
+                  checked={combineError === 'ci'}
+                  disabled={!combineStatistic}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setCombineError('ci')
+                    } else {
+                      setCombineError(null)
+                    }
+                  }}
+                  style={{ margin: 0, cursor: combineStatistic ? 'pointer' : 'not-allowed' }}
+                />
+                95% CI
+              </label>
+            </div>
           </div>
         </div>
 
@@ -184,7 +470,7 @@ export default function ChartControls({
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 85}}>
           <label style={{ fontSize: 14, fontWeight: 500 }}>Smoothing:</label>
           <input
             type="range"
@@ -260,7 +546,7 @@ export default function ChartControls({
         {timeframe === 'month' && chartMode === 'bar' && !showCombined && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <label style={{ fontSize: 14, fontWeight: 500 }}>
-              <input 
+              <input
                 type="checkbox"
                 checked={showAllMonths}
                 onChange={(e) => setShowAllMonths(e.target.checked)}
@@ -270,6 +556,19 @@ export default function ChartControls({
             </label>
           </div>
         )}
+
+        {/* Normalize checkbox at bottom */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: isSidebar ? 12 : 0 }}>
+          <label style={{ fontSize: 14, fontWeight: 500 }}>
+            <input
+              type="checkbox"
+              checked={isNormalized}
+              onChange={(e) => setIsNormalized(e.target.checked)}
+              style={{ marginRight: 6 }}
+            />
+            Normalize (% of year total)
+          </label>
+        </div>
       </div>
       {!isSidebar && loading && <div style={{ fontSize: 12, color: '#6b7280' }}>Loading…</div>}
       {isSidebar && loading && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 8 }}>Loading…</div>}

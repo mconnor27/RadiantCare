@@ -1,6 +1,72 @@
 // Configuration constants
 export const HISTORICAL_YEAR_LINE_WIDTH = 1.5
 
+// Color scheme options for easy swapping
+export const COLOR_SCHEMES = {
+  // Current red-based scheme (ggplot2 2-trace default)
+  ggplot2: {
+    historical: [
+      '#e0f7fa', '#b2ebf2', '#80deea', '#4dd0e1',
+      '#26c6da', '#00acc1', '#0097a7', '#00838f', '#006064'
+    ],
+    current: '#F8766D',
+    projectedBar: 'rgba(248, 118, 109, 0.6)'
+  },
+  // All gray scheme
+  gray: {
+    historical: Array(9).fill('#9e9e9e'),
+    current: '#F8766D',
+    projectedBar: 'rgba(248, 118, 109, 0.6)'
+  },
+  // Standard ggplot2 blue/green scheme
+  blueGreen: {
+    historical: Array(9).fill('#00BFC4'),
+    current: '#F8766D',
+    projectedBar: 'rgba(248, 118, 109, 0.6)'
+  }
+}
+
+// Site colors - original red/green/blue scheme (not tied to active scheme)
+export const SITE_COLORS = {
+  lacey: {
+    historical: 'rgba(97, 156, 255, 0.7)',     // Faded blue
+    current: '#619CFF',                         // Bright blue
+    projected: 'rgba(97, 156, 255, 0.6)'       // For textured pattern
+  },
+  centralia: {
+    historical: 'rgba(0, 186, 56, 0.7)',       // Faded green
+    current: '#00BA38',                         // Bright green
+    projected: 'rgba(0, 186, 56, 0.6)'         // For textured pattern
+  },
+  aberdeen: {
+    historical: 'rgba(248, 118, 109, 0.7)',    // Faded red
+    current: '#F8766D',                         // Bright red
+    projected: 'rgba(248, 118, 109, 0.6)'      // For textured pattern
+  }
+}
+
+// Site projected patterns (same pattern for all sites)
+export const SITE_PROJECTED_PATTERNS = {
+  lacey: {
+    shape: '/',
+    size: 6,
+    solidity: 0.5
+  },
+  centralia: {
+    shape: '/',
+    size: 6,
+    solidity: 0.5
+  },
+  aberdeen: {
+    shape: '/',
+    size: 6,
+    solidity: 0.5
+  }
+}
+
+// Current active scheme (change this to switch color schemes)
+export const ACTIVE_COLOR_SCHEME = COLOR_SCHEMES.gray
+
 // Bar chart styling configuration
 // NOTE: width property on individual bars overrides bargap/bargroupgap, so we don't use width
 export const BAR_CONFIG = {
@@ -22,18 +88,15 @@ export const BAR_CONFIG = {
   }
 }
 
-// Color schemes for historical data
-export const HISTORICAL_COLORS = [
-  '#e0f2fe', '#b3e5fc', '#81d4fa', '#4fc3f7', 
-  '#29b6f6', '#0288d1', '#003366', '#001122', '#000000'
-]
+// Color schemes for historical data - uses active color scheme
+export const HISTORICAL_COLORS = ACTIVE_COLOR_SCHEME.historical
 
-export const CURRENT_YEAR_COLOR = '#2e7d32'
+export const CURRENT_YEAR_COLOR = ACTIVE_COLOR_SCHEME.current
 export const HISTORICAL_MEAN_COLOR = '#1e40af'
 
-// Projected data styling configuration
+// Projected data styling configuration - uses active color scheme
 export const PROJECTED_BAR_STYLE = {
-  color: 'rgba(34, 197, 94, 0.6)', // Lighter green with transparency
+  color: ACTIVE_COLOR_SCHEME.projectedBar,
   pattern: {
     shape: '/',
     size: 6, // Thicker lines (reduced from 8 for denser pattern)

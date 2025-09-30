@@ -1,7 +1,14 @@
 import type { YTDPoint } from '../../../../../historical_data/therapyIncomeParser'
-import { HISTORICAL_COLORS, CURRENT_YEAR_COLOR, HISTORICAL_MEAN_COLOR, HISTORICAL_YEAR_LINE_WIDTH, RADAR_CONFIG } from '../config/chartConfig'
+import { HISTORICAL_COLORS, CURRENT_YEAR_COLOR, HISTORICAL_YEAR_LINE_WIDTH, RADAR_CONFIG } from '../config/chartConfig'
 import { sortDataChronologically } from '../utils/dataProcessing'
 import { applySmoothingToYTDData } from '../../../shared/splineSmoothing'
+
+// Helper function to convert hex color to RGB values
+const hexToRgb = (hex: string): string => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  if (!result) return '0, 0, 0'
+  return `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`
+}
 
 interface LineChartBuilderProps {
   showCombined: boolean
@@ -17,6 +24,8 @@ interface LineChartBuilderProps {
   is2025Visible: boolean
   timeframe: 'year' | 'quarter' | 'month'
   smoothing: number
+  combineStatistic?: 'mean' | 'median' | null
+  combineError?: 'std' | 'ci' | null
 }
 
 export const buildStaticLineTraces = ({
@@ -28,7 +37,9 @@ export const buildStaticLineTraces = ({
   isNormalized,
   is2025Visible,
   timeframe,
-  smoothing
+  smoothing,
+  combineStatistic = null,
+  combineError = null
 }: LineChartBuilderProps) => {
   const traces = []
   
@@ -44,42 +55,49 @@ export const buildStaticLineTraces = ({
     const combinedUpperY = smoothedUpper.map(p => p.cumulativeIncome)
     const combinedLowerY = smoothedLower.map(p => p.cumulativeIncome)
     
-    traces.push(
-      // Standard deviation band (upper)
-      {
-        x: combinedMeanX,
-        y: combinedUpperY,
-        type: 'scatter' as const,
-        mode: 'lines' as const,
-        name: 'Mean + 95% CI',
-        line: { color: 'rgba(0,0,0,0)' },
-        showlegend: false,
-        hoverinfo: 'skip' as const
-      },
-      // Standard deviation band (lower)
-      {
-        x: combinedMeanX,
-        y: combinedLowerY,
-        type: 'scatter' as const,
-        mode: 'lines' as const,
-        name: 'Mean - 95% CI',
-        line: { color: 'rgba(0,0,0,0)' },
-        fill: 'tonexty' as const,
-        fillcolor: 'rgba(30,144,255,0.2)',
-        showlegend: false,
-        hoverinfo: 'skip' as const
-      },
-      // Mean line
-      {
-        x: combinedMeanX,
-        y: combinedMeanY,
-        type: 'scatter' as const,
-        mode: 'lines' as const,
-        name: 'Historical Mean (2016-2024)',
-        line: { color: HISTORICAL_MEAN_COLOR, width: 3 },
-        hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
-      }
-    )
+    const labelSuffix = combineStatistic === 'median' ? 'Median' : 'Mean'
+    const errorLabel = combineError === 'ci' ? '95% CI' : combineError === 'std' ? 'Std Dev' : ''
+    
+    // Only add error bands if combineError is not null
+    if (combineError) {
+      traces.push(
+        // Error band (upper)
+        {
+          x: combinedMeanX,
+          y: combinedUpperY,
+          type: 'scatter' as const,
+          mode: 'lines' as const,
+          name: `${labelSuffix} + ${errorLabel}`,
+          line: { color: 'rgba(0,0,0,0)' },
+          showlegend: false,
+          hoverinfo: 'skip' as const
+        },
+        // Error band (lower)
+        {
+          x: combinedMeanX,
+          y: combinedLowerY,
+          type: 'scatter' as const,
+          mode: 'lines' as const,
+          name: `${labelSuffix} - ${errorLabel}`,
+          line: { color: 'rgba(0,0,0,0)' },
+          fill: 'tonexty' as const,
+          fillcolor: `rgba(${hexToRgb(HISTORICAL_COLORS[Math.floor(HISTORICAL_COLORS.length / 2)])}, 0.2)`,
+          showlegend: false,
+          hoverinfo: 'skip' as const
+        }
+      )
+    }
+    
+    // Mean/Median line (always shown when showCombined is true)
+    traces.push({
+      x: combinedMeanX,
+      y: combinedMeanY,
+      type: 'scatter' as const,
+      mode: 'lines' as const,
+      name: `Historical ${labelSuffix} (2016-2024)`,
+      line: { color: HISTORICAL_COLORS[Math.floor(HISTORICAL_COLORS.length / 2)], width: 3 },
+      hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
+    })
   }
   
   // Individual years (when not showing combined)
@@ -135,7 +153,7 @@ export const buildStaticLineTraces = ({
       mode: 'lines' as const,
       name: '2025 Total Income Projection',
       line: { 
-        color: '#4CAF50', // Green color
+        color: CURRENT_YEAR_COLOR, // Red color (ggplot2 default)
         width: 3,
         dash: 'dot' // Dotted line
       },
@@ -178,9 +196,9 @@ export const buildPulsingTraces = (
         mode: 'markers' as const,
         name: `Radar Ring ${i}`,
         marker: {
-          color: `rgba(46, 125, 50, ${opacity})`,
+          color: `rgba(${hexToRgb(CURRENT_YEAR_COLOR)}, ${opacity})`,
           size: size,
-          line: { color: `rgba(46, 125, 50, ${Math.min(opacity + 0.15, 0.6)})`, width: 1 }
+          line: { color: `rgba(${hexToRgb(CURRENT_YEAR_COLOR)}, ${Math.min(opacity + 0.15, 0.6)})`, width: 1 }
         },
         showlegend: false,
         hoverinfo: 'skip' as const

@@ -11,9 +11,9 @@ import {
 } from '../../../../../historical_data/therapyIncomeParser'
 import {
   getSiteMonthTotals,
-  estimateSiteBreakdownForYear,
-  SITE_COLORS
+  estimateSiteBreakdownForYear
 } from '../../../../../historical_data/siteIncomeParser'
+import { SITE_COLORS } from '../config/chartConfig'
 
 // Monthly proportion data structure
 export interface MonthlyProportionData {
