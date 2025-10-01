@@ -217,6 +217,57 @@ export default function ChartControls({
               </button>
             </div>
 
+            {/* Actual vs Normalized radio buttons */}
+            <div style={{ display: 'flex', gap: 12, paddingLeft: 0 }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 13,
+                cursor: 'pointer'
+              }}>
+                <input
+                  type="radio"
+                  checked={!isNormalized}
+                  onChange={() => setIsNormalized(false)}
+                  style={{ margin: 0, cursor: 'pointer' }}
+                />
+                Actual
+              </label>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  position: 'relative'
+                }}
+                onMouseEnter={(e) => {
+                  const tooltip = document.createElement('div')
+                  tooltip.id = 'normalized-tooltip'
+                  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                  tooltip.textContent = 'Normalized to % of total annual income'
+                  document.body.appendChild(tooltip)
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  tooltip.style.left = `${rect.right + 10}px`
+                  tooltip.style.top = `${rect.top + window.scrollY}px`
+                }}
+                onMouseLeave={() => {
+                  const tooltip = document.getElementById('normalized-tooltip')
+                  if (tooltip) tooltip.remove()
+                }}
+              >
+                <input
+                  type="radio"
+                  checked={isNormalized}
+                  onChange={() => setIsNormalized(true)}
+                  style={{ margin: 0, cursor: 'pointer' }}
+                />
+                Normalized
+              </label>
+            </div>
+
             {/* Site visibility legend - show in per-site mode or proportion mode */}
             {(incomeMode === 'per-site' || chartMode === 'proportion') && (
               <div style={{ display: 'flex', gap: 6, paddingLeft: 0 }}>
@@ -633,8 +684,7 @@ export default function ChartControls({
         </div>
 
         {/* Combine options */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 , marginLeft: 38}}>
-          <label style={{ fontSize: 14, fontWeight: 500, marginTop: 8, opacity: (chartMode === 'proportion' || selectedYears.length <= 1) ? 0.5 : 1 }}>Combine:</label>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginLeft: 110 }}>
           <div style={{ display: 'flex', gap: 12 }}>
             {/* Statistic group */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -898,19 +948,6 @@ export default function ChartControls({
             </label>
           </div>
         )}
-
-        {/* Normalize checkbox at bottom */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: isSidebar ? 12 : 0 }}>
-          <label style={{ fontSize: 14, fontWeight: 500 }}>
-            <input
-              type="checkbox"
-              checked={isNormalized}
-              onChange={(e) => setIsNormalized(e.target.checked)}
-              style={{ marginRight: 6 }}
-            />
-            Normalize (% of year total)
-          </label>
-        </div>
       </div>
       {!isSidebar && loading && <div style={{ fontSize: 12, color: '#6b7280' }}>Loading…</div>}
       {isSidebar && loading && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 8 }}>Loading…</div>}
