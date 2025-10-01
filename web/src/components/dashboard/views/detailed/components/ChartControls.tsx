@@ -1,7 +1,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import type { IncomeMode } from '../../../shared/types'
-import { HISTORICAL_COLORS, SITE_COLORS } from '../config/chartConfig'
+import { getColorScheme, getSiteColors } from '../config/chartConfig'
 
 interface ChartControlsProps {
   environment: 'production' | 'sandbox'
@@ -30,6 +30,8 @@ interface ChartControlsProps {
   setSelectedYears: (years: number[]) => void
   visibleSites: { lacey: boolean, centralia: boolean, aberdeen: boolean }
   setVisibleSites: (sites: { lacey: boolean, centralia: boolean, aberdeen: boolean }) => void
+  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'
+  setColorScheme: (scheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare') => void
 }
 
 export default function ChartControls({
@@ -58,7 +60,9 @@ export default function ChartControls({
   selectedYears,
   setSelectedYears,
   visibleSites,
-  setVisibleSites
+  setVisibleSites,
+  colorScheme,
+  setColorScheme
 }: ChartControlsProps) {
   
   // Calculate available months for projection mode based on selected years
@@ -88,6 +92,11 @@ export default function ChartControls({
   const maxSmoothing = calculateAvailableMonths()
   const clampedSmoothing = Math.min(smoothing, maxSmoothing)
   const isSidebar = variant === 'sidebar'
+  
+  // Get colors based on selected color scheme
+  const colors = getColorScheme(colorScheme)
+  const HISTORICAL_COLORS = colors.historical
+  const SITE_COLORS = getSiteColors(colorScheme)
   
   // Historical data popup state
   const [isHistoricalPopupOpen, setIsHistoricalPopupOpen] = useState(false)
@@ -125,7 +134,6 @@ export default function ChartControls({
   // Range slider state for projection mode
   const sortedSelectedYears = [...selectedYears].sort((a, b) => a - b)
   const rangeStart = sortedSelectedYears.length > 0 ? sortedSelectedYears[0] : 2016
-  const rangeEnd = 2024 // Fixed end at 2024 (always includes up to 2024)
 
   // Year selection handlers
   const handleYearToggle = (year: number) => {
@@ -157,6 +165,14 @@ export default function ChartControls({
     setSelectedYears([])
   }
 
+  // Color scheme display names and swatches
+  const colorSchemeInfo = {
+    ggplot2: { label: 'ggplot2', color: '#F8766D' },
+    gray: { label: 'Gray', color: '#9e9e9e' },
+    blueGreen: { label: 'Blue/Green', color: '#00BFC4' },
+    radiantCare: { label: 'RadiantCare', color: '#7c2a83' }
+  }
+
   return (
     <div style={{ display: isSidebar ? 'block' : 'flex', alignItems: isSidebar ? undefined : 'center', justifyContent: isSidebar ? undefined : 'space-between', marginBottom: isSidebar ? 0 : 16 }}>
       <div style={{ display: isSidebar ? 'flex' : 'flex', flexDirection: isSidebar ? 'column' as const : 'row' as const, alignItems: isSidebar ? 'stretch' : 'center', gap: isSidebar ? 12 : 20 }}>
@@ -176,7 +192,34 @@ export default function ChartControls({
             <option value="sandbox">Sandbox</option>
           </select>
         </div>
-        
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label style={{ fontSize: 14, fontWeight: 500 }}>Color Scheme:</label>
+          <select
+            value={colorScheme}
+            onChange={(e) => setColorScheme(e.target.value as 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare')}
+            style={{
+              padding: '4px 8px',
+              border: '1px solid #ccc',
+              borderRadius: 4,
+              fontSize: 14
+            }}
+          >
+            {Object.entries(colorSchemeInfo).map(([key, info]) => (
+              <option key={key} value={key}>
+                {info.label}
+              </option>
+            ))}
+          </select>
+          <div style={{
+            width: 16,
+            height: 16,
+            borderRadius: 3,
+            backgroundColor: colorSchemeInfo[colorScheme].color,
+            border: '1px solid #ccc'
+          }} />
+        </div>
+
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
           <label style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', marginTop: 6, opacity: chartMode === 'proportion' ? 0.5 : 1 }}>Income Mode:</label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
@@ -224,13 +267,15 @@ export default function ChartControls({
                 alignItems: 'center',
                 gap: 4,
                 fontSize: 13,
-                cursor: 'pointer'
+                cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
+                opacity: chartMode === 'proportion' ? 0.5 : 1
               }}>
                 <input
                   type="radio"
-                  checked={!isNormalized}
-                  onChange={() => setIsNormalized(false)}
-                  style={{ margin: 0, cursor: 'pointer' }}
+                  checked={chartMode === 'proportion' ? false : !isNormalized}
+                  onChange={() => chartMode !== 'proportion' && setIsNormalized(false)}
+                  disabled={chartMode === 'proportion'}
+                  style={{ margin: 0, cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer' }}
                 />
                 Actual
               </label>
@@ -240,7 +285,8 @@ export default function ChartControls({
                   alignItems: 'center',
                   gap: 4,
                   fontSize: 13,
-                  cursor: 'pointer',
+                  cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
+                  opacity: chartMode === 'proportion' ? 0.5 : 1,
                   position: 'relative'
                 }}
                 onMouseEnter={(e) => {
@@ -260,9 +306,10 @@ export default function ChartControls({
               >
                 <input
                   type="radio"
-                  checked={isNormalized}
-                  onChange={() => setIsNormalized(true)}
-                  style={{ margin: 0, cursor: 'pointer' }}
+                  checked={chartMode === 'proportion' ? true : isNormalized}
+                  onChange={() => chartMode !== 'proportion' && setIsNormalized(true)}
+                  disabled={chartMode === 'proportion'}
+                  style={{ margin: 0, cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer' }}
                 />
                 Normalized
               </label>
@@ -936,7 +983,7 @@ export default function ChartControls({
 
         {/* Monthly view mode toggle - only show for month timeframe and bar mode and individual mode */}
         {timeframe === 'month' && chartMode === 'bar' && !showCombined && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 82 }}>
             <label style={{ fontSize: 14, fontWeight: 500 }}>
               <input
                 type="checkbox"

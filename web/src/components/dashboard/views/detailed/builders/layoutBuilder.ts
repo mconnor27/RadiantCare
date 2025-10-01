@@ -15,6 +15,9 @@ interface LayoutBuilderProps {
   currentY: number[]
   currentPeriod?: { year: number, quarter?: number, month?: number }
   incomeMode?: IncomeMode
+  selectedYears?: number[]
+  combineStatistic?: 'mean' | 'median' | null
+  combineError?: 'std' | 'ci' | null
 }
 
 export const buildChartLayout = ({
@@ -28,7 +31,10 @@ export const buildChartLayout = ({
   currentX,
   currentY,
   currentPeriod,
-  incomeMode = 'total'
+  incomeMode = 'total',
+  selectedYears = [],
+  combineStatistic = null,
+  combineError = null
 }: LayoutBuilderProps) => {
   const getYAxisConfig = () => {
     const baseConfig = {
@@ -191,20 +197,39 @@ export const buildChartLayout = ({
     }
   }
 
+  // Determine if we should show the parenthetical in line mode
+  const hasHistoricalYears = selectedYears.length > 0
+  const showLineParenthetical = chartMode !== 'line' || (incomeMode === 'per-site') || hasHistoricalYears
+
+  // Build the historical statistic description for bar chart titles
+  const getHistoricalDescription = () => {
+    if (!showCombined || !combineStatistic) return ''
+
+    const statLabel = combineStatistic === 'mean' ? 'Mean' : 'Median'
+    const errorLabel = combineError === 'ci' ? '95% CI' : (combineError === 'std' ? 'σ' : '')
+
+    if (errorLabel) {
+      return `: Historical ${statLabel} ± ${errorLabel}`
+    }
+    return `: Historical ${statLabel}`
+  }
+
   return {
-    title: { 
-      text: chartMode === 'line' 
-        ? (isNormalized 
-          ? `Daily Accumulated Income (${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Comparison - Normalized %)`
-          : `Daily Accumulated Income (${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Comparison)`)
+    title: {
+      text: chartMode === 'line'
+        ? (showLineParenthetical
+          ? (isNormalized
+            ? `Daily Accumulated Income (${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Comparison - Normalized)`
+            : `Daily Accumulated Income (${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Comparison)`)
+          : 'Daily Accumulated Income (YTD)')
         : (incomeMode === 'per-site'
           ? (isNormalized
-            ? `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income by Site: Lacey • Centralia • Aberdeen (Normalized %)`
-            : `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income by Site: Lacey • Centralia • Aberdeen`)
+            ? `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income by Site${getHistoricalDescription()} (Normalized)`
+            : `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income by Site${getHistoricalDescription()}`)
           : (isNormalized
-            ? `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income Amounts: Historical Mean ± σ (Normalized %)`
-            : `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income Amounts: Historical Mean ± σ`)),
-      font: { weight: 700 } 
+            ? `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income Amounts${getHistoricalDescription()} (Normalized)`
+            : `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income Amounts${getHistoricalDescription()}`)),
+      font: { weight: 700 }
     },
     dragmode: false as any,
     margin: { 

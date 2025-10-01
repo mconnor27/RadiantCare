@@ -37,7 +37,8 @@ export default function YTDDetailed() {
   const [smoothing, setSmoothing] = useState(10)
   const [selectedYears, setSelectedYears] = useState<number[]>(Array.from({ length: 9 }, (_, i) => 2016 + i)) // Default: all years (2016-2024)
   const [visibleSites, setVisibleSites] = useState<{ lacey: boolean, centralia: boolean, aberdeen: boolean }>({ lacey: true, centralia: true, aberdeen: true })
-  
+  const [colorScheme, setColorScheme] = useState<'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'>('gray')
+
   // Parse 2025 data for loading into the chart component
   const historical2025Data = useMemo(() => parseTherapyIncome2025(), [])
 
@@ -158,6 +159,7 @@ export default function YTDDetailed() {
               fy2025={fy2025}
               selectedYears={selectedYears}
               visibleSites={visibleSites}
+              colorScheme={colorScheme}
             />
           )}
         </div>
@@ -189,6 +191,8 @@ export default function YTDDetailed() {
             setSelectedYears={setSelectedYears}
             visibleSites={visibleSites}
             setVisibleSites={setVisibleSites}
+            colorScheme={colorScheme}
+            setColorScheme={setColorScheme}
           />
         </div>
       </div>

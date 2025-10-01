@@ -1,5 +1,5 @@
 import type { YTDPoint } from '../../../../../historical_data/therapyIncomeParser'
-import { HISTORICAL_COLORS, CURRENT_YEAR_COLOR, HISTORICAL_YEAR_LINE_WIDTH, RADAR_CONFIG } from '../config/chartConfig'
+import { HISTORICAL_YEAR_LINE_WIDTH, RADAR_CONFIG, getColorScheme } from '../config/chartConfig'
 import { sortDataChronologically } from '../utils/dataProcessing'
 import { applySmoothingToYTDData } from '../../../shared/splineSmoothing'
 
@@ -27,6 +27,7 @@ interface LineChartBuilderProps {
   combineStatistic?: 'mean' | 'median' | null
   combineError?: 'std' | 'ci' | null
   selectedYears?: number[]
+  colorScheme?: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'
 }
 
 export const buildStaticLineTraces = ({
@@ -41,8 +42,12 @@ export const buildStaticLineTraces = ({
   smoothing,
   combineStatistic = null,
   combineError = null,
-  selectedYears = []
+  selectedYears = [],
+  colorScheme = 'gray'
 }: LineChartBuilderProps) => {
+  const colors = getColorScheme(colorScheme)
+  const HISTORICAL_COLORS = colors.historical
+  const CURRENT_YEAR_COLOR = colors.current
   const traces = []
   
   // Combined statistics (when enabled)
@@ -114,13 +119,15 @@ export const buildStaticLineTraces = ({
         const xData = smoothedData.map((p: YTDPoint) => p.monthDay)
         const yData = smoothedData.map((p: YTDPoint) => p.cumulativeIncome)
 
+        // Reverse index so 2024 (last in array) gets darkest color
+        const colorIndex = (HISTORICAL_COLORS.length - 1 - index) % HISTORICAL_COLORS.length
         traces.push({
           x: xData,
           y: yData,
           type: 'scatter' as const,
           mode: 'lines' as const,
           name: `${year} Therapy Income`,
-          line: { color: HISTORICAL_COLORS[index % HISTORICAL_COLORS.length], width: lineWidth },
+          line: { color: HISTORICAL_COLORS[colorIndex], width: lineWidth },
           hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
         })
       }
@@ -174,8 +181,11 @@ export const buildPulsingTraces = (
   processedCurrentData: YTDPoint[],
   is2025Visible: boolean,
   pulsePhase: number,
-  isNormalized: boolean
+  isNormalized: boolean,
+  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray'
 ) => {
+  const colors = getColorScheme(colorScheme)
+  const CURRENT_YEAR_COLOR = colors.current
   if (processedCurrentData.length === 0 || !is2025Visible) return []
   
   const currentX = processedCurrentData.map(p => p.monthDay)

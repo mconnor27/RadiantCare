@@ -5,7 +5,10 @@ export const HISTORICAL_YEAR_LINE_WIDTH = 1.5
 export const COLOR_SCHEMES = {
   // Current red-based scheme (ggplot2 2-trace default)
   ggplot2: {
-    historical: Array(9).fill('#00BFC4'),
+    historical: [
+      '#006064', '#00838f', '#0097a7', '#00acc1',
+      '#26c6da', '#4dd0e1', '#80deea', '#b2ebf2', '#e0f7fa'
+    ],
     current: '#F8766D',
     projectedBar: 'rgba(248, 118, 109, 0.6)'
   },
@@ -20,6 +23,12 @@ export const COLOR_SCHEMES = {
     historical: Array(9).fill('#00BFC4'),
     current: '#F8766D',
     projectedBar: 'rgba(248, 118, 109, 0.6)'
+  },
+  // RadiantCare brand colors
+  radiantCare: {
+    historical: Array(9).fill('#9e9e9e'),
+    current: '#7c2a83',
+    projectedBar: 'rgba(124, 42, 131, 0.6)'
   }
 }
 
@@ -39,6 +48,25 @@ export const SITE_COLORS = {
     historical: 'rgba(248, 118, 109, 0.7)',    // Faded red
     current: '#F8766D',                         // Bright red
     projected: 'rgba(248, 118, 109, 0.6)'      // For textured pattern
+  }
+}
+
+// RadiantCare purple site colors (three shades of purple)
+export const SITE_COLORS_RADIANTCARE = {
+  lacey: {
+    historical: 'rgba(156, 89, 209, 0.7)',     // Faded light purple
+    current: '#9c59d1',                         // Light purple
+    projected: 'rgba(156, 89, 209, 0.6)'       // For textured pattern
+  },
+  centralia: {
+    historical: 'rgba(124, 42, 131, 0.7)',     // Faded medium purple (brand color)
+    current: '#7c2a83',                         // Medium purple (brand color)
+    projected: 'rgba(124, 42, 131, 0.6)'       // For textured pattern
+  },
+  aberdeen: {
+    historical: 'rgba(93, 20, 99, 0.7)',       // Faded dark purple
+    current: '#5d1463',                         // Dark purple
+    projected: 'rgba(93, 20, 99, 0.6)'         // For textured pattern
   }
 }
 
@@ -63,6 +91,16 @@ export const SITE_PROJECTED_PATTERNS = {
 
 // Current active scheme (change this to switch color schemes)
 export const ACTIVE_COLOR_SCHEME = COLOR_SCHEMES.gray
+
+// Helper function to get colors based on color scheme
+export const getColorScheme = (scheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare') => {
+  return COLOR_SCHEMES[scheme]
+}
+
+// Helper function to get site colors based on color scheme
+export const getSiteColors = (scheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare') => {
+  return scheme === 'radiantCare' ? SITE_COLORS_RADIANTCARE : SITE_COLORS
+}
 
 // Bar chart styling configuration
 // NOTE: width property on individual bars overrides bargap/bargroupgap, so we don't use width

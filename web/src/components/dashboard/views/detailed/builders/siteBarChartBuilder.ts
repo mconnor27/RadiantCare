@@ -5,7 +5,7 @@ import {
   generateProjectedSiteData,
   parseSiteIncomeFromSummary
 } from '../../../../../historical_data/siteIncomeParser'
-import { SITE_COLORS, SITE_PROJECTED_PATTERNS } from '../config/chartConfig'
+import { getSiteColors, SITE_PROJECTED_PATTERNS } from '../config/chartConfig'
 import { getSiteYearTotals, getSiteQuarterTotals, getSiteMonthTotals } from '../../../../../historical_data/siteIncomeParser'
 import { 
   getYearlyTotals, 
@@ -33,6 +33,7 @@ interface SiteBarChartDataProps {
   combineStatistic?: 'mean' | 'median' | null
   combineError?: 'std' | 'ci' | null
   selectedYears?: number[]
+  colorScheme?: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'
 }
 
 
@@ -623,9 +624,13 @@ export const buildSiteBarChartTraces = (
   isNormalized: boolean,
   combineStatistic: 'mean' | 'median' | null = null,
   combineError: 'std' | 'ci' | null = null,
-  visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean }
+  visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean },
+  showAllMonths?: boolean,
+  currentPeriod?: { year: number, quarter?: number, month?: number },
+  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray'
 ) => {
   const traces: any[] = []
+  const SITE_COLORS = getSiteColors(colorScheme)
 
   // Helper to check if a site is visible
   const isSiteVisible = (siteKey: keyof SiteData) => {
@@ -897,19 +902,24 @@ export const buildSiteBarChartTraces = (
   }
   
   if (timeframe === 'month') {
+    // Filter months based on showAllMonths flag
+    const allMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const months = (!showCombined && !showAllMonths && currentPeriod?.month)
+      ? [allMonths[currentPeriod.month - 1]]
+      : allMonths
+
     if (showCombined) {
       // Combined mode: Historical monthly means (separate bars) + stacked 2025 actual/projected
       const sites = ['Lacey', 'Centralia', 'Aberdeen']
-      
+
       // First, add historical mean bars (separate group)
       const historicalDenom = (siteBarChartData.historical || []).reduce((acc: number, h: any) => acc + sumSites(h.sites || {} as SiteData), 0)
       const denom2025 = (siteBarChartData.current || []).reduce((acc: number, c: any) => acc + sumSites(c.sites || {} as SiteData), 0)
         + (siteBarChartData.projected || []).reduce((acc: number, p: any) => acc + sumSites(p.sites || {} as SiteData), 0)
       sites.forEach(site => {
         const siteKey = site.toLowerCase() as keyof SiteData
-        
+
         if (siteBarChartData.historical?.length > 0) {
-          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
           const historicalValues: number[] = []
           const historicalErrors: number[] = []
           
@@ -1029,9 +1039,8 @@ export const buildSiteBarChartTraces = (
         // Add each historical year as separate bars
         if (siteBarChartData.individual?.length > 0) {
           const historicalYears = siteBarChartData.individual.filter((item: any) => item.year !== '2025' && item.year !== '2025 Projected')
-          
+
           historicalYears.forEach((yearData: any) => {
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
             const yearValues: number[] = []
             const yearDenom = (yearData.months || []).reduce((acc: number, m: any) => acc + sumSites(m.sites || {} as SiteData), 0)
             
@@ -1066,13 +1075,13 @@ export const buildSiteBarChartTraces = (
           + (projected2025?.months || []).reduce((acc: number, m: any) => acc + sumSites(m.sites || {} as SiteData), 0)
         ) || 0
         if (actual2025?.months) {
-          const currentValues = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map(month => {
+          const currentValues = months.map(month => {
             const monthData = actual2025.months.find((m: any) => m.month === month)
             return monthData?.sites[siteKey] || 0
           })
-          
+
           traces.push({
-            x: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            x: months,
             y: percentArray(currentValues, denom2025),
             type: 'bar' as const,
             name: `${site} 2025 Actual`,
@@ -1092,15 +1101,15 @@ export const buildSiteBarChartTraces = (
         if (siteBarChartData.projected?.length > 0) {
           const projected2025 = siteBarChartData.projected[0]
           if (projected2025?.months) {
-            const projectedValues = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map(month => {
-              const monthData = projected2025.months.find((m: any) => m.month === month)  
+            const projectedValues = months.map(month => {
+              const monthData = projected2025.months.find((m: any) => m.month === month)
               return monthData?.sites[siteKey] || 0
             })
-            
+
             const hasProjectedData = projectedValues.some(val => val > 0)
             if (hasProjectedData) {
               traces.push({
-                x: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                x: months,
                 y: percentArray(projectedValues, denom2025),
                 type: 'bar' as const,
                 name: `${site} 2025 Projected`,

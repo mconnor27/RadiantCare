@@ -13,7 +13,7 @@ import {
   getSiteMonthTotals,
   estimateSiteBreakdownForYear
 } from '../../../../../historical_data/siteIncomeParser'
-import { SITE_COLORS } from '../config/chartConfig'
+import { getSiteColors } from '../config/chartConfig'
 
 // Monthly proportion data structure
 export interface MonthlyProportionData {
@@ -148,9 +148,11 @@ function applyMovingAverage(values: number[], windowSize: number = 3): number[] 
 export function buildProportionTraces(
   data: MonthlyProportionData[],
   smoothingFactor: number = 5,
-  visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean }
+  visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean },
+  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray'
 ) {
   if (data.length === 0) return []
+  const SITE_COLORS = getSiteColors(colorScheme)
 
   // Helper to check if a site is visible
   const isSiteVisible = (siteKey: 'lacey' | 'centralia' | 'aberdeen') => {
@@ -239,16 +241,28 @@ export function buildProportionTraces(
 }
 
 // Layout for stacked area proportions
-export function buildProportionLayout(isMobile: boolean = false) {
+export function buildProportionLayout(isMobile: boolean = false, selectedYears: number[] = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]) {
+  // Determine if we have historical years selected (any year before 2025)
+  const hasHistoricalYears = selectedYears.some(year => year < 2025)
+
+  // Determine start and end years from selected years
+  const startYear = hasHistoricalYears ? Math.min(...selectedYears.filter(y => y < 2025)) : 2025
+  const endYear = 2025 // Always ends at present (2025)
+
   // Tick labels for January of each year shown
   const tickYears: number[] = []
-  for (let y = 2016; y <= 2025; y++) tickYears.push(y)
+  for (let y = startYear; y <= endYear; y++) tickYears.push(y)
+
+  // Title changes based on whether historical years are selected
+  const titleText = hasHistoricalYears
+    ? `Monthly Income Proportions by Site (${startYear}–Present)`
+    : 'Monthly Income Proportions by Site (YTD)'
 
   return {
     title: {
-      text: 'Monthly Income Proportions by Site (2016–Present)',
+      text: titleText,
       x: 0.5,
-      font: { size: isMobile ? 14 : 16 }
+      font: { size: isMobile ? 14 : 16, weight: 700 }
     },
     xaxis: {
       title: { text: 'Month' },
@@ -269,7 +283,7 @@ export function buildProportionLayout(isMobile: boolean = false) {
       side: 'left' as const
     },
     yaxis2: {
-      title: { text: 'Relative proportion (%)' },
+      title: { text: '' },
       showgrid: false,
       range: [0, 100],
       tickformat: '.0f',
@@ -278,7 +292,7 @@ export function buildProportionLayout(isMobile: boolean = false) {
       overlaying: 'y'
     },
     hovermode: 'x unified' as const,
-    margin: { l: 60, r: 20, t: 60, b: isMobile ? 80 : 60 },
+    margin: { l: 60, r: 30, t: 60, b: isMobile ? 80 : 60 },
     plot_bgcolor: 'rgba(0,0,0,0)',
     paper_bgcolor: 'rgba(0,0,0,0)',
     showlegend: false

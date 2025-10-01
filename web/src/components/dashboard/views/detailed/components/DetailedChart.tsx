@@ -55,6 +55,7 @@ interface DetailedChartProps {
   fy2025: FutureYear | undefined
   selectedYears: number[]
   visibleSites: { lacey: boolean, centralia: boolean, aberdeen: boolean }
+  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'
 }
 
 export default function DetailedChart({
@@ -73,7 +74,8 @@ export default function DetailedChart({
   smoothing,
   fy2025,
   selectedYears,
-  visibleSites
+  visibleSites,
+  colorScheme
 }: DetailedChartProps) {
   const isMobile = useIsMobile()
   const [pulsePhase, setPulsePhase] = useState(0)
@@ -105,29 +107,6 @@ export default function DetailedChart({
     if (chartMode !== 'proportion') return []
     return buildProportionData(selectedYears)
   }, [chartMode, selectedYears])
-
-  // Debug info for proportion data
-  const proportionDebugInfo = useMemo(() => {
-    if (chartMode !== 'proportion' || proportionData.length === 0) return null
-    
-    const yearCounts = proportionData.reduce((acc, item) => {
-      acc[item.year] = (acc[item.year] || 0) + 1
-      return acc
-    }, {} as Record<number, number>)
-    
-    const firstFewItems = proportionData.slice(0, 3)
-    const lastFewItems = proportionData.slice(-3)
-    
-    return {
-      totalDataPoints: proportionData.length,
-      yearCounts,
-      dateRange: proportionData.length > 0 ? 
-        `${proportionData[0].year}-${proportionData[0].month} to ${proportionData[proportionData.length-1].year}-${proportionData[proportionData.length-1].month}` : 
-        'No data',
-      sampleFirst: firstFewItems,
-      sampleLast: lastFewItems
-    }
-  }, [chartMode, proportionData])
 
   // Process data for month-day overlay with optional normalization
   const currentYearData = useMemo(() => {
@@ -181,193 +160,6 @@ export default function DetailedChart({
       return convertToPeriodData(filtered, timeframe, currentPeriod)
     }
   }, [data, isNormalized, timeframe, currentPeriod, fy2025])
-
-  // DEBUG: Add debug info
-  const debugInfo = useMemo(() => {
-    if (!isNormalized || !fy2025) return null
-
-    const projectedTotalIncome = getTotalIncome(fy2025)
-    const filtered = data.filter(p => p.date !== 'Total')
-
-    const combinedData = [...filtered, ...generateProjectedIncomeData(filtered, fy2025).slice(1)]
-    const lastCombinedPoint = combinedData[combinedData.length - 1]
-
-    // Calculate quarter-specific values for Q3
-    let quarterProjectedTotal = projectedTotalIncome
-    let actualQuarterTotalIncome = 0
-    let combinedQuarterTotalIncome = 0
-
-    if (timeframe === 'quarter' && currentPeriod?.quarter) {
-      const startMonth = (currentPeriod.quarter - 1) * 3 + 1
-      const endMonth = startMonth + 2
-
-      // Calculate actual quarter total from filtered data
-      const quarterData = filtered.filter(point => {
-        const [monthStr] = point.monthDay.split('-')
-        const month = parseInt(monthStr, 10)
-        return month >= startMonth && month <= endMonth
-      })
-
-      if (quarterData.length > 0) {
-        const preQuarterData = filtered.filter(point => {
-          const [monthStr] = point.monthDay.split('-')
-          const month = parseInt(monthStr, 10)
-          return month < startMonth
-        })
-        const quarterStartIncome = preQuarterData.length > 0 ?
-          Math.max(...preQuarterData.map(p => p.cumulativeIncome)) : 0
-        const quarterEndIncome = Math.max(...quarterData.map(p => p.cumulativeIncome))
-        actualQuarterTotalIncome = quarterEndIncome - quarterStartIncome
-      }
-
-      // Calculate combined quarter total (this includes projected data)
-      const combinedQuarterData = combinedData.filter(point => {
-        const [monthStr] = point.monthDay.split('-')
-        const month = parseInt(monthStr, 10)
-        return month >= startMonth && month <= endMonth
-      })
-
-      if (combinedQuarterData.length > 0) {
-        const combinedPreQuarterData = combinedData.filter(point => {
-          const [monthStr] = point.monthDay.split('-')
-          const month = parseInt(monthStr, 10)
-          return month < startMonth
-        })
-        const combinedQuarterStartIncome = combinedPreQuarterData.length > 0 ?
-          Math.max(...combinedPreQuarterData.map(p => p.cumulativeIncome)) : 0
-        const combinedQuarterEndIncome = Math.max(...combinedQuarterData.map(p => p.cumulativeIncome))
-        combinedQuarterTotalIncome = combinedQuarterEndIncome - combinedQuarterStartIncome
-      }
-
-      // Use the combined quarter total as the reference (this is the actual projected income for this quarter)
-      quarterProjectedTotal = combinedQuarterTotalIncome
-    } else if (timeframe === 'month' && currentPeriod?.month) {
-      // Calculate actual month total from filtered data
-      const monthStr = currentPeriod.month.toString().padStart(2, '0')
-      const monthData = filtered.filter(point => point.monthDay.startsWith(monthStr))
-
-      if (monthData.length > 0) {
-        const preMonthData = filtered.filter(point => {
-          const [monthStr] = point.monthDay.split('-')
-          const month = parseInt(monthStr, 10)
-          return month < currentPeriod.month!
-        })
-        const monthStartIncome = preMonthData.length > 0 ?
-          Math.max(...preMonthData.map(p => p.cumulativeIncome)) : 0
-        const monthEndIncome = Math.max(...monthData.map(p => p.cumulativeIncome))
-        actualQuarterTotalIncome = monthEndIncome - monthStartIncome // Reuse variable for month
-      }
-
-      // Calculate combined month total (this includes projected data)
-      const combinedMonthData = combinedData.filter(point => point.monthDay.startsWith(monthStr))
-
-      if (combinedMonthData.length > 0) {
-        const combinedPreMonthData = combinedData.filter(point => {
-          const [monthStr] = point.monthDay.split('-')
-          const month = parseInt(monthStr, 10)
-          return month < currentPeriod.month!
-        })
-        const combinedMonthStartIncome = combinedPreMonthData.length > 0 ?
-          Math.max(...combinedPreMonthData.map(p => p.cumulativeIncome)) : 0
-        const combinedMonthEndIncome = Math.max(...combinedMonthData.map(p => p.cumulativeIncome))
-        combinedQuarterTotalIncome = combinedMonthEndIncome - combinedMonthStartIncome // Reuse variable for month
-      }
-
-      // Use the combined month total as the reference (this is the actual projected income for this month)
-      quarterProjectedTotal = combinedQuarterTotalIncome // Reuse variable for month
-    }
-
-    // Get normalized values at connection point
-    // For quarter/month mode, use the quarter/month projected total as reference
-    const quarterOrMonthReference = timeframe === 'quarter' ? quarterProjectedTotal : 
-                                   timeframe === 'month' ? quarterProjectedTotal : // quarterProjectedTotal is reused for month
-                                   projectedTotalIncome
-    const normalizedActual = normalizeData(filtered, timeframe, currentPeriod, quarterOrMonthReference)
-    const normalizedCombined = normalizeData(combinedData, timeframe, currentPeriod, quarterOrMonthReference)
-    const connectionPointIndex = filtered.length - 1
-    const actualAtConnection = normalizedActual[connectionPointIndex]
-    const combinedAtConnection = normalizedCombined[connectionPointIndex]
-
-    // Get values at quarter end
-    let actualAtQuarterEnd = 0
-    let combinedAtQuarterEnd = 0
-
-    if (timeframe === 'quarter' && currentPeriod?.quarter) {
-      // Find the last point in Q3 for both datasets
-      const startMonth = (currentPeriod.quarter - 1) * 3 + 1
-      const endMonth = startMonth + 2
-
-      // Find the last index in Q3 (manual implementation since findLastIndex not available)
-      let actualQuarterEndIndex = -1
-      for (let i = normalizedActual.length - 1; i >= 0; i--) {
-        const [monthStr] = normalizedActual[i].monthDay.split('-')
-        const month = parseInt(monthStr, 10)
-        if (month >= startMonth && month <= endMonth) {
-          actualQuarterEndIndex = i
-          break
-        }
-      }
-
-      let combinedQuarterEndIndex = -1
-      for (let i = normalizedCombined.length - 1; i >= 0; i--) {
-        const [monthStr] = normalizedCombined[i].monthDay.split('-')
-        const month = parseInt(monthStr, 10)
-        if (month >= startMonth && month <= endMonth) {
-          combinedQuarterEndIndex = i
-          break
-        }
-      }
-
-      if (actualQuarterEndIndex >= 0) {
-        actualAtQuarterEnd = normalizedActual[actualQuarterEndIndex]?.cumulativeIncome || 0
-      }
-      if (combinedQuarterEndIndex >= 0) {
-        combinedAtQuarterEnd = normalizedCombined[combinedQuarterEndIndex]?.cumulativeIncome || 0
-      }
-    } else if (timeframe === 'month' && currentPeriod?.month) {
-      // Find the last point in the month for both datasets
-      const monthStr = currentPeriod.month.toString().padStart(2, '0')
-
-      // Find the last index in the month
-      let actualMonthEndIndex = -1
-      for (let i = normalizedActual.length - 1; i >= 0; i--) {
-        if (normalizedActual[i].monthDay.startsWith(monthStr)) {
-          actualMonthEndIndex = i
-          break
-        }
-      }
-
-      let combinedMonthEndIndex = -1
-      for (let i = normalizedCombined.length - 1; i >= 0; i--) {
-        if (normalizedCombined[i].monthDay.startsWith(monthStr)) {
-          combinedMonthEndIndex = i
-          break
-        }
-      }
-
-      if (actualMonthEndIndex >= 0) {
-        actualAtQuarterEnd = normalizedActual[actualMonthEndIndex]?.cumulativeIncome || 0 // Reuse variable for month
-      }
-      if (combinedMonthEndIndex >= 0) {
-        combinedAtQuarterEnd = normalizedCombined[combinedMonthEndIndex]?.cumulativeIncome || 0 // Reuse variable for month
-      }
-    }
-
-    return {
-      projectedTotal: projectedTotalIncome,
-      quarterProjectedTotal,
-      actualQuarterTotalIncome,
-      combinedQuarterTotalIncome,
-      actualFinalRaw: filtered[filtered.length - 1]?.cumulativeIncome || 0,
-      combinedFinalRaw: lastCombinedPoint?.cumulativeIncome || 0,
-      actualAtConnection: actualAtConnection?.cumulativeIncome || 0,
-      combinedAtConnection: combinedAtConnection?.cumulativeIncome || 0,
-      actualAtQuarterEnd,
-      combinedAtQuarterEnd,
-      timeframe,
-      currentPeriod
-    }
-  }, [data, fy2025, isNormalized, timeframe, currentPeriod])
 
   // Generate projected income data with the same baseline as actual data
   const projectedIncomeData = useMemo(() => {
@@ -652,9 +444,10 @@ export default function DetailedChart({
       fy2025,
       combineStatistic: combineStatistic,
       combineError: combineError,
-      selectedYears: selectedYears
+      selectedYears: selectedYears,
+      colorScheme
     })
-  }, [incomeMode, timeframe, currentYearData, processedHistoricalData, showCombined, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, projectedIncomeDataForBars, fy2025, combineStatistic, combineError, selectedYears])
+  }, [incomeMode, timeframe, currentYearData, processedHistoricalData, showCombined, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, projectedIncomeDataForBars, fy2025, combineStatistic, combineError, selectedYears, colorScheme])
 
   // Create stable static traces (memoized separately from animated traces)
   const staticLineTraces = useMemo(() => {
@@ -673,7 +466,8 @@ export default function DetailedChart({
         combineStatistic: combineStatistic,
         combineError: combineError,
         visibleSites,
-        selectedYears
+        selectedYears,
+        colorScheme
       })
     } else {
       // Use total income line traces
@@ -689,13 +483,14 @@ export default function DetailedChart({
         smoothing,
         combineStatistic,
         combineError,
-        selectedYears
+        selectedYears,
+        colorScheme
       })
     }
   }, [
     chartMode, incomeMode, showCombined, combinedStats, processedHistoricalData,
     processedCurrentData, projectedIncomeData, isNormalized, is2025Visible, timeframe, currentPeriod, fy2025, smoothing,
-    combineStatistic, combineError, visibleSites
+    combineStatistic, combineError, visibleSites, colorScheme
   ])
 
   // Create animated pulsing traces (separate from static traces)
@@ -711,7 +506,8 @@ export default function DetailedChart({
         timeframe,
         currentPeriod,
         fy2025,
-        visibleSites
+        visibleSites,
+        colorScheme
       )
     } else {
       // Use total income pulsing traces
@@ -719,10 +515,11 @@ export default function DetailedChart({
         processedCurrentData,
         is2025Visible,
         pulsePhase,
-        isNormalized
+        isNormalized,
+        colorScheme
       )
     }
-  }, [chartMode, incomeMode, processedCurrentData, is2025Visible, chartMode === 'line' ? pulsePhase : 0, isNormalized, timeframe, currentPeriod, fy2025, visibleSites])
+  }, [chartMode, incomeMode, processedCurrentData, is2025Visible, chartMode === 'line' ? pulsePhase : 0, isNormalized, timeframe, currentPeriod, fy2025, visibleSites, colorScheme])
 
   // Build chart layout
   const chartLayout = useMemo(() => {
@@ -742,11 +539,15 @@ export default function DetailedChart({
       currentX,
       currentY,
       currentPeriod,
-      incomeMode
+      incomeMode,
+      selectedYears,
+      combineStatistic,
+      combineError
     })
   }, [
     chartMode, timeframe, showCombined, isNormalized, processedCurrentData,
-    is2025Visible, staticLineTraces, currentX, currentY, currentPeriod, incomeMode
+    is2025Visible, staticLineTraces, currentX, currentY, currentPeriod, incomeMode, selectedYears,
+    combineStatistic, combineError
   ])
 
   // Check if we have any data to display
@@ -762,76 +563,15 @@ export default function DetailedChart({
 
     return (
       <div>
-        {/* DEBUG INFO */}
-        {debugInfo && (
-          <div style={{
-            position: 'absolute',
-            top: 10,
-            left: 10,
-            background: 'rgba(0,0,0,0.8)',
-            color: 'white',
-            padding: '8px',
-            borderRadius: '4px',
-            fontSize: '12px',
-            zIndex: 1000,
-            fontFamily: 'monospace'
-          }}>
-            <div><strong>DEBUG - Fixed for both quarters and months:</strong></div>
-            <div>Annual Projected Total: ${debugInfo.projectedTotal.toLocaleString()}</div>
-            <div>Actual {debugInfo.timeframe === 'quarter' ? `Q${debugInfo.currentPeriod?.quarter}` : debugInfo.timeframe === 'month' ? `M${debugInfo.currentPeriod?.month}` : 'Period'} Total: ${debugInfo.actualQuarterTotalIncome.toLocaleString()}</div>
-            <div>Combined {debugInfo.timeframe === 'quarter' ? `Q${debugInfo.currentPeriod?.quarter}` : debugInfo.timeframe === 'month' ? `M${debugInfo.currentPeriod?.month}` : 'Period'} Total: ${debugInfo.combinedQuarterTotalIncome.toLocaleString()}</div>
-            <div>{debugInfo.timeframe === 'quarter' ? `Q${debugInfo.currentPeriod?.quarter}` : debugInfo.timeframe === 'month' ? `M${debugInfo.currentPeriod?.month}` : 'Period'} Reference (=Combined): ${debugInfo.quarterProjectedTotal.toLocaleString()}</div>
-            <div>🔴 Actual at connection: {debugInfo.actualAtConnection.toFixed(2)}%</div>
-            <div>🔵 Combined at connection: {debugInfo.combinedAtConnection.toFixed(2)}%</div>
-            <div>🔴 Actual at {debugInfo.timeframe === 'quarter' ? `Q${debugInfo.currentPeriod?.quarter}` : debugInfo.timeframe === 'month' ? `M${debugInfo.currentPeriod?.month}` : 'period'} end: {debugInfo.actualAtQuarterEnd.toFixed(2)}%</div>
-            <div>🔵 Combined at {debugInfo.timeframe === 'quarter' ? `Q${debugInfo.currentPeriod?.quarter}` : debugInfo.timeframe === 'month' ? `M${debugInfo.currentPeriod?.month}` : 'period'} end: {debugInfo.combinedAtQuarterEnd.toFixed(2)}% ← Should be 100%!</div>
-            <div>Timeframe: {debugInfo.timeframe} {debugInfo.currentPeriod?.quarter ? `Q${debugInfo.currentPeriod.quarter}` : debugInfo.currentPeriod?.month ? `M${debugInfo.currentPeriod.month}` : ''}</div>
-          </div>
-        )}
-
-        {/* PROPORTION DEBUG INFO */}
-        {proportionDebugInfo && (
-          <div style={{
-            position: 'absolute',
-            top: 10,
-            right: 10,
-            background: 'rgba(0,100,0,0.8)',
-            color: 'white',
-            padding: '8px',
-            borderRadius: '4px',
-            fontSize: '12px',
-            zIndex: 1000,
-            fontFamily: 'monospace',
-            maxWidth: '300px'
-          }}>
-            <div><strong>PROPORTION DATA DEBUG:</strong></div>
-            <div>Total data points: {proportionDebugInfo.totalDataPoints}</div>
-            <div>Date range: {proportionDebugInfo.dateRange}</div>
-            <div>Data by year: {Object.entries(proportionDebugInfo.yearCounts).map(([year, count]) => `${year}:${count}`).join(', ')}</div>
-            <div><strong>First 3 items:</strong></div>
-            {proportionDebugInfo.sampleFirst.map((item, i) => (
-              <div key={i} style={{ fontSize: '10px' }}>
-                {item.year}-{item.month}: L:{item.laceyPercent.toFixed(1)}% C:{item.centraliaPercent.toFixed(1)}% A:{item.aberdeenPercent.toFixed(1)}%
-              </div>
-            ))}
-            <div><strong>Last 3 items:</strong></div>
-            {proportionDebugInfo.sampleLast.map((item, i) => (
-              <div key={i} style={{ fontSize: '10px' }}>
-                {item.year}-{item.month}: L:{item.laceyPercent.toFixed(1)}% C:{item.centraliaPercent.toFixed(1)}% A:{item.aberdeenPercent.toFixed(1)}%
-              </div>
-            ))}
-          </div>
-        )}
-        
-      <Plot
+        <Plot
         data={(chartMode === 'line' ? [
           // Static line traces (memoized for stable legend interaction)
           ...staticLineTraces,
           // Animated pulsing traces (separate memoization for animation)
           ...pulsingTraces
         ] : chartMode === 'proportion'
-          ? buildProportionTraces(proportionData, smoothing, visibleSites)
-          : incomeMode === 'per-site' 
+          ? buildProportionTraces(proportionData, smoothing, visibleSites, colorScheme)
+          : incomeMode === 'per-site'
             ? buildSiteBarChartTraces(
                 siteBarChartData,
                 timeframe,
@@ -839,7 +579,10 @@ export default function DetailedChart({
                 isNormalized,
                 combineStatistic,
                 combineError,
-                visibleSites
+                visibleSites,
+                showAllMonths,
+                currentPeriod,
+                colorScheme
               )
             : buildBarChartTraces(
                 barChartData,
@@ -849,9 +592,10 @@ export default function DetailedChart({
                 showAllMonths,
                 currentPeriod,
                 combineStatistic,
-                combineError
+                combineError,
+                colorScheme
               )) as any}
-        layout={chartMode === 'proportion' ? buildProportionLayout(isMobile) : (chartLayout || {}) as any}
+        layout={chartMode === 'proportion' ? buildProportionLayout(isMobile, selectedYears) : (chartLayout || {}) as any}
         config={{
           responsive: true,
           displayModeBar: false,

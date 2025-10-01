@@ -4,8 +4,7 @@ import {
   get2025SiteMonthlyEndPoints,
   generateProjectedSiteMonthlyPoints
 } from '../../../../../historical_data/siteIncomeParser'
-import { SITE_COLORS } from '../config/chartConfig'
-import { HISTORICAL_YEAR_LINE_WIDTH, RADAR_CONFIG } from '../config/chartConfig'
+import { getSiteColors, HISTORICAL_YEAR_LINE_WIDTH, RADAR_CONFIG } from '../config/chartConfig'
 import { 
   filterDataByQuarter,
   filterDataByMonth
@@ -23,6 +22,7 @@ interface SiteLineChartBuilderProps {
   combineError?: 'std' | 'ci' | null
   visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean }
   selectedYears?: number[]
+  colorScheme?: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'
 }
 
 // Helper function to process site data for different timeframes
@@ -406,9 +406,11 @@ export const buildSiteLineTraces = ({
   combineStatistic = null,
   combineError = null,
   visibleSites,
-  selectedYears = []
+  selectedYears = [],
+  colorScheme = 'gray'
 }: SiteLineChartBuilderProps) => {
   const traces: any[] = []
+  const SITE_COLORS = getSiteColors(colorScheme)
 
   // Helper to check if a site is visible
   const isSiteVisible = (siteKey: 'lacey' | 'centralia' | 'aberdeen') => {
@@ -645,9 +647,11 @@ export const buildSitePulsingTraces = (
   timeframe: 'year' | 'quarter' | 'month',
   currentPeriod: { year: number, quarter?: number, month?: number },
   fy2025: any,
-  visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean }
+  visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean },
+  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray'
 ) => {
   if (!is2025Visible) return []
+  const SITE_COLORS = getSiteColors(colorScheme)
 
   // Helper to check if a site is visible
   const isSiteVisible = (siteKey: 'lacey' | 'centralia' | 'aberdeen') => {

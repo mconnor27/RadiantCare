@@ -1,11 +1,11 @@
 import type { YTDPoint } from '../../../../../historical_data/therapyIncomeParser'
-import { HISTORICAL_COLORS, CURRENT_YEAR_COLOR, HISTORICAL_MEAN_COLOR, PROJECTED_BAR_STYLE } from '../config/chartConfig'
-import { 
-  getYearlyTotals, 
-  getQuarterlyTotals, 
+import { getColorScheme } from '../config/chartConfig'
+import {
+  getYearlyTotals,
+  getQuarterlyTotals,
   getMonthlyTotals,
   calculateCombinedQuarterlyStats,
-  calculateCombinedMonthlyStats 
+  calculateCombinedMonthlyStats
 } from '../utils/aggregations'
 
 interface BarChartDataProps {
@@ -359,8 +359,21 @@ export const buildBarChartTraces = (
   showAllMonths: boolean,
   currentPeriod: { year: number, quarter?: number, month?: number },
   combineStatistic: 'mean' | 'median' | null = null,
-  combineError: 'std' | 'ci' | null = null
+  combineError: 'std' | 'ci' | null = null,
+  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray'
 ) => {
+  const colors = getColorScheme(colorScheme)
+  const HISTORICAL_COLORS = colors.historical
+  const CURRENT_YEAR_COLOR = colors.current
+  const HISTORICAL_MEAN_COLOR = HISTORICAL_COLORS[Math.floor(HISTORICAL_COLORS.length / 2)]
+  const PROJECTED_BAR_STYLE = {
+    color: colors.projectedBar,
+    pattern: {
+      shape: '/',
+      size: 6,
+      solidity: 0.5
+    }
+  }
   if (showCombined) {
     const labelSuffix = combineStatistic === 'median' ? 'Median' : 'Mean'
     const errorLabel = combineError === 'ci' ? '95% CI' : combineError === 'std' ? 'σ' : ''
@@ -427,12 +440,14 @@ export const buildBarChartTraces = (
       // Add historical years
       barChartData.individual.forEach((item: any, index: number) => {
         if (item.year !== '2025' && item.year !== '2025 Projected') {
+          // Reverse index so 2024 (last in array) gets darkest color
+          const colorIndex = (HISTORICAL_COLORS.length - 1 - index) % HISTORICAL_COLORS.length
           traces.push({
             x: [item.year],
             y: [item.income],
             type: 'bar' as const,
             name: item.year,
-            marker: { color: HISTORICAL_COLORS[index % HISTORICAL_COLORS.length], opacity: 0.8 },
+            marker: { color: HISTORICAL_COLORS[colorIndex], opacity: 0.8 },
             hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
           })
         }
@@ -485,6 +500,8 @@ export const buildBarChartTraces = (
               })
             : periods
 
+          // Reverse index so 2024 (last in array) gets darkest color
+          const colorIndex = (HISTORICAL_COLORS.length - 1 - yearIndex) % HISTORICAL_COLORS.length
           traces.push({
             x: filteredPeriods.map((period: any) => period.quarter || period.month),
             y: filteredPeriods.map((period: any) => period.income),
@@ -492,7 +509,7 @@ export const buildBarChartTraces = (
             name: yearData.year === '2025' ? '2025 Actual' : yearData.year,
             offsetgroup: yearData.year === '2025' ? '2025' : yearData.year, // Group 2025 actual with projected, others separate
             marker: {
-              color: yearData.year === '2025' ? CURRENT_YEAR_COLOR : HISTORICAL_COLORS[yearIndex % HISTORICAL_COLORS.length],
+              color: yearData.year === '2025' ? CURRENT_YEAR_COLOR : HISTORICAL_COLORS[colorIndex],
               opacity: 0.8
             },
             hovertemplate: isNormalized ? `${yearData.year} %{x}<br>%{y:.1f}%<extra></extra>` : `${yearData.year} %{x}<br>$%{y:,}<extra></extra>`
