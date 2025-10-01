@@ -34,7 +34,7 @@ export default function YTDDetailed() {
   const [is2025Visible, setIs2025Visible] = useState(true)
   const [showAllMonths, setShowAllMonths] = useState(true)
   const [incomeMode, setIncomeMode] = useState<IncomeMode>('total')
-  const [smoothing, setSmoothing] = useState(5.0)
+  const [smoothing, setSmoothing] = useState(10)
   const [selectedYears, setSelectedYears] = useState<number[]>(Array.from({ length: 9 }, (_, i) => 2016 + i)) // Default: all years (2016-2024)
   const [visibleSites, setVisibleSites] = useState<{ lacey: boolean, centralia: boolean, aberdeen: boolean }>({ lacey: true, centralia: true, aberdeen: true })
   
@@ -83,6 +83,33 @@ export default function YTDDetailed() {
       setCurrentPeriod({ year: 2025, month: currentDate.month })
     }
   }, [timeframe])
+
+  // Auto-adjust smoothing to maximum when switching chart modes
+  useEffect(() => {
+    if (chartMode === 'proportion') {
+      // Calculate available months based on selected years
+      const now = new Date()
+      const currentYear = now.getFullYear()
+      const currentMonth = now.getMonth() + 1 // 1-12
+
+      let totalMonths = 0
+
+      // Count full months from historical years (2016-2024)
+      const historicalYears = selectedYears.filter(y => y >= 2016 && y <= 2024)
+      totalMonths += historicalYears.length * 12
+
+      // Add partial year from 2025 (only count up to current month)
+      if (currentYear === 2025) {
+        totalMonths += currentMonth
+      }
+
+      // Cap at 36 months maximum
+      const maxSmoothing = Math.min(36, totalMonths)
+      setSmoothing(maxSmoothing)
+    } else {
+      setSmoothing(10)
+    }
+  }, [chartMode, selectedYears])
 
 
   // Reset 2025 visibility when switching chart modes

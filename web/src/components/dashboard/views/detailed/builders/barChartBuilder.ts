@@ -212,7 +212,7 @@ export const buildBarChartData = ({
     ]
     const historicalData = historicalDataRaw.map(({ data }) => data).filter(data => data.length > 0)
     const combinedQuarterlyStats = calculateCombinedQuarterlyStats(historicalData, combineStatistic, combineError)
-    
+
     if (showCombined) {
       // Calculate projected quarterly amounts as the difference between projected and actual
       const projectedQuarterlyData = projectedQuarterly2025.map((proj, index) => {
@@ -233,12 +233,16 @@ export const buildBarChartData = ({
         individual: []
       }
     }
-    
+
     // Non-combined: each year gets separate bars for each quarter
-    const individualQuarterly = historicalDataRaw.map(({ year, data }) => ({
-      year,
-      quarters: getQuarterlyTotals(data)
-    })).concat([{ year: '2025', quarters: quarterly2025 }])
+    // Filter historicalDataRaw by years present in processedHistoricalData (respects year filtering)
+    const selectedYears = new Set(processedHistoricalData.map(({ year }) => year))
+    const individualQuarterly = historicalDataRaw
+      .filter(({ year }) => selectedYears.has(year))
+      .map(({ year, data }) => ({
+        year,
+        quarters: getQuarterlyTotals(data)
+      })).concat([{ year: '2025', quarters: quarterly2025 }])
 
     // Add projected quarters for 2025
     const projectedIndividualQuarterly = projectedQuarterly2025.length > 0 ? [{
@@ -286,7 +290,7 @@ export const buildBarChartData = ({
     ]
     const historicalData = historicalDataRaw.map(({ data }) => data).filter(data => data.length > 0)
     const combinedMonthlyStats = calculateCombinedMonthlyStats(historicalData, combineStatistic, combineError)
-    
+
     if (showCombined) {
       // Calculate projected monthly amounts as the difference between projected and actual
       const projectedMonthlyData = projectedMonthly2025.map((proj, index) => {
@@ -307,12 +311,16 @@ export const buildBarChartData = ({
         individual: []
       }
     }
-    
+
     // Non-combined: each year gets separate bars for each month
-    const individualMonthly = historicalDataRaw.map(({ year, data }) => ({
-      year,
-      months: getMonthlyTotals(data)
-    })).concat([{ year: '2025', months: monthly2025 }])
+    // Filter historicalDataRaw by years present in processedHistoricalData (respects year filtering)
+    const selectedYears = new Set(processedHistoricalData.map(({ year }) => year))
+    const individualMonthly = historicalDataRaw
+      .filter(({ year }) => selectedYears.has(year))
+      .map(({ year, data }) => ({
+        year,
+        months: getMonthlyTotals(data)
+      })).concat([{ year: '2025', months: monthly2025 }])
 
     // Add projected months for 2025
     const projectedIndividualMonthly = projectedMonthly2025.length > 0 ? [{

@@ -61,8 +61,31 @@ export default function ChartControls({
   setVisibleSites
 }: ChartControlsProps) {
   
-  // Clamp smoothing value when switching chart modes
-  const maxSmoothing = chartMode === 'proportion' ? 36 : 10
+  // Calculate available months for projection mode based on selected years
+  const calculateAvailableMonths = () => {
+    if (chartMode !== 'proportion') return 10
+
+    // Get current date info to determine how many months of 2025 data we have
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth() + 1 // 1-12
+
+    let totalMonths = 0
+
+    // Count full months from historical years (2016-2024)
+    const historicalYears = selectedYears.filter(y => y >= 2016 && y <= 2024)
+    totalMonths += historicalYears.length * 12
+
+    // Add partial year from 2025 (only count up to current month)
+    if (currentYear === 2025) {
+      totalMonths += currentMonth
+    }
+
+    // Cap at 36 months maximum
+    return Math.min(36, totalMonths)
+  }
+
+  const maxSmoothing = calculateAvailableMonths()
   const clampedSmoothing = Math.min(smoothing, maxSmoothing)
   const isSidebar = variant === 'sidebar'
   
@@ -71,12 +94,20 @@ export default function ChartControls({
   const popupRef = useRef<HTMLDivElement>(null)
   const years = Array.from({ length: 9 }, (_, i) => 2024 - i) // 2024-2016 (reverse order)
   
-  // Auto-clamp smoothing when chart mode changes
+  // Auto-clamp smoothing when chart mode or selected years change
   useEffect(() => {
     if (smoothing > maxSmoothing) {
       setSmoothing(maxSmoothing)
     }
-  }, [chartMode, smoothing, maxSmoothing, setSmoothing])
+  }, [chartMode, smoothing, maxSmoothing, setSmoothing, selectedYears])
+
+  // Auto-select Month and Per Site when in Projection mode
+  useEffect(() => {
+    if (chartMode === 'proportion') {
+      setTimeframe('month')
+      setIncomeMode('per-site')
+    }
+  }, [chartMode, setTimeframe, setIncomeMode])
   
   // Close popup when clicking outside
   useEffect(() => {
@@ -147,35 +178,39 @@ export default function ChartControls({
         </div>
         
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <label style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', marginTop: 6 }}>Income Mode:</label>
+          <label style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', marginTop: 6, opacity: chartMode === 'proportion' ? 0.5 : 1 }}>Income Mode:</label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
             <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
               <button
-                onClick={() => setIncomeMode('total')}
+                onClick={() => chartMode !== 'proportion' && setIncomeMode('total')}
+                disabled={chartMode === 'proportion'}
                 style={{
                   padding: '4px 12px',
                   border: 'none',
                   background: incomeMode === 'total' ? '#1e40af' : '#fff',
                   color: incomeMode === 'total' ? '#fff' : '#333',
                   fontSize: 14,
-                  cursor: 'pointer',
+                  cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s',
-                  whiteSpace: 'nowrap'
+                  whiteSpace: 'nowrap',
+                  opacity: chartMode === 'proportion' ? 0.5 : 1
                 }}
               >
                 Total
               </button>
               <button
-                onClick={() => setIncomeMode('per-site')}
+                onClick={() => chartMode !== 'proportion' && setIncomeMode('per-site')}
+                disabled={chartMode === 'proportion'}
                 style={{
                   padding: '4px 12px',
                   border: 'none',
                   background: incomeMode === 'per-site' ? '#1e40af' : '#fff',
                   color: incomeMode === 'per-site' ? '#fff' : '#333',
                   fontSize: 14,
-                  cursor: 'pointer',
+                  cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s',
-                  whiteSpace: 'nowrap'
+                  whiteSpace: 'nowrap',
+                  opacity: chartMode === 'proportion' ? 0.5 : 1
                 }}
               >
                 Per Site
@@ -733,7 +768,6 @@ export default function ChartControls({
                 cursor: 'pointer',
                 transition: 'all 0.2s'
               }}
-              disabled={incomeMode === 'per-site'} // Only bar charts for per-site mode
             >
               Line
             </button>
@@ -746,22 +780,23 @@ export default function ChartControls({
                 color: chartMode === 'bar' ? '#fff' : '#333',
                 fontSize: 14,
                 cursor: 'pointer',
-                transition: 'all 0.2s',
-                opacity: incomeMode === 'per-site' && chartMode !== 'bar' ? 0.5 : 1
+                transition: 'all 0.2s'
               }}
             >
               Bar
             </button>
             <button
-              onClick={() => setChartMode('proportion')}
+              onClick={() => incomeMode !== 'total' && setChartMode('proportion')}
+              disabled={incomeMode === 'total'}
               style={{
                 padding: '4px 12px',
                 border: 'none',
                 background: chartMode === 'proportion' ? '#1e40af' : '#fff',
                 color: chartMode === 'proportion' ? '#fff' : '#333',
                 fontSize: 14,
-                cursor: 'pointer',
-                transition: 'all 0.2s'
+                cursor: incomeMode === 'total' ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: incomeMode === 'total' ? 0.5 : 1
               }}
             >
               Projection
@@ -796,46 +831,52 @@ export default function ChartControls({
 
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontSize: 14, fontWeight: 500 }}>Timeframe:</label>
+          <label style={{ fontSize: 14, fontWeight: 500, opacity: chartMode === 'proportion' ? 0.5 : 1 }}>Timeframe:</label>
           <div style={{ display: 'flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
             <button
-              onClick={() => setTimeframe('year')}
+              onClick={() => chartMode !== 'proportion' && setTimeframe('year')}
+              disabled={chartMode === 'proportion'}
               style={{
                 padding: '4px 12px',
                 border: 'none',
                 background: timeframe === 'year' ? '#1e40af' : '#fff',
                 color: timeframe === 'year' ? '#fff' : '#333',
                 fontSize: 14,
-                cursor: 'pointer',
-                transition: 'all 0.2s'
+                cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: chartMode === 'proportion' ? 0.5 : 1
               }}
             >
               Year
             </button>
             <button
-              onClick={() => setTimeframe('quarter')}
+              onClick={() => chartMode !== 'proportion' && setTimeframe('quarter')}
+              disabled={chartMode === 'proportion'}
               style={{
                 padding: '4px 12px',
                 border: 'none',
                 background: timeframe === 'quarter' ? '#1e40af' : '#fff',
                 color: timeframe === 'quarter' ? '#fff' : '#333',
                 fontSize: 14,
-                cursor: 'pointer',
-                transition: 'all 0.2s'
+                cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: chartMode === 'proportion' ? 0.5 : 1
               }}
             >
               Quarter
             </button>
             <button
-              onClick={() => setTimeframe('month')}
+              onClick={() => chartMode !== 'proportion' && setTimeframe('month')}
+              disabled={chartMode === 'proportion'}
               style={{
                 padding: '4px 12px',
                 border: 'none',
                 background: timeframe === 'month' ? '#1e40af' : '#fff',
                 color: timeframe === 'month' ? '#fff' : '#333',
                 fontSize: 14,
-                cursor: 'pointer',
-                transition: 'all 0.2s'
+                cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: chartMode === 'proportion' ? 0.5 : 1
               }}
             >
               Month

@@ -114,7 +114,7 @@ export const CHART_CONFIG = {
     top: 60,
     bottom: 40,
     rightDefault: 20,
-    rightBarMode: 200,
+    rightBarMode: 20,
     rightLineWithRadar: 80
   }
 }
