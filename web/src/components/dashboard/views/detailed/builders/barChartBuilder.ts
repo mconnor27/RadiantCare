@@ -1,5 +1,5 @@
 import type { YTDPoint } from '../../../../../historical_data/therapyIncomeParser'
-import { getColorScheme, PROJECTED_BAR_STYLE, desaturateColor, CURRENT_BAR_BORDER } from '../config/chartConfig'
+import { getColorScheme, PROJECTED_BAR_STYLE, desaturateColor, CURRENT_BAR_BORDER, TOTAL_INCOME_DESATURATION } from '../config/chartConfig'
 import {
   getYearlyTotals,
   getQuarterlyTotals,
@@ -396,13 +396,13 @@ export const buildBarChartTraces = (
           y: barChartData.combined.map((item: any) => item.income),
           type: 'bar' as const,
           name: `Historical ${labelSuffix} (2016-2024)`,
-          marker: { color: desaturateColor(HISTORICAL_MEAN_COLOR, 0.4), opacity: 0.8 },
+          marker: { color: desaturateColor(HISTORICAL_MEAN_COLOR, TOTAL_INCOME_DESATURATION), opacity: 0.8 },
           offsetgroup: timeframe === 'year' ? undefined : 'historical',
           error_y: combineError ? {
             type: 'data' as const,
             array: barChartData.combined.map((item: any) => item.error),
             visible: true,
-            color: desaturateColor(HISTORICAL_MEAN_COLOR, 0.4),
+            color: desaturateColor(HISTORICAL_MEAN_COLOR, TOTAL_INCOME_DESATURATION),
             thickness: 2,
             width: 3
           } : undefined,
@@ -436,6 +436,11 @@ export const buildBarChartTraces = (
           ? barChartData.current.map((item: any) => item.period) // stack on same x label '2025'
           : barChartData.projected.map((item: any) => item.period)),
         y: barChartData.projected.map((item: any) => item.income),
+        customdata: barChartData.projected.map((item: any, i: number) => {
+          const actualIncome = barChartData.current[i]?.income || 0
+          const projectedIncome = item.income
+          return actualIncome + projectedIncome
+        }),
         type: 'bar' as const,
         name: '2025 Projected',
         base: barChartData.current.map((item: any) => item.income), // Stack on top of actual
@@ -445,8 +450,8 @@ export const buildBarChartTraces = (
           pattern: PROJECTED_BAR_STYLE.pattern
         },
         hovertemplate: isNormalized
-          ? (timeframe === 'year' ? '%{x} Projected: %{y:.1f}%<extra></extra>' : '2025 %{x} Projected: %{y:.1f}%<extra></extra>')
-          : (timeframe === 'year' ? '%{x} Projected: $%{y:,.0f}<extra></extra>' : '2025 %{x} Projected: $%{y:,.0f}<extra></extra>')
+          ? (timeframe === 'year' ? '%{x} Projected: %{customdata:.1f}%<extra></extra>' : '2025 %{x} Projected: %{customdata:.1f}%<extra></extra>')
+          : (timeframe === 'year' ? '%{x} Projected: $%{customdata:,.0f}<extra></extra>' : '2025 %{x} Projected: $%{customdata:,.0f}<extra></extra>')
       }] : []),
       // INVISIBLE OVERLAY BAR with border - creates outer border only!
       ...(barChartData.current.length > 0 ? [{
@@ -483,7 +488,7 @@ export const buildBarChartTraces = (
             y: [item.income],
             type: 'bar' as const,
             name: item.year,
-            marker: { color: desaturateColor(HISTORICAL_COLORS[colorIndex], 0.4), opacity: 0.8 },
+            marker: { color: desaturateColor(HISTORICAL_COLORS[colorIndex], TOTAL_INCOME_DESATURATION), opacity: 0.8 },
             hovertemplate: isNormalized ? '%{x}: %{y:.1f}%<extra></extra>' : '%{x}: $%{y:,.0f}<extra></extra>'
           })
         }
@@ -569,7 +574,7 @@ export const buildBarChartTraces = (
             offsetgroup: is2025 ? '2025' : yearData.year, // Group 2025 actual with projected, others separate
             // Don't set width for quarter/month - let Plotly handle spacing with many groups
             marker: {
-              color: is2025 ? CURRENT_YEAR_COLOR : desaturateColor(HISTORICAL_COLORS[colorIndex], 0.4),
+              color: is2025 ? CURRENT_YEAR_COLOR : desaturateColor(HISTORICAL_COLORS[colorIndex], TOTAL_INCOME_DESATURATION),
               opacity: 0.8
             },
             hovertemplate: isNormalized ? `${yearData.year} %{x}: %{y:.1f}%<extra></extra>` : `${yearData.year} %{x}: $%{y:,.0f}<extra></extra>`
@@ -607,6 +612,11 @@ export const buildBarChartTraces = (
         traces.push({
           x: filteredPeriods.map((period: any) => period.quarter || period.month),
           y: filteredPeriods.map((period: any) => period.income),
+          customdata: filteredPeriods.map((period: any, i: number) => {
+            const actualIncome = actualFilteredPeriods[i]?.income || 0
+            const projectedIncome = period.income
+            return actualIncome + projectedIncome
+          }),
           type: 'bar' as const,
           name: '2025 Projected',
           base: actualFilteredPeriods.map((period: any) => period.income), // Stack on top of 2025 actual
@@ -615,7 +625,7 @@ export const buildBarChartTraces = (
             color: PROJECTED_BAR_STYLE.color,
             pattern: PROJECTED_BAR_STYLE.pattern
           },
-          hovertemplate: isNormalized ? `2025 Projected %{x}: %{y:.1f}%<extra></extra>` : `2025 Projected %{x}: $%{y:,.0f}<extra></extra>`
+          hovertemplate: isNormalized ? `2025 Projected %{x}: %{customdata:.1f}%<extra></extra>` : `2025 Projected %{x}: $%{customdata:,.0f}<extra></extra>`
         })
 
         // INVISIBLE OVERLAY BAR with border - quarter/month mode

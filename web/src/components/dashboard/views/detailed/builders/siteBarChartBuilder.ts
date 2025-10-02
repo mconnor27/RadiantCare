@@ -5,7 +5,7 @@ import {
   generateProjectedSiteData,
   parseSiteIncomeFromSummary
 } from '../../../../../historical_data/siteIncomeParser'
-import { getSiteColors, SITE_PROJECTED_PATTERNS, desaturateColor, CURRENT_BAR_BORDER } from '../config/chartConfig'
+import { getSiteColors, SITE_PROJECTED_PATTERNS, desaturateColor, CURRENT_BAR_BORDER, SITE_DESATURATION } from '../config/chartConfig'
 import { getSiteYearTotals, getSiteQuarterTotals, getSiteMonthTotals } from '../../../../../historical_data/siteIncomeParser'
 import { 
   getYearlyTotals, 
@@ -717,14 +717,14 @@ export const buildSiteBarChartTraces = (
             offsetgroup: 'historical', // Separate group from 2025 data
             visible: isSiteVisible(siteKey),
             marker: {
-              color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
+              color: desaturateColor(SITE_COLORS[siteKey].historical, SITE_DESATURATION),
               opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
             },
             error_y: combineError ? {
               type: 'data' as const,
               array: historicalErrors,
               visible: true,
-              color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
+              color: desaturateColor(SITE_COLORS[siteKey].historical, SITE_DESATURATION),
               thickness: 2,
               width: 3
             } : undefined,
@@ -776,19 +776,26 @@ export const buildSiteBarChartTraces = (
         if (siteBarChartData.projected?.length > 0) {
           const quarters = ['Q1', 'Q2', 'Q3', 'Q4']
           const projectedValues: number[] = []
-          
+          const totalValues: number[] = []
+
           quarters.forEach(quarter => {
-            const quarterData = siteBarChartData.projected.find((p: any) => p.quarter === quarter)
+            const quarterDataProjected = siteBarChartData.projected.find((p: any) => p.quarter === quarter)
+            const quarterDataCurrent = siteBarChartData.current.find((c: any) => c.quarter === quarter)
             const denom = getQuarterDenom2025(quarter)
-            const val = quarterData?.sites?.[siteKey] || 0
-            projectedValues.push(isNormalized && denom > 0 ? (val / denom) * 100 : val)
+            const projectedVal = quarterDataProjected?.sites?.[siteKey] || 0
+            const currentVal = quarterDataCurrent?.sites?.[siteKey] || 0
+            const totalVal = currentVal + projectedVal
+
+            projectedValues.push(isNormalized && denom > 0 ? (projectedVal / denom) * 100 : projectedVal)
+            totalValues.push(isNormalized && denom > 0 ? (totalVal / denom) * 100 : totalVal)
           })
-          
+
           const hasProjectedData = projectedValues.some(val => val > 0)
           if (hasProjectedData) {
             traces.push({
               x: quarters,
               y: projectedValues,
+              customdata: totalValues,
               type: 'bar' as const,
               name: `${site} 2025 Projected`,
               offsetgroup: '2025', // Same group for stacking
@@ -799,8 +806,8 @@ export const buildSiteBarChartTraces = (
                 pattern: SITE_PROJECTED_PATTERNS[siteKey]
               },
               hovertemplate: isNormalized
-                ? `${site} 2025 Projected<br>%{x}: %{y:.1f}%<extra></extra>`
-                : `${site} 2025 Projected<br>%{x}: $%{y:,.0f}<extra></extra>`
+                ? `${site} 2025 Projected<br>%{x}: %{customdata:.1f}%<extra></extra>`
+                : `${site} 2025 Projected<br>%{x}: $%{customdata:,.0f}<extra></extra>`
             })
           }
         }
@@ -865,7 +872,7 @@ export const buildSiteBarChartTraces = (
               visible: isSiteVisible(siteKey),
               // Don't set width for quarters - let Plotly handle spacing with many groups
               marker: {
-                color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
+                color: desaturateColor(SITE_COLORS[siteKey].historical, SITE_DESATURATION),
                 opacity: isSiteVisible(siteKey) ? 0.6 + (parseInt(yearData.year) - 2016) * 0.04 : 0.2 // Gradually lighter over time
               },
               hovertemplate: isNormalized
@@ -908,19 +915,27 @@ export const buildSiteBarChartTraces = (
         if (siteBarChartData.projected?.length > 0) {
           const projected2025 = siteBarChartData.projected[0]
           if (projected2025?.quarters) {
-            const projectedValues = ['Q1', 'Q2', 'Q3', 'Q4'].map(quarter => {
-              const quarterData = projected2025.quarters.find((q: any) => q.quarter === quarter)  
+            const projectedValues: number[] = []
+            const totalValues: number[] = []
+
+            ;['Q1', 'Q2', 'Q3', 'Q4'].forEach(quarter => {
+              const quarterData = projected2025.quarters.find((q: any) => q.quarter === quarter)
               const actualQuarter = actual2025?.quarters?.find((q: any) => q.quarter === quarter)
               const denom = (quarterData ? sumSites(quarterData.sites || {} as SiteData) : 0) + (actualQuarter ? sumSites(actualQuarter.sites || {} as SiteData) : 0)
-              const val = quarterData?.sites?.[siteKey] || 0
-              return (isNormalized && denom > 0) ? (val / denom) * 100 : val
+              const projectedVal = quarterData?.sites?.[siteKey] || 0
+              const actualVal = actualQuarter?.sites?.[siteKey] || 0
+              const totalVal = actualVal + projectedVal
+
+              projectedValues.push((isNormalized && denom > 0) ? (projectedVal / denom) * 100 : projectedVal)
+              totalValues.push((isNormalized && denom > 0) ? (totalVal / denom) * 100 : totalVal)
             })
-            
+
             const hasProjectedData = projectedValues.some(val => val > 0)
             if (hasProjectedData) {
               traces.push({
                 x: ['Q1', 'Q2', 'Q3', 'Q4'],
                 y: projectedValues,
+                customdata: totalValues,
                 type: 'bar' as const,
                 name: `${site} 2025 Projected`,
                 offsetgroup: '2025', // Same group for stacking
@@ -932,8 +947,8 @@ export const buildSiteBarChartTraces = (
                   // No border on individual bars - only on invisible overlay!
                 },
                 hovertemplate: isNormalized
-                  ? `${site} 2025 Projected<br>%{x}: %{y:.1f}%<extra></extra>`
-                  : `${site} 2025 Projected<br>%{x}: $%{y:,.0f}<extra></extra>`
+                  ? `${site} 2025 Projected<br>%{x}: %{customdata:.1f}%<extra></extra>`
+                  : `${site} 2025 Projected<br>%{x}: $%{customdata:,.0f}<extra></extra>`
               })
             }
           }
@@ -1018,14 +1033,14 @@ export const buildSiteBarChartTraces = (
             offsetgroup: 'historical', // Separate group from 2025 data
             visible: isSiteVisible(siteKey),
             marker: {
-              color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
+              color: desaturateColor(SITE_COLORS[siteKey].historical, SITE_DESATURATION),
               opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
             },
             error_y: combineError ? {
               type: 'data' as const,
               array: percentErrors(historicalErrors, historicalDenom),
               visible: true,
-              color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
+              color: desaturateColor(SITE_COLORS[siteKey].historical, SITE_DESATURATION),
               thickness: 2,
               width: 3
             } : undefined,
@@ -1075,17 +1090,25 @@ export const buildSiteBarChartTraces = (
         if (siteBarChartData.projected?.length > 0) {
           const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
           const projectedValues: number[] = []
-          
+          const totalValues: number[] = []
+
           months.forEach(month => {
-            const monthData = siteBarChartData.projected.find((p: any) => p.month === month)
-            projectedValues.push(monthData?.sites[siteKey] || 0)
+            const monthDataProjected = siteBarChartData.projected.find((p: any) => p.month === month)
+            const monthDataCurrent = siteBarChartData.current.find((c: any) => c.month === month)
+            const projectedVal = monthDataProjected?.sites[siteKey] || 0
+            const currentVal = monthDataCurrent?.sites[siteKey] || 0
+            const totalVal = currentVal + projectedVal
+
+            projectedValues.push(projectedVal)
+            totalValues.push(totalVal)
           })
-          
+
           const hasProjectedData = projectedValues.some(val => val > 0)
           if (hasProjectedData) {
             traces.push({
               x: months,
               y: percentArray(projectedValues, denom2025),
+              customdata: percentArray(totalValues, denom2025),
               type: 'bar' as const,
               name: `${site} 2025 Projected`,
               offsetgroup: '2025', // Same group for stacking
@@ -1096,8 +1119,8 @@ export const buildSiteBarChartTraces = (
                 pattern: SITE_PROJECTED_PATTERNS[siteKey]
               },
               hovertemplate: isNormalized
-                ? `${site} 2025 Projected<br>%{x}: %{y:.1f}%<extra></extra>`
-                : `${site} 2025 Projected<br>%{x}: $%{y:,.0f}<extra></extra>`
+                ? `${site} 2025 Projected<br>%{x}: %{customdata:.1f}%<extra></extra>`
+                : `${site} 2025 Projected<br>%{x}: $%{customdata:,.0f}<extra></extra>`
             })
           }
         }
@@ -1157,7 +1180,7 @@ export const buildSiteBarChartTraces = (
               visible: isSiteVisible(siteKey),
               // Don't set width for months - let Plotly handle spacing with many groups
               marker: {
-                color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
+                color: desaturateColor(SITE_COLORS[siteKey].historical, SITE_DESATURATION),
                 opacity: isSiteVisible(siteKey) ? 0.6 + (parseInt(yearData.year) - 2016) * 0.04 : 0.2 // Gradually lighter over time
               },
               hovertemplate: isNormalized
@@ -1288,14 +1311,14 @@ export const buildSiteBarChartTraces = (
             name: `${site} Historical`,
             visible: isSiteVisible(siteKey),
             marker: {
-              color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
+              color: desaturateColor(SITE_COLORS[siteKey].historical, SITE_DESATURATION),
               opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
             },
             error_y: combineError ? {
               type: 'data' as const,
               array: percentErrors([historicalData.error || 0], historicalDenom),
               visible: true,
-              color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
+              color: desaturateColor(SITE_COLORS[siteKey].historical, SITE_DESATURATION),
               thickness: 2,
               width: 3
             } : undefined,
@@ -1336,13 +1359,19 @@ export const buildSiteBarChartTraces = (
       // 2025 projected increment trace (textured, stacked on top of actual)
       if (siteBarChartData.projected?.length > 0) {
         const projectedData = siteBarChartData.projected.find((p: any) => p.site === site)
+        const currentData = siteBarChartData.current?.find((c: any) => c.site === site)
         const denom2025 = (siteBarChartData.current || []).reduce((acc: number, c: any) => acc + (c.income || 0), 0)
           + (siteBarChartData.projected || []).reduce((acc: number, p: any) => acc + (p.income || 0), 0)
-        
+
         if (projectedData && projectedData.income > 0) {
+          const projectedIncrement = projectedData.income
+          const actualIncome = currentData?.income || 0
+          const totalIncome = actualIncome + projectedIncrement
+
           traces.push({
             x: ['2025'], // Only 2025 has projected data
-            y: percentArray([projectedData.income], denom2025), // This is the projected increment (projected - actual)
+            y: percentArray([projectedIncrement], denom2025), // This is the projected increment (projected - actual)
+            customdata: percentArray([totalIncome], denom2025), // Total = actual + projected
             type: 'bar' as const,
             name: `${site} 2025 Projected`,
             visible: isSiteVisible(siteKey),
@@ -1353,8 +1382,8 @@ export const buildSiteBarChartTraces = (
               // No border on individual bars - only on invisible overlay!
             },
             hovertemplate: isNormalized
-              ? `${site} 2025 Projected<br>%{y:.1f}%<extra></extra>`
-              : `${site} 2025 Projected<br>$%{y:,.0f}<extra></extra>`
+              ? `${site} 2025 Projected<br>%{customdata:.1f}%<extra></extra>`
+              : `${site} 2025 Projected<br>$%{customdata:,.0f}<extra></extra>`
           })
         }
       }
@@ -1412,7 +1441,7 @@ export const buildSiteBarChartTraces = (
           name: `${site}`,
           visible: isSiteVisible(siteKey),
           marker: {
-            color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
+            color: desaturateColor(SITE_COLORS[siteKey].historical, SITE_DESATURATION),
             opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
           },
           hovertemplate: isNormalized
@@ -1447,11 +1476,16 @@ export const buildSiteBarChartTraces = (
       // Add projected increment for 2025 only (textured, stacked on top of actual)
       if (siteBarChartData.projected?.length > 0) {
         const projectedData = siteBarChartData.projected[0]
-        
+
         if (projectedData && projectedData.sites[siteKey] > 0) {
+          const projectedIncrement = projectedData.sites[siteKey]
+          const actualIncome = actual2025?.sites[siteKey] || 0
+          const totalIncome = actualIncome + projectedIncrement
+
           traces.push({
             x: ['2025'], // Only 2025 has projected data
-            y: percentArray([projectedData.sites[siteKey]], denom2025), // This should be the projected increment (projected - actual)
+            y: percentArray([projectedIncrement], denom2025), // This should be the projected increment (projected - actual)
+            customdata: percentArray([totalIncome], denom2025), // Total = actual + projected
             type: 'bar' as const,
             name: `${site} 2025 Projected`,
             visible: isSiteVisible(siteKey),
@@ -1461,8 +1495,8 @@ export const buildSiteBarChartTraces = (
               pattern: SITE_PROJECTED_PATTERNS[siteKey]
             },
             hovertemplate: isNormalized
-              ? `${site} 2025 Projected<br>%{y:.1f}%<extra></extra>`
-              : `${site} 2025 Projected<br>$%{y:,.0f}<extra></extra>`
+              ? `${site} 2025 Projected<br>%{customdata:.1f}%<extra></extra>`
+              : `${site} 2025 Projected<br>$%{customdata:,.0f}<extra></extra>`
           })
         }
       }

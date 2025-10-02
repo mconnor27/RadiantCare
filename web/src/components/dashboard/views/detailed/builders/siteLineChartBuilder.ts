@@ -4,7 +4,7 @@ import {
   get2025SiteMonthlyEndPoints,
   generateProjectedSiteMonthlyPoints
 } from '../../../../../historical_data/siteIncomeParser'
-import { getSiteColors, HISTORICAL_YEAR_LINE_WIDTH, RADAR_CONFIG } from '../config/chartConfig'
+import { getSiteColors, HISTORICAL_YEAR_LINE_WIDTH, RADAR_CONFIG, desaturateColor, SITE_DESATURATION } from '../config/chartConfig'
 import { 
   filterDataByQuarter,
   filterDataByMonth
@@ -553,7 +553,7 @@ export const buildSiteLineTraces = ({
           type: 'scatter' as const,
           mode: 'lines' as const,
           name: `${name} Historical ${labelSuffix} (2016-2024)`,
-          line: { color: color.historical, width: 2 },
+          line: { color: desaturateColor(color.historical, SITE_DESATURATION), width: 2 },
           visible: isSiteVisible(key),
           opacity: isSiteVisible(key) ? 1 : 0.2,
           hovertemplate: combineError
@@ -595,7 +595,7 @@ export const buildSiteLineTraces = ({
           type: 'scatter' as const,
           mode: 'lines' as const,
           name: `${name} ${year}`,
-          line: { color: color.historical, width: lineWidth },
+          line: { color: desaturateColor(color.historical, SITE_DESATURATION), width: lineWidth },
           visible: isSiteVisible(key),
           opacity: isSiteVisible(key) ? 1 : 0.2,
           hovertemplate: isNormalized

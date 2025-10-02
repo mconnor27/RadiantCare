@@ -1,6 +1,10 @@
 // Configuration constants
 export const HISTORICAL_YEAR_LINE_WIDTH = 1.5
 
+// Desaturation amounts for historical data (0 = no desaturation, 1 = fully desaturated/grayscale)
+export const TOTAL_INCOME_DESATURATION = 0 // For total income bars/lines
+export const SITE_DESATURATION = 0.6 // For per-site bars/lines
+
 // Helper function to desaturate a color
 export const desaturateColor = (color: string, amount: number = 0.4): string => {
   // Parse rgba or rgb or hex
