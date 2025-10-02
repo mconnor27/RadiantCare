@@ -596,7 +596,7 @@ export default function DetailedChart({
                 combineError,
                 colorScheme
               )) as any}
-        layout={chartMode === 'proportion' ? buildProportionLayout(isMobile, selectedYears, proportionData, visibleSites) : (chartLayout || {}) as any}
+        layout={chartMode === 'proportion' ? buildProportionLayout(isMobile, selectedYears, proportionData, visibleSites, smoothing) : (chartLayout || {}) as any}
         config={{
           responsive: true,
           displayModeBar: false,

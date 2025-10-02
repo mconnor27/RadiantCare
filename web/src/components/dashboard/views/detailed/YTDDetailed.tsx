@@ -85,10 +85,10 @@ export default function YTDDetailed() {
     }
   }, [timeframe])
 
-  // Auto-adjust smoothing to maximum when switching chart modes
+  // Auto-adjust smoothing when switching chart modes, but preserve value when possible
   useEffect(() => {
-    if (chartMode === 'proportion') {
-      // Calculate available months based on selected years
+    // Calculate available months for proportion mode
+    const calculateAvailableMonths = () => {
       const now = new Date()
       const currentYear = now.getFullYear()
       const currentMonth = now.getMonth() + 1 // 1-12
@@ -105,12 +105,24 @@ export default function YTDDetailed() {
       }
 
       // Cap at 36 months maximum
-      const maxSmoothing = Math.min(36, totalMonths)
-      setSmoothing(maxSmoothing)
-    } else {
-      setSmoothing(10)
+      return Math.min(36, totalMonths)
     }
-  }, [chartMode, selectedYears])
+
+    if (chartMode === 'proportion') {
+      // When entering proportion mode, clamp current smoothing to available months
+      // but don't reset to maximum unless current value exceeds available months
+      const maxSmoothing = calculateAvailableMonths()
+      if (smoothing > maxSmoothing) {
+        setSmoothing(maxSmoothing)
+      }
+    } else {
+      // When leaving proportion mode, preserve current smoothing value
+      // but ensure it's reasonable (clamp to 10 if it's too high for other modes)
+      if (smoothing > 10) {
+        setSmoothing(10)
+      }
+    }
+  }, [chartMode, selectedYears, smoothing, setSmoothing])
 
 
   // Reset 2025 visibility when switching chart modes

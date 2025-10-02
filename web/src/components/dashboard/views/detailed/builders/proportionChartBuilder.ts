@@ -184,7 +184,7 @@ export function buildProportionTraces(
         color: SITE_COLORS.lacey.current,
         width: 2,
         shape: 'spline',
-        smoothing: 1.3
+        smoothing: 0.5
       },
       name: 'Lacey',
       stackgroup: 'one',
@@ -247,7 +247,8 @@ export function buildProportionLayout(
   isMobile: boolean = false,
   selectedYears: number[] = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024],
   data: MonthlyProportionData[] = [],
-  visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean }
+  visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean },
+  smoothingFactor: number = 5
 ) {
   // Determine if we have historical years selected (any year before 2025)
   const hasHistoricalYears = selectedYears.some(year => year < 2025)
@@ -275,76 +276,86 @@ export function buildProportionLayout(
     const centerIndex = Math.floor(data.length / 2)
     const centerX = `${monthNames[data[centerIndex].month - 1]} ${data[centerIndex].year}`
 
-    // Calculate statistics for each site
-    const laceyPercents = data.map(d => d.laceyPercent)
-    const centraliaPercents = data.map(d => d.centraliaPercent)
-    const aberdeenPercents = data.map(d => d.aberdeenPercent)
+    // Get raw percentages for positioning
+    const rawLaceyPercents = data.map(d => d.laceyPercent)
+    const rawCentraliaPercents = data.map(d => d.centraliaPercent)
+    const rawAberdeenPercents = data.map(d => d.aberdeenPercent)
 
-    const laceyAvg = laceyPercents.reduce((a, b) => a + b, 0) / laceyPercents.length
-    const centraliaAvg = centraliaPercents.reduce((a, b) => a + b, 0) / centraliaPercents.length
-    const aberdeenAvg = aberdeenPercents.reduce((a, b) => a + b, 0) / aberdeenPercents.length
+    // Calculate TRUE percentage from actual dollar totals (not average of percentages!)
+    // Sum up actual $ income for each site, then compute % of total
+    const totalLaceyDollars = data.reduce((sum, d) => sum + (d.totalIncome * d.laceyPercent / 100), 0)
+    const totalCentraliaDollars = data.reduce((sum, d) => sum + (d.totalIncome * d.centraliaPercent / 100), 0)
+    const totalAberdeenDollars = data.reduce((sum, d) => sum + (d.totalIncome * d.aberdeenPercent / 100), 0)
+    const grandTotal = totalLaceyDollars + totalCentraliaDollars + totalAberdeenDollars
 
-    const laceyMin = Math.min(...laceyPercents)
-    const laceyMax = Math.max(...laceyPercents)
-    const centraliaMin = Math.min(...centraliaPercents)
-    const centraliaMax = Math.max(...centraliaPercents)
-    const aberdeenMin = Math.min(...aberdeenPercents)
-    const aberdeenMax = Math.max(...aberdeenPercents)
+    const laceyAvg = (totalLaceyDollars / grandTotal) * 100
+    const centraliaAvg = (totalCentraliaDollars / grandTotal) * 100
+    const aberdeenAvg = (totalAberdeenDollars / grandTotal) * 100
+
+    // Apply smoothing for positioning (matching displayed chart)
+    const smoothedLaceyPercents = smoothingFactor > 0 ? applyMovingAverage(rawLaceyPercents, smoothingFactor) : rawLaceyPercents
+    const smoothedCentraliaPercents = smoothingFactor > 0 ? applyMovingAverage(rawCentraliaPercents, smoothingFactor) : rawCentraliaPercents
+    const smoothedAberdeenPercents = smoothingFactor > 0 ? applyMovingAverage(rawAberdeenPercents, smoothingFactor) : rawAberdeenPercents
 
     // Helper to check if a site is visible
     const isSiteVisible = (site: 'lacey' | 'centralia' | 'aberdeen') => {
       return visibleSites ? visibleSites[site] : true
     }
 
-    // Aberdeen annotation (bottom, stacked from 0)
-    if (isSiteVisible('aberdeen')) {
-      const aberdeenY = aberdeenAvg / 2
-      annotations.push({
-        x: centerX,
-        y: aberdeenY,
-        text: `Aberdeen: ${aberdeenAvg.toFixed(1)}% (${aberdeenMin.toFixed(1)}-${aberdeenMax.toFixed(1)}%)`,
-        showarrow: false,
-        font: { size: 11, color: 'black' },
-        bgcolor: 'rgba(255, 255, 255, 0.9)',
-        bordercolor: '#ccc',
-        borderwidth: 1,
-        borderpad: 4,
-        xanchor: 'center',
-        yanchor: 'middle'
-      })
-    }
+    // Get smoothed percentage values at the center point for positioning (matching displayed chart)
+    const aberdeenAtCenter = smoothedAberdeenPercents[centerIndex]
+    const centraliaAtCenter = smoothedCentraliaPercents[centerIndex]
+    const laceyAtCenter = smoothedLaceyPercents[centerIndex]
 
-    // Centralia annotation (middle, stacked on Aberdeen)
-    if (isSiteVisible('centralia')) {
-      const centraliaY = aberdeenAvg + (centraliaAvg / 2)
-      annotations.push({
-        x: centerX,
-        y: centraliaY,
-        text: `Centralia: ${centraliaAvg.toFixed(1)}% (${centraliaMin.toFixed(1)}-${centraliaMax.toFixed(1)}%)`,
-        showarrow: false,
-        font: { size: 11, color: 'black' },
-        bgcolor: 'rgba(255, 255, 255, 0.9)',
-        bordercolor: '#ccc',
-        borderwidth: 1,
-        borderpad: 4,
-        xanchor: 'center',
-        yanchor: 'middle'
-      })
-    }
+    // In stacked area charts, y-values are cumulative from bottom (0) to top (100)
+    // Stack order from bottom to top: Lacey → Centralia → Aberdeen
+    // So at the center x-position:
+    // - Lacey occupies: 0 to laceyAtCenter
+    // - Centralia occupies: laceyAtCenter to (laceyAtCenter + centraliaAtCenter)
+    // - Aberdeen occupies: (laceyAtCenter + centraliaAtCenter) to 100
 
-    // Lacey annotation (top, stacked on Centralia + Aberdeen)
+    // Track cumulative position (starting from bottom at y=0)
+    let cumulativeY = 0
+
+    // Lacey annotation (bottom layer, 0 to laceyPercent)
     if (isSiteVisible('lacey')) {
-      const laceyY = aberdeenAvg + centraliaAvg + (laceyAvg / 2)
+      const laceyY = cumulativeY + (laceyAtCenter / 2)
       annotations.push({
         x: centerX,
         y: laceyY,
-        text: `Lacey: ${laceyAvg.toFixed(1)}% (${laceyMin.toFixed(1)}-${laceyMax.toFixed(1)}%)`,
+        text: `Lacey: ${laceyAvg.toFixed(1)}%`,
         showarrow: false,
-        font: { size: 11, color: 'black' },
-        bgcolor: 'rgba(255, 255, 255, 0.9)',
-        bordercolor: '#ccc',
-        borderwidth: 1,
-        borderpad: 4,
+        font: { size: 12, color: 'white', weight: 'bold' },
+        xanchor: 'center',
+        yanchor: 'middle'
+      })
+      cumulativeY += laceyAtCenter
+    }
+
+    // Centralia annotation (middle layer)
+    if (isSiteVisible('centralia')) {
+      const centraliaY = cumulativeY + (centraliaAtCenter / 2)
+      annotations.push({
+        x: centerX,
+        y: centraliaY,
+        text: `Centralia: ${centraliaAvg.toFixed(1)}%`,
+        showarrow: false,
+        font: { size: 12, color: 'white', weight: 'bold' },
+        xanchor: 'center',
+        yanchor: 'middle'
+      })
+      cumulativeY += centraliaAtCenter
+    }
+
+    // Aberdeen annotation (top layer)
+    if (isSiteVisible('aberdeen')) {
+      const aberdeenY = cumulativeY + (aberdeenAtCenter / 2)
+      annotations.push({
+        x: centerX,
+        y: aberdeenY,
+        text: `Aberdeen: ${aberdeenAvg.toFixed(1)}%`,
+        showarrow: false,
+        font: { size: 12, color: 'white', weight: 'bold' },
         xanchor: 'center',
         yanchor: 'middle'
       })
