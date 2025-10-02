@@ -90,7 +90,7 @@ export const desaturateColor = (color: string, amount: number = 0.4): string => 
 // Bar styling configuration for current/projected bars
 // Dark border around the entire 2025 stack
 export const CURRENT_BAR_BORDER = {
-  color: 'rgba(0, 0, 0, 0.5)', // Dark/black border
+  color: 'rgba(0, 0, 0, 0.8)', // Dark/black border
   width: 1.5
 }
 
