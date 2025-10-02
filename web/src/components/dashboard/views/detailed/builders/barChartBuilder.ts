@@ -377,8 +377,14 @@ export const buildBarChartTraces = (
   const colors = getColorScheme(colorScheme)
   const HISTORICAL_COLORS = colors.historical
   const CURRENT_YEAR_COLOR = colors.current
-  const HISTORICAL_MEAN_COLOR = HISTORICAL_COLORS[Math.floor(HISTORICAL_COLORS.length / 2)]
-  
+  const HISTORICAL_MEAN_COLOR = colors.historicalCombined || HISTORICAL_COLORS[Math.floor(HISTORICAL_COLORS.length / 2)]
+
+  // Projected bar styling based on selected color scheme
+  const projectedBarStyle = {
+    color: colors.projectedBar,
+    pattern: PROJECTED_BAR_STYLE.pattern
+  }
+
   // Helper to create border around entire 2025 stack
   const createStackBorder = () => ({
     color: CURRENT_BAR_BORDER.color,
@@ -446,8 +452,8 @@ export const buildBarChartTraces = (
         base: barChartData.current.map((item: any) => item.income), // Stack on top of actual
         offsetgroup: timeframe === 'year' ? undefined : '2025', // Group with 2025 actual
         marker: {
-          color: PROJECTED_BAR_STYLE.color,
-          pattern: PROJECTED_BAR_STYLE.pattern
+          color: projectedBarStyle.color,
+          pattern: projectedBarStyle.pattern
         },
         hovertemplate: isNormalized
           ? (timeframe === 'year' ? '%{x} Projected: %{customdata:.1f}%<extra></extra>' : '2025 %{x} Projected: %{customdata:.1f}%<extra></extra>')
@@ -521,8 +527,8 @@ export const buildBarChartTraces = (
           base: [actual2025.income], // Stack on top of actual
           offsetgroup: '2025', // Group with 2025 actual
           marker: {
-            color: PROJECTED_BAR_STYLE.color,
-            pattern: PROJECTED_BAR_STYLE.pattern
+            color: projectedBarStyle.color,
+            pattern: projectedBarStyle.pattern
           },
           hovertemplate: isNormalized ? '%{x} Projected: %{y:.1f}%<extra></extra>' : '%{x} Projected: $%{y:,.0f}<extra></extra>'
         })
@@ -622,8 +628,8 @@ export const buildBarChartTraces = (
           base: actualFilteredPeriods.map((period: any) => period.income), // Stack on top of 2025 actual
           offsetgroup: '2025', // Group with 2025 actual
           marker: {
-            color: PROJECTED_BAR_STYLE.color,
-            pattern: PROJECTED_BAR_STYLE.pattern
+            color: projectedBarStyle.color,
+            pattern: projectedBarStyle.pattern
           },
           hovertemplate: isNormalized ? `2025 Projected %{x}: %{customdata:.1f}%<extra></extra>` : `2025 Projected %{x}: $%{customdata:,.0f}<extra></extra>`
         })

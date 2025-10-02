@@ -107,30 +107,34 @@ export const COLOR_SCHEMES = {
       '#26c6da', '#4dd0e1', '#80deea', '#b2ebf2', '#e0f7fa'
     ],
     current: '#F8766D',
-    projectedBar: 'rgba(248, 118, 109, 0.6)'
+    projectedBar: 'rgba(248, 118, 109, 0.6)',
+    historicalCombined: '#00BFC4' // Middle cyan color for mean/median bar
   },
   // All gray scheme
   gray: {
     historical: Array(9).fill('#9e9e9e'),
     current: '#F8766D',
-    projectedBar: 'rgba(248, 118, 109, 0.6)'
+    projectedBar: 'rgba(248, 118, 109, 0.6)',
+    historicalCombined: '#9e9e9e' // Same gray for combined
   },
   // Standard ggplot2 blue/green scheme
   blueGreen: {
     historical: Array(9).fill('#00BFC4'),
     current: '#F8766D',
-    projectedBar: 'rgba(248, 118, 109, 0.6)'
+    projectedBar: 'rgba(248, 118, 109, 0.6)',
+    historicalCombined: '#00BFC4' // Same blue/green for combined
   },
   // RadiantCare brand colors
   radiantCare: {
     historical: Array(9).fill('#9e9e9e'),
     current: '#7c2a83',
-    projectedBar: 'rgba(124, 42, 131, 0.6)'
+    projectedBar: 'rgba(124, 42, 131, 0.6)',
+    historicalCombined: '#9e9e9e' // Same gray for combined
   }
 }
 
 // Site colors - original red/green/blue scheme (not tied to active scheme)
-export const SITE_COLORS = {
+export const SITE_COLORS_RGB = {
   lacey: {
     historical: 'rgba(97, 156, 255, 0.7)',     // Faded blue
     current: '#619CFF',                         // Bright blue
@@ -187,7 +191,7 @@ export const SITE_PROJECTED_PATTERNS = {
 }
 
 // Current active scheme (change this to switch color schemes)
-export const ACTIVE_COLOR_SCHEME = COLOR_SCHEMES.gray
+export const ACTIVE_COLOR_SCHEME = COLOR_SCHEMES.radiantCare
 
 // Helper function to get colors based on color scheme
 export const getColorScheme = (scheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare') => {
@@ -196,7 +200,7 @@ export const getColorScheme = (scheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radia
 
 // Helper function to get site colors based on color scheme
 export const getSiteColors = (scheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare') => {
-  return scheme === 'radiantCare' ? SITE_COLORS_RADIANTCARE : SITE_COLORS
+  return scheme === 'radiantCare' ? SITE_COLORS_RADIANTCARE : SITE_COLORS_RGB
 }
 
 // Bar chart styling configuration
