@@ -1,6 +1,99 @@
 // Configuration constants
 export const HISTORICAL_YEAR_LINE_WIDTH = 1.5
 
+// Helper function to desaturate a color
+export const desaturateColor = (color: string, amount: number = 0.4): string => {
+  // Parse rgba or rgb or hex
+  let r: number, g: number, b: number, a: number = 1
+
+  if (color.startsWith('rgba')) {
+    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+),?\s*([\d.]+)?\)/)
+    if (match) {
+      r = parseInt(match[1])
+      g = parseInt(match[2])
+      b = parseInt(match[3])
+      a = match[4] ? parseFloat(match[4]) : 1
+    } else {
+      return color
+    }
+  } else if (color.startsWith('rgb')) {
+    const match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/)
+    if (match) {
+      r = parseInt(match[1])
+      g = parseInt(match[2])
+      b = parseInt(match[3])
+    } else {
+      return color
+    }
+  } else if (color.startsWith('#')) {
+    const hex = color.replace('#', '')
+    r = parseInt(hex.substring(0, 2), 16)
+    g = parseInt(hex.substring(2, 4), 16)
+    b = parseInt(hex.substring(4, 6), 16)
+  } else {
+    return color
+  }
+
+  // Convert to HSL
+  r /= 255
+  g /= 255
+  b /= 255
+
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  let h = 0, s = 0
+  const l = (max + min) / 2
+
+  if (max !== min) {
+    const d = max - min
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break
+      case g: h = ((b - r) / d + 2) / 6; break
+      case b: h = ((r - g) / d + 4) / 6; break
+    }
+  }
+
+  // Desaturate by reducing saturation
+  s = Math.max(0, s * (1 - amount))
+
+  // Convert back to RGB
+  const hue2rgb = (p: number, q: number, t: number) => {
+    if (t < 0) t += 1
+    if (t > 1) t -= 1
+    if (t < 1/6) return p + (q - p) * 6 * t
+    if (t < 1/2) return q
+    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6
+    return p
+  }
+
+  let r2: number, g2: number, b2: number
+
+  if (s === 0) {
+    r2 = g2 = b2 = l
+  } else {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s
+    const p = 2 * l - q
+    r2 = hue2rgb(p, q, h + 1/3)
+    g2 = hue2rgb(p, q, h)
+    b2 = hue2rgb(p, q, h - 1/3)
+  }
+
+  const r3 = Math.round(r2 * 255)
+  const g3 = Math.round(g2 * 255)
+  const b3 = Math.round(b2 * 255)
+
+  return `rgba(${r3}, ${g3}, ${b3}, ${a})`
+}
+
+// Bar styling configuration for current/projected bars
+// Dark border around the entire 2025 stack
+export const CURRENT_BAR_BORDER = {
+  color: 'rgba(0, 0, 0, 0.5)', // Dark/black border
+  width: 1.5
+}
+
 // Color scheme options for easy swapping
 export const COLOR_SCHEMES = {
   // Current red-based scheme (ggplot2 2-trace default)

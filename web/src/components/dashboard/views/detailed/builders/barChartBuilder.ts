@@ -1,5 +1,5 @@
 import type { YTDPoint } from '../../../../../historical_data/therapyIncomeParser'
-import { getColorScheme, PROJECTED_BAR_STYLE } from '../config/chartConfig'
+import { getColorScheme, PROJECTED_BAR_STYLE, desaturateColor, CURRENT_BAR_BORDER } from '../config/chartConfig'
 import {
   getYearlyTotals,
   getQuarterlyTotals,
@@ -378,6 +378,12 @@ export const buildBarChartTraces = (
   const HISTORICAL_COLORS = colors.historical
   const CURRENT_YEAR_COLOR = colors.current
   const HISTORICAL_MEAN_COLOR = HISTORICAL_COLORS[Math.floor(HISTORICAL_COLORS.length / 2)]
+  
+  // Helper to create border around entire 2025 stack
+  const createStackBorder = () => ({
+    color: CURRENT_BAR_BORDER.color,
+    width: CURRENT_BAR_BORDER.width
+  })
   if (showCombined) {
     const labelSuffix = combineStatistic === 'median' ? 'Median' : 'Mean'
     const errorLabel = combineError === 'ci' ? '95% CI' : combineError === 'std' ? 'σ' : ''
@@ -390,13 +396,13 @@ export const buildBarChartTraces = (
           y: barChartData.combined.map((item: any) => item.income),
           type: 'bar' as const,
           name: `Historical ${labelSuffix} (2016-2024)`,
-          marker: { color: HISTORICAL_MEAN_COLOR, opacity: 0.8 },
+          marker: { color: desaturateColor(HISTORICAL_MEAN_COLOR, 0.4), opacity: 0.8 },
           offsetgroup: timeframe === 'year' ? undefined : 'historical',
           error_y: combineError ? {
             type: 'data' as const,
             array: barChartData.combined.map((item: any) => item.error),
             visible: true,
-            color: HISTORICAL_MEAN_COLOR,
+            color: desaturateColor(HISTORICAL_MEAN_COLOR, 0.4),
             thickness: 2,
             width: 3
           } : undefined,
@@ -409,19 +415,22 @@ export const buildBarChartTraces = (
               : `Historical ${labelSuffix}: $%{y:,.0f}<extra></extra>`
         }
       ] : []),
-      // Current Year Data (2025)
+      // Current Year Data (2025) - NO BORDER on individual segments
       ...(barChartData.current.length > 0 ? [{
         x: barChartData.current.map((item: any) => item.period),
         y: barChartData.current.map((item: any) => item.income),
         type: 'bar' as const,
         name: '2025 Actual',
         offsetgroup: timeframe === 'year' ? undefined : '2025', // Group with 2025 projected
-        marker: { color: CURRENT_YEAR_COLOR, opacity: 0.9 },
+        marker: { 
+          color: CURRENT_YEAR_COLOR, 
+          opacity: 0.9
+        },
         hovertemplate: isNormalized
           ? (timeframe === 'year' ? '%{x}: %{y:.1f}%<extra></extra>' : '2025 %{x}: %{y:.1f}%<extra></extra>')
           : (timeframe === 'year' ? '%{x}: $%{y:,.0f}<extra></extra>' : '2025 %{x}: $%{y:,.0f}<extra></extra>')
       }] : []),
-      // Projected Data (stacked on top of current)
+      // Projected Data (stacked on top of current) - NO BORDER on individual segments
       ...(barChartData.projected.length > 0 ? [{
         x: (timeframe === 'year'
           ? barChartData.current.map((item: any) => item.period) // stack on same x label '2025'
@@ -438,6 +447,25 @@ export const buildBarChartTraces = (
         hovertemplate: isNormalized
           ? (timeframe === 'year' ? '%{x} Projected: %{y:.1f}%<extra></extra>' : '2025 %{x} Projected: %{y:.1f}%<extra></extra>')
           : (timeframe === 'year' ? '%{x} Projected: $%{y:,.0f}<extra></extra>' : '2025 %{x} Projected: $%{y:,.0f}<extra></extra>')
+      }] : []),
+      // INVISIBLE OVERLAY BAR with border - creates outer border only!
+      ...(barChartData.current.length > 0 ? [{
+        x: barChartData.current.map((item: any) => item.period),
+        y: barChartData.current.map((item: any, i: number) => {
+          const actualIncome = item.income
+          const projectedIncome = barChartData.projected.length > 0 ? barChartData.projected[i]?.income || 0 : 0
+          return actualIncome + projectedIncome // Full stack height
+        }),
+        type: 'bar' as const,
+        name: '', // No name in legend
+        showlegend: false,
+        base: 0, // Start from bottom, don't stack
+        offsetgroup: timeframe === 'year' ? undefined : '2025', // Same group as 2025 bars
+        marker: {
+          color: 'rgba(0, 0, 0, 0)', // Completely transparent
+          line: createStackBorder() // Border only on this invisible bar!
+        },
+        hoverinfo: 'skip' // Don't show hover for this invisible bar
       }] : [])
     ]
   } else {
@@ -455,13 +483,13 @@ export const buildBarChartTraces = (
             y: [item.income],
             type: 'bar' as const,
             name: item.year,
-            marker: { color: HISTORICAL_COLORS[colorIndex], opacity: 0.8 },
+            marker: { color: desaturateColor(HISTORICAL_COLORS[colorIndex], 0.4), opacity: 0.8 },
             hovertemplate: isNormalized ? '%{x}: %{y:.1f}%<extra></extra>' : '%{x}: $%{y:,.0f}<extra></extra>'
           })
         }
       })
 
-      // Add 2025 actual
+      // Add 2025 actual - NO BORDER
       const actual2025 = barChartData.individual.find((item: any) => item.year === '2025')
       if (actual2025) {
         traces.push({
@@ -470,12 +498,15 @@ export const buildBarChartTraces = (
           type: 'bar' as const,
           name: '2025 Actual',
           offsetgroup: '2025', // Group with 2025 projected
-          marker: { color: CURRENT_YEAR_COLOR, opacity: 0.9 },
+          marker: { 
+            color: CURRENT_YEAR_COLOR, 
+            opacity: 0.9
+          },
           hovertemplate: isNormalized ? '%{x}: %{y:.1f}%<extra></extra>' : '%{x}: $%{y:,.0f}<extra></extra>'
         })
       }
 
-      // Add 2025 projected (stacked)
+      // Add 2025 projected (stacked) - NO BORDER
       if (barChartData.projected.length > 0 && barChartData.projected[0].income > 0 && actual2025) {
         traces.push({
           x: ['2025'],
@@ -489,6 +520,25 @@ export const buildBarChartTraces = (
             pattern: PROJECTED_BAR_STYLE.pattern
           },
           hovertemplate: isNormalized ? '%{x} Projected: %{y:.1f}%<extra></extra>' : '%{x} Projected: $%{y:,.0f}<extra></extra>'
+        })
+      }
+
+      // INVISIBLE OVERLAY BAR with border - year mode
+      if (actual2025) {
+        const totalHeight = actual2025.income + (barChartData.projected.length > 0 ? barChartData.projected[0].income : 0)
+        traces.push({
+          x: ['2025'],
+          y: [totalHeight],
+          type: 'bar' as const,
+          name: '',
+          showlegend: false,
+          base: 0, // Start from bottom
+          offsetgroup: '2025',
+          marker: {
+            color: 'rgba(0, 0, 0, 0)', // Transparent
+            line: createStackBorder()
+          },
+          hoverinfo: 'skip'
         })
       }
     }
@@ -510,14 +560,16 @@ export const buildBarChartTraces = (
 
           // Reverse index so 2024 (last in array) gets darkest color
           const colorIndex = (HISTORICAL_COLORS.length - 1 - yearIndex) % HISTORICAL_COLORS.length
+          const is2025 = yearData.year === '2025'
           traces.push({
             x: filteredPeriods.map((period: any) => period.quarter || period.month),
             y: filteredPeriods.map((period: any) => period.income),
             type: 'bar' as const,
-            name: yearData.year === '2025' ? '2025 Actual' : yearData.year,
-            offsetgroup: yearData.year === '2025' ? '2025' : yearData.year, // Group 2025 actual with projected, others separate
+            name: is2025 ? '2025 Actual' : yearData.year,
+            offsetgroup: is2025 ? '2025' : yearData.year, // Group 2025 actual with projected, others separate
+            // Don't set width for quarter/month - let Plotly handle spacing with many groups
             marker: {
-              color: yearData.year === '2025' ? CURRENT_YEAR_COLOR : HISTORICAL_COLORS[colorIndex],
+              color: is2025 ? CURRENT_YEAR_COLOR : desaturateColor(HISTORICAL_COLORS[colorIndex], 0.4),
               opacity: 0.8
             },
             hovertemplate: isNormalized ? `${yearData.year} %{x}: %{y:.1f}%<extra></extra>` : `${yearData.year} %{x}: $%{y:,.0f}<extra></extra>`
@@ -564,6 +616,26 @@ export const buildBarChartTraces = (
             pattern: PROJECTED_BAR_STYLE.pattern
           },
           hovertemplate: isNormalized ? `2025 Projected %{x}: %{y:.1f}%<extra></extra>` : `2025 Projected %{x}: $%{y:,.0f}<extra></extra>`
+        })
+
+        // INVISIBLE OVERLAY BAR with border - quarter/month mode
+        traces.push({
+          x: filteredPeriods.map((period: any) => period.quarter || period.month),
+          y: filteredPeriods.map((period: any, i: number) => {
+            const actualIncome = actualFilteredPeriods[i]?.income || 0
+            const projectedIncome = period.income
+            return actualIncome + projectedIncome // Full stack height
+          }),
+          type: 'bar' as const,
+          name: '',
+          showlegend: false,
+          base: 0, // Start from bottom
+          offsetgroup: '2025',
+          marker: {
+            color: 'rgba(0, 0, 0, 0)', // Transparent
+            line: createStackBorder()
+          },
+          hoverinfo: 'skip'
         })
       }
     }

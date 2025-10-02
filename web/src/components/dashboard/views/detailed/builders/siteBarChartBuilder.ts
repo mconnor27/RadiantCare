@@ -5,7 +5,7 @@ import {
   generateProjectedSiteData,
   parseSiteIncomeFromSummary
 } from '../../../../../historical_data/siteIncomeParser'
-import { getSiteColors, SITE_PROJECTED_PATTERNS } from '../config/chartConfig'
+import { getSiteColors, SITE_PROJECTED_PATTERNS, desaturateColor, CURRENT_BAR_BORDER } from '../config/chartConfig'
 import { getSiteYearTotals, getSiteQuarterTotals, getSiteMonthTotals } from '../../../../../historical_data/siteIncomeParser'
 import { 
   getYearlyTotals, 
@@ -638,6 +638,12 @@ export const buildSiteBarChartTraces = (
   const traces: any[] = []
   const SITE_COLORS = getSiteColors(colorScheme)
 
+  // Helper to create border around entire 2025 stack
+  const createStackBorder = () => ({
+    color: CURRENT_BAR_BORDER.color,
+    width: CURRENT_BAR_BORDER.width
+  })
+
   // Helper to check if a site is visible
   const isSiteVisible = (siteKey: keyof SiteData) => {
     return visibleSites ? visibleSites[siteKey] : true
@@ -711,14 +717,14 @@ export const buildSiteBarChartTraces = (
             offsetgroup: 'historical', // Separate group from 2025 data
             visible: isSiteVisible(siteKey),
             marker: {
-              color: SITE_COLORS[siteKey].historical,
+              color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
               opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
             },
             error_y: combineError ? {
               type: 'data' as const,
               array: historicalErrors,
               visible: true,
-              color: SITE_COLORS[siteKey].historical,
+              color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
               thickness: 2,
               width: 3
             } : undefined,
@@ -799,6 +805,35 @@ export const buildSiteBarChartTraces = (
           }
         }
       })
+
+      // INVISIBLE OVERLAY BAR with border - Quarter combined mode
+      // Calculate total stack height per quarter (all 3 sites combined)
+      if (siteBarChartData.current?.length > 0) {
+        const quarters = ['Q1', 'Q2', 'Q3', 'Q4']
+        const totalHeights = quarters.map(quarter => {
+          const currentQ = siteBarChartData.current?.find((c: any) => c.quarter === quarter)
+          const projectedQ = siteBarChartData.projected?.find((p: any) => p.quarter === quarter)
+          const currentTotal = currentQ ? (currentQ.sites.lacey + currentQ.sites.centralia + currentQ.sites.aberdeen) : 0
+          const projectedTotal = projectedQ ? (projectedQ.sites.lacey + projectedQ.sites.centralia + projectedQ.sites.aberdeen) : 0
+          const denom = getQuarterDenom2025(quarter)
+          return isNormalized && denom > 0 ? ((currentTotal + projectedTotal) / denom) * 100 : (currentTotal + projectedTotal)
+        })
+        
+        traces.push({
+          x: quarters,
+          y: totalHeights,
+          type: 'bar' as const,
+          name: '',
+          showlegend: false,
+          base: 0, // Start from bottom
+          offsetgroup: '2025',
+          marker: {
+            color: 'rgba(0, 0, 0, 0)',
+            line: createStackBorder()
+          },
+          hoverinfo: 'skip'
+        })
+      }
     } else {
       // Individual mode: Show each historical year as separate bars + 2025 actual + 2025 projected
       const sites = ['Lacey', 'Centralia', 'Aberdeen']
@@ -828,8 +863,9 @@ export const buildSiteBarChartTraces = (
               name: `${site} ${yearData.year}`,
               offsetgroup: yearData.year, // Each year gets its own group
               visible: isSiteVisible(siteKey),
+              // Don't set width for quarters - let Plotly handle spacing with many groups
               marker: {
-                color: SITE_COLORS[siteKey].historical,
+                color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
                 opacity: isSiteVisible(siteKey) ? 0.6 + (parseInt(yearData.year) - 2016) * 0.04 : 0.2 // Gradually lighter over time
               },
               hovertemplate: isNormalized
@@ -893,6 +929,7 @@ export const buildSiteBarChartTraces = (
                   color: SITE_COLORS[siteKey].projected,
                   opacity: isSiteVisible(siteKey) ? 0.9 : 0.2,
                   pattern: SITE_PROJECTED_PATTERNS[siteKey]
+                  // No border on individual bars - only on invisible overlay!
                 },
                 hovertemplate: isNormalized
                   ? `${site} 2025 Projected<br>%{x}: %{y:.1f}%<extra></extra>`
@@ -902,6 +939,36 @@ export const buildSiteBarChartTraces = (
           }
         }
       })
+
+      // INVISIBLE OVERLAY BAR with border - Quarter individual mode
+      const actual2025 = siteBarChartData.individual?.find((item: any) => item.year === '2025')
+      const projected2025 = siteBarChartData.projected?.[0]
+      if (actual2025?.quarters && projected2025?.quarters) {
+        const quarters = ['Q1', 'Q2', 'Q3', 'Q4']
+        const totalHeights = quarters.map(quarter => {
+          const actualQ = actual2025.quarters.find((q: any) => q.quarter === quarter)
+          const projectedQ = projected2025.quarters.find((q: any) => q.quarter === quarter)
+          const actualTotal = actualQ ? sumSites(actualQ.sites || {} as SiteData) : 0
+          const projectedTotal = projectedQ ? sumSites(projectedQ.sites || {} as SiteData) : 0
+          const denom = actualTotal + projectedTotal
+          return isNormalized && denom > 0 ? ((actualTotal + projectedTotal) / denom) * 100 : (actualTotal + projectedTotal)
+        })
+        
+        traces.push({
+          x: quarters,
+          y: totalHeights,
+          type: 'bar' as const,
+          name: '',
+          showlegend: false,
+          base: 0, // Start from bottom
+          offsetgroup: '2025',
+          marker: {
+            color: 'rgba(0, 0, 0, 0)',
+            line: createStackBorder()
+          },
+          hoverinfo: 'skip'
+        })
+      }
     }
     
     return traces
@@ -951,14 +1018,14 @@ export const buildSiteBarChartTraces = (
             offsetgroup: 'historical', // Separate group from 2025 data
             visible: isSiteVisible(siteKey),
             marker: {
-              color: SITE_COLORS[siteKey].historical,
+              color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
               opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
             },
             error_y: combineError ? {
               type: 'data' as const,
               array: percentErrors(historicalErrors, historicalDenom),
               visible: true,
-              color: SITE_COLORS[siteKey].historical,
+              color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
               thickness: 2,
               width: 3
             } : undefined,
@@ -1035,6 +1102,32 @@ export const buildSiteBarChartTraces = (
           }
         }
       })
+
+      // INVISIBLE OVERLAY BAR with border - Month combined mode
+      if (siteBarChartData.current?.length > 0) {
+        const totalHeights = months.map(month => {
+          const currentM = siteBarChartData.current?.find((c: any) => c.month === month)
+          const projectedM = siteBarChartData.projected?.find((p: any) => p.month === month)
+          const currentTotal = currentM ? (currentM.sites.lacey + currentM.sites.centralia + currentM.sites.aberdeen) : 0
+          const projectedTotal = projectedM ? (projectedM.sites.lacey + projectedM.sites.centralia + projectedM.sites.aberdeen) : 0
+          return isNormalized && denom2025 > 0 ? ((currentTotal + projectedTotal) / denom2025) * 100 : (currentTotal + projectedTotal)
+        })
+        
+        traces.push({
+          x: months,
+          y: totalHeights,
+          type: 'bar' as const,
+          name: '',
+          showlegend: false,
+          base: 0, // Start from bottom
+          offsetgroup: '2025',
+          marker: {
+            color: 'rgba(0, 0, 0, 0)',
+            line: createStackBorder()
+          },
+          hoverinfo: 'skip'
+        })
+      }
     } else {
       // Individual mode: Show each historical year as separate bars + 2025 actual + 2025 projected
       const sites = ['Lacey', 'Centralia', 'Aberdeen']
@@ -1062,8 +1155,9 @@ export const buildSiteBarChartTraces = (
               name: `${site} ${yearData.year}`,
               offsetgroup: yearData.year, // Each year gets its own group
               visible: isSiteVisible(siteKey),
+              // Don't set width for months - let Plotly handle spacing with many groups
               marker: {
-                color: SITE_COLORS[siteKey].historical,
+                color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
                 opacity: isSiteVisible(siteKey) ? 0.6 + (parseInt(yearData.year) - 2016) * 0.04 : 0.2 // Gradually lighter over time
               },
               hovertemplate: isNormalized
@@ -1125,6 +1219,7 @@ export const buildSiteBarChartTraces = (
                   color: SITE_COLORS[siteKey].projected,
                   opacity: isSiteVisible(siteKey) ? 0.9 : 0.2,
                   pattern: SITE_PROJECTED_PATTERNS[siteKey]
+                  // No border on individual bars - only on invisible overlay!
                 },
                 hovertemplate: isNormalized
                   ? `${site} 2025 Projected<br>%{x}: %{y:.1f}%<extra></extra>`
@@ -1134,6 +1229,38 @@ export const buildSiteBarChartTraces = (
           }
         }
       })
+
+      // INVISIBLE OVERLAY BAR with border - Month individual mode
+      const actual2025Mon = siteBarChartData.individual?.find((item: any) => item.year === '2025')
+      const projected2025Mon = siteBarChartData.projected?.[0]
+      if (actual2025Mon?.months && projected2025Mon?.months) {
+        const denom2025Mon = (
+          (actual2025Mon.months || []).reduce((acc: number, m: any) => acc + sumSites(m.sites || {} as SiteData), 0)
+          + (projected2025Mon.months || []).reduce((acc: number, m: any) => acc + sumSites(m.sites || {} as SiteData), 0)
+        ) || 0
+        const totalHeights = months.map(month => {
+          const actualM = actual2025Mon.months.find((m: any) => m.month === month)
+          const projectedM = projected2025Mon.months.find((m: any) => m.month === month)
+          const actualTotal = actualM ? sumSites(actualM.sites || {} as SiteData) : 0
+          const projectedTotal = projectedM ? sumSites(projectedM.sites || {} as SiteData) : 0
+          return isNormalized && denom2025Mon > 0 ? ((actualTotal + projectedTotal) / denom2025Mon) * 100 : (actualTotal + projectedTotal)
+        })
+        
+        traces.push({
+          x: months,
+          y: totalHeights,
+          type: 'bar' as const,
+          name: '',
+          showlegend: false,
+          base: 0, // Start from bottom
+          offsetgroup: '2025',
+          marker: {
+            color: 'rgba(0, 0, 0, 0)',
+            line: createStackBorder()
+          },
+          hoverinfo: 'skip'
+        })
+      }
     }
     
     return traces
@@ -1161,14 +1288,14 @@ export const buildSiteBarChartTraces = (
             name: `${site} Historical`,
             visible: isSiteVisible(siteKey),
             marker: {
-              color: SITE_COLORS[siteKey].historical,
+              color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
               opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
             },
             error_y: combineError ? {
               type: 'data' as const,
               array: percentErrors([historicalData.error || 0], historicalDenom),
               visible: true,
-              color: SITE_COLORS[siteKey].historical,
+              color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
               thickness: 2,
               width: 3
             } : undefined,
@@ -1223,6 +1350,7 @@ export const buildSiteBarChartTraces = (
               color: SITE_COLORS[siteKey].projected,
               opacity: isSiteVisible(siteKey) ? 0.9 : 0.2,
               pattern: SITE_PROJECTED_PATTERNS[siteKey]
+              // No border on individual bars - only on invisible overlay!
             },
             hovertemplate: isNormalized
               ? `${site} 2025 Projected<br>%{y:.1f}%<extra></extra>`
@@ -1231,6 +1359,28 @@ export const buildSiteBarChartTraces = (
         }
       }
     })
+
+    // INVISIBLE OVERLAY BAR with border - Year combined mode
+    if (siteBarChartData.current?.length > 0 && siteBarChartData.projected?.length > 0) {
+      const currentTotal = (siteBarChartData.current || []).reduce((acc: number, c: any) => acc + (c.income || 0), 0)
+      const projectedTotal = (siteBarChartData.projected || []).reduce((acc: number, p: any) => acc + (p.income || 0), 0)
+      const denom2025 = currentTotal + projectedTotal
+      const totalHeight = isNormalized && denom2025 > 0 ? 100 : (currentTotal + projectedTotal)
+      
+      traces.push({
+        x: ['2025'],
+        y: [totalHeight],
+        type: 'bar' as const,
+        name: '',
+        showlegend: false,
+        base: 0, // Start from bottom
+        marker: {
+          color: 'rgba(0, 0, 0, 0)',
+          line: createStackBorder()
+        },
+        hoverinfo: 'skip'
+      })
+    }
   } else {
     // Individual year mode - create stacked bars for each year
     const sites = ['Lacey', 'Centralia', 'Aberdeen']
@@ -1262,7 +1412,7 @@ export const buildSiteBarChartTraces = (
           name: `${site}`,
           visible: isSiteVisible(siteKey),
           marker: {
-            color: SITE_COLORS[siteKey].historical,
+            color: desaturateColor(SITE_COLORS[siteKey].historical, 0.4),
             opacity: isSiteVisible(siteKey) ? 0.9 : 0.2
           },
           hovertemplate: isNormalized
@@ -1317,6 +1467,30 @@ export const buildSiteBarChartTraces = (
         }
       }
     })
+
+    // INVISIBLE OVERLAY BAR with border - Year individual mode
+    const actual2025 = siteBarChartData.individual?.find((item: any) => item.year === '2025')
+    const projected2025 = siteBarChartData.projected?.[0]
+    if (actual2025 && projected2025) {
+      const actualTotal = sumSites(actual2025.sites || {} as SiteData)
+      const projectedTotal = sumSites(projected2025.sites || {} as SiteData)
+      const denom = actualTotal + projectedTotal
+      const totalHeight = isNormalized && denom > 0 ? 100 : (actualTotal + projectedTotal)
+      
+      traces.push({
+        x: ['2025'],
+        y: [totalHeight],
+        type: 'bar' as const,
+        name: '',
+        showlegend: false,
+        base: 0, // Start from bottom
+        marker: {
+          color: 'rgba(0, 0, 0, 0)',
+          line: createStackBorder()
+        },
+        hoverinfo: 'skip'
+      })
+    }
   }
   
   return traces
