@@ -495,7 +495,12 @@ export const buildSiteLineTraces = ({
         
         const labelSuffix = combineStatistic === 'median' ? 'Median' : 'Mean'
         const errorLabel = combineError === 'ci' ? '95% CI' : combineError === 'std' ? 'Std Dev' : ''
-        
+
+        // Calculate error margins for customdata if needed
+        const errorMargins = combineError
+          ? meanY.map((mean, i) => Math.abs(upperY[i] - mean))
+          : []
+
         // Only add error bands if combineError is not null
         if (combineError) {
           traces.push(
@@ -527,20 +532,37 @@ export const buildSiteLineTraces = ({
             }
           )
         }
-        
+
+        // Create custom text for hover to preserve Mon-D format
+        const hoverText = stats.mean.map((p: YTDPointWithSites) => {
+          const [month, day] = p.monthDay.split('-')
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+          const monthName = monthNames[parseInt(month) - 1]
+          return `${monthName}-${parseInt(day)}`
+        })
+
         // Mean/Median line
+        const errorSymbol = combineError === 'std' ? '(\u03C3)' : '' // σ symbol in parentheses
+        const errorLabelForHover = combineError === 'ci' ? '(95% CI)' : errorSymbol
+
         traces.push({
           x: meanX,
           y: meanY,
+          text: hoverText,
+          customdata: combineError ? errorMargins : undefined,
           type: 'scatter' as const,
           mode: 'lines' as const,
           name: `${name} Historical ${labelSuffix} (2016-2024)`,
           line: { color: color.historical, width: 2 },
           visible: isSiteVisible(key),
           opacity: isSiteVisible(key) ? 1 : 0.2,
-          hovertemplate: isNormalized
-            ? `${name} Historical ${labelSuffix}<br>%{x}<br>%{y:.1f}%<extra></extra>`
-            : `${name} Historical ${labelSuffix}<br>%{x}<br>$%{y:,}<extra></extra>`
+          hovertemplate: combineError
+            ? (isNormalized
+                ? `${name} Historical ${labelSuffix} %{text}<br>%{y:.1f}% ± %{customdata:.1f}% ${errorLabelForHover}<extra></extra>`
+                : `${name} Historical ${labelSuffix} %{text}<br>$%{y:,.0f} ± $%{customdata:,.0f} ${errorLabelForHover}<extra></extra>`)
+            : (isNormalized
+                ? `${name} Historical ${labelSuffix} %{text}<br>%{y:.1f}%<extra></extra>`
+                : `${name} Historical ${labelSuffix} %{text}<br>$%{y:,.0f}<extra></extra>`)
         })
       }
     })
@@ -558,10 +580,18 @@ export const buildSiteLineTraces = ({
       sites.forEach(({ key, name, color }) => {
         const xData = yearSiteData.map(p => p.monthDay)
         const yData = yearSiteData.map(p => p.sites?.[key] || 0)
+        // Create custom text for hover to preserve Mon-D format
+        const hoverText = yearSiteData.map((p: YTDPointWithSites) => {
+          const [month, day] = p.monthDay.split('-')
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+          const monthName = monthNames[parseInt(month) - 1]
+          return `${monthName}-${parseInt(day)}`
+        })
 
         traces.push({
           x: xData,
           y: yData,
+          text: hoverText,
           type: 'scatter' as const,
           mode: 'lines' as const,
           name: `${name} ${year}`,
@@ -569,8 +599,8 @@ export const buildSiteLineTraces = ({
           visible: isSiteVisible(key),
           opacity: isSiteVisible(key) ? 1 : 0.2,
           hovertemplate: isNormalized
-            ? `${name} ${year}<br>%{x}<br>%{y:.1f}%<extra></extra>`
-            : `${name} ${year}<br>%{x}<br>$%{y:,}<extra></extra>`
+            ? `${name} ${year} %{text}<br>%{y:.1f}%<extra></extra>`
+            : `${name} ${year} %{text}<br>$%{y:,.0f}<extra></extra>`
         })
       })
     })
@@ -587,10 +617,18 @@ export const buildSiteLineTraces = ({
     sites.forEach(({ key, name, color }) => {
       const xData = processed2025Data.map(p => p.monthDay)
       const yData = processed2025Data.map(p => p.sites?.[key] || 0)
+      // Create custom text for hover to preserve Mon-D format
+      const hoverText = processed2025Data.map((p: YTDPointWithSites) => {
+        const [month, day] = p.monthDay.split('-')
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        const monthName = monthNames[parseInt(month) - 1]
+        return `${monthName}-${parseInt(day)}`
+      })
 
       traces.push({
         x: xData,
         y: yData,
+        text: hoverText,
         type: 'scatter' as const,
         mode: 'lines' as const,
         name: `${name} 2025 Therapy Income`,
@@ -598,8 +636,8 @@ export const buildSiteLineTraces = ({
         visible: (is2025Visible && isSiteVisible(key)) ? true : 'legendonly',
         opacity: isSiteVisible(key) ? 1 : 0.2,
         hovertemplate: isNormalized
-          ? `${name} 2025<br>%{x}<br>%{y:.1f}%<extra></extra>`
-          : `${name} 2025<br>%{x}<br>$%{y:,}<extra></extra>`
+          ? `${name} 2025 %{text}<br>%{y:.1f}%<extra></extra>`
+          : `${name} 2025 %{text}<br>$%{y:,.0f}<extra></extra>`
       })
     })
   }
@@ -615,10 +653,18 @@ export const buildSiteLineTraces = ({
     sites.forEach(({ key, name, color }) => {
       const xData = processedProjectedData.map(p => p.monthDay)
       const yData = processedProjectedData.map(p => p.sites?.[key] || 0)
-      
+      // Create custom text for hover to preserve Mon-D format
+      const hoverText = processedProjectedData.map((p: YTDPointWithSites) => {
+        const [month, day] = p.monthDay.split('-')
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        const monthName = monthNames[parseInt(month) - 1]
+        return `${monthName}-${parseInt(day)}`
+      })
+
       traces.push({
         x: xData,
         y: yData,
+        text: hoverText,
         type: 'scatter' as const,
         mode: 'lines' as const,
         name: `${name} 2025 Projected`,
@@ -630,8 +676,8 @@ export const buildSiteLineTraces = ({
         visible: (is2025Visible && isSiteVisible(key)) ? true : 'legendonly',
         opacity: isSiteVisible(key) ? 1 : 0.2,
         hovertemplate: isNormalized
-          ? `${name} 2025 Projected<br>%{x}<br>%{y:.1f}%<extra></extra>`
-          : `${name} 2025 Projected<br>%{x}<br>$%{y:,}<extra></extra>`
+          ? `${name} 2025 Projected %{text}<br>%{y:.1f}%<extra></extra>`
+          : `${name} 2025 Projected %{text}<br>$%{y:,.0f}<extra></extra>`
       })
     })
   }
@@ -738,9 +784,16 @@ export const buildSitePulsingTraces = (
     
     // Add the solid center marker (same as total mode)
     if (isSiteVisible(key)) {
+      // Create custom text for hover to preserve Mon-D format
+      const [month, day] = lastActualPoint.monthDay.split('-')
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      const monthName = monthNames[parseInt(month) - 1]
+      const hoverText = `${monthName}-${parseInt(day)}`
+
       rings.push({
         x: [lastActualPoint.monthDay],
         y: [yValue],
+        text: [hoverText],
         type: 'scatter' as const,
         mode: 'markers' as const,
         name: `${name} Current Position`,
@@ -751,8 +804,8 @@ export const buildSitePulsingTraces = (
         },
         showlegend: false,
         hovertemplate: isNormalized
-          ? `${name} Latest: %{x}<br>%{y:.1f}%<extra></extra>`
-          : `${name} Latest: %{x}<br>$%{y:,}<extra></extra>`
+          ? `${name} Latest: %{text}<br>%{y:.1f}%<extra></extra>`
+          : `${name} Latest: %{text}<br>$%{y:,.0f}<extra></extra>`
       })
     }
   })

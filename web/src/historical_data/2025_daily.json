@@ -1,10 +1,10 @@
 {
     "Header": {
-     "Time": "2025-09-23T13:25:16-07:00",
+     "Time": "2025-10-01T13:29:05-07:00",
      "ReportName": "ProfitAndLoss",
      "ReportBasis": "Cash",
      "StartPeriod": "2025-01-01",
-     "EndPeriod": "2025-08-31",
+     "EndPeriod": "2025-09-30",
      "SummarizeColumnsBy": "Days",
      "Currency": "USD",
      "Option": [
@@ -4405,6 +4405,546 @@
        ]
       },
       {
+       "ColTitle": "Sep 1, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-01"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-01"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 1, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 2, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-02"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-02"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 2, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 3, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-03"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-03"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 3, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 4, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-04"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-04"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 4, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 5, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-05"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-05"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 5, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 6, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-06"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-06"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 6, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 7, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-07"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-07"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 7, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 8, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-08"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-08"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 8, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 9, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-09"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-09"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 9, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 10, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-10"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-10"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 10, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 11, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-11"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-11"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 11, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 12, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-12"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-12"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 12, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 13, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-13"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-13"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 13, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 14, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-14"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-14"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 14, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 15, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-15"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-15"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 15, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 16, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-16"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-16"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 16, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 17, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-17"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-17"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 17, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 18, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-18"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-18"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 18, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 19, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-19"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-19"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 19, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 20, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-20"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-20"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 20, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 21, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-21"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-21"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 21, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 22, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-22"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-22"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 22, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 23, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-23"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-23"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 23, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 24, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-24"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-24"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 24, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 25, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-25"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-25"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 25, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 26, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-26"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-26"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 26, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 27, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-27"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-27"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 27, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 28, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-28"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-28"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 28, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 29, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-29"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-29"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 29, 2025"
+        }
+       ]
+      },
+      {
+       "ColTitle": "Sep 30, 2025",
+       "ColType": "Money",
+       "MetaData": [
+        {
+         "Name": "StartDate",
+         "Value": "2025-09-30"
+        },
+        {
+         "Name": "EndDate",
+         "Value": "2025-09-30"
+        },
+        {
+         "Name": "ColKey",
+         "Value": "Sep 30, 2025"
+        }
+       ]
+      },
+      {
        "ColTitle": "Total",
        "ColType": "Money",
        "MetaData": [
@@ -4423,6 +4963,96 @@
         "ColData": [
          {
           "value": "Income"
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
          },
          {
           "value": ""
@@ -5897,6 +6527,96 @@
              "value": ""
             },
             {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
              "value": "0.00"
             }
            ]
@@ -6639,7 +7359,97 @@
                "value": "-69287.19"
               },
               {
-               "value": "1499814.64"
+               "value": ""
+              },
+              {
+               "value": "5651.54"
+              },
+              {
+               "value": "11355.46"
+              },
+              {
+               "value": "34260.21"
+              },
+              {
+               "value": "13935.93"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "7119.40"
+              },
+              {
+               "value": "8297.00"
+              },
+              {
+               "value": "23512.93"
+              },
+              {
+               "value": "7779.20"
+              },
+              {
+               "value": "3744.97"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "3305.32"
+              },
+              {
+               "value": "8440.36"
+              },
+              {
+               "value": "29028.76"
+              },
+              {
+               "value": "10178.35"
+              },
+              {
+               "value": "5080.59"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "8808.66"
+              },
+              {
+               "value": "11111.91"
+              },
+              {
+               "value": "21042.37"
+              },
+              {
+               "value": "12377.44"
+              },
+              {
+               "value": "790.00"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "5226.07"
+              },
+              {
+               "value": "-50928.22"
+              },
+              {
+               "value": "1679932.89"
               }
              ],
              "type": "Data"
@@ -7380,7 +8190,97 @@
                "value": "26127.97"
               },
               {
-               "value": "257504.21"
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "22364.18"
+              },
+              {
+               "value": "279868.39"
               }
              ],
              "type": "Data"
@@ -8121,7 +9021,97 @@
                "value": "43159.22"
               },
               {
-               "value": "350809.47"
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "37036.11"
+              },
+              {
+               "value": "387845.58"
               }
              ],
              "type": "Data"
@@ -8383,6 +9373,96 @@
               },
               {
                "value": "-62.36"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
               },
               {
                "value": ""
@@ -9604,7 +10684,97 @@
              "value": "0.00"
             },
             {
-             "value": "2108065.96"
+             "value": "0.00"
+            },
+            {
+             "value": "5651.54"
+            },
+            {
+             "value": "11355.46"
+            },
+            {
+             "value": "34260.21"
+            },
+            {
+             "value": "13935.93"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "7119.40"
+            },
+            {
+             "value": "8297.00"
+            },
+            {
+             "value": "23512.93"
+            },
+            {
+             "value": "7779.20"
+            },
+            {
+             "value": "3744.97"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "3305.32"
+            },
+            {
+             "value": "8440.36"
+            },
+            {
+             "value": "29028.76"
+            },
+            {
+             "value": "10178.35"
+            },
+            {
+             "value": "5080.59"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "8808.66"
+            },
+            {
+             "value": "11111.91"
+            },
+            {
+             "value": "21042.37"
+            },
+            {
+             "value": "12377.44"
+            },
+            {
+             "value": "790.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "5226.07"
+            },
+            {
+             "value": "8472.07"
+            },
+            {
+             "value": "2347584.50"
             }
            ]
           },
@@ -10346,7 +11516,97 @@
             "value": ""
            },
            {
-            "value": "120040.84"
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": "1419.17"
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": "10640.00"
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": "132100.01"
            }
           ],
           "type": "Data"
@@ -11088,7 +12348,97 @@
           "value": "0.00"
          },
          {
-          "value": "2228106.80"
+          "value": "0.00"
+         },
+         {
+          "value": "5651.54"
+         },
+         {
+          "value": "12774.63"
+         },
+         {
+          "value": "34260.21"
+         },
+         {
+          "value": "13935.93"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "7119.40"
+         },
+         {
+          "value": "8297.00"
+         },
+         {
+          "value": "23512.93"
+         },
+         {
+          "value": "7779.20"
+         },
+         {
+          "value": "3744.97"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "3305.32"
+         },
+         {
+          "value": "8440.36"
+         },
+         {
+          "value": "29028.76"
+         },
+         {
+          "value": "10178.35"
+         },
+         {
+          "value": "5080.59"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "8808.66"
+         },
+         {
+          "value": "11111.91"
+         },
+         {
+          "value": "21042.37"
+         },
+         {
+          "value": "12377.44"
+         },
+         {
+          "value": "790.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "15866.07"
+         },
+         {
+          "value": "8472.07"
+         },
+         {
+          "value": "2479684.51"
          }
         ]
        },
@@ -11100,6 +12450,96 @@
         "ColData": [
          {
           "value": "Cost of Goods Sold"
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
          },
          {
           "value": ""
@@ -12574,6 +14014,96 @@
              "value": ""
             },
             {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
              "value": "0.00"
             }
            ]
@@ -13316,7 +14846,97 @@
                "value": ""
               },
               {
-               "value": "31972.59"
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "15556.41"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "47529.00"
               }
              ],
              "type": "Data"
@@ -14040,6 +15660,96 @@
               },
               {
                "value": "3181.00"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
               },
               {
                "value": ""
@@ -14799,7 +16509,97 @@
              "value": "0.00"
             },
             {
-             "value": "35153.59"
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "15556.41"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "50710.00"
             }
            ]
           },
@@ -14811,6 +16611,96 @@
             {
              "value": "8106 State/Local Taxes",
              "id": "67"
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
             },
             {
              "value": ""
@@ -16284,7 +18174,97 @@
                "value": ""
               },
               {
-               "value": "44214.95"
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "4285.96"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "48500.91"
               }
              ],
              "type": "Data"
@@ -17026,7 +19006,97 @@
              "value": "0.00"
             },
             {
-             "value": "44214.95"
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "4285.96"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "48500.91"
             }
            ]
           },
@@ -17038,6 +19108,96 @@
             {
              "value": "8110 Communications Cost",
              "id": "70"
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
             },
             {
              "value": ""
@@ -18511,7 +20671,97 @@
                "value": ""
               },
               {
-               "value": "479.43"
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "23.03"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "502.46"
               }
              ],
              "type": "Data"
@@ -19252,7 +21502,97 @@
                "value": ""
               },
               {
-               "value": "1206.06"
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "137.10"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "1343.16"
               }
              ],
              "type": "Data"
@@ -19994,7 +22334,97 @@
              "value": "0.00"
             },
             {
-             "value": "1685.49"
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "23.03"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "137.10"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "1845.62"
             }
            ]
           },
@@ -20006,6 +22436,96 @@
             {
              "value": "8120 Licensure Costs",
              "id": "77"
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
             },
             {
              "value": ""
@@ -21479,7 +23999,97 @@
                "value": ""
               },
               {
-               "value": "4705.80"
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "1020.90"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "5726.70"
               }
              ],
              "type": "Data"
@@ -21507,6 +24117,96 @@
               },
               {
                "value": "1360.00"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
               },
               {
                "value": ""
@@ -22961,7 +25661,97 @@
                "value": ""
               },
               {
-               "value": "700.00"
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "350.00"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "1050.00"
               }
              ],
              "type": "Data"
@@ -23703,7 +26493,97 @@
              "value": "0.00"
             },
             {
-             "value": "6765.80"
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "1370.90"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "8136.70"
             }
            ]
           },
@@ -23715,6 +26595,96 @@
             {
              "value": "8310 Promotional Costs",
              "id": "84"
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
             },
             {
              "value": ""
@@ -25188,6 +28158,96 @@
                "value": ""
               },
               {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
                "value": "2000.00"
               }
              ],
@@ -25912,6 +28972,96 @@
               },
               {
                "value": "698.18"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
               },
               {
                "value": ""
@@ -26671,6 +29821,96 @@
              "value": "0.00"
             },
             {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
              "value": "7302.18"
             }
            ]
@@ -26683,6 +29923,96 @@
             {
              "value": "8320 Employee Payroll Expense",
              "id": "93"
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
             },
             {
              "value": ""
@@ -28156,7 +31486,97 @@
                "value": "46984.14"
               },
               {
-               "value": "297194.04"
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "15661.38"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "15661.38"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "328516.80"
               }
              ],
              "type": "Data"
@@ -28897,7 +32317,97 @@
                "value": "-46984.14"
               },
               {
-               "value": "93415.75"
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "5027.75"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "5168.00"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "103611.50"
               }
              ],
              "type": "Data"
@@ -29638,7 +33148,97 @@
                "value": ""
               },
               {
-               "value": "36600.03"
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "9000.00"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "45600.03"
               }
              ],
              "type": "Data"
@@ -30379,7 +33979,97 @@
                "value": ""
               },
               {
-               "value": "6184.87"
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "-33.95"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "859.93"
+              },
+              {
+               "value": "-33.95"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "6976.90"
               }
              ],
              "type": "Data"
@@ -31120,7 +34810,97 @@
                "value": "0.00"
               },
               {
-               "value": "28911.68"
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "793.12"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "803.32"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "30508.12"
               }
              ],
              "type": "Data"
@@ -31861,6 +35641,96 @@
                "value": ""
               },
               {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
                "value": "1260.39"
               }
              ],
@@ -32414,6 +36284,96 @@
               },
               {
                "value": "7500.00"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
               },
               {
                "value": ""
@@ -33343,6 +37303,96 @@
                "value": ""
               },
               {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
                "value": "3867.00"
               }
              ],
@@ -34084,6 +38134,96 @@
                "value": ""
               },
               {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
                "value": "7054.62"
               }
              ],
@@ -34640,6 +38780,96 @@
               },
               {
                "value": "7227.37"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
               },
               {
                "value": ""
@@ -35567,7 +39797,97 @@
              "value": "0.00"
             },
             {
-             "value": "541154.96"
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "30448.30"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "859.93"
+            },
+            {
+             "value": "21598.75"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "594061.94"
             }
            ]
           },
@@ -35579,6 +39899,96 @@
             {
              "value": "8350 Billing Costs",
              "id": "104"
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
             },
             {
              "value": ""
@@ -37052,6 +41462,96 @@
                "value": ""
               },
               {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
                "value": "34994.22"
               }
              ],
@@ -37793,7 +42293,97 @@
                "value": ""
               },
               {
-               "value": "1518.08"
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "94.15"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "1612.23"
               }
              ],
              "type": "Data"
@@ -38535,7 +43125,97 @@
              "value": "0.00"
             },
             {
-             "value": "36512.30"
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "94.15"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "36606.45"
             }
            ]
           },
@@ -38547,6 +43227,96 @@
             {
              "value": "8370 Office Overhead",
              "id": "109"
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
             },
             {
              "value": ""
@@ -40020,6 +44790,96 @@
                "value": ""
               },
               {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
                "value": "5023.15"
               }
              ],
@@ -40761,6 +45621,96 @@
                "value": ""
               },
               {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
                "value": "10865.00"
               }
              ],
@@ -41023,6 +45973,96 @@
               },
               {
                "value": "51.50"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
               },
               {
                "value": ""
@@ -42243,7 +47283,97 @@
                "value": ""
               },
               {
-               "value": "2472.84"
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "179.81"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "90.02"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": "2742.67"
               }
              ],
              "type": "Data"
@@ -42985,7 +48115,97 @@
              "value": "0.00"
             },
             {
-             "value": "21406.49"
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "179.81"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "90.02"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "21676.32"
             }
            ]
           },
@@ -42997,6 +48217,96 @@
             {
              "value": "8500 Capital Expense",
              "id": "119"
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
+            },
+            {
+             "value": ""
             },
             {
              "value": ""
@@ -44470,6 +49780,96 @@
                "value": ""
               },
               {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
                "value": "16.88"
               }
              ],
@@ -44855,6 +50255,96 @@
               },
               {
                "value": "135.49"
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
+              },
+              {
+               "value": ""
               },
               {
                "value": ""
@@ -45597,6 +51087,96 @@
             },
             {
              "value": "135.49"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
+            },
+            {
+             "value": "0.00"
             },
             {
              "value": "0.00"
@@ -46696,7 +52276,97 @@
           "value": "0.00"
          },
          {
-          "value": "694348.13"
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "1393.93"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "94.15"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "30628.11"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "137.10"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "16416.34"
+         },
+         {
+          "value": "25884.71"
+         },
+         {
+          "value": "90.02"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "768992.49"
          }
         ]
        },
@@ -47439,7 +53109,97 @@
           "value": "0.00"
          },
          {
-          "value": "1533758.67"
+          "value": "0.00"
+         },
+         {
+          "value": "5651.54"
+         },
+         {
+          "value": "12774.63"
+         },
+         {
+          "value": "32866.28"
+         },
+         {
+          "value": "13935.93"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "7119.40"
+         },
+         {
+          "value": "8202.85"
+         },
+         {
+          "value": "23512.93"
+         },
+         {
+          "value": "7779.20"
+         },
+         {
+          "value": "-26883.14"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "3305.32"
+         },
+         {
+          "value": "8440.36"
+         },
+         {
+          "value": "29028.76"
+         },
+         {
+          "value": "10041.25"
+         },
+         {
+          "value": "5080.59"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "8808.66"
+         },
+         {
+          "value": "11111.91"
+         },
+         {
+          "value": "4626.03"
+         },
+         {
+          "value": "-13507.27"
+         },
+         {
+          "value": "699.98"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "15866.07"
+         },
+         {
+          "value": "8472.07"
+         },
+         {
+          "value": "1710692.02"
          }
         ]
        },
@@ -47451,6 +53211,96 @@
         "ColData": [
          {
           "value": "Expenses"
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
          },
          {
           "value": ""
@@ -48924,6 +54774,96 @@
             "value": ""
            },
            {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": "-2948.45"
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": "2948.45"
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
             "value": "0.00"
            }
           ],
@@ -49649,6 +55589,96 @@
          },
          {
           "value": "2468.03"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "-2948.45"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "2948.45"
+         },
+         {
+          "value": "0.00"
          },
          {
           "value": "0.00"
@@ -50409,7 +56439,97 @@
           "value": "0.00"
          },
          {
-          "value": "1533758.67"
+          "value": "0.00"
+         },
+         {
+          "value": "5651.54"
+         },
+         {
+          "value": "12774.63"
+         },
+         {
+          "value": "32866.28"
+         },
+         {
+          "value": "13935.93"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "7119.40"
+         },
+         {
+          "value": "8202.85"
+         },
+         {
+          "value": "23512.93"
+         },
+         {
+          "value": "7779.20"
+         },
+         {
+          "value": "-26883.14"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "6253.77"
+         },
+         {
+          "value": "8440.36"
+         },
+         {
+          "value": "29028.76"
+         },
+         {
+          "value": "10041.25"
+         },
+         {
+          "value": "5080.59"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "8808.66"
+         },
+         {
+          "value": "11111.91"
+         },
+         {
+          "value": "1677.58"
+         },
+         {
+          "value": "-13507.27"
+         },
+         {
+          "value": "699.98"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "15866.07"
+         },
+         {
+          "value": "8472.07"
+         },
+         {
+          "value": "1710692.02"
          }
         ]
        },
@@ -50421,6 +56541,96 @@
         "ColData": [
          {
           "value": "Other Income"
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
+         },
+         {
+          "value": ""
          },
          {
           "value": ""
@@ -51894,7 +58104,97 @@
             "value": ""
            },
            {
-            "value": "1271.99"
+            "value": "20.80"
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": ""
+           },
+           {
+            "value": "18.53"
+           },
+           {
+            "value": "1311.32"
            }
           ],
           "type": "Data"
@@ -52636,7 +58936,97 @@
           "value": "0.00"
          },
          {
-          "value": "1271.99"
+          "value": "20.80"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "18.53"
+         },
+         {
+          "value": "1311.32"
          }
         ]
        },
@@ -53379,7 +59769,97 @@
           "value": "0.00"
          },
          {
-          "value": "1271.99"
+          "value": "20.80"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "18.53"
+         },
+         {
+          "value": "1311.32"
          }
         ]
        },
@@ -54122,7 +60602,97 @@
           "value": "0.00"
          },
          {
-          "value": "1535030.66"
+          "value": "20.80"
+         },
+         {
+          "value": "5651.54"
+         },
+         {
+          "value": "12774.63"
+         },
+         {
+          "value": "32866.28"
+         },
+         {
+          "value": "13935.93"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "7119.40"
+         },
+         {
+          "value": "8202.85"
+         },
+         {
+          "value": "23512.93"
+         },
+         {
+          "value": "7779.20"
+         },
+         {
+          "value": "-26883.14"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "6253.77"
+         },
+         {
+          "value": "8440.36"
+         },
+         {
+          "value": "29028.76"
+         },
+         {
+          "value": "10041.25"
+         },
+         {
+          "value": "5080.59"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "8808.66"
+         },
+         {
+          "value": "11111.91"
+         },
+         {
+          "value": "1677.58"
+         },
+         {
+          "value": "-13507.27"
+         },
+         {
+          "value": "699.98"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "0.00"
+         },
+         {
+          "value": "15866.07"
+         },
+         {
+          "value": "8490.60"
+         },
+         {
+          "value": "1712003.34"
          }
         ]
        },

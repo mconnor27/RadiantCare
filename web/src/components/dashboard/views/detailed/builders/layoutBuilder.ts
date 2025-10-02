@@ -18,6 +18,7 @@ interface LayoutBuilderProps {
   selectedYears?: number[]
   combineStatistic?: 'mean' | 'median' | null
   combineError?: 'std' | 'ci' | null
+  visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean }
 }
 
 export const buildChartLayout = ({
@@ -34,7 +35,8 @@ export const buildChartLayout = ({
   incomeMode = 'total',
   selectedYears = [],
   combineStatistic = null,
-  combineError = null
+  combineError = null,
+  visibleSites
 }: LayoutBuilderProps) => {
   const getYAxisConfig = () => {
     const baseConfig = {
@@ -46,22 +48,38 @@ export const buildChartLayout = ({
       automargin: true,
     }
 
-    // Add buffer for radar animation when in line mode with 2025 data visible
-    if (chartMode === 'line' && processedCurrentData.length > 0 && is2025Visible) {
-      // Calculate the data range to add appropriate buffer
-      const allYValues = [
-        ...staticLineTraces.flatMap(trace => trace.y || []),
-        ...currentY
-      ].filter(y => typeof y === 'number') as number[]
-      
+    if (chartMode === 'line') {
+      const needsRadarBuffer = processedCurrentData.length > 0 && is2025Visible
+
+      // In per-site mode, filter traces by visibility for range calculation
+      const tracesToUse = (incomeMode === 'per-site' && visibleSites)
+        ? staticLineTraces.filter(trace => {
+            // Trace is visible if visible property is true or 'legendonly' (not false or undefined)
+            // But we also need to check opacity since invisible sites have opacity: 0.2
+            const isVisible = trace.visible === true || trace.visible === 'legendonly'
+            const hasFullOpacity = trace.opacity === 1 || trace.opacity === undefined
+            return isVisible && hasFullOpacity
+          })
+        : staticLineTraces
+
+      // Collect all y values from visible traces
+      const traceYValues = tracesToUse.flatMap(trace => trace.y || [])
+        .filter(y => typeof y === 'number') as number[]
+
+      // Add current year data if 2025 is visible (but only for total income mode)
+      // In per-site mode, current year site data is already in the traces
+      const allYValues = (needsRadarBuffer && incomeMode !== 'per-site')
+        ? [...traceYValues, ...currentY].filter(y => typeof y === 'number') as number[]
+        : traceYValues
+
       if (allYValues.length > 0) {
         const maxY = Math.max(...allYValues)
         const minY = Math.min(...allYValues)
         const dataRange = maxY - minY
-        
-        // Add 5% buffer on top to account for radar animation
-        const buffer = dataRange * 0.05
-        
+
+        // Add buffer only when radar is active
+        const buffer = needsRadarBuffer ? dataRange * 0.05 : dataRange * 0.05
+
         return {
           ...baseConfig,
           autorange: false,
@@ -80,7 +98,7 @@ export const buildChartLayout = ({
     const baseConfig = {
       title: { text: chartMode === 'line' ? 'Date' : (timeframe.charAt(0).toUpperCase() + timeframe.slice(1)) },
       type: 'category' as const,
-      tickangle: -45,
+      tickangle: (chartMode === 'bar' && timeframe === 'year' && showCombined) ? 0 : -45,
       tickmode: chartMode === 'line' ? 'array' as const : 'auto' as const,
       ...(chartMode === 'line' ? getTickConfiguration(timeframe, currentPeriod) : {})
     }

@@ -100,6 +100,9 @@ export const buildBarChartData = ({
   combineStatistic = null,
   combineError = null
 }: BarChartDataProps) => {
+  // If only one historical year is selected, disable error bars
+  const hasMultipleYears = processedHistoricalData.length > 1
+
   if (timeframe === 'year') {
     // Year mode: each year is an x-axis tick
     // Use RAW totals for 2025 so normalization is correct when bars are percent-based
@@ -110,7 +113,7 @@ export const buildBarChartData = ({
     const yearly2025 = [{ year: '2025', income: actual2025Total }]
     const yearlyHistorical = getYearlyTotals(processedHistoricalData)
     const projected2025 = projectedIncomeData.length > 0 ? [{ year: '2025 Projected', income: projected2025Total }] : []
-    
+
     if (showCombined) {
       // For combined/bar mode: show mean/median with std dev/CI
       const allYearIncomes = yearlyHistorical.map(y => y.income)
@@ -126,16 +129,17 @@ export const buildBarChartData = ({
       const stdDev = Math.sqrt(variance)
 
       // Calculate error based on type (if errorType is not null)
-      const errorValue = combineError === 'ci'
+      // Also disable error bars if only one year is selected
+      const errorValue = hasMultipleYears && combineError === 'ci'
         ? 1.96 * stdDev
-        : combineError === 'std'
+        : hasMultipleYears && combineError === 'std'
         ? stdDev
-        : 0  // No error if null
+        : 0  // No error if null or single year
 
       const labelSuffix = combineStatistic === 'median' ? 'Median' : 'Mean'
 
       // For year mode normalization, normalize against the 2025 projected total for current/projection
-      const combinedData = [{ period: `Historical ${labelSuffix} (2016-2024)`, income: centerIncome, error: errorValue }]
+      const combinedData = [{ period: `Historical ${labelSuffix}`, income: centerIncome, error: errorValue }]
       const currentData = [{ period: '2025', income: yearly2025[0].income }]
       const projectedData = projected2025.length > 0 ? [{ period: '2025 Projected', income: projected2025[0].income - yearly2025[0].income }] : []
 
@@ -143,7 +147,7 @@ export const buildBarChartData = ({
         const denom2025 = projected2025Total
         return {
           combined: centerIncome > 0 ? [{
-            period: `Historical ${labelSuffix} (2016-2024)`,
+            period: `Historical ${labelSuffix}`,
             income: 100,
             error: (errorValue / centerIncome) * 100
           }] : combinedData,
@@ -210,8 +214,13 @@ export const buildBarChartData = ({
       { year: '2023', data: historical2023Data },
       { year: '2024', data: historical2024Data }
     ]
-    const historicalData = historicalDataRaw.map(({ data }) => data).filter(data => data.length > 0)
-    const combinedQuarterlyStats = calculateCombinedQuarterlyStats(historicalData, combineStatistic, combineError)
+    // Filter by selected years from processedHistoricalData
+    const selectedYearsQuarter = new Set(processedHistoricalData.map(({ year }) => year))
+    const historicalData = historicalDataRaw
+      .filter(({ year }) => selectedYearsQuarter.has(year))
+      .map(({ data }) => data)
+      .filter(data => data.length > 0)
+    const combinedQuarterlyStats = calculateCombinedQuarterlyStats(historicalData, combineStatistic, hasMultipleYears ? combineError : null)
 
     if (showCombined) {
       // Calculate projected quarterly amounts as the difference between projected and actual
@@ -236,9 +245,8 @@ export const buildBarChartData = ({
 
     // Non-combined: each year gets separate bars for each quarter
     // Filter historicalDataRaw by years present in processedHistoricalData (respects year filtering)
-    const selectedYears = new Set(processedHistoricalData.map(({ year }) => year))
     const individualQuarterly = historicalDataRaw
-      .filter(({ year }) => selectedYears.has(year))
+      .filter(({ year }) => selectedYearsQuarter.has(year))
       .map(({ year, data }) => ({
         year,
         quarters: getQuarterlyTotals(data)
@@ -288,8 +296,13 @@ export const buildBarChartData = ({
       { year: '2023', data: historical2023Data },
       { year: '2024', data: historical2024Data }
     ]
-    const historicalData = historicalDataRaw.map(({ data }) => data).filter(data => data.length > 0)
-    const combinedMonthlyStats = calculateCombinedMonthlyStats(historicalData, combineStatistic, combineError)
+    // Filter by selected years from processedHistoricalData
+    const selectedYearsMonth = new Set(processedHistoricalData.map(({ year }) => year))
+    const historicalData = historicalDataRaw
+      .filter(({ year }) => selectedYearsMonth.has(year))
+      .map(({ data }) => data)
+      .filter(data => data.length > 0)
+    const combinedMonthlyStats = calculateCombinedMonthlyStats(historicalData, combineStatistic, hasMultipleYears ? combineError : null)
 
     if (showCombined) {
       // Calculate projected monthly amounts as the difference between projected and actual
@@ -314,9 +327,8 @@ export const buildBarChartData = ({
 
     // Non-combined: each year gets separate bars for each month
     // Filter historicalDataRaw by years present in processedHistoricalData (respects year filtering)
-    const selectedYears = new Set(processedHistoricalData.map(({ year }) => year))
     const individualMonthly = historicalDataRaw
-      .filter(({ year }) => selectedYears.has(year))
+      .filter(({ year }) => selectedYearsMonth.has(year))
       .map(({ year, data }) => ({
         year,
         months: getMonthlyTotals(data)
@@ -397,12 +409,12 @@ export const buildBarChartTraces = (
             width: 3
           } : undefined,
           hovertemplate: isNormalized
-            ? combineError 
-              ? `%{x}<br>${labelSuffix}: %{y:.1f}%<br>±%{error_y.array:.1f}% (${errorLabel})<extra></extra>`
-              : `%{x}<br>${labelSuffix}: %{y:.1f}%<extra></extra>`
+            ? combineError
+              ? `Historical ${labelSuffix}: %{y:.1f}% ± %{error_y.array:.1f}% (${errorLabel})<extra></extra>`
+              : `Historical ${labelSuffix}: %{y:.1f}%<extra></extra>`
             : combineError
-              ? `%{x}<br>${labelSuffix}: $%{y:,}<br>±$%{error_y.array:,} (${errorLabel})<extra></extra>`
-              : `%{x}<br>${labelSuffix}: $%{y:,}<extra></extra>`
+              ? `Historical ${labelSuffix}: $%{y:,.0f} ± $%{error_y.array:,.0f} (${errorLabel})<extra></extra>`
+              : `Historical ${labelSuffix}: $%{y:,.0f}<extra></extra>`
         }
       ] : []),
       // Current Year Data (2025)
@@ -413,7 +425,9 @@ export const buildBarChartTraces = (
         name: '2025 Actual',
         offsetgroup: timeframe === 'year' ? undefined : '2025', // Group with 2025 projected
         marker: { color: CURRENT_YEAR_COLOR, opacity: 0.9 },
-        hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
+        hovertemplate: isNormalized
+          ? (timeframe === 'year' ? '%{x}: %{y:.1f}%<extra></extra>' : '2025 %{x}: %{y:.1f}%<extra></extra>')
+          : (timeframe === 'year' ? '%{x}: $%{y:,.0f}<extra></extra>' : '2025 %{x}: $%{y:,.0f}<extra></extra>')
       }] : []),
       // Projected Data (stacked on top of current)
       ...(barChartData.projected.length > 0 ? [{
@@ -429,7 +443,9 @@ export const buildBarChartTraces = (
           color: PROJECTED_BAR_STYLE.color,
           pattern: PROJECTED_BAR_STYLE.pattern
         },
-        hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
+        hovertemplate: isNormalized
+          ? (timeframe === 'year' ? '%{x} Projected: %{y:.1f}%<extra></extra>' : '2025 %{x} Projected: %{y:.1f}%<extra></extra>')
+          : (timeframe === 'year' ? '%{x} Projected: $%{y:,.0f}<extra></extra>' : '2025 %{x} Projected: $%{y:,.0f}<extra></extra>')
       }] : [])
     ]
   } else {
@@ -448,7 +464,7 @@ export const buildBarChartTraces = (
             type: 'bar' as const,
             name: item.year,
             marker: { color: HISTORICAL_COLORS[colorIndex], opacity: 0.8 },
-            hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
+            hovertemplate: isNormalized ? '%{x}: %{y:.1f}%<extra></extra>' : '%{x}: $%{y:,.0f}<extra></extra>'
           })
         }
       })
@@ -463,7 +479,7 @@ export const buildBarChartTraces = (
           name: '2025 Actual',
           offsetgroup: '2025', // Group with 2025 projected
           marker: { color: CURRENT_YEAR_COLOR, opacity: 0.9 },
-          hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
+          hovertemplate: isNormalized ? '%{x}: %{y:.1f}%<extra></extra>' : '%{x}: $%{y:,.0f}<extra></extra>'
         })
       }
 
@@ -480,7 +496,7 @@ export const buildBarChartTraces = (
             color: PROJECTED_BAR_STYLE.color,
             pattern: PROJECTED_BAR_STYLE.pattern
           },
-          hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
+          hovertemplate: isNormalized ? '%{x} Projected: %{y:.1f}%<extra></extra>' : '%{x} Projected: $%{y:,.0f}<extra></extra>'
         })
       }
     }
@@ -512,7 +528,7 @@ export const buildBarChartTraces = (
               color: yearData.year === '2025' ? CURRENT_YEAR_COLOR : HISTORICAL_COLORS[colorIndex],
               opacity: 0.8
             },
-            hovertemplate: isNormalized ? `${yearData.year} %{x}<br>%{y:.1f}%<extra></extra>` : `${yearData.year} %{x}<br>$%{y:,}<extra></extra>`
+            hovertemplate: isNormalized ? `${yearData.year} %{x}: %{y:.1f}%<extra></extra>` : `${yearData.year} %{x}: $%{y:,.0f}<extra></extra>`
           })
         }
       })
@@ -555,7 +571,7 @@ export const buildBarChartTraces = (
             color: PROJECTED_BAR_STYLE.color,
             pattern: PROJECTED_BAR_STYLE.pattern
           },
-          hovertemplate: isNormalized ? `2025 Projected %{x}<br>%{y:.1f}%<extra></extra>` : `2025 Projected %{x}<br>$%{y:,}<extra></extra>`
+          hovertemplate: isNormalized ? `2025 Projected %{x}: %{y:.1f}%<extra></extra>` : `2025 Projected %{x}: $%{y:,.0f}<extra></extra>`
         })
       }
     }

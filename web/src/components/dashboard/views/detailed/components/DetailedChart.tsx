@@ -419,7 +419,7 @@ export default function DetailedChart({
       combineStatistic: combineStatistic,
       combineError: combineError
     })
-  }, [timeframe, processedHistoricalData, showCombined, chartMode, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, currentPeriod, showAllMonths, projectedIncomeDataForBars, combineStatistic, combineError])
+  }, [timeframe, processedHistoricalData, showCombined, chartMode, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, currentPeriod, showAllMonths, projectedIncomeDataForBars, combineStatistic, combineError, selectedYears])
 
 
   // Site-specific bar chart data processing
@@ -490,7 +490,7 @@ export default function DetailedChart({
   }, [
     chartMode, incomeMode, showCombined, combinedStats, processedHistoricalData,
     processedCurrentData, projectedIncomeData, isNormalized, is2025Visible, timeframe, currentPeriod, fy2025, smoothing,
-    combineStatistic, combineError, visibleSites, colorScheme
+    combineStatistic, combineError, visibleSites, selectedYears, colorScheme
   ])
 
   // Create animated pulsing traces (separate from static traces)
@@ -542,12 +542,13 @@ export default function DetailedChart({
       incomeMode,
       selectedYears,
       combineStatistic,
-      combineError
+      combineError,
+      visibleSites
     })
   }, [
     chartMode, timeframe, showCombined, isNormalized, processedCurrentData,
     is2025Visible, staticLineTraces, currentX, currentY, currentPeriod, incomeMode, selectedYears,
-    combineStatistic, combineError
+    combineStatistic, combineError, visibleSites
   ])
 
   // Check if we have any data to display
@@ -595,7 +596,7 @@ export default function DetailedChart({
                 combineError,
                 colorScheme
               )) as any}
-        layout={chartMode === 'proportion' ? buildProportionLayout(isMobile, selectedYears) : (chartLayout || {}) as any}
+        layout={chartMode === 'proportion' ? buildProportionLayout(isMobile, selectedYears, proportionData, visibleSites) : (chartLayout || {}) as any}
         config={{
           responsive: true,
           displayModeBar: false,

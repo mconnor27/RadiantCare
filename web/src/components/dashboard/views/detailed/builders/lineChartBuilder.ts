@@ -61,10 +61,23 @@ export const buildStaticLineTraces = ({
     const combinedMeanY = smoothedMean.map(p => p.cumulativeIncome)
     const combinedUpperY = smoothedUpper.map(p => p.cumulativeIncome)
     const combinedLowerY = smoothedLower.map(p => p.cumulativeIncome)
-    
+
+    // Create custom text for hover to preserve Mon-D format
+    const hoverText = smoothedMean.map((p: YTDPoint) => {
+      const [month, day] = p.monthDay.split('-')
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      const monthName = monthNames[parseInt(month) - 1]
+      return `${monthName}-${parseInt(day)}`
+    })
+
     const labelSuffix = combineStatistic === 'median' ? 'Median' : 'Mean'
     const errorLabel = combineError === 'ci' ? '95% CI' : combineError === 'std' ? 'Std Dev' : ''
-    
+
+    // Calculate error margins for customdata if needed
+    const errorMargins = combineError
+      ? combinedMeanY.map((mean, i) => Math.abs(combinedUpperY[i] - mean))
+      : []
+
     // Only add error bands if combineError is not null
     if (combineError) {
       traces.push(
@@ -94,16 +107,27 @@ export const buildStaticLineTraces = ({
         }
       )
     }
-    
+
     // Mean/Median line (always shown when showCombined is true)
+    const errorSymbol = combineError === 'std' ? '(\u03C3)' : '' // σ symbol in parentheses
+    const errorLabelForHover = combineError === 'ci' ? '(95% CI)' : errorSymbol
+
     traces.push({
       x: combinedMeanX,
       y: combinedMeanY,
+      text: hoverText,
+      customdata: combineError ? errorMargins : undefined,
       type: 'scatter' as const,
       mode: 'lines' as const,
       name: `Historical ${labelSuffix} (2016-2024)`,
       line: { color: HISTORICAL_COLORS[Math.floor(HISTORICAL_COLORS.length / 2)], width: 3 },
-      hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
+      hovertemplate: combineError
+        ? (isNormalized
+            ? `Historical ${labelSuffix} %{text}<br>%{y:.1f}% ± %{customdata:.1f}% ${errorLabelForHover}<extra></extra>`
+            : `Historical ${labelSuffix} %{text}<br>$%{y:,.0f} ± $%{customdata:,.0f} ${errorLabelForHover}<extra></extra>`)
+        : (isNormalized
+            ? `Historical ${labelSuffix} %{text}<br>%{y:.1f}%<extra></extra>`
+            : `Historical ${labelSuffix} %{text}<br>$%{y:,.0f}<extra></extra>`)
     })
   }
   
@@ -118,17 +142,27 @@ export const buildStaticLineTraces = ({
         const smoothedData = applySmoothingToYTDData(sortedData, smoothing)
         const xData = smoothedData.map((p: YTDPoint) => p.monthDay)
         const yData = smoothedData.map((p: YTDPoint) => p.cumulativeIncome)
+        // Create custom text for hover to preserve Mon-D format
+        const hoverText = smoothedData.map((p: YTDPoint) => {
+          const [month, day] = p.monthDay.split('-')
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+          const monthName = monthNames[parseInt(month) - 1]
+          return `${monthName}-${parseInt(day)}`
+        })
 
         // Reverse index so 2024 (last in array) gets darkest color
         const colorIndex = (HISTORICAL_COLORS.length - 1 - index) % HISTORICAL_COLORS.length
         traces.push({
           x: xData,
           y: yData,
+          text: hoverText,
           type: 'scatter' as const,
           mode: 'lines' as const,
           name: `${year} Therapy Income`,
           line: { color: HISTORICAL_COLORS[colorIndex], width: lineWidth },
-          hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
+          hovertemplate: isNormalized
+            ? `${year} %{text}: %{y:.1f}%<extra></extra>`
+            : `${year} %{text}: $%{y:,.0f}<extra></extra>`
         })
       }
     })
@@ -139,16 +173,26 @@ export const buildStaticLineTraces = ({
     const smoothedCurrentData = applySmoothingToYTDData(processedCurrentData, smoothing)
     const currentX = smoothedCurrentData.map(p => p.monthDay)
     const currentY = smoothedCurrentData.map(p => p.cumulativeIncome)
-    
+    // Create custom text for hover to preserve Mon-D format
+    const currentHoverText = smoothedCurrentData.map((p: YTDPoint) => {
+      const [month, day] = p.monthDay.split('-')
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      const monthName = monthNames[parseInt(month) - 1]
+      return `${monthName}-${parseInt(day)}`
+    })
+
     traces.push({
       x: currentX,
       y: currentY,
+      text: currentHoverText,
       type: 'scatter' as const,
       mode: 'lines' as const,
       name: '2025 Therapy Income',
       line: { color: CURRENT_YEAR_COLOR, width: 4 },
       visible: (is2025Visible ? true : 'legendonly') as boolean | 'legendonly',
-      hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
+      hovertemplate: isNormalized
+        ? '2025 %{text}: %{y:.1f}%<extra></extra>'
+        : '2025 %{text}: $%{y:,.0f}<extra></extra>'
     })
   }
 
@@ -157,20 +201,30 @@ export const buildStaticLineTraces = ({
     // Do NOT smooth projection curves - they should remain as straight lines
     const projectedX = projectedIncomeData.map(p => p.monthDay)
     const projectedY = projectedIncomeData.map(p => p.cumulativeIncome)
-    
+    // Create custom text for hover to preserve Mon-D format
+    const projectedHoverText = projectedIncomeData.map((p: YTDPoint) => {
+      const [month, day] = p.monthDay.split('-')
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      const monthName = monthNames[parseInt(month) - 1]
+      return `${monthName}-${parseInt(day)}`
+    })
+
     traces.push({
       x: projectedX,
       y: projectedY,
+      text: projectedHoverText,
       type: 'scatter' as const,
       mode: 'lines' as const,
       name: '2025 Total Income Projection',
-      line: { 
+      line: {
         color: CURRENT_YEAR_COLOR, // Red color (ggplot2 default)
         width: 3,
         dash: 'dot' // Dotted line
       },
       visible: (is2025Visible ? true : 'legendonly') as boolean | 'legendonly',
-      hovertemplate: isNormalized ? '%{x}<br>%{y:.1f}%<extra></extra>' : '%{x}<br>$%{y:,}<extra></extra>'
+      hovertemplate: isNormalized
+        ? '2025 Projected %{text}: %{y:.1f}%<extra></extra>'
+        : '2025 Projected %{text}: $%{y:,.0f}<extra></extra>'
     })
   }
   

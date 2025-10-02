@@ -62,7 +62,10 @@ export const buildSiteBarChartData = ({
   const filteredHistoricalData = processedHistoricalData.filter(({ year }) =>
     selectedYears.includes(parseInt(year))
   )
-  
+
+  // If only one historical year is selected, disable error bars
+  const hasMultipleYears = filteredHistoricalData.length > 1
+
   if (timeframe === 'year') {
     // Year mode: each year is an x-axis tick with 3 stacked bars per site
     const actualData2025 = data.filter(p => p.date !== 'Total')
@@ -114,13 +117,14 @@ export const buildSiteBarChartData = ({
       }
       
       const calculateStats = (values: number[]) => {
-        const center = combineStatistic === 'median' 
+        const center = combineStatistic === 'median'
           ? calculateMedian(values)
           : values.reduce((sum, val) => sum + val, 0) / values.length
         const mean = values.reduce((sum, val) => sum + val, 0) / values.length
         const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length
         const stdDev = Math.sqrt(variance)
-        const error = combineError === 'ci' ? 1.96 * stdDev : stdDev
+        // Disable error bars if only one year is selected
+        const error = hasMultipleYears && combineError === 'ci' ? 1.96 * stdDev : hasMultipleYears && combineError === 'std' ? stdDev : 0
         return { center, error }
       }
       
@@ -179,7 +183,7 @@ export const buildSiteBarChartData = ({
       { year: '2023', data: historical2023Data },
       { year: '2024', data: historical2024Data }
     ].filter(({ year }) => selectedYears.includes(parseInt(year)))
-    
+
     if (showCombined) {
       // For combined mode: calculate quarterly statistics across all years for each site using REAL SITE DATA
       const quarters = ['Q1', 'Q2', 'Q3', 'Q4'] as const
@@ -189,7 +193,7 @@ export const buildSiteBarChartData = ({
           const yearQuarters = getSiteQuarterTotals(year)
           return yearQuarters.find(q => q.quarter === quarter)?.sites || { lacey: 0, centralia: 0, aberdeen: 0 }
         })
-        
+
         // Calculate center statistic and error for each site
         const calculateMedian = (values: number[]): number => {
           if (values.length === 0) return 0
@@ -197,15 +201,16 @@ export const buildSiteBarChartData = ({
           const mid = Math.floor(sorted.length / 2)
           return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
         }
-        
+
         const calculateStats = (values: number[]) => {
-          const center = combineStatistic === 'median' 
+          const center = combineStatistic === 'median'
             ? calculateMedian(values)
             : values.reduce((sum, val) => sum + val, 0) / values.length
           const mean = values.reduce((sum, val) => sum + val, 0) / values.length
           const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length
           const stdDev = Math.sqrt(variance)
-          const error = combineError === 'ci' ? 1.96 * stdDev : stdDev
+          // Disable error bars if only one year is selected
+          const error = hasMultipleYears && combineError === 'ci' ? 1.96 * stdDev : hasMultipleYears && combineError === 'std' ? stdDev : 0
           return { center, error }
         }
         
@@ -404,8 +409,8 @@ export const buildSiteBarChartData = ({
       { year: '2023', data: historical2023Data },
       { year: '2024', data: historical2024Data }
     ].filter(({ year }) => selectedYears.includes(parseInt(year)))
-    
-    
+
+
     if (showCombined) {
       // For combined mode: calculate monthly statistics across all years for each site using REAL SITE DATA
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -415,7 +420,7 @@ export const buildSiteBarChartData = ({
           const yearMonths = getSiteMonthTotals(year)
           return yearMonths.find(m => m.month === month)?.sites || { lacey: 0, centralia: 0, aberdeen: 0 }
         })
-        
+
         // Calculate center statistic and error for each site
         const calculateMedian = (values: number[]): number => {
           if (values.length === 0) return 0
@@ -423,15 +428,16 @@ export const buildSiteBarChartData = ({
           const mid = Math.floor(sorted.length / 2)
           return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
         }
-        
+
         const calculateStats = (values: number[]) => {
-          const center = combineStatistic === 'median' 
+          const center = combineStatistic === 'median'
             ? calculateMedian(values)
             : values.reduce((sum, val) => sum + val, 0) / values.length
           const mean = values.reduce((sum, val) => sum + val, 0) / values.length
           const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length
           const stdDev = Math.sqrt(variance)
-          const error = combineError === 'ci' ? 1.96 * stdDev : stdDev
+          // Disable error bars if only one year is selected
+          const error = hasMultipleYears && combineError === 'ci' ? 1.96 * stdDev : hasMultipleYears && combineError === 'std' ? stdDev : 0
           return { center, error }
         }
         
@@ -718,11 +724,11 @@ export const buildSiteBarChartTraces = (
             } : undefined,
             hovertemplate: isNormalized
               ? combineError
-                ? `${site} Historical ${labelSuffix}<br>%{x}: %{y:.1f}%<br>±%{error_y.array:.1f}% (${errorLabel})<extra></extra>`
+                ? `${site} Historical ${labelSuffix}<br>%{x}: %{y:.1f}% ± %{error_y.array:.1f}% (${errorLabel})<extra></extra>`
                 : `${site} Historical ${labelSuffix}<br>%{x}: %{y:.1f}%<extra></extra>`
               : combineError
-                ? `${site} Historical ${labelSuffix}<br>%{x}: $%{y:,}<br>±$%{error_y.array:,} (${errorLabel})<extra></extra>`
-                : `${site} Historical ${labelSuffix}<br>%{x}: $%{y:,}<extra></extra>`
+                ? `${site} Historical ${labelSuffix}<br>%{x}: $%{y:,.0f} ± $%{error_y.array:,.0f} (${errorLabel})<extra></extra>`
+                : `${site} Historical ${labelSuffix}<br>%{x}: $%{y:,.0f}<extra></extra>`
           })
         }
       })
@@ -756,7 +762,7 @@ export const buildSiteBarChartTraces = (
             },
             hovertemplate: isNormalized
               ? `${site} 2025 Actual<br>%{x}: %{y:.1f}%<extra></extra>`
-              : `${site} 2025 Actual<br>%{x}: $%{y:,}<extra></extra>`
+              : `${site} 2025 Actual<br>%{x}: $%{y:,.0f}<extra></extra>`
           })
         }
         
@@ -788,7 +794,7 @@ export const buildSiteBarChartTraces = (
               },
               hovertemplate: isNormalized
                 ? `${site} 2025 Projected<br>%{x}: %{y:.1f}%<extra></extra>`
-                : `${site} 2025 Projected<br>%{x}: $%{y:,}<extra></extra>`
+                : `${site} 2025 Projected<br>%{x}: $%{y:,.0f}<extra></extra>`
             })
           }
         }
@@ -828,7 +834,7 @@ export const buildSiteBarChartTraces = (
               },
               hovertemplate: isNormalized
                 ? `${site} ${yearData.year}<br>%{x}: %{y:.1f}%<extra></extra>`
-                : `${site} ${yearData.year}<br>%{x}: $%{y:,}<extra></extra>`
+                : `${site} ${yearData.year}<br>%{x}: $%{y:,.0f}<extra></extra>`
             })
           })
         }
@@ -858,7 +864,7 @@ export const buildSiteBarChartTraces = (
             },
             hovertemplate: isNormalized
               ? `${site} 2025 Actual<br>%{x}: %{y:.1f}%<extra></extra>`
-              : `${site} 2025 Actual<br>%{x}: $%{y:,}<extra></extra>`
+              : `${site} 2025 Actual<br>%{x}: $%{y:,.0f}<extra></extra>`
           })
         }
         
@@ -890,7 +896,7 @@ export const buildSiteBarChartTraces = (
                 },
                 hovertemplate: isNormalized
                   ? `${site} 2025 Projected<br>%{x}: %{y:.1f}%<extra></extra>`
-                  : `${site} 2025 Projected<br>%{x}: $%{y:,}<extra></extra>`
+                  : `${site} 2025 Projected<br>%{x}: $%{y:,.0f}<extra></extra>`
               })
             }
           }
@@ -956,13 +962,13 @@ export const buildSiteBarChartTraces = (
               thickness: 2,
               width: 3
             } : undefined,
-            hovertemplate: isNormalized 
+            hovertemplate: isNormalized
               ? combineError
-                ? `${site} Historical ${labelSuffix}<br>%{x}: %{y:.1f}%<br>±%{error_y.array:.1f}% (${errorLabel})<extra></extra>`
+                ? `${site} Historical ${labelSuffix}<br>%{x}: %{y:.1f}% ± %{error_y.array:.1f}% (${errorLabel})<extra></extra>`
                 : `${site} Historical ${labelSuffix}<br>%{x}: %{y:.1f}%<extra></extra>`
               : combineError
-                ? `${site} Historical ${labelSuffix}<br>%{x}: $%{y:,}<br>±$%{error_y.array:,} (${errorLabel})<extra></extra>`
-                : `${site} Historical ${labelSuffix}<br>%{x}: $%{y:,}<extra></extra>`
+                ? `${site} Historical ${labelSuffix}<br>%{x}: $%{y:,.0f} ± $%{error_y.array:,.0f} (${errorLabel})<extra></extra>`
+                : `${site} Historical ${labelSuffix}<br>%{x}: $%{y:,.0f}<extra></extra>`
           })
         }
       })
@@ -994,7 +1000,7 @@ export const buildSiteBarChartTraces = (
             },
             hovertemplate: isNormalized
               ? `${site} 2025 Actual<br>%{x}: %{y:.1f}%<extra></extra>`
-              : `${site} 2025 Actual<br>%{x}: $%{y:,}<extra></extra>`
+              : `${site} 2025 Actual<br>%{x}: $%{y:,.0f}<extra></extra>`
           })
         }
         
@@ -1024,7 +1030,7 @@ export const buildSiteBarChartTraces = (
               },
               hovertemplate: isNormalized
                 ? `${site} 2025 Projected<br>%{x}: %{y:.1f}%<extra></extra>`
-                : `${site} 2025 Projected<br>%{x}: $%{y:,}<extra></extra>`
+                : `${site} 2025 Projected<br>%{x}: $%{y:,.0f}<extra></extra>`
             })
           }
         }
@@ -1062,7 +1068,7 @@ export const buildSiteBarChartTraces = (
               },
               hovertemplate: isNormalized
                 ? `${site} ${yearData.year}<br>%{x}: %{y:.1f}%<extra></extra>`
-                : `${site} ${yearData.year}<br>%{x}: $%{y:,}<extra></extra>`
+                : `${site} ${yearData.year}<br>%{x}: $%{y:,.0f}<extra></extra>`
             })
           })
         }
@@ -1093,7 +1099,7 @@ export const buildSiteBarChartTraces = (
             },
             hovertemplate: isNormalized
               ? `${site} 2025 Actual<br>%{x}: %{y:.1f}%<extra></extra>`
-              : `${site} 2025 Actual<br>%{x}: $%{y:,}<extra></extra>`
+              : `${site} 2025 Actual<br>%{x}: $%{y:,.0f}<extra></extra>`
           })
         }
         
@@ -1122,7 +1128,7 @@ export const buildSiteBarChartTraces = (
                 },
                 hovertemplate: isNormalized
                   ? `${site} 2025 Projected<br>%{x}: %{y:.1f}%<extra></extra>`
-                  : `${site} 2025 Projected<br>%{x}: $%{y:,}<extra></extra>`
+                  : `${site} 2025 Projected<br>%{x}: $%{y:,.0f}<extra></extra>`
               })
             }
           }
@@ -1166,13 +1172,13 @@ export const buildSiteBarChartTraces = (
               thickness: 2,
               width: 3
             } : undefined,
-            hovertemplate: isNormalized 
+            hovertemplate: isNormalized
               ? combineError
-                ? `${site} Historical<br>%{y:.1f}%<br>±%{error_y.array:.1f}% (${errorLabel})<extra></extra>`
-                : `${site} Historical<br>%{y:.1f}%<extra></extra>`
+                ? `${site} Historical ${labelSuffix}<br>%{y:.1f}% ± %{error_y.array:.1f}% (${errorLabel})<extra></extra>`
+                : `${site} Historical ${labelSuffix}<br>%{y:.1f}%<extra></extra>`
               : combineError
-                ? `${site} Historical<br>$%{y:,}<br>±$%{error_y.array:,} (${errorLabel})<extra></extra>`
-                : `${site} Historical<br>$%{y:,}<extra></extra>`
+                ? `${site} Historical ${labelSuffix}<br>$%{y:,.0f} ± $%{error_y.array:,.0f} (${errorLabel})<extra></extra>`
+                : `${site} Historical ${labelSuffix}<br>$%{y:,.0f}<extra></extra>`
           })
         }
       }
@@ -1195,7 +1201,7 @@ export const buildSiteBarChartTraces = (
             },
             hovertemplate: isNormalized
               ? `${site} 2025 Actual<br>%{y:.1f}%<extra></extra>`
-              : `${site} 2025 Actual<br>$%{y:,}<extra></extra>`
+              : `${site} 2025 Actual<br>$%{y:,.0f}<extra></extra>`
           })
         }
       }
@@ -1220,7 +1226,7 @@ export const buildSiteBarChartTraces = (
             },
             hovertemplate: isNormalized
               ? `${site} 2025 Projected<br>%{y:.1f}%<extra></extra>`
-              : `${site} 2025 Projected<br>$%{y:,}<extra></extra>`
+              : `${site} 2025 Projected<br>$%{y:,.0f}<extra></extra>`
           })
         }
       }
@@ -1261,7 +1267,7 @@ export const buildSiteBarChartTraces = (
           },
           hovertemplate: isNormalized
             ? `${site} %{x}<br>%{y:.1f}%<extra></extra>`
-            : `${site} %{x}<br>$%{y:,}<extra></extra>`
+            : `${site} %{x}<br>$%{y:,.0f}<extra></extra>`
         })
       }
       
@@ -1284,7 +1290,7 @@ export const buildSiteBarChartTraces = (
           },
           hovertemplate: isNormalized
             ? `${site} 2025 Actual<br>%{y:.1f}%<extra></extra>`
-            : `${site} 2025 Actual<br>$%{y:,}<extra></extra>`
+            : `${site} 2025 Actual<br>$%{y:,.0f}<extra></extra>`
         })
       }
       
@@ -1306,7 +1312,7 @@ export const buildSiteBarChartTraces = (
             },
             hovertemplate: isNormalized
               ? `${site} 2025 Projected<br>%{y:.1f}%<extra></extra>`
-              : `${site} 2025 Projected<br>$%{y:,}<extra></extra>`
+              : `${site} 2025 Projected<br>$%{y:,.0f}<extra></extra>`
           })
         }
       }

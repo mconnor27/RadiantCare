@@ -1,10 +1,11 @@
 {
     "Header": {
-     "Time": "2025-09-24T14:39:07-07:00",
+     "Time": "2025-10-01T13:26:36-07:00",
      "ReportName": "BalanceSheet",
+     "DateMacro": "this calendar year",
      "ReportBasis": "Cash",
      "StartPeriod": "2025-01-01",
-     "EndPeriod": "2025-08-31",
+     "EndPeriod": "2025-12-31",
      "SummarizeColumnsBy": "Total",
      "Currency": "USD",
      "Option": [
@@ -104,7 +105,7 @@
                      "id": "172"
                     },
                     {
-                     "value": "-35733.39"
+                     "value": "-28127.34"
                     }
                    ],
                    "type": "Data"
@@ -116,7 +117,7 @@
                      "id": "173"
                     },
                     {
-                     "value": "219861.29"
+                     "value": "239353.24"
                     }
                    ],
                    "type": "Data"
@@ -128,7 +129,7 @@
                      "id": "370"
                     },
                     {
-                     "value": "47883.75"
+                     "value": "57292.32"
                     }
                    ],
                    "type": "Data"
@@ -201,7 +202,7 @@
                    "value": "Total 1000 Cash"
                   },
                   {
-                   "value": "232371.65"
+                   "value": "268878.22"
                   }
                  ]
                 },
@@ -215,7 +216,7 @@
                 "value": "Total Bank Accounts"
                },
                {
-                "value": "232371.65"
+                "value": "268878.22"
                }
               ]
              },
@@ -446,7 +447,7 @@
              "value": "Total Current Assets"
             },
             {
-             "value": "232371.65"
+             "value": "268878.22"
             }
            ]
           },
@@ -661,7 +662,7 @@
           "value": "TOTAL ASSETS"
          },
          {
-          "value": "232371.65"
+          "value": "268878.22"
          }
         ]
        },
@@ -767,7 +768,7 @@
                      "id": "365"
                     },
                     {
-                     "value": "2925.42"
+                     "value": "160.13"
                     }
                    ],
                    "type": "Data"
@@ -780,7 +781,7 @@
                    "value": "Total Credit Cards"
                   },
                   {
-                   "value": "2925.42"
+                   "value": "160.13"
                   }
                  ]
                 },
@@ -819,7 +820,7 @@
                      "id": "42"
                     },
                     {
-                     "value": "-2000.00"
+                     "value": "-4000.00"
                     }
                    ],
                    "type": "Data"
@@ -831,7 +832,7 @@
                      "id": "181"
                     },
                     {
-                     "value": "-4541.66"
+                     "value": "-9083.32"
                     }
                    ],
                    "type": "Data"
@@ -916,7 +917,7 @@
                    "value": "Total Other Current Liabilities"
                   },
                   {
-                   "value": "77958.38"
+                   "value": "71416.72"
                   }
                  ]
                 },
@@ -931,7 +932,7 @@
                 "value": "Total Current Liabilities"
                },
                {
-                "value": "80883.80"
+                "value": "71576.85"
                }
               ]
              },
@@ -1146,7 +1147,7 @@
              "value": "Total Liabilities"
             },
             {
-             "value": "80883.80"
+             "value": "71576.85"
             }
            ]
           },
@@ -1337,7 +1338,7 @@
                      "id": "375"
                     },
                     {
-                     "value": "-412783.00"
+                     "value": "-461283.00"
                     }
                    ],
                    "type": "Data"
@@ -1349,7 +1350,7 @@
                      "id": "376"
                     },
                     {
-                     "value": "-20992.50"
+                     "value": "-23625.00"
                     }
                    ],
                    "type": "Data"
@@ -1365,6 +1366,18 @@
                     }
                    ],
                    "type": "Data"
+                  },
+                  {
+                   "ColData": [
+                    {
+                     "value": "3226 HSA Contribution - Connor",
+                     "id": "380"
+                    },
+                    {
+                     "value": "-1925.00"
+                    }
+                   ],
+                   "type": "Data"
                   }
                  ]
                 },
@@ -1374,7 +1387,7 @@
                    "value": "Total 3200 Dr. Connor"
                   },
                   {
-                   "value": "-440775.50"
+                   "value": "-493833.00"
                   }
                  ]
                 },
@@ -1573,7 +1586,7 @@
                      "id": "219"
                     },
                     {
-                     "value": "-515113.00"
+                     "value": "-552613.00"
                     }
                    ],
                    "type": "Data"
@@ -1585,7 +1598,7 @@
                      "id": "296"
                     },
                     {
-                     "value": "-29295.00"
+                     "value": "-31927.50"
                     }
                    ],
                    "type": "Data"
@@ -1621,7 +1634,7 @@
                      "id": "222"
                     },
                     {
-                     "value": "-25335.05"
+                     "value": "-28557.87"
                     }
                    ],
                    "type": "Data"
@@ -1658,7 +1671,7 @@
                    "value": "Total 3700 Dr. Allen"
                   },
                   {
-                   "value": "-433707.49"
+                   "value": "-477062.81"
                   }
                  ]
                 },
@@ -1709,7 +1722,7 @@
                      "id": "356"
                     },
                     {
-                     "value": "-584214.00"
+                     "value": "-630414.00"
                     }
                    ],
                    "type": "Data"
@@ -1721,7 +1734,7 @@
                      "id": "357"
                     },
                     {
-                     "value": "-50812.50"
+                     "value": "-56187.50"
                     }
                    ],
                    "type": "Data"
@@ -1745,7 +1758,7 @@
                      "id": "360"
                     },
                     {
-                     "value": "-21670.06"
+                     "value": "-24405.15"
                     }
                    ],
                    "type": "Data"
@@ -1770,7 +1783,7 @@
                    "value": "Total 3900 Dr Suszko"
                   },
                   {
-                   "value": "-509059.82"
+                   "value": "-563369.91"
                   }
                  ]
                 },
@@ -1784,7 +1797,7 @@
                 "value": "Total 3001 Member's Equity"
                },
                {
-                "value": "-1383542.81"
+                "value": "-1534265.72"
                }
               ]
              },
@@ -1832,7 +1845,7 @@
                "value": "Net Income"
               },
               {
-               "value": "1535030.66"
+               "value": "1731567.09"
               }
              ],
              "type": "Data",
@@ -1846,7 +1859,7 @@
              "value": "Total Equity"
             },
             {
-             "value": "151487.85"
+             "value": "197301.37"
             }
            ]
           },
@@ -1861,7 +1874,7 @@
           "value": "TOTAL LIABILITIES AND EQUITY"
          },
          {
-          "value": "232371.65"
+          "value": "268878.22"
          }
         ]
        },

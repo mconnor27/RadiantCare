@@ -159,7 +159,9 @@ export function buildProportionTraces(
     return visibleSites ? visibleSites[siteKey] : true
   }
 
-  const xLabels = data.map(d => `${d.year}-${String(d.month).padStart(2, '0')}`)
+  // Format dates as "Mon YYYY" (e.g., "Jan 2024")
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const xLabels = data.map(d => `${monthNames[d.month - 1]} ${d.year}`)
 
   // Apply moving average smoothing to the percentage data
   const rawLaceyPercentages = data.map(d => d.laceyPercent)
@@ -188,7 +190,7 @@ export function buildProportionTraces(
       stackgroup: 'one',
       visible: isSiteVisible('lacey'),
       opacity: isSiteVisible('lacey') ? 1 : 0.2,
-      hovertemplate: 'Lacey: %{y:.1f}%<br>%{x}<extra></extra>'
+      hovertemplate: 'Lacey: %{y:.1f}%<extra></extra>'
     },
     {
       x: xLabels,
@@ -206,7 +208,7 @@ export function buildProportionTraces(
       stackgroup: 'one',
       visible: isSiteVisible('centralia'),
       opacity: isSiteVisible('centralia') ? 1 : 0.2,
-      hovertemplate: 'Centralia: %{y:.1f}%<br>%{x}<extra></extra>'
+      hovertemplate: 'Centralia: %{y:.1f}%<extra></extra>'
     },
     {
       x: xLabels,
@@ -224,7 +226,7 @@ export function buildProportionTraces(
       stackgroup: 'one',
       visible: isSiteVisible('aberdeen'),
       opacity: isSiteVisible('aberdeen') ? 1 : 0.2,
-      hovertemplate: 'Aberdeen: %{y:.1f}%<br>%{x}<extra></extra>'
+      hovertemplate: 'Aberdeen: %{y:.1f}%<extra></extra>'
     },
     // Invisible trace to activate the secondary y-axis
     {
@@ -241,7 +243,12 @@ export function buildProportionTraces(
 }
 
 // Layout for stacked area proportions
-export function buildProportionLayout(isMobile: boolean = false, selectedYears: number[] = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]) {
+export function buildProportionLayout(
+  isMobile: boolean = false,
+  selectedYears: number[] = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024],
+  data: MonthlyProportionData[] = [],
+  visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean }
+) {
   // Determine if we have historical years selected (any year before 2025)
   const hasHistoricalYears = selectedYears.some(year => year < 2025)
 
@@ -258,6 +265,92 @@ export function buildProportionLayout(isMobile: boolean = false, selectedYears: 
     ? `Monthly Income Proportions by Site (${startYear}–Present)`
     : 'Monthly Income Proportions by Site (YTD)'
 
+  // Calculate overall percentages and ranges for each site across the whole period
+  const annotations: any[] = []
+
+  if (data.length > 0) {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+    // Find center x position (middle of the data range)
+    const centerIndex = Math.floor(data.length / 2)
+    const centerX = `${monthNames[data[centerIndex].month - 1]} ${data[centerIndex].year}`
+
+    // Calculate statistics for each site
+    const laceyPercents = data.map(d => d.laceyPercent)
+    const centraliaPercents = data.map(d => d.centraliaPercent)
+    const aberdeenPercents = data.map(d => d.aberdeenPercent)
+
+    const laceyAvg = laceyPercents.reduce((a, b) => a + b, 0) / laceyPercents.length
+    const centraliaAvg = centraliaPercents.reduce((a, b) => a + b, 0) / centraliaPercents.length
+    const aberdeenAvg = aberdeenPercents.reduce((a, b) => a + b, 0) / aberdeenPercents.length
+
+    const laceyMin = Math.min(...laceyPercents)
+    const laceyMax = Math.max(...laceyPercents)
+    const centraliaMin = Math.min(...centraliaPercents)
+    const centraliaMax = Math.max(...centraliaPercents)
+    const aberdeenMin = Math.min(...aberdeenPercents)
+    const aberdeenMax = Math.max(...aberdeenPercents)
+
+    // Helper to check if a site is visible
+    const isSiteVisible = (site: 'lacey' | 'centralia' | 'aberdeen') => {
+      return visibleSites ? visibleSites[site] : true
+    }
+
+    // Aberdeen annotation (bottom, stacked from 0)
+    if (isSiteVisible('aberdeen')) {
+      const aberdeenY = aberdeenAvg / 2
+      annotations.push({
+        x: centerX,
+        y: aberdeenY,
+        text: `Aberdeen: ${aberdeenAvg.toFixed(1)}% (${aberdeenMin.toFixed(1)}-${aberdeenMax.toFixed(1)}%)`,
+        showarrow: false,
+        font: { size: 11, color: 'black' },
+        bgcolor: 'rgba(255, 255, 255, 0.9)',
+        bordercolor: '#ccc',
+        borderwidth: 1,
+        borderpad: 4,
+        xanchor: 'center',
+        yanchor: 'middle'
+      })
+    }
+
+    // Centralia annotation (middle, stacked on Aberdeen)
+    if (isSiteVisible('centralia')) {
+      const centraliaY = aberdeenAvg + (centraliaAvg / 2)
+      annotations.push({
+        x: centerX,
+        y: centraliaY,
+        text: `Centralia: ${centraliaAvg.toFixed(1)}% (${centraliaMin.toFixed(1)}-${centraliaMax.toFixed(1)}%)`,
+        showarrow: false,
+        font: { size: 11, color: 'black' },
+        bgcolor: 'rgba(255, 255, 255, 0.9)',
+        bordercolor: '#ccc',
+        borderwidth: 1,
+        borderpad: 4,
+        xanchor: 'center',
+        yanchor: 'middle'
+      })
+    }
+
+    // Lacey annotation (top, stacked on Centralia + Aberdeen)
+    if (isSiteVisible('lacey')) {
+      const laceyY = aberdeenAvg + centraliaAvg + (laceyAvg / 2)
+      annotations.push({
+        x: centerX,
+        y: laceyY,
+        text: `Lacey: ${laceyAvg.toFixed(1)}% (${laceyMin.toFixed(1)}-${laceyMax.toFixed(1)}%)`,
+        showarrow: false,
+        font: { size: 11, color: 'black' },
+        bgcolor: 'rgba(255, 255, 255, 0.9)',
+        bordercolor: '#ccc',
+        borderwidth: 1,
+        borderpad: 4,
+        xanchor: 'center',
+        yanchor: 'middle'
+      })
+    }
+  }
+
   return {
     title: {
       text: titleText,
@@ -270,7 +363,7 @@ export function buildProportionLayout(isMobile: boolean = false, selectedYears: 
       gridcolor: 'rgba(0,0,0,0.1)',
       tickangle: -45,
       tickmode: 'array' as const,
-      tickvals: tickYears.map(y => `${y}-01`),
+      tickvals: tickYears.map(y => `Jan ${y}`),
       ticktext: tickYears.map(y => `${y}`)
     },
     yaxis: {
@@ -292,9 +385,15 @@ export function buildProportionLayout(isMobile: boolean = false, selectedYears: 
       overlaying: 'y'
     },
     hovermode: 'x unified' as const,
+    hoverlabel: {
+      bgcolor: 'white',
+      bordercolor: '#ccc',
+      font: { color: 'black' }
+    },
     margin: { l: 60, r: 30, t: 60, b: isMobile ? 80 : 60 },
     plot_bgcolor: 'rgba(0,0,0,0)',
     paper_bgcolor: 'rgba(0,0,0,0)',
-    showlegend: false
+    showlegend: false,
+    annotations: annotations
   }
 }

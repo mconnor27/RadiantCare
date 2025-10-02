@@ -110,6 +110,15 @@ export default function ChartControls({
     }
   }, [chartMode, smoothing, maxSmoothing, setSmoothing, selectedYears])
 
+  // Auto-clear mean/median and error selections when only one year is selected
+  useEffect(() => {
+    if (selectedYears.length <= 1 && (combineStatistic !== null || combineError !== null)) {
+      setCombineStatistic(null)
+      setCombineError(null)
+      setShowCombined(false)
+    }
+  }, [selectedYears, combineStatistic, combineError, setCombineStatistic, setCombineError, setShowCombined])
+
   // Auto-select Month and Per Site when in Projection mode
   useEffect(() => {
     if (chartMode === 'proportion') {
