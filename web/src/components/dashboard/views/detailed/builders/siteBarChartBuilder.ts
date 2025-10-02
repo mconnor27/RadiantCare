@@ -707,7 +707,7 @@ export const buildSiteBarChartTraces = (
             x: quarters,
             y: historicalValues,
             type: 'bar' as const,
-            name: `${site} Historical ${labelSuffix} (2016-2024)`,
+            name: `${site} Historical ${labelSuffix}`,
             offsetgroup: 'historical', // Separate group from 2025 data
             visible: isSiteVisible(siteKey),
             marker: {
@@ -947,7 +947,7 @@ export const buildSiteBarChartTraces = (
             x: months,
             y: percentArray(historicalValues, historicalDenom),
             type: 'bar' as const,
-            name: `${site} Historical ${labelSuffix} (2016-2024)`,
+            name: `${site} Historical ${labelSuffix}`,
             offsetgroup: 'historical', // Separate group from 2025 data
             visible: isSiteVisible(siteKey),
             marker: {
@@ -1155,7 +1155,7 @@ export const buildSiteBarChartTraces = (
           const errorLabel = combineError === 'ci' ? '95% CI' : combineError === 'std' ? 'σ' : ''
           
           traces.push({
-            x: [`Historical ${labelSuffix} (2016-2024)`],
+            x: [`Historical ${labelSuffix}`],
             y: percentArray([historicalData.income || 0], historicalDenom),
             type: 'bar' as const,
             name: `${site} Historical`,

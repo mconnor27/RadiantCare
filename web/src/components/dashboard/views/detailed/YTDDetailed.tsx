@@ -34,10 +34,24 @@ export default function YTDDetailed() {
   const [is2025Visible, setIs2025Visible] = useState(true)
   const [showAllMonths, setShowAllMonths] = useState(true)
   const [incomeMode, setIncomeMode] = useState<IncomeMode>('total')
-  const [smoothing, setSmoothing] = useState(10)
+  const [smoothingByMode, setSmoothingByMode] = useState<{
+    line: number,
+    bar: number,
+    proportion: number
+  }>({
+    line: 10,
+    bar: 0, // Bar charts don't use smoothing
+    proportion: 12 // Default for proportion mode
+  })
   const [selectedYears, setSelectedYears] = useState<number[]>(Array.from({ length: 9 }, (_, i) => 2016 + i)) // Default: all years (2016-2024)
   const [visibleSites, setVisibleSites] = useState<{ lacey: boolean, centralia: boolean, aberdeen: boolean }>({ lacey: true, centralia: true, aberdeen: true })
   const [colorScheme, setColorScheme] = useState<'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'>('gray')
+
+  // Helper functions for mode-specific smoothing
+  const getCurrentSmoothing = () => smoothingByMode[chartMode]
+  const setCurrentSmoothing = (value: number) => {
+    setSmoothingByMode(prev => ({ ...prev, [chartMode]: value }))
+  }
 
   // Parse 2025 data for loading into the chart component
   const historical2025Data = useMemo(() => parseTherapyIncome2025(), [])
@@ -85,7 +99,7 @@ export default function YTDDetailed() {
     }
   }, [timeframe])
 
-  // Auto-adjust smoothing when switching chart modes, but preserve value when possible
+  // Auto-adjust smoothing when switching chart modes
   useEffect(() => {
     // Calculate available months for proportion mode
     const calculateAvailableMonths = () => {
@@ -108,21 +122,24 @@ export default function YTDDetailed() {
       return Math.min(36, totalMonths)
     }
 
+    const currentSmoothing = getCurrentSmoothing()
+
     if (chartMode === 'proportion') {
-      // When entering proportion mode, clamp current smoothing to available months
-      // but don't reset to maximum unless current value exceeds available months
+      // When in proportion mode, clamp smoothing to available months
       const maxSmoothing = calculateAvailableMonths()
-      if (smoothing > maxSmoothing) {
-        setSmoothing(maxSmoothing)
+      if (currentSmoothing > maxSmoothing) {
+        setCurrentSmoothing(maxSmoothing)
       }
-    } else {
-      // When leaving proportion mode, preserve current smoothing value
-      // but ensure it's reasonable (clamp to 10 if it's too high for other modes)
-      if (smoothing > 10) {
-        setSmoothing(10)
+    } else if (chartMode === 'line') {
+      // Line mode: ensure smoothing is reasonable (max 10)
+      if (currentSmoothing > 10) {
+        setCurrentSmoothing(10)
       }
+    } else if (chartMode === 'bar') {
+      // Bar mode: smoothing doesn't apply, but keep at 0
+      setCurrentSmoothing(0)
     }
-  }, [chartMode, selectedYears, smoothing, setSmoothing])
+  }, [chartMode, selectedYears, getCurrentSmoothing, setCurrentSmoothing])
 
 
   // Reset 2025 visibility when switching chart modes
@@ -167,7 +184,7 @@ export default function YTDDetailed() {
               setIs2025Visible={setIs2025Visible}
               showAllMonths={showAllMonths}
               incomeMode={incomeMode}
-              smoothing={smoothing}
+              smoothing={getCurrentSmoothing()}
               fy2025={fy2025}
               selectedYears={selectedYears}
               visibleSites={visibleSites}
@@ -195,8 +212,8 @@ export default function YTDDetailed() {
             setShowAllMonths={setShowAllMonths}
             incomeMode={incomeMode}
             setIncomeMode={setIncomeMode}
-            smoothing={smoothing}
-            setSmoothing={setSmoothing}
+            smoothing={getCurrentSmoothing()}
+            setSmoothing={setCurrentSmoothing}
             loading={loading}
             variant="sidebar"
             selectedYears={selectedYears}

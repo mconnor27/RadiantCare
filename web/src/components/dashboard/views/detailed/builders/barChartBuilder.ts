@@ -1,5 +1,5 @@
 import type { YTDPoint } from '../../../../../historical_data/therapyIncomeParser'
-import { getColorScheme } from '../config/chartConfig'
+import { getColorScheme, PROJECTED_BAR_STYLE } from '../config/chartConfig'
 import {
   getYearlyTotals,
   getQuarterlyTotals,
@@ -378,14 +378,6 @@ export const buildBarChartTraces = (
   const HISTORICAL_COLORS = colors.historical
   const CURRENT_YEAR_COLOR = colors.current
   const HISTORICAL_MEAN_COLOR = HISTORICAL_COLORS[Math.floor(HISTORICAL_COLORS.length / 2)]
-  const PROJECTED_BAR_STYLE = {
-    color: colors.projectedBar,
-    pattern: {
-      shape: '/',
-      size: 6,
-      solidity: 0.5
-    }
-  }
   if (showCombined) {
     const labelSuffix = combineStatistic === 'median' ? 'Median' : 'Mean'
     const errorLabel = combineError === 'ci' ? '95% CI' : combineError === 'std' ? 'σ' : ''

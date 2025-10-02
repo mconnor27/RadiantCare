@@ -74,18 +74,18 @@ export const SITE_COLORS_RADIANTCARE = {
 export const SITE_PROJECTED_PATTERNS = {
   lacey: {
     shape: '/',
-    size: 6,
-    solidity: 0.5
+    size: 4,
+    solidity: 0.8
   },
   centralia: {
     shape: '/',
-    size: 6,
-    solidity: 0.5
+    size: 4,
+    solidity: 0.8
   },
   aberdeen: {
     shape: '/',
-    size: 6,
-    solidity: 0.5
+    size: 4,
+    solidity: 0.8
   }
 }
 
@@ -134,8 +134,8 @@ export const PROJECTED_BAR_STYLE = {
   color: ACTIVE_COLOR_SCHEME.projectedBar,
   pattern: {
     shape: '/',
-    size: 6, // Thicker lines (reduced from 8 for denser pattern)
-    solidity: 0.5 // Increased from 0.3 for thicker lines
+    size: 4, // Thicker lines (reduced from 8 for denser pattern)
+    solidity: 0.8 // Increased from 0.3 for thicker lines
   }
 }
 
