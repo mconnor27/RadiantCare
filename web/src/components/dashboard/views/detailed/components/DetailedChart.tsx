@@ -56,6 +56,7 @@ interface DetailedChartProps {
   selectedYears: number[]
   visibleSites: { lacey: boolean, centralia: boolean, aberdeen: boolean }
   colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'
+  siteColorScheme: 'rgb' | 'radiantCare' | 'jama'
 }
 
 export default function DetailedChart({
@@ -75,7 +76,8 @@ export default function DetailedChart({
   fy2025,
   selectedYears,
   visibleSites,
-  colorScheme
+  colorScheme,
+  siteColorScheme
 }: DetailedChartProps) {
   const isMobile = useIsMobile()
   const [pulsePhase, setPulsePhase] = useState(0)
@@ -467,7 +469,8 @@ export default function DetailedChart({
         combineError: combineError,
         visibleSites,
         selectedYears,
-        colorScheme
+        colorScheme,
+        siteColorScheme
       })
     } else {
       // Use total income line traces
@@ -490,7 +493,7 @@ export default function DetailedChart({
   }, [
     chartMode, incomeMode, showCombined, combinedStats, processedHistoricalData,
     processedCurrentData, projectedIncomeData, isNormalized, is2025Visible, timeframe, currentPeriod, fy2025, smoothing,
-    combineStatistic, combineError, visibleSites, selectedYears, colorScheme
+    combineStatistic, combineError, visibleSites, selectedYears, colorScheme, siteColorScheme
   ])
 
   // Create animated pulsing traces (separate from static traces)
@@ -507,7 +510,8 @@ export default function DetailedChart({
         currentPeriod,
         fy2025,
         visibleSites,
-        colorScheme
+        colorScheme,
+        siteColorScheme
       )
     } else {
       // Use total income pulsing traces
@@ -519,7 +523,7 @@ export default function DetailedChart({
         colorScheme
       )
     }
-  }, [chartMode, incomeMode, processedCurrentData, is2025Visible, chartMode === 'line' ? pulsePhase : 0, isNormalized, timeframe, currentPeriod, fy2025, visibleSites, colorScheme])
+  }, [chartMode, incomeMode, processedCurrentData, is2025Visible, chartMode === 'line' ? pulsePhase : 0, isNormalized, timeframe, currentPeriod, fy2025, visibleSites, colorScheme, siteColorScheme])
 
   // Build chart layout
   const chartLayout = useMemo(() => {
@@ -571,7 +575,7 @@ export default function DetailedChart({
           // Animated pulsing traces (separate memoization for animation)
           ...pulsingTraces
         ] : chartMode === 'proportion'
-          ? buildProportionTraces(proportionData, smoothing, visibleSites, colorScheme)
+          ? buildProportionTraces(proportionData, smoothing, visibleSites, colorScheme, siteColorScheme)
           : incomeMode === 'per-site'
             ? buildSiteBarChartTraces(
                 siteBarChartData,
@@ -583,7 +587,8 @@ export default function DetailedChart({
                 visibleSites,
                 showAllMonths,
                 currentPeriod,
-                colorScheme
+                colorScheme,
+                siteColorScheme
               )
             : buildBarChartTraces(
                 barChartData,
@@ -596,7 +601,7 @@ export default function DetailedChart({
                 combineError,
                 colorScheme
               )) as any}
-        layout={chartMode === 'proportion' ? buildProportionLayout(isMobile, selectedYears, proportionData, visibleSites, smoothing) : (chartLayout || {}) as any}
+        layout={chartMode === 'proportion' ? buildProportionLayout(isMobile, selectedYears, proportionData, visibleSites, smoothing, siteColorScheme) : (chartLayout || {}) as any}
         config={{
           responsive: true,
           displayModeBar: false,

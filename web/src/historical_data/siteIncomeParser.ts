@@ -8,7 +8,6 @@ import historical2019Data from './2019.json'
 import historical2018Data from './2018.json'
 import historical2017Data from './2017.json'
 import historical2016Data from './2016.json'
-import { SITE_COLORS } from '../components/dashboard/views/detailed/config/chartConfig'
 import type { YTDPointWithSites, SiteData } from '../components/dashboard/shared/types'
 import { getTotalIncome } from '../components/dashboard/shared/calculations'
 

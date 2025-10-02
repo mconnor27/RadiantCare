@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from 'react'
 import type { IncomeMode } from '../../../shared/types'
 import { getColorScheme, getSiteColors } from '../config/chartConfig'
+import ColorSchemeSelector from './ColorSchemeSelector'
 
 interface ChartControlsProps {
   environment: 'production' | 'sandbox'
@@ -32,6 +33,8 @@ interface ChartControlsProps {
   setVisibleSites: (sites: { lacey: boolean, centralia: boolean, aberdeen: boolean }) => void
   colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'
   setColorScheme: (scheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare') => void
+  siteColorScheme: 'rgb' | 'radiantCare' | 'jama'
+  setSiteColorScheme: (scheme: 'rgb' | 'radiantCare' | 'jama') => void
 }
 
 export default function ChartControls({
@@ -62,7 +65,9 @@ export default function ChartControls({
   visibleSites,
   setVisibleSites,
   colorScheme,
-  setColorScheme
+  setColorScheme,
+  siteColorScheme,
+  setSiteColorScheme
 }: ChartControlsProps) {
   
   // Calculate available months for projection mode based on selected years
@@ -96,7 +101,7 @@ export default function ChartControls({
   // Get colors based on selected color scheme
   const colors = getColorScheme(colorScheme)
   const HISTORICAL_COLORS = colors.historical
-  const SITE_COLORS = getSiteColors(colorScheme)
+  const SITE_COLORS = getSiteColors(siteColorScheme)
   
   // Historical data popup state
   const [isHistoricalPopupOpen, setIsHistoricalPopupOpen] = useState(false)
@@ -174,14 +179,6 @@ export default function ChartControls({
     setSelectedYears([])
   }
 
-  // Color scheme display names and swatches
-  const colorSchemeInfo = {
-    ggplot2: { label: 'ggplot2', color: '#F8766D' },
-    gray: { label: 'Gray', color: '#9e9e9e' },
-    blueGreen: { label: 'Blue/Green', color: '#00BFC4' },
-    radiantCare: { label: 'RadiantCare', color: '#7c2a83' }
-  }
-
   return (
     <div style={{ display: isSidebar ? 'block' : 'flex', alignItems: isSidebar ? undefined : 'center', justifyContent: isSidebar ? undefined : 'space-between', marginBottom: isSidebar ? 0 : 16 }}>
       <div style={{ display: isSidebar ? 'flex' : 'flex', flexDirection: isSidebar ? 'column' as const : 'row' as const, alignItems: isSidebar ? 'stretch' : 'center', gap: isSidebar ? 12 : 20 }}>
@@ -202,32 +199,12 @@ export default function ChartControls({
           </select>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontSize: 14, fontWeight: 500 }}>Color Scheme:</label>
-          <select
-            value={colorScheme}
-            onChange={(e) => setColorScheme(e.target.value as 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare')}
-            style={{
-              padding: '4px 8px',
-              border: '1px solid #ccc',
-              borderRadius: 4,
-              fontSize: 14
-            }}
-          >
-            {Object.entries(colorSchemeInfo).map(([key, info]) => (
-              <option key={key} value={key}>
-                {info.label}
-              </option>
-            ))}
-          </select>
-          <div style={{
-            width: 16,
-            height: 16,
-            borderRadius: 3,
-            backgroundColor: colorSchemeInfo[colorScheme].color,
-            border: '1px solid #ccc'
-          }} />
-        </div>
+        <ColorSchemeSelector
+          totalColorScheme={colorScheme}
+          setTotalColorScheme={setColorScheme}
+          siteColorScheme={siteColorScheme}
+          setSiteColorScheme={setSiteColorScheme}
+        />
 
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
           <label style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', marginTop: 6, opacity: chartMode === 'proportion' ? 0.5 : 1 }}>Income Mode:</label>

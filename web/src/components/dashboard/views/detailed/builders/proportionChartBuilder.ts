@@ -149,10 +149,11 @@ export function buildProportionTraces(
   data: MonthlyProportionData[],
   smoothingFactor: number = 5,
   visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean },
-  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray'
+  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray',
+  siteColorScheme: 'rgb' | 'radiantCare' | 'jama' = 'rgb'
 ) {
   if (data.length === 0) return []
-  const SITE_COLORS = getSiteColors(colorScheme)
+  const SITE_COLORS = getSiteColors(siteColorScheme)
 
   // Helper to check if a site is visible
   const isSiteVisible = (siteKey: 'lacey' | 'centralia' | 'aberdeen') => {
@@ -248,7 +249,8 @@ export function buildProportionLayout(
   selectedYears: number[] = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024],
   data: MonthlyProportionData[] = [],
   visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean },
-  smoothingFactor: number = 5
+  smoothingFactor: number = 5,
+  siteColorScheme: 'rgb' | 'radiantCare' | 'jama' = 'rgb'
 ) {
   // Determine if we have historical years selected (any year before 2025)
   const hasHistoricalYears = selectedYears.some(year => year < 2025)
@@ -325,7 +327,7 @@ export function buildProportionLayout(
         y: laceyY,
         text: `Lacey: ${laceyAvg.toFixed(1)}%`,
         showarrow: false,
-        font: { size: 12, color: 'white', weight: 'bold' },
+        font: { size: 12, color: siteColorScheme === 'jama' ? 'black' : 'white', weight: 'bold' },
         xanchor: 'center',
         yanchor: 'middle'
       })

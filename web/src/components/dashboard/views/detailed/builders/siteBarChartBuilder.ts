@@ -633,10 +633,11 @@ export const buildSiteBarChartTraces = (
   visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean },
   showAllMonths?: boolean,
   currentPeriod?: { year: number, quarter?: number, month?: number },
-  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray'
+  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray',
+  siteColorScheme: 'rgb' | 'radiantCare' | 'jama' = 'rgb'
 ) => {
   const traces: any[] = []
-  const SITE_COLORS = getSiteColors(colorScheme)
+  const SITE_COLORS = getSiteColors(siteColorScheme)
 
   // Helper to create border around entire 2025 stack
   const createStackBorder = () => ({

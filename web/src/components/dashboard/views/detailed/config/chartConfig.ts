@@ -101,14 +101,12 @@ export const CURRENT_BAR_BORDER = {
 // Color scheme options for easy swapping
 export const COLOR_SCHEMES = {
   // Current red-based scheme (ggplot2 2-trace default)
-  ggplot2: {
-    historical: [
-      '#006064', '#00838f', '#0097a7', '#00acc1',
-      '#26c6da', '#4dd0e1', '#80deea', '#b2ebf2', '#e0f7fa'
-    ],
-    current: '#F8766D',
-    projectedBar: 'rgba(248, 118, 109, 0.6)',
-    historicalCombined: '#00BFC4' // Middle cyan color for mean/median bar
+  // RadiantCare brand colors
+  radiantCare: {
+    historical: Array(9).fill('#9e9e9e'),
+    current: '#7c2a83',
+    projectedBar: 'rgba(124, 42, 131, 0.6)',
+    historicalCombined: '#9e9e9e' // Same gray for combined
   },
   // All gray scheme
   gray: {
@@ -124,52 +122,79 @@ export const COLOR_SCHEMES = {
     projectedBar: 'rgba(248, 118, 109, 0.6)',
     historicalCombined: '#00BFC4' // Same blue/green for combined
   },
-  // RadiantCare brand colors
+  ggplot2: {
+    historical: [
+      '#006064', '#00838f', '#0097a7', '#00acc1',
+      '#26c6da', '#4dd0e1', '#80deea', '#b2ebf2', '#e0f7fa'
+    ],
+    current: '#F8766D',
+    projectedBar: 'rgba(248, 118, 109, 0.6)',
+    historicalCombined: '#00BFC4' // Middle cyan color for mean/median bar
+  }
+  
+}
+
+// Site color schemes organized similar to COLOR_SCHEMES
+export const SITE_COLOR_SCHEMES = {
+  // Original red/green/blue scheme
+  rgb: {
+    lacey: {
+      historical: 'rgba(97, 156, 255, 0.7)',     // Faded blue
+      current: '#619CFF',                         // Bright blue
+      projected: 'rgba(97, 156, 255, 0.6)'       // For textured pattern
+    },
+    centralia: {
+      historical: 'rgba(0, 186, 56, 0.7)',       // Faded green
+      current: '#00BA38',                         // Bright green
+      projected: 'rgba(0, 186, 56, 0.6)'         // For textured pattern
+    },
+    aberdeen: {
+      historical: 'rgba(248, 118, 109, 0.7)',    // Faded red
+      current: '#F8766D',                         // Bright red
+      projected: 'rgba(248, 118, 109, 0.6)'      // For textured pattern
+    }
+  },
+  // RadiantCare purple site colors (spread across purple-pink spectrum)
   radiantCare: {
-    historical: Array(9).fill('#9e9e9e'),
-    current: '#7c2a83',
-    projectedBar: 'rgba(124, 42, 131, 0.6)',
-    historicalCombined: '#9e9e9e' // Same gray for combined
+    lacey: {
+      historical: 'rgba(206, 147, 216, 0.7)',    // Faded light lavender-pink
+      current: '#ce93d8',                         // Light lavender-pink
+      projected: 'rgba(206, 147, 216, 0.6)'      // For textured pattern
+    },
+    centralia: {
+      historical: 'rgba(156, 89, 209, 0.7)',     // Faded medium-light purple
+      current: '#9c59d1',                         // Medium-light purple
+      projected: 'rgba(156, 89, 209, 0.6)'       // For textured pattern
+    },
+    aberdeen: {
+      historical: 'rgba(93, 20, 99, 0.7)',       // Faded dark purple
+      current: '#5d1463',                         // Dark purple
+      projected: 'rgba(93, 20, 99, 0.6)'         // For textured pattern
+    }
+  },
+  // JAMA color scheme (teal/blue-gray spectrum)
+  jama: {
+    lacey: {
+      historical: 'rgba(224, 224, 224, 0.7)',    // Faded light gray
+      current: '#e0e0e0',                         // Light gray
+      projected: 'rgba(224, 224, 224, 0.6)'      // For textured pattern
+    },
+    centralia: {
+      historical: 'rgba(144, 164, 174, 0.7)',    // Faded medium blue-gray
+      current: '#90a4ae',                         // Medium blue-gray
+      projected: 'rgba(144, 164, 174, 0.6)'      // For textured pattern
+    },
+    aberdeen: {
+      historical: 'rgba(55, 71, 79, 0.7)',       // Faded dark teal-gray
+      current: '#37474f',                         // Dark teal-gray
+      projected: 'rgba(55, 71, 79, 0.6)'         // For textured pattern
+    }
   }
 }
 
-// Site colors - original red/green/blue scheme (not tied to active scheme)
-export const SITE_COLORS_RGB = {
-  lacey: {
-    historical: 'rgba(97, 156, 255, 0.7)',     // Faded blue
-    current: '#619CFF',                         // Bright blue
-    projected: 'rgba(97, 156, 255, 0.6)'       // For textured pattern
-  },
-  centralia: {
-    historical: 'rgba(0, 186, 56, 0.7)',       // Faded green
-    current: '#00BA38',                         // Bright green
-    projected: 'rgba(0, 186, 56, 0.6)'         // For textured pattern
-  },
-  aberdeen: {
-    historical: 'rgba(248, 118, 109, 0.7)',    // Faded red
-    current: '#F8766D',                         // Bright red
-    projected: 'rgba(248, 118, 109, 0.6)'      // For textured pattern
-  }
-}
-
-// RadiantCare purple site colors (three shades of purple)
-export const SITE_COLORS_RADIANTCARE = {
-  lacey: {
-    historical: 'rgba(156, 89, 209, 0.7)',     // Faded light purple
-    current: '#9c59d1',                         // Light purple
-    projected: 'rgba(156, 89, 209, 0.6)'       // For textured pattern
-  },
-  centralia: {
-    historical: 'rgba(124, 42, 131, 0.7)',     // Faded medium purple (brand color)
-    current: '#7c2a83',                         // Medium purple (brand color)
-    projected: 'rgba(124, 42, 131, 0.6)'       // For textured pattern
-  },
-  aberdeen: {
-    historical: 'rgba(93, 20, 99, 0.7)',       // Faded dark purple
-    current: '#5d1463',                         // Dark purple
-    projected: 'rgba(93, 20, 99, 0.6)'         // For textured pattern
-  }
-}
+// Legacy exports for backward compatibility
+export const SITE_COLORS_RGB = SITE_COLOR_SCHEMES.rgb
+export const SITE_COLORS_RADIANTCARE = SITE_COLOR_SCHEMES.radiantCare
 
 // Site projected patterns (same pattern for all sites)
 export const SITE_PROJECTED_PATTERNS = {
@@ -198,9 +223,9 @@ export const getColorScheme = (scheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radia
   return COLOR_SCHEMES[scheme]
 }
 
-// Helper function to get site colors based on color scheme
-export const getSiteColors = (scheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare') => {
-  return scheme === 'radiantCare' ? SITE_COLORS_RADIANTCARE : SITE_COLORS_RGB
+// Helper function to get site colors based on site color scheme
+export const getSiteColors = (scheme: 'rgb' | 'radiantCare' | 'jama') => {
+  return SITE_COLOR_SCHEMES[scheme]
 }
 
 // Bar chart styling configuration

@@ -23,6 +23,7 @@ interface SiteLineChartBuilderProps {
   visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean }
   selectedYears?: number[]
   colorScheme?: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'
+  siteColorScheme?: 'rgb' | 'radiantCare' | 'jama'
 }
 
 // Helper function to process site data for different timeframes
@@ -407,10 +408,11 @@ export const buildSiteLineTraces = ({
   combineError = null,
   visibleSites,
   selectedYears = [],
-  colorScheme = 'gray'
+  colorScheme = 'gray',
+  siteColorScheme = 'rgb'
 }: SiteLineChartBuilderProps) => {
   const traces: any[] = []
-  const SITE_COLORS = getSiteColors(colorScheme)
+  const SITE_COLORS = getSiteColors(siteColorScheme)
 
   // Helper to check if a site is visible
   const isSiteVisible = (siteKey: 'lacey' | 'centralia' | 'aberdeen') => {
@@ -694,10 +696,11 @@ export const buildSitePulsingTraces = (
   currentPeriod: { year: number, quarter?: number, month?: number },
   fy2025: any,
   visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean },
-  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray'
+  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray',
+  siteColorScheme: 'rgb' | 'radiantCare' | 'jama' = 'rgb'
 ) => {
   if (!is2025Visible) return []
-  const SITE_COLORS = getSiteColors(colorScheme)
+  const SITE_COLORS = getSiteColors(siteColorScheme)
 
   // Helper to check if a site is visible
   const isSiteVisible = (siteKey: 'lacey' | 'centralia' | 'aberdeen') => {

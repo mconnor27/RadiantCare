@@ -46,6 +46,7 @@ export default function YTDDetailed() {
   const [selectedYears, setSelectedYears] = useState<number[]>(Array.from({ length: 9 }, (_, i) => 2016 + i)) // Default: all years (2016-2024)
   const [visibleSites, setVisibleSites] = useState<{ lacey: boolean, centralia: boolean, aberdeen: boolean }>({ lacey: true, centralia: true, aberdeen: true })
   const [colorScheme, setColorScheme] = useState<'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'>('gray')
+  const [siteColorScheme, setSiteColorScheme] = useState<'rgb' | 'radiantCare' | 'jama'>('rgb')
 
   // Helper functions for mode-specific smoothing
   const getCurrentSmoothing = () => smoothingByMode[chartMode]
@@ -189,6 +190,7 @@ export default function YTDDetailed() {
               selectedYears={selectedYears}
               visibleSites={visibleSites}
               colorScheme={colorScheme}
+              siteColorScheme={siteColorScheme}
             />
           )}
         </div>
@@ -222,6 +224,8 @@ export default function YTDDetailed() {
             setVisibleSites={setVisibleSites}
             colorScheme={colorScheme}
             setColorScheme={setColorScheme}
+            siteColorScheme={siteColorScheme}
+            setSiteColorScheme={setSiteColorScheme}
           />
         </div>
       </div>
