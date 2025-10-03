@@ -48,11 +48,11 @@ interface ProjectedValueSliderProps {
   originRect?: { top: number; right: number; bottom: number; left: number; width: number; height: number }
 }
 
-export default function ProjectedValueSlider({ 
-  isVisible, 
-  onClose, 
-  currentValue, 
-  onValueChange, 
+export default function ProjectedValueSlider({
+  isVisible,
+  onClose,
+  currentValue,
+  onValueChange,
   accountName,
   position,
   annualizedBaseline,
@@ -61,6 +61,7 @@ export default function ProjectedValueSlider({
 }: ProjectedValueSliderProps) {
   const [sliderValue, setSliderValue] = useState(currentValue)
   const [inputValue, setInputValue] = useState(currentValue.toString())
+  const [actualValue, setActualValue] = useState(currentValue) // Track the actual numeric value (can exceed slider range)
   const [animationStage, setAnimationStage] = useState<'initial' | 'width' | 'height' | 'complete'>('initial')
   const [isAnimating, setIsAnimating] = useState(true) // For scale-all animation
   
@@ -70,6 +71,7 @@ export default function ProjectedValueSlider({
   useEffect(() => {
     setSliderValue(currentValue)
     setInputValue(formatCurrency(currentValue))
+    setActualValue(currentValue)
   }, [currentValue])
 
   // Resolve immutable baselines
@@ -85,6 +87,7 @@ export default function ProjectedValueSlider({
     // Snap to integer dollars to match grid rounding
     const rounded = Math.round(newValue)
     setSliderValue(rounded)
+    setActualValue(rounded)
     setInputValue(formatCurrency(rounded))
   }
 
@@ -94,9 +97,11 @@ export default function ProjectedValueSlider({
     const numeric = raw.replace(/[^0-9-]/g, '')
     const numValue = parseFloat(numeric)
     if (!isNaN(numValue)) {
-      const clamped = Math.max(minValue, Math.min(maxValue, numValue))
-      const rounded = Math.round(clamped)
-      setSliderValue(rounded)
+      const rounded = Math.round(numValue)
+      // For slider display: clamp to range, but allow actual value to exceed
+      const clampedForSlider = Math.max(minValue, Math.min(maxValue, rounded))
+      setSliderValue(clampedForSlider)
+      setActualValue(rounded)
       setInputValue(formatCurrency(rounded))
     } else {
       // Allow clearing; don't update slider until valid
@@ -105,12 +110,13 @@ export default function ProjectedValueSlider({
   }
 
   const handleApply = () => {
-    onValueChange(sliderValue)
+    onValueChange(actualValue)
     onClose()
   }
 
   const handleCancel = () => {
     setSliderValue(currentValue)
+    setActualValue(currentValue)
     setInputValue(formatCurrency(currentValue))
     onClose()
   }
@@ -128,6 +134,7 @@ export default function ProjectedValueSlider({
     // Initialize slider from configurable source
     const initial = Math.round(getInitialSliderValue(accountName, defaultValue, annualizedValue))
     setSliderValue(initial)
+    setActualValue(initial)
     setInputValue(formatCurrency(initial))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountName])
@@ -487,6 +494,7 @@ export default function ProjectedValueSlider({
             <div
               onClick={() => {
                 setSliderValue(defaultValue)
+                setActualValue(defaultValue)
                 setInputValue(formatCurrency(defaultValue))
               }}
               style={{
@@ -528,6 +536,7 @@ export default function ProjectedValueSlider({
             <div
               onClick={() => {
                 setSliderValue(annualizedValue)
+                setActualValue(annualizedValue)
                 setInputValue(formatCurrency(annualizedValue))
               }}
               style={{

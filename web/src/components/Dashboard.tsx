@@ -718,19 +718,20 @@ export const useDashboardStore = create<Store>()(
           }),
         // Reset physicians for a specific scenario and year to defaults
         resetPhysicians: (scenario: ScenarioKey, year: number) => {
-          const defaultPhysicians = scenario === 'A' 
-            ? scenarioADefaultsByYear(year) 
-            : scenarioBDefaultsByYear(year)
-          
           set((state) => {
+            const defaults = getDefaultValuesForYear(scenario, year, state)
             const scenarioState = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!scenarioState) return
-            
+
             const futureYear = scenarioState.future.find(f => f.year === year)
             if (!futureYear) return
-            
-            // Reset to default physicians
-            futureYear.physicians = defaultPhysicians.map(p => ({ ...p }))
+
+            // Reset to default values
+            futureYear.physicians = defaults.physicians.map(p => ({ ...p }))
+            futureYear.locumCosts = defaults.locumCosts
+            futureYear.medicalDirectorHours = defaults.medicalDirectorHours
+            futureYear.prcsMedicalDirectorHours = defaults.prcsMedicalDirectorHours
+            futureYear.prcsDirectorPhysicianId = defaults.prcsDirectorPhysicianId
           })
         },
 
@@ -1111,6 +1112,44 @@ export function usePartnerComp(year: number, scenario: ScenarioKey) {
   }, [fy, sc, dataMode, store])
 }
 
+// Helper function to get default values for a specific year
+function getDefaultValuesForYear(scenario: ScenarioKey, year: number, store: any) {
+  const sc = scenario === 'A' ? store.scenarioA : store.scenarioB
+  const defaultPhysicians = scenario === 'A' ? scenarioADefaultsByYear(year) : scenarioBDefaultsByYear(year)
+
+  const jsDefault = year >= 2024
+    ? defaultPhysicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+    : undefined
+
+  // Determine default locumCosts
+  let defaultLocumCosts: number
+  if (year === 2025) {
+    defaultLocumCosts = DEFAULT_LOCUM_COSTS_2025
+  } else if (year === 2026) {
+    defaultLocumCosts = DEFAULT_LOCUM_COSTS_2026
+  } else {
+    defaultLocumCosts = scenario === 'A' ? PROJECTION_DEFAULTS.A.locumsCosts : PROJECTION_DEFAULTS.B.locumsCosts
+  }
+
+  // Determine default medicalDirectorHours
+  const defaultMedicalDirectorHours = year === 2025
+    ? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS
+    : (sc?.projection?.medicalDirectorHours ?? DEFAULT_MD_SHARED_PROJECTION)
+
+  // Determine default prcsMedicalDirectorHours
+  const defaultPrcsMedicalDirectorHours = year === 2025
+    ? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS
+    : (sc?.projection?.prcsMedicalDirectorHours ?? DEFAULT_MD_PRCS_PROJECTION)
+
+  return {
+    physicians: defaultPhysicians,
+    locumCosts: defaultLocumCosts,
+    medicalDirectorHours: defaultMedicalDirectorHours,
+    prcsMedicalDirectorHours: defaultPrcsMedicalDirectorHours,
+    prcsDirectorPhysicianId: jsDefault?.id
+  }
+}
+
 // Helper function to check if physicians have been changed from defaults
 export function arePhysiciansChanged(
   scenario: ScenarioKey,
@@ -1118,21 +1157,19 @@ export function arePhysiciansChanged(
   currentPhysicians: Physician[],
   _store: any
 ): boolean {
-  // Get default physicians for this year and scenario
-  const defaultPhysicians = scenario === 'A' 
-    ? scenarioADefaultsByYear(year) 
-    : scenarioBDefaultsByYear(year)
-  
+  const defaults = getDefaultValuesForYear(scenario, year, _store)
+  const defaultPhysicians = defaults.physicians
+
   // If different number of physicians, it's changed
   if (currentPhysicians.length !== defaultPhysicians.length) {
     return true
   }
-  
+
   // Compare each physician's properties
   for (let i = 0; i < currentPhysicians.length; i++) {
     const current = currentPhysicians[i]
     const defaultPhysician = defaultPhysicians[i]
-    
+
     // Compare all relevant properties
     if (
       current.name !== defaultPhysician.name ||
@@ -1154,28 +1191,27 @@ export function arePhysiciansChanged(
       return true
     }
   }
-  
-  // Include PRCS director selection and PRCS amount override in change detection
+
+  // Include locumCosts, medical director hours, PRCS director selection and PRCS amount override in change detection
   try {
     const sc = scenario === 'A' ? _store.scenarioA : _store.scenarioB
     const fy = sc?.future.find((f: any) => f.year === year)
-    
-    // For baseline years (2025), compare against actual values, not projection defaults
-    const defaultPrcsMedicalDirectorHours = year === 2025 
-      ? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS
-      : (sc?.projection?.prcsMedicalDirectorHours ?? DEFAULT_MD_PRCS_PROJECTION)
-    
-    const currentPrcs = fy?.prcsMedicalDirectorHours ?? defaultPrcsMedicalDirectorHours
-    const amountChanged = Math.abs(currentPrcs - defaultPrcsMedicalDirectorHours) > 100 // small threshold for $ changes
 
-    // Determine default PRCS director for this year (JS from 2024+ if present in defaults)
-    const jsDefault = year >= 2024
-      ? defaultPhysicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
-      : undefined
-    const defaultDirectorId = jsDefault?.id
-    const selectionChanged = (fy?.prcsDirectorPhysicianId ?? undefined) !== (defaultDirectorId ?? undefined)
+    // Check locumCosts
+    const fyLocumCosts = fy?.locumCosts ?? defaults.locumCosts
+    if (Math.abs(fyLocumCosts - defaults.locumCosts) > 100) return true
 
-    if (amountChanged || selectionChanged) return true
+    // Check medicalDirectorHours
+    const currentMdHours = fy?.medicalDirectorHours ?? defaults.medicalDirectorHours
+    if (Math.abs(currentMdHours - defaults.medicalDirectorHours) > 100) return true
+
+    // Check prcsMedicalDirectorHours
+    const currentPrcs = fy?.prcsMedicalDirectorHours ?? defaults.prcsMedicalDirectorHours
+    if (Math.abs(currentPrcs - defaults.prcsMedicalDirectorHours) > 100) return true
+
+    // Check PRCS director selection
+    const selectionChanged = (fy?.prcsDirectorPhysicianId ?? undefined) !== (defaults.prcsDirectorPhysicianId ?? undefined)
+    if (selectionChanged) return true
   } catch {}
 
   return false

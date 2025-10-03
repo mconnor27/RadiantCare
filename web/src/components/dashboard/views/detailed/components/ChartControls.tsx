@@ -182,7 +182,7 @@ export default function ChartControls({
   const [hoveredGroup, setHoveredGroup] = useState<number | null>(null)
 
   return (
-    <div style={{ marginBottom: isSidebar ? 0 : 16, border: '1px solid #ccc', borderRadius: 4, padding: 10 }}>
+    <div style={{ marginBottom: isSidebar ? 0 : 16, border: '1px solid #ccc', borderRadius: 4, padding: 10, boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0 16px', alignItems: 'start', justifyItems: 'start' }}>
         {/* Group 1: Color Scheme */}
         <>
@@ -193,11 +193,13 @@ export default function ChartControls({
             padding: '8px 0'
           }}>Color Scheme:</label>
           <div style={{
-            padding: '8px 12px',
+            padding: '12px',
             background: '#f9fafb',
-            marginRight: -10,
-            paddingRight: 10,
-            justifySelf: 'stretch'
+            justifySelf: 'stretch',
+            border: '1px solid #d1d5db',
+            borderRadius: 6,
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            margin: '4px 0'
           }}>
             <ColorSchemeSelector
               totalColorScheme={colorScheme}
@@ -219,11 +221,13 @@ export default function ChartControls({
             padding: '8px 0'
           }}>Income Mode:</label>
           <div style={{
-            padding: '8px 12px',
+            padding: '12px',
             background: '#f9fafb',
-            marginRight: -10,
-            paddingRight: 10,
-            justifySelf: 'stretch'
+            justifySelf: 'stretch',
+            border: '1px solid #d1d5db',
+            borderRadius: 6,
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            margin: '4px 0'
           }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
             <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
@@ -377,14 +381,18 @@ export default function ChartControls({
           }}>Historical Data:</label>
           <div style={{
             position: 'relative',
-            padding: '8px 12px',
+            padding: '12px',
             background: '#f9fafb',
-            marginRight: -10,
-            paddingRight: 10,
             display: 'flex',
-            justifyContent: 'flex-start',
-            justifySelf: 'stretch'
+            flexDirection: 'column',
+            gap: 12,
+            justifySelf: 'stretch',
+            border: '1px solid #d1d5db',
+            borderRadius: 6,
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            margin: '4px 0'
           }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
           <button
             onClick={() => setIsHistoricalPopupOpen(!isHistoricalPopupOpen)}
             style={{
@@ -747,20 +755,10 @@ export default function ChartControls({
               )}
             </div>
           )}
-        </div>
+          </div>
 
-          {/* Combine Options Row (Mean/Median and Std Dev/CI) - continuation row (empty left column) */}
-          <div style={{
-            padding: '8px 0'
-          }}></div>
-          <div style={{
-            padding: '8px 12px',
-            background: '#f9fafb',
-            marginRight: -10,
-            paddingRight: 10,
-            justifySelf: 'stretch'
-          }}>
-              <div style={{ display: 'flex', gap: 12 }}>
+          {/* Mean/Median and Std Dev/CI */}
+          <div style={{ display: 'flex', gap: 12 }}>
                 {/* Statistic group */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{
@@ -877,7 +875,7 @@ export default function ChartControls({
               </label>
             </div>
               </div>
-            </div>
+          </div>
         </>
 
         {/* Group 4: Chart Type + Smoothing */}
@@ -889,12 +887,16 @@ export default function ChartControls({
             padding: '8px 0'
           }}>Chart Type:</label>
           <div style={{
-            padding: '8px 12px',
+            padding: '12px',
             background: '#f9fafb',
-            marginRight: -10,
-            paddingRight: 10,
             display: 'flex',
-            alignItems: 'flex-start'
+            flexDirection: 'column',
+            gap: 12,
+            alignItems: 'flex-start',
+            border: '1px solid #d1d5db',
+            borderRadius: 6,
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            margin: '4px 0'
           }}>
             <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
             <button
@@ -942,19 +944,9 @@ export default function ChartControls({
               Projection
             </button>
             </div>
-          </div>
 
-            {/* Smoothing Row - continuation row (empty left column) */}
-            <div style={{
-              padding: '8px 0'
-            }}></div>
-            <div style={{
-              padding: '8px 12px',
-              background: '#f9fafb',
-              marginRight: -10,
-              paddingRight: 10
-            }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: chartMode === 'bar' ? 0.5 : 1 }}>
+            {/* Smoothing */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: chartMode === 'bar' ? 0.5 : 1, width: '100%' }}>
           <label style={{ fontSize: 14, fontWeight: 500 }}>Smoothing:</label>
           <input
             type="range"
@@ -977,7 +969,7 @@ export default function ChartControls({
             {chartMode === 'proportion' ? `${clampedSmoothing} month window` : `${clampedSmoothing}`}
           </span>
         </div>
-            </div>
+          </div>
         </>
 
         {/* Group 5: Timeframe + Monthly Toggle */}
@@ -990,12 +982,14 @@ export default function ChartControls({
             padding: '8px 0'
           }}>Timeframe:</label>
           <div style={{
-            padding: '8px 12px',
+            padding: '12px',
             background: '#f9fafb',
-            marginRight: -10,
-            paddingRight: 10,
             display: 'flex',
-            alignItems: 'flex-start'
+            alignItems: 'flex-start',
+            border: '1px solid #d1d5db',
+            borderRadius: 6,
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            margin: '4px 0'
           }}>
             <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
             <button

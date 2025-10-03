@@ -194,7 +194,7 @@ export default function YTDDetailed() {
             />
           )}
         </div>
-        <div style={{ width: 340, flexShrink: 0 }}>
+        <div style={{ flexShrink: 0 }}>
           <ChartControls
             environment={environment}
             setEnvironment={setEnvironment}

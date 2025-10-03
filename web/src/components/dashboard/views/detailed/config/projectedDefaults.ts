@@ -199,6 +199,13 @@ export function getSliderBounds(
   const bounds = config?.bounds ?? projectedDefaultsGlobal.bounds
 
   if (!bounds || bounds.mode === 'standard') {
+    // Special case: if currentValue is 0, use 0 to 10,000 range
+    if (currentValue === 0) {
+      return {
+        minValue: 0,
+        maxValue: 10000,
+      }
+    }
     return {
       minValue: Math.max(0, currentValue * 0.1),
       maxValue: currentValue * 3,
@@ -206,6 +213,13 @@ export function getSliderBounds(
   }
 
   if (bounds.mode === 'percentOfCurrent') {
+    // Special case: if currentValue is 0, use 0 to 10,000 range
+    if (currentValue === 0) {
+      return {
+        minValue: 0,
+        maxValue: 10000,
+      }
+    }
     const minValue = Math.max(0, currentValue * bounds.minPercent)
     const maxValue = currentValue * bounds.maxMultiple
     return { minValue, maxValue }
