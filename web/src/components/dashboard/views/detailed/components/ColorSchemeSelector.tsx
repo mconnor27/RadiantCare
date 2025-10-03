@@ -117,7 +117,7 @@ export default function ColorSchemeSelector({
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
-      <label style={{ fontSize: 14, fontWeight: 500 }}>Color Scheme:</label>
+      {/*<label style={{ fontSize: 14, fontWeight: 500 }}>Color Scheme:</label>*/}
       <button
         onClick={() => setIsOpen(!isOpen)}
         style={{
