@@ -431,15 +431,16 @@ export default function PartnerCompensation() {
   
   
   return (
-    <div style={{ 
-      marginTop: 16, 
+    <div style={{
+      marginTop: 16,
       maxWidth: 900,
       margin: '16px auto 0 auto',
-      overflowX: 'auto', 
-      border: '1px solid #e5e7eb', 
-      borderRadius: 6, 
-      padding: 8, 
-      background: '#ffffff' 
+      overflowX: 'auto',
+      border: '1px solid #e5e7eb',
+      borderRadius: 6,
+      padding: 8,
+      background: '#ffffff',
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' 
     }}>
       <div style={{ fontWeight: 600, marginBottom: 8 }}>Physician Compensation</div>
       
