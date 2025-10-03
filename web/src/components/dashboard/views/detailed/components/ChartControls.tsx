@@ -179,21 +179,50 @@ export default function ChartControls({
     setSelectedYears([])
   }
 
+  const [hoveredGroup, setHoveredGroup] = useState<number | null>(null)
+
   return (
     <div style={{ marginBottom: isSidebar ? 0 : 16, border: '1px solid #ccc', borderRadius: 4, padding: 10 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '12px 16px', alignItems: 'start', justifyItems: 'start' }}>
-        {/* Color Scheme Row */}
-        <label style={{ fontSize: 14, fontWeight: 500, paddingTop: 6 }}>Color Scheme:</label>
-        <ColorSchemeSelector
-          totalColorScheme={colorScheme}
-          setTotalColorScheme={setColorScheme}
-          siteColorScheme={siteColorScheme}
-          setSiteColorScheme={setSiteColorScheme}
-        />
+      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0 16px', alignItems: 'start' }}>
+        {/* Group 1: Color Scheme */}
+        <>
+          <label style={{
+            fontSize: 14,
+            fontWeight: 500,
+            paddingTop: 6,
+            padding: '8px 12px'
+          }}>Color Scheme:</label>
+          <div style={{
+            padding: '8px 12px',
+            background: '#f9fafb',
+            marginRight: -10,
+            paddingRight: 10
+          }}>
+            <ColorSchemeSelector
+              totalColorScheme={colorScheme}
+              setTotalColorScheme={setColorScheme}
+              siteColorScheme={siteColorScheme}
+              setSiteColorScheme={setSiteColorScheme}
+            />
+          </div>
+        </>
 
-        {/* Income Mode Row */}
-        <label style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', paddingTop: 6, opacity: chartMode === 'proportion' ? 0.5 : 1 }}>Income Mode:</label>
-        <div style={{ padding: 0 }}>
+        {/* Group 2: Income Mode + Site Visibility */}
+        <>
+          <label style={{
+            fontSize: 14,
+            fontWeight: 500,
+            whiteSpace: 'nowrap',
+            paddingTop: 6,
+            opacity: chartMode === 'proportion' ? 0.5 : 1,
+            padding: '8px 12px'
+          }}>Income Mode:</label>
+          <div style={{
+            padding: '8px 12px',
+            background: '#f9fafb',
+            marginRight: -10,
+            paddingRight: 10
+          }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
             <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
               <button
@@ -334,10 +363,25 @@ export default function ChartControls({
             )}
           </div>
         </div>
+        </>
 
-        {/* Historical Data Row */}
-        <label style={{ fontSize: 14, fontWeight: 500, paddingTop: 6 }}>Historical Data:</label>
-        <div style={{ position: 'relative', width: 'fit-content' }}>
+        {/* Group 3: Historical Data + Mean/Median */}
+        <>
+          <label style={{
+            fontSize: 14,
+            fontWeight: 500,
+            paddingTop: 6,
+            padding: '8px 12px'
+          }}>Historical Data:</label>
+          <div style={{
+            position: 'relative',
+            padding: '8px 12px',
+            background: '#f9fafb',
+            marginRight: -10,
+            paddingRight: 10,
+            display: 'flex',
+            justifyContent: 'flex-start'
+          }}>
           <button
             onClick={() => setIsHistoricalPopupOpen(!isHistoricalPopupOpen)}
             style={{
@@ -702,12 +746,19 @@ export default function ChartControls({
           )}
         </div>
 
-        {/* Combine Options Row (Mean/Median and Std Dev/CI) - spans both columns */}
-        <div></div>
-        <div>
-          <div style={{ display: 'flex', gap: 12 }}>
-            {/* Statistic group */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {/* Combine Options Row (Mean/Median and Std Dev/CI) - continuation row (empty left column) */}
+          <div style={{
+            padding: '8px 12px'
+          }}></div>
+          <div style={{
+            padding: '8px 12px',
+            background: '#f9fafb',
+            marginRight: -10,
+            paddingRight: 10
+          }}>
+              <div style={{ display: 'flex', gap: 12 }}>
+                {/* Statistic group */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -821,12 +872,27 @@ export default function ChartControls({
                 95% CI
               </label>
             </div>
-          </div>
-        </div>
+              </div>
+            </div>
+        </>
 
-        {/* Chart Type Row */}
-        <label style={{ fontSize: 14, fontWeight: 500, paddingTop: 6 }}>Chart Type:</label>
-        <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
+        {/* Group 4: Chart Type + Smoothing */}
+        <>
+          <label style={{
+            fontSize: 14,
+            fontWeight: 500,
+            paddingTop: 6,
+            padding: '8px 12px'
+          }}>Chart Type:</label>
+          <div style={{
+            padding: '8px 12px',
+            background: '#f9fafb',
+            marginRight: -10,
+            paddingRight: 10,
+            display: 'flex',
+            alignItems: 'flex-start'
+          }}>
+            <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
             <button
               onClick={() => setChartMode('line')}
               style={{
@@ -871,11 +937,20 @@ export default function ChartControls({
             >
               Projection
             </button>
-        </div>
+            </div>
+          </div>
 
-        {/* Smoothing Row - label inline with control */}
-        <div></div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: chartMode === 'bar' ? 0.5 : 1 }}>
+            {/* Smoothing Row - continuation row (empty left column) */}
+            <div style={{
+              padding: '8px 12px'
+            }}></div>
+            <div style={{
+              padding: '8px 12px',
+              background: '#f9fafb',
+              marginRight: -10,
+              paddingRight: 10
+            }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: chartMode === 'bar' ? 0.5 : 1 }}>
           <label style={{ fontSize: 14, fontWeight: 500 }}>Smoothing:</label>
           <input
             type="range"
@@ -898,10 +973,27 @@ export default function ChartControls({
             {chartMode === 'proportion' ? `${clampedSmoothing} month window` : `${clampedSmoothing}`}
           </span>
         </div>
+            </div>
+        </>
 
-        {/* Timeframe Row */}
-        <label style={{ fontSize: 14, fontWeight: 500, paddingTop: 6, opacity: chartMode === 'proportion' ? 0.5 : 1 }}>Timeframe:</label>
-        <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
+        {/* Group 5: Timeframe + Monthly Toggle */}
+        <>
+          <label style={{
+            fontSize: 14,
+            fontWeight: 500,
+            paddingTop: 6,
+            opacity: chartMode === 'proportion' ? 0.5 : 1,
+            padding: '8px 12px'
+          }}>Timeframe:</label>
+          <div style={{
+            padding: '8px 12px',
+            background: '#f9fafb',
+            marginRight: -10,
+            paddingRight: 10,
+            display: 'flex',
+            alignItems: 'flex-start'
+          }}>
+            <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
             <button
               onClick={() => chartMode !== 'proportion' && setTimeframe('year')}
               disabled={chartMode === 'proportion'}
@@ -950,25 +1042,24 @@ export default function ChartControls({
             >
               Month
             </button>
-        </div>
-
-        {/* Monthly view mode toggle - only show for month timeframe and bar mode and individual mode */}
-        {timeframe === 'month' && chartMode === 'bar' && !showCombined && (
-          <>
-            <div></div>
-            <div style={{ padding: 0 }}>
-              <label style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input
-                  type="checkbox"
-                  checked={showAllMonths}
-                  onChange={(e) => setShowAllMonths(e.target.checked)}
-                  style={{ margin: 0 }}
-                />
-                Show all 12 months
-              </label>
             </div>
-          </>
-        )}
+
+            {/* Monthly view mode toggle - continuation row (empty left column) - conditionally rendered */}
+            {timeframe === 'month' && chartMode === 'bar' && !showCombined && (
+              <div style={{ padding: 0 }}>
+                <label style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={showAllMonths}
+                    onChange={(e) => setShowAllMonths(e.target.checked)}
+                    style={{ margin: 0 }}
+                  />
+                  Show all 12 months
+                </label>
+              </div>
+            )}
+          </div>
+        </>
       </div>
       {!isSidebar && loading && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 12 }}>Loading…</div>}
       {isSidebar && loading && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 12 }}>Loading…</div>}
