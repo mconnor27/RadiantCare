@@ -53,6 +53,8 @@ export type Physician = {
   buyoutCost?: number
   // Trailing shared MD dollars for prior-year retirees
   trailingSharedMdAmount?: number
+  // Additional Days Worked (Internal Locums) - $2,000 per day
+  additionalDaysWorked?: number
 }
 
 export type FutureYear = {

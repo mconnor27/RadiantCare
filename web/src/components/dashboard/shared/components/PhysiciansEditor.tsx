@@ -1286,6 +1286,51 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   />
                 </div>
               )}
+              {/* Only show additional days worked slider if partnerPortionOfYear > 0 (not Prior Year) */}
+              {(p.partnerPortionOfYear ?? 0.5) > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                  <input
+                    type="range"
+                    min={0}
+                    max={20000}
+                    step={1000}
+                    value={p.additionalDaysWorked ?? 0}
+                    onChange={(e) =>
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        additionalDaysWorked: Number(e.target.value),
+                      })
+                    }
+                    disabled={readOnly}
+                    style={{
+                      width: '100%',
+                      ['--fill-percent' as any]: `${((p.additionalDaysWorked ?? 0) / 20000) * 100}%`
+                    }}
+                  />
+                  <input
+                    type="text"
+                    value={currency(p.additionalDaysWorked ?? 0)}
+                    onChange={(e) => {
+                      const value = Number(e.target.value.replace(/[^0-9]/g, ''))
+                      if (!isNaN(value)) {
+                        store.upsertPhysician(scenario, year, {
+                          ...p,
+                          additionalDaysWorked: value,
+                        })
+                      }
+                    }}
+                    style={{
+                      width: 100,
+                      height: 20,
+                      padding: '2px 8px',
+                      border: '1px solid #ccc',
+                      borderRadius: 3,
+                      fontSize: 12
+                    }}
+                    disabled={readOnly}
+                  />
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
                 <input
                   type="range"
@@ -1328,9 +1373,11 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
             </div>
             {/* Medical Director Hours icon aligned with the slider/info column (hide if Prior Year) */}
             {(((p.partnerPortionOfYear ?? 0.5) > 0) || ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0)) ? (
-              <div style={{ display: 'grid', gridTemplateRows: ((p.partnerPortionOfYear ?? 0.5) > 0) ? '20px 20px 20px' : '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateRows: ((p.partnerPortionOfYear ?? 0.5) > 0) ? '20px 20px 20px 20px' : '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
                 {/* Placeholder top row to align with adjacent column (weeks/retire info) */}
                 <div style={{ height: 20 }} />
+                {/* Placeholder for weeks vacation row when partnerPortionOfYear > 0 */}
+                {((p.partnerPortionOfYear ?? 0.5) > 0) && <div style={{ height: 20 }} />}
                 <img
                   src={(() => {
                     if ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0) {
@@ -1489,7 +1536,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
             ) : (
               <div></div>
             )}
-              <div style={{ display: 'grid', gridTemplateRows: (p.partnerPortionOfYear ?? 0.5) > 0 ? '20px 20px 20px' : '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateRows: (p.partnerPortionOfYear ?? 0.5) > 0 ? '20px 20px 20px 20px' : '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
                 <div 
                   style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
                   onMouseEnter={(e) => {
@@ -1546,7 +1593,24 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     <span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span>
                   </div>
                 )}
-                <div 
+                {/* Only show additional days worked tooltip if weeks vacation is shown */}
+                {(p.partnerPortionOfYear ?? 0.5) > 0 && (
+                  <div
+                    style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                    onMouseEnter={(e) => {
+                      const tooltip = document.createElement('div')
+                      tooltip.id = 'additional-days-tooltip-ptr'
+                      tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 320px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                      tooltip.textContent = `Additional Days Worked (Internal Locums) - $500 per consult`
+                      document.body.appendChild(tooltip)
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                      tooltip.style.left = `${rect.right + 10}px`
+                      tooltip.style.top = `${rect.top + window.scrollY}px`
+                    }}
+                    onMouseLeave={() => { const t = document.getElementById('additional-days-tooltip-ptr'); if (t) t.remove() }}
+                  ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+                )}
+                <div
                   style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
                   onMouseEnter={(e) => {
                     const tooltip = document.createElement('div')
@@ -1583,55 +1647,100 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
         ) : p.type === 'partner' ? (
           // partner
           <>
-            <div className="control-panel" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-              <input
-                type="range"
-                min={2}
-                max={(() => {
-                  const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
-                  return (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
-                })()}
-                step={1}
-                value={p.weeksVacation ?? 8}
-                onChange={(e) =>
-                  store.upsertPhysician(scenario, year, {
-                    ...p,
-                    weeksVacation: Number(e.target.value),
-                  })
-                }
-                disabled={readOnly}
-                style={{ 
-                  width: '100%',
-                  ['--fill-percent' as any]: `${((p.weeksVacation ?? 8) - 2) / ((() => {
+            <div className="control-panel" style={{ display: 'grid', gridTemplateRows: 'auto auto', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                <input
+                  type="range"
+                  min={2}
+                  max={(() => {
                     const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
                     return (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
-                  })() - 2) * 100}%`
-                }}
-              />
-              <input
-                type="text"
-                value={`${p.weeksVacation ?? 8} weeks off`}
-                onChange={(e) => {
-                  const weeks = Number(e.target.value.replace(/[^0-9]/g, ''))
-                  if (!isNaN(weeks)) {
+                  })()}
+                  step={1}
+                  value={p.weeksVacation ?? 8}
+                  onChange={(e) =>
                     store.upsertPhysician(scenario, year, {
                       ...p,
-                      weeksVacation: weeks,
+                      weeksVacation: Number(e.target.value),
                     })
                   }
-                }}
-                style={{ 
-                  width: 100, 
-                  height: 20, 
-                  padding: '2px 8px', 
-                  border: '1px solid #ccc',
-                  borderRadius: 3,
-                  fontSize: 12
-                }}
-                disabled={readOnly}
-              />
+                  disabled={readOnly}
+                  style={{
+                    width: '100%',
+                    ['--fill-percent' as any]: `${((p.weeksVacation ?? 8) - 2) / ((() => {
+                      const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+                      return (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
+                    })() - 2) * 100}%`
+                  }}
+                />
+                <input
+                  type="text"
+                  value={`${p.weeksVacation ?? 8} weeks off`}
+                  onChange={(e) => {
+                    const weeks = Number(e.target.value.replace(/[^0-9]/g, ''))
+                    if (!isNaN(weeks)) {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        weeksVacation: weeks,
+                      })
+                    }
+                  }}
+                  style={{
+                    width: 100,
+                    height: 20,
+                    padding: '2px 8px',
+                    border: '1px solid #ccc',
+                    borderRadius: 3,
+                    fontSize: 12
+                  }}
+                  disabled={readOnly}
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                <input
+                  type="range"
+                  min={0}
+                  max={20000}
+                  step={500}
+                  value={p.additionalDaysWorked ?? 0}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      additionalDaysWorked: Number(e.target.value),
+                    })
+                  }
+                  disabled={readOnly}
+                  style={{
+                    width: '100%',
+                    ['--fill-percent' as any]: `${((p.additionalDaysWorked ?? 0) / 20000) * 100}%`
+                  }}
+                />
+                <input
+                  type="text"
+                  value={currency(p.additionalDaysWorked ?? 0)}
+                  onChange={(e) => {
+                    const value = Number(e.target.value.replace(/[^0-9]/g, ''))
+                    if (!isNaN(value)) {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        additionalDaysWorked: value,
+                      })
+                    }
+                  }}
+                  style={{
+                    width: 100,
+                    height: 20,
+                    padding: '2px 8px',
+                    border: '1px solid #ccc',
+                    borderRadius: 3,
+                    fontSize: 12
+                  }}
+                  disabled={readOnly}
+                />
+              </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateRows: '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+              <div style={{ height: 20 }} />
               <img
                 src={(p.medicalDirectorHoursPercentage ?? 0) > 0 ? '/hours_selected.png' : '/hours_unselected.png'}
                 alt={`Medical Director Hours ${((p.medicalDirectorHoursPercentage ?? 0) > 0) ? 'enabled' : 'disabled'}`}
@@ -1726,30 +1835,46 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 }}
               />
             </div>
-            <div 
-              style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
-              onMouseEnter={(e) => {
-                const tooltip = document.createElement('div')
-                tooltip.id = 'partner-tooltip'
-                tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
-                
-                // Calculate relative FTE based on maximum FTE partner (accounting for vacation during partner period)
-                const allPartners = physicians.filter((ph) => ph.type === 'partner' || ph.type === 'employeeToPartner' || ph.type === 'partnerToRetire')
-                const partnerWeights = allPartners.map(ph => getPartnerFTEWeightProper(ph))
-                const maxWeight = Math.max(...partnerWeights, 0.01) // Avoid division by zero
-                const currentWeight = getPartnerFTEWeightProper(p)
-                const relativeFTE = currentWeight / maxWeight
-                
-                const weeks = p.weeksVacation ?? 8
-                const effectiveWeeks = 52 - weeks
-                tooltip.textContent = `Partner:\nWeeks off: ${weeks}\nWorking weeks: ${effectiveWeeks}\nRelative FTE: ${(relativeFTE * 100).toFixed(1)}%`
-                document.body.appendChild(tooltip)
-                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                tooltip.style.left = `${rect.right + 10}px`
-                tooltip.style.top = `${rect.top + window.scrollY}px`
-              }}
-              onMouseLeave={() => { const t = document.getElementById('partner-tooltip'); if (t) t.remove() }}
-            ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+            <div style={{ display: 'grid', gridTemplateRows: '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+              <div
+                style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                onMouseEnter={(e) => {
+                  const tooltip = document.createElement('div')
+                  tooltip.id = 'partner-tooltip'
+                  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+
+                  // Calculate relative FTE based on maximum FTE partner (accounting for vacation during partner period)
+                  const allPartners = physicians.filter((ph) => ph.type === 'partner' || ph.type === 'employeeToPartner' || ph.type === 'partnerToRetire')
+                  const partnerWeights = allPartners.map(ph => getPartnerFTEWeightProper(ph))
+                  const maxWeight = Math.max(...partnerWeights, 0.01) // Avoid division by zero
+                  const currentWeight = getPartnerFTEWeightProper(p)
+                  const relativeFTE = currentWeight / maxWeight
+
+                  const weeks = p.weeksVacation ?? 8
+                  const effectiveWeeks = 52 - weeks
+                  tooltip.textContent = `Partner:\nWeeks off: ${weeks}\nWorking weeks: ${effectiveWeeks}\nRelative FTE: ${(relativeFTE * 100).toFixed(1)}%`
+                  document.body.appendChild(tooltip)
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                  tooltip.style.left = `${rect.right + 10}px`
+                  tooltip.style.top = `${rect.top + window.scrollY}px`
+                }}
+                onMouseLeave={() => { const t = document.getElementById('partner-tooltip'); if (t) t.remove() }}
+              ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+              <div
+                style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                onMouseEnter={(e) => {
+                  const tooltip = document.createElement('div')
+                  tooltip.id = 'additional-days-tooltip'
+                  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 320px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                  tooltip.textContent = `Additional Days Worked (Internal Locums) - $500 per consult`
+                  document.body.appendChild(tooltip)
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                  tooltip.style.left = `${rect.right + 10}px`
+                  tooltip.style.top = `${rect.top + window.scrollY}px`
+                }}
+                onMouseLeave={() => { const t = document.getElementById('additional-days-tooltip'); if (t) t.remove() }}
+              ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+            </div>
             <button
               onClick={() => store.removePhysician(scenario, year, p.id)}
               disabled={!canDelete}
@@ -2004,9 +2129,51 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   disabled={readOnly}
                 />
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                <input
+                  type="range"
+                  min={0}
+                  max={20000}
+                  step={500}
+                  value={p.additionalDaysWorked ?? 0}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      additionalDaysWorked: Number(e.target.value),
+                    })
+                  }
+                  disabled={readOnly}
+                  style={{
+                    width: '100%',
+                    ['--fill-percent' as any]: `${((p.additionalDaysWorked ?? 0) / 20000) * 100}%`
+                  }}
+                />
+                <input
+                  type="text"
+                  value={currency(p.additionalDaysWorked ?? 0)}
+                  onChange={(e) => {
+                    const value = Number(e.target.value.replace(/[^0-9]/g, ''))
+                    if (!isNaN(value)) {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        additionalDaysWorked: value,
+                      })
+                    }
+                  }}
+                  style={{
+                    width: 100,
+                    height: 20,
+                    padding: '2px 8px',
+                    border: '1px solid #ccc',
+                    borderRadius: 3,
+                    fontSize: 12
+                  }}
+                  disabled={readOnly}
+                />
+              </div>
             </div>
-            {/* First icon column: blank (aligns with date), then Benefits (salary), then Hours (vacation) */}
-            <div style={{ display: 'grid', gridTemplateRows: '20px 20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+            {/* First icon column: blank (aligns with date), then Benefits (salary), then Hours (vacation), then blank (additional days) */}
+            <div style={{ display: 'grid', gridTemplateRows: '20px 20px 20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
               <div style={{ width: '20px', height: '20px' }} />
               <img 
                 src={p.receivesBenefits ? '/benefit_selected.png?v=2' : '/benefit_unselected.png'}
@@ -2137,8 +2304,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   }
                 }}
               />
+              <div style={{ width: '20px', height: '20px' }} />
             </div>
-              <div style={{ display: 'grid', gridTemplateRows: '20px 20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateRows: '20px 20px 20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
                 {/* 1) Transition info */}
                 <div 
                   style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
@@ -2222,6 +2390,21 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     tooltip.style.top = `${rect.top + window.scrollY}px`
                   }}
                   onMouseLeave={() => { const t = document.getElementById('partner-weeks-tooltip'); if (t) t.remove() }}
+                ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+                {/* 4) Additional Days Worked info */}
+                <div
+                  style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                  onMouseEnter={(e) => {
+                    const tooltip = document.createElement('div')
+                    tooltip.id = 'additional-days-tooltip-etp'
+                    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 320px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                    tooltip.textContent = `Additional Days Worked (Internal Locums) - $500 per consult`
+                    document.body.appendChild(tooltip)
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    tooltip.style.left = `${rect.right + 10}px`
+                    tooltip.style.top = `${rect.top + window.scrollY}px`
+                  }}
+                  onMouseLeave={() => { const t = document.getElementById('additional-days-tooltip-etp'); if (t) t.remove() }}
                 ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
               </div>
             <button

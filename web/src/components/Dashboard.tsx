@@ -1186,7 +1186,8 @@ export function arePhysiciansChanged(
       current.hasMedicalDirectorHours !== (defaultPhysician as any).hasMedicalDirectorHours ||
       current.medicalDirectorHoursPercentage !== (defaultPhysician as any).medicalDirectorHoursPercentage ||
       current.buyoutCost !== defaultPhysician.buyoutCost ||
-      current.trailingSharedMdAmount !== defaultPhysician.trailingSharedMdAmount
+      current.trailingSharedMdAmount !== defaultPhysician.trailingSharedMdAmount ||
+      current.additionalDaysWorked !== defaultPhysician.additionalDaysWorked
     ) {
       return true
     }

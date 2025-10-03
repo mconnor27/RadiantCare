@@ -238,9 +238,9 @@ export function calculateMedicalDirectorHourPercentages(physicians: Physician[])
 
 export function scenario2024Defaults(): Physician[] {
   const physicians: Physician[] = [
-    { id: `2024-JS`, name: 'Suszko', type: 'partner' as PhysicianType, weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
-    { id: `2024-GA`, name: 'Allen', type: 'partner' as PhysicianType, weeksVacation: 16, receivesBonuses: false, bonusAmount: 0 },
-    { id: `2024-HW`, name: 'Werner', type: 'partner' as PhysicianType, weeksVacation: 19, receivesBonuses: false, bonusAmount: 0 },
+    { id: `2024-JS`, name: 'Suszko', type: 'partner' as PhysicianType, weeksVacation: 12, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+    { id: `2024-GA`, name: 'Allen', type: 'partner' as PhysicianType, weeksVacation: 16, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+    { id: `2024-HW`, name: 'Werner', type: 'partner' as PhysicianType, weeksVacation: 19, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
     { id: `2024-MC`, name: 'Connor', type: 'employee' as PhysicianType, salary: 341323.02, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
     { id: `2024-CD`, name: 'Deig', type: 'employeeToTerminate' as PhysicianType, terminatePortionOfYear: 30/365, salary: 318640, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Jan 31 termination
     { id: `2024-BT`, name: 'Tinnel', type: 'newEmployee' as PhysicianType, startPortionOfYear: 279/365, salary: 407196, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Oct 7 start
@@ -253,53 +253,53 @@ export function scenarioADefaultsByYear(year: number): Physician[] {
   
   if (year === 2025) {
     physicians = [
-      { id: `${year}-MC`, name: 'Connor', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 328840, weeksVacation: 9, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 26.39 },
-      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 33.33 },
-      { id: `${year}-GA`, name: 'Allen', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 33.33 },
-      { id: `${year}-HW`, name: 'Werner', type: 'partnerToRetire', partnerPortionOfYear: 0, buyoutCost: 51666.58, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 6.96, trailingSharedMdAmount: 8302.50 },
+      { id: `${year}-MC`, name: 'Connor', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 328840, weeksVacation: 9, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 26.39, additionalDaysWorked: 0 },
+      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 33.33, additionalDaysWorked: 0 },
+      { id: `${year}-GA`, name: 'Allen', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 33.33, additionalDaysWorked: 1000 },
+      { id: `${year}-HW`, name: 'Werner', type: 'partnerToRetire', partnerPortionOfYear: 0, buyoutCost: 51666.58, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 6.96, trailingSharedMdAmount: 8302.50, additionalDaysWorked: 0 },
       { id: `${year}-BT`, name: 'Tinnel', type: 'employee', salary: 430760, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
     ]
   }
   else if (year === 2026) {
     physicians = [
-      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-GA`, name: 'Allen', type: 'partnerToRetire', partnerPortionOfYear: 182/365, weeksVacation: 8, buyoutCost: 50000, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-BT`, name: 'Tinnel', type: 'employeeToPartner', employeePortionOfYear: 181/365, salary: 507240, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-GA`, name: 'Allen', type: 'partnerToRetire', partnerPortionOfYear: 182/365, weeksVacation: 8, buyoutCost: 50000, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-BT`, name: 'Tinnel', type: 'employeeToPartner', employeePortionOfYear: 181/365, salary: 507240, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
       { id: `${year}-LK`, name: 'Kahn', type: 'newEmployee', startPortionOfYear: calendarDateToPortion(6, 1, year), salary: 600000, receivesBenefits: true, receivesBonuses: true, bonusAmount: 20000 },
     ]
   }
   else if (year === 2027) {
     physicians = [
-      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-BT`, name: 'Tinnel', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 }, // First year as partner
+      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-BT`, name: 'Tinnel', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 }, // First year as partner
       { id: `${year}-LK`, name: 'Kahn', type: 'employee', salary: 600000, receivesBonuses: false, bonusAmount: 0 },
     ]
   }
   else if (year === 2028) {
     physicians = [
-      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-BT`, name: 'Tinnel', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
-      { id: `${year}-LK`, name: 'Kahn', type: 'employeeToPartner', employeePortionOfYear: calendarDateToPortion(6, 1, year), salary: 600000, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Becomes partner exactly 2 years after hire
+      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-BT`, name: 'Tinnel', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 }, // Second year as partner
+      { id: `${year}-LK`, name: 'Kahn', type: 'employeeToPartner', employeePortionOfYear: calendarDateToPortion(6, 1, year), salary: 600000, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 }, // Becomes partner exactly 2 years after hire
     ]
   }
   else if (year === 2029) {
     physicians = [
-      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-BT`, name: 'Tinnel', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 }, // Third year as partner
-      { id: `${year}-LK`, name: 'Kahn', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
+      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-BT`, name: 'Tinnel', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 }, // Third year as partner
+      { id: `${year}-LK`, name: 'Kahn', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 }, // Second year as partner
     ]
   }
   else {
     // 2030+
     physicians = [
-      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-BT`, name: 'Tinnel', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2027)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
-      { id: `${year}-LK`, name: 'Kahn', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
+      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-BT`, name: 'Tinnel', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2027)), receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 }, // Increases yearly, max 12
+      { id: `${year}-LK`, name: 'Kahn', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)), receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 }, // Increases yearly, max 12
     ]
   }
   
@@ -313,60 +313,60 @@ export function scenarioADefaultsByYear(year: number): Physician[] {
 
 export function scenarioBDefaultsByYear(year: number): Physician[] {
   let physicians: Physician[] = []
-  
+
   if (year === 2025) {
     physicians = [
-      { id: `${year}-MC`, name: 'Connor', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 328840, weeksVacation: 9, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 26.39 },
-      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 33.33 },
-      { id: `${year}-GA`, name: 'Allen', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 33.33 },
-      { id: `${year}-HW`, name: 'Werner', type: 'partnerToRetire', partnerPortionOfYear: 0, buyoutCost: 51666.58, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 6.96, trailingSharedMdAmount: 8302.50 },
+      { id: `${year}-MC`, name: 'Connor', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 328840, weeksVacation: 9, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 26.39, additionalDaysWorked: 0 },
+      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 33.33, additionalDaysWorked: 0 },
+      { id: `${year}-GA`, name: 'Allen', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 33.33, additionalDaysWorked: 1000 },
+      { id: `${year}-HW`, name: 'Werner', type: 'partnerToRetire', partnerPortionOfYear: 0, buyoutCost: 51666.58, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 6.96, trailingSharedMdAmount: 8302.50, additionalDaysWorked: 0 },
       { id: `${year}-BT`, name: 'Tinnel', type: 'employee', salary: 430760, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
     ]
   }
   else if (year === 2026) {
     physicians = [
-      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-GA`, name: 'Allen', type: 'partnerToRetire', partnerPortionOfYear: 182/365, weeksVacation: 8, buyoutCost: 50000, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-BT`, name: 'Tinnel', type: 'employeeToPartner', employeePortionOfYear: 181/365, salary: 507240, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-GA`, name: 'Allen', type: 'partnerToRetire', partnerPortionOfYear: 182/365, weeksVacation: 8, buyoutCost: 50000, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-BT`, name: 'Tinnel', type: 'employeeToPartner', employeePortionOfYear: 181/365, salary: 507240, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
       { id: `${year}-LK`, name: 'Kahn', type: 'newEmployee', startPortionOfYear: calendarDateToPortion(6, 1, year), salary: 600000, receivesBenefits: true, receivesBonuses: true, bonusAmount: 20000 },
     ]
   }
   else if (year === 2027) {
     physicians = [
-      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-BT`, name: 'Tinnel', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0 }, // First year as partner
+      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-BT`, name: 'Tinnel', type: 'partner', weeksVacation: 8, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 }, // First year as partner
       { id: `${year}-LK`, name: 'Kahn', type: 'employee', salary: 600000, receivesBonuses: false, bonusAmount: 0 },
       { id: `${year}-P5`, name: 'Potential Hire', type: 'newEmployee', startPortionOfYear: 0, salary: 500000, receivesBenefits: true, receivesBonuses: true, bonusAmount: 20000 },
     ]
   }
   else if (year === 2028) {
     physicians = [
-      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-BT`, name: 'Tinnel', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
-      { id: `${year}-LK`, name: 'Kahn', type: 'employeeToPartner', employeePortionOfYear: calendarDateToPortion(6, 1, year), salary: 600000, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 }, // Becomes partner exactly 2 years after hire
+      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-BT`, name: 'Tinnel', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 }, // Second year as partner
+      { id: `${year}-LK`, name: 'Kahn', type: 'employeeToPartner', employeePortionOfYear: calendarDateToPortion(6, 1, year), salary: 600000, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 }, // Becomes partner exactly 2 years after hire
       { id: `${year}-P5`, name: 'Potential Hire', type: 'employee', salary: 500000, receivesBenefits: true, receivesBonuses: false, bonusAmount: 0 },
     ]
   }
   else if (year === 2029) {
     physicians = [
-      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-BT`, name: 'Tinnel', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 }, // Third year as partner
-      { id: `${year}-LK`, name: 'Kahn', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0 }, // Second year as partner
-      { id: `${year}-P5`, name: 'Potential Hire', type: 'employeeToPartner', employeePortionOfYear: calendarDateToPortion(1, 1, year), salary: 500000, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
+      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-BT`, name: 'Tinnel', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 }, // Third year as partner
+      { id: `${year}-LK`, name: 'Kahn', type: 'partner', weeksVacation: 9, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 }, // Second year as partner
+      { id: `${year}-P5`, name: 'Potential Hire', type: 'employeeToPartner', employeePortionOfYear: calendarDateToPortion(1, 1, year), salary: 500000, weeksVacation: 8, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
     ]
   }
   else {
     // 2030+
     physicians = [
-      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0 },
-      { id: `${year}-BT`, name: 'Tinnel', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2027)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
-      { id: `${year}-LK`, name: 'Kahn', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
-      { id: `${year}-P5`, name: 'Potential Hire', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2029)), receivesBonuses: false, bonusAmount: 0 }, // Increases yearly, max 12
+      { id: `${year}-MC`, name: 'Connor', type: 'partner', weeksVacation: 10, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 12, receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 },
+      { id: `${year}-BT`, name: 'Tinnel', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2027)), receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 }, // Increases yearly, max 12
+      { id: `${year}-LK`, name: 'Kahn', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2028)), receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 }, // Increases yearly, max 12
+      { id: `${year}-P5`, name: 'Potential Hire', type: 'partner', weeksVacation: Math.min(12, 8 + (year - 2029)), receivesBonuses: false, bonusAmount: 0, additionalDaysWorked: 0 }, // Increases yearly, max 12
     ]
   }
   

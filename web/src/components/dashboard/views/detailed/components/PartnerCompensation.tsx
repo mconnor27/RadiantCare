@@ -173,13 +173,22 @@ function parseProjectedData(physicians: Physician[], fy2025: any): { data: Physi
   }
   const totalMedicalDirectorAllocations = Array.from(partnerMedicalDirectorAllocations.values()).reduce((s, a) => s + a, 0)
 
+  // Additional Days Worked allocations (direct to partner, like MD income)
+  const partnerAdditionalDaysAllocations = new Map<string, number>()
+  for (const partner of partners) {
+    if (partner.additionalDaysWorked && partner.additionalDaysWorked > 0) {
+      partnerAdditionalDaysAllocations.set(partner.id, partner.additionalDaysWorked)
+    }
+  }
+  const totalAdditionalDaysAllocations = Array.from(partnerAdditionalDaysAllocations.values()).reduce((s, a) => s + a, 0)
+
   // Pool from future values - include ALL income sources
   const totalIncome = (fy2025.therapyIncome ?? 0) + medicalDirectorIncome + prcsMedicalDirectorIncome + (fy2025.consultingServicesAgreement ?? 0)
   const totalCosts = (fy2025.nonEmploymentCosts ?? 0) + (fy2025.nonMdEmploymentCosts ?? 0) + (fy2025.miscEmploymentCosts ?? 0) + (fy2025.locumCosts ?? 0) + totalEmployeeCosts + totalBuyoutCosts + totalDelayedW2Costs
   const basePool = Math.max(0, totalIncome - totalCosts)
-  const pool = Math.max(0, basePool - totalMedicalDirectorAllocations)
+  const pool = Math.max(0, basePool - totalMedicalDirectorAllocations - totalAdditionalDaysAllocations)
 
-  // Distribute to partners by FTE weight and add MD allocations and buyouts
+  // Distribute to partners by FTE weight and add MD allocations, additional days worked, and buyouts
   const partnerFTEs = partners.map((p) => ({ p, weight: getPartnerFTEWeight(p) }))
   const totalWeight = partnerFTEs.reduce((s, x) => s + x.weight, 0) || 1
   for (const { p, weight } of partnerFTEs) {
@@ -190,8 +199,13 @@ function parseProjectedData(physicians: Physician[], fy2025: any): { data: Physi
     }
     const fteShare = (weight / totalWeight) * pool
     const mdAllocation = partnerMedicalDirectorAllocations.get(p.id) ?? 0
+    const additionalDaysAllocation = partnerAdditionalDaysAllocations.get(p.id) ?? 0
     const trailing = (p.type === 'partnerToRetire' && (p.partnerPortionOfYear ?? 0) === 0) ? (p.trailingSharedMdAmount ?? 0) : 0
-    totals[p.name] = fteShare + mdAllocation + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0) + trailing
+
+    // For employeeToPartner, also include their delayed W2 payment in total projected income
+    const delayedW2Income = p.type === 'employeeToPartner' ? calculateDelayedW2Payment(p, 2025).amount : 0
+
+    totals[p.name] = fteShare + mdAllocation + additionalDaysAllocation + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0) + trailing + delayedW2Income
   }
 
   // Employees: show their W2 comp as projected salary (mirroring summary behavior)
