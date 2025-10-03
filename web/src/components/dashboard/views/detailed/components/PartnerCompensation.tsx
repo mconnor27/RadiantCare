@@ -4,6 +4,7 @@ import summaryData from '../../../../../historical_data/2025_summary.json'
 import { PARTNER_COMPENSATION_CONFIG, DEFAULT_MD_SHARED_PROJECTION, DEFAULT_MD_PRCS_PROJECTION } from '../../../shared/defaults'
 import { useDashboardStore } from '../../../../Dashboard'
 import { calculateDelayedW2Payment, calculateEmployeeTotalCost, getPartnerFTEWeight, getEmployeePortionOfYear } from '../../../shared/calculations'
+import { calculateAllCompensations } from '../../../shared/compensationEngine'
 import type { Physician } from '../../../shared/types'
 
 interface PhysicianData {
@@ -118,103 +119,20 @@ function parseProjectedData(physicians: Physician[], fy2025: any): { data: Physi
     return { data, totals }
   }
 
-  // Separate partners and employees
-  const partners = physicians.filter((p) => p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire')
-  const employees = physicians.filter((p) => p.type === 'employee' || p.type === 'employeeToPartner' || p.type === 'newEmployee' || p.type === 'employeeToTerminate')
+  // Use the canonical compensation engine
+  // For Partner Compensation table: include W2 in total comp
+  const compensations = calculateAllCompensations({
+    physicians,
+    year: 2025,
+    fy: fy2025,
+    benefitCostsGrowthPct: fy2025.benefitCostsGrowthPct ?? 5,
+    includeRetired: true
+    // excludeW2FromComp defaults to false - W2 included in comp
+  })
 
-  // Employee total costs (wages + benefits + employer taxes) respecting portions and benefit growth
-  const totalEmployeeCosts = employees.reduce((sum, e) => {
-    const employeePortion = getEmployeePortionOfYear(e)
-    if (employeePortion <= 0) return sum
-
-    if (e.type === 'newEmployee') {
-      const prorated = { ...e, salary: (e.salary ?? 0) * employeePortion }
-      return sum + calculateEmployeeTotalCost(prorated, 2025, fy2025?.benefitCostsGrowthPct ?? 5)
-    } else if (e.type === 'employeeToTerminate') {
-      const prorated = { ...e, salary: (e.salary ?? 0) * employeePortion }
-      return sum + calculateEmployeeTotalCost(prorated, 2025, fy2025?.benefitCostsGrowthPct ?? 5)
-    } else if (e.type === 'employeeToPartner') {
-      const employeePortionSalary = (e.salary ?? 0) * employeePortion
-      const employeePortionPhysician = { ...e, salary: employeePortionSalary }
-      return sum + calculateEmployeeTotalCost(employeePortionPhysician, 2025, fy2025?.benefitCostsGrowthPct ?? 5)
-    } else {
-      return sum + calculateEmployeeTotalCost(e, 2025, fy2025?.benefitCostsGrowthPct ?? 5)
-    }
-  }, 0)
-
-  // Buyouts only for partners who worked part of the year
-  const totalBuyoutCosts = partners.reduce((sum, p) => {
-    const weight = getPartnerFTEWeight(p)
-    return sum + (p.type === 'partnerToRetire' && weight > 0 ? (p.buyoutCost ?? 0) : 0)
-  }, 0)
-
-  // Delayed W2 costs for employeeToPartner
-  const totalDelayedW2Costs = physicians.reduce((sum, p) => {
-    if (p.type === 'employeeToPartner') {
-      const delayed = calculateDelayedW2Payment(p, 2025)
-      return sum + delayed.amount + delayed.taxes
-    }
-    return sum
-  }, 0)
-
-  // Medical Director allocations
-  const medicalDirectorIncome = fy2025.medicalDirectorHours ?? DEFAULT_MD_SHARED_PROJECTION
-  const prcsMedicalDirectorIncome = fy2025.prcsDirectorPhysicianId ? (fy2025.prcsMedicalDirectorHours ?? DEFAULT_MD_PRCS_PROJECTION) : 0
-  const partnerMedicalDirectorAllocations = new Map<string, number>()
-  for (const partner of partners) {
-    if (partner.hasMedicalDirectorHours && partner.medicalDirectorHoursPercentage) {
-      const allocation = (partner.medicalDirectorHoursPercentage / 100) * medicalDirectorIncome
-      partnerMedicalDirectorAllocations.set(partner.id, allocation)
-    }
-  }
-  if (fy2025.prcsDirectorPhysicianId && prcsMedicalDirectorIncome > 0) {
-    const current = partnerMedicalDirectorAllocations.get(fy2025.prcsDirectorPhysicianId) ?? 0
-    partnerMedicalDirectorAllocations.set(fy2025.prcsDirectorPhysicianId, current + prcsMedicalDirectorIncome)
-  }
-  const totalMedicalDirectorAllocations = Array.from(partnerMedicalDirectorAllocations.values()).reduce((s, a) => s + a, 0)
-
-  // Additional Days Worked allocations (direct to partner, like MD income)
-  const partnerAdditionalDaysAllocations = new Map<string, number>()
-  for (const partner of partners) {
-    if (partner.additionalDaysWorked && partner.additionalDaysWorked > 0) {
-      partnerAdditionalDaysAllocations.set(partner.id, partner.additionalDaysWorked)
-    }
-  }
-  const totalAdditionalDaysAllocations = Array.from(partnerAdditionalDaysAllocations.values()).reduce((s, a) => s + a, 0)
-
-  // Pool from future values - include ALL income sources
-  const totalIncome = (fy2025.therapyIncome ?? 0) + medicalDirectorIncome + prcsMedicalDirectorIncome + (fy2025.consultingServicesAgreement ?? 0)
-  const totalCosts = (fy2025.nonEmploymentCosts ?? 0) + (fy2025.nonMdEmploymentCosts ?? 0) + (fy2025.miscEmploymentCosts ?? 0) + (fy2025.locumCosts ?? 0) + totalEmployeeCosts + totalBuyoutCosts + totalDelayedW2Costs
-  const basePool = Math.max(0, totalIncome - totalCosts)
-  const pool = Math.max(0, basePool - totalMedicalDirectorAllocations - totalAdditionalDaysAllocations)
-
-  // Distribute to partners by FTE weight and add MD allocations, additional days worked, and buyouts
-  const partnerFTEs = partners.map((p) => ({ p, weight: getPartnerFTEWeight(p) }))
-  const totalWeight = partnerFTEs.reduce((s, x) => s + x.weight, 0) || 1
-  for (const { p, weight } of partnerFTEs) {
-    // Exclude prior-year retirees with no working portion
-    if (p.type === 'partnerToRetire' && weight === 0) {
-      totals[p.name] = (p.buyoutCost ?? 0) + (p.trailingSharedMdAmount ?? 0)
-      continue
-    }
-    const fteShare = (weight / totalWeight) * pool
-    const mdAllocation = partnerMedicalDirectorAllocations.get(p.id) ?? 0
-    const additionalDaysAllocation = partnerAdditionalDaysAllocations.get(p.id) ?? 0
-    const trailing = (p.type === 'partnerToRetire' && (p.partnerPortionOfYear ?? 0) === 0) ? (p.trailingSharedMdAmount ?? 0) : 0
-
-    // For employeeToPartner, also include their delayed W2 payment in total projected income
-    const delayedW2Income = p.type === 'employeeToPartner' ? calculateDelayedW2Payment(p, 2025).amount : 0
-
-    totals[p.name] = fteShare + mdAllocation + additionalDaysAllocation + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0) + trailing + delayedW2Income
-  }
-
-  // Employees: show their W2 comp as projected salary (mirroring summary behavior)
-  const employeeOnly = physicians.filter((p) => p.type === 'employee' || p.type === 'newEmployee' || p.type === 'employeeToTerminate')
-  for (const e of employeeOnly) {
-    // Salary portion for the year (respect portions for new/terminate)
-    const portion = getEmployeePortionOfYear(e)
-    const salary = (e.salary ?? 0) * (e.type === 'employee' ? 1 : portion)
-    totals[e.name] = salary
+  // Map to totals structure
+  for (const comp of compensations) {
+    totals[comp.name] = comp.comp
   }
 
   return { data, totals }

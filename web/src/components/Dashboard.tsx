@@ -9,35 +9,26 @@ import type { YearRow, PhysicianType, Physician, FutureYear, ScenarioKey, Store 
 
 // Re-export types for backward compatibility with extracted components
 export type { YearRow, PhysicianType, Physician, FutureYear, ScenarioKey }
-import {
-  clamp
-} from './dashboard/shared/utils'
 import { useIsMobile } from './dashboard/shared/hooks'
 import {
   computeDefaultNonMdEmploymentCosts,
-  calculateEmployeeTotalCost,
-  calculateDelayedW2Payment,
   calculateMedicalDirectorHourPercentages,
-  getEmployeePortionOfYear,
   getPartnerPortionOfYear,
-  getPartnerFTEWeight,
-  getTotalIncome,
   getBenefitCostsForYear
 } from './dashboard/shared/calculations'
-import { getDefaultTrailingSharedMdAmount } from './dashboard/shared/tooltips'
+import {
+  calculateAllCompensations,
+  calculateAllCompensationsWithRetired
+} from './dashboard/shared/compensationEngine'
 import {
   HISTORIC_DATA,
   scenario2024Defaults,
   scenarioADefaultsByYear,
   scenarioBDefaultsByYear,
   DEFAULT_MISC_EMPLOYMENT_COSTS,
-  DEFAULT_CONSULTING_SERVICES_2024,
   DEFAULT_CONSULTING_SERVICES_2025,
-  ACTUAL_2024_MEDICAL_DIRECTOR_HOURS,
-  ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS,
   ACTUAL_2024_MISC_EMPLOYMENT_COSTS,
   ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS,
-  ACTUAL_2024_PARTNER_POOL,
   ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
   ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
   DEFAULT_MD_SHARED_PROJECTION,
@@ -905,211 +896,26 @@ export function usePartnerComp(year: number, scenario: ScenarioKey) {
   const store = useDashboardStore()
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
   const fy = sc.future.find((f) => f.year === year)
-  const dataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode
+
   return useMemo(() => {
-    // For baseline year (2025): always derive from the selected data mode unless in Custom.
-    // This avoids stale Custom state (e.g., a persisted 2025 entry in future years) from skewing baseline.
-    if (year === 2025 && dataMode !== 'Custom') {
-      // Get the baseline scenario data which includes PRCS director assignment
-      const baselineData = (() => {
-        const last2024 = store.historic.find(h => h.year === 2024)
-        const last2025 = store.historic.find(h => h.year === 2025)
-        
-        if (dataMode === '2024 Data' && last2024) {
-          const physicians = scenario2024Defaults()
-          const js = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
-          return {
-            medicalDirectorHours: ACTUAL_2024_MEDICAL_DIRECTOR_HOURS,
-            prcsMedicalDirectorHours: ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS,
-            consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_2024, // 2024 consulting services amount
-            prcsDirectorPhysicianId: js?.id,
-            physicians,
-          }
-        } else if (dataMode === '2025 Data' && last2025) {
-          // Prefer baseline edits from store future[2025] so YTD edits reflect here
-          const storeFy2025 = sc.future.find((f) => f.year === 2025)
-          const defaultPhysicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
-          const physicians = storeFy2025?.physicians ?? defaultPhysicians
-          const js = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
-          return {
-            medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
-            prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
-            consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_2025, // 2025 consulting services amount
-            prcsDirectorPhysicianId: storeFy2025?.prcsDirectorPhysicianId ?? js?.id,
-            physicians,
-          }
-        } else {
-          const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
-          const js = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
-          return {
-            medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
-            prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
-            consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_2025, // 2025 consulting services amount (fallback)
-            prcsDirectorPhysicianId: js?.id,
-            physicians,
-          }
-        }
-      })()
-      
-      const partners = baselineData.physicians.filter((p) => p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire')
-      const partnerFTEs = partners.map((p) => {
-        // Allow up to 24 weeks for historical data compatibility
-        const weeks = clamp(p.weeksVacation ?? 0, 0, 24)
-        const fte = 1 - weeks / 52
-        const weight = fte * getPartnerPortionOfYear(p)
-        return { p, weight }
-      })
-      const totalWeight = partnerFTEs.reduce((s, x) => s + x.weight, 0) || 1
-      // For 2025, only account for buyout costs of partners who worked part of the year
-      // Partners who retired in prior year (weight = 0) shouldn't reduce the active partner pool
-      const buyoutCosts = partners.reduce((sum, p) => {
-        if (p.type === 'partnerToRetire') {
-          const weight = (1 - (p.weeksVacation ?? 0) / 52) * (p.partnerPortionOfYear ?? 0.5)
-          // Only subtract buyout if the partner worked part of the year
-          return sum + (weight > 0 ? (p.buyoutCost ?? 0) : 0)
-        }
-        return sum
-      }, 0)
-      
-      // Calculate Medical Director income allocations first for 2025 baseline
-      const medicalDirectorIncome = baselineData.medicalDirectorHours
-      const prcsMedicalDirectorIncome = baselineData.prcsMedicalDirectorHours
-      
-      // Calculate direct Medical Director allocations to partners
-      const partnerMedicalDirectorAllocations = new Map<string, number>()
-      
-      // Allocate shared Medical Director income based on percentages
-      for (const partner of partners) {
-        if (partner.hasMedicalDirectorHours && partner.medicalDirectorHoursPercentage) {
-          const allocation = (partner.medicalDirectorHoursPercentage / 100) * medicalDirectorIncome
-          partnerMedicalDirectorAllocations.set(partner.id, allocation)
-        }
-      }
-      
-      // Allocate PRCS Medical Director income directly to the assigned physician
-      if (baselineData.prcsDirectorPhysicianId && prcsMedicalDirectorIncome > 0) {
-        const currentPrcsAllocation = partnerMedicalDirectorAllocations.get(baselineData.prcsDirectorPhysicianId) ?? 0
-        partnerMedicalDirectorAllocations.set(baselineData.prcsDirectorPhysicianId, currentPrcsAllocation + prcsMedicalDirectorIncome)
-      }
-      
-      // Calculate total Medical Director allocations to subtract from pool
-      const totalMedicalDirectorAllocations = Array.from(partnerMedicalDirectorAllocations.values()).reduce((sum, allocation) => sum + allocation, 0)
-      
-      // Calculate partner pool dynamically based on data mode
-      const historic2025 = store.historic.find(h => h.year === 2025)!
-      const dynamicNetIncome2025 = getTotalIncome(historic2025) - historic2025.nonEmploymentCosts - (historic2025.employeePayroll ?? 0)
-      const basePool = dataMode === '2024 Data' ? ACTUAL_2024_PARTNER_POOL : dynamicNetIncome2025
-      // Dynamic net income is already net of all costs, so only subtract buyouts and MD allocations
-      // delayedW2Costs are already accounted for in the net pool
-      const adjustedPool = Math.max(0, basePool - buyoutCosts - totalMedicalDirectorAllocations)
-      
-      return partnerFTEs
-        .filter(({ p, weight }) => {
-          // Exclude partners who retired in prior year and only got buyout (no working portion)
-          if (p.type === 'partnerToRetire' && weight === 0) {
-            return false
-          }
-          return true
-        })
-        .map(({ p, weight }) => ({ 
-          id: p.id, 
-          name: p.name, 
-          comp: (weight / totalWeight) * adjustedPool + (partnerMedicalDirectorAllocations.get(p.id) ?? 0) + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0) + 
-                // Add trailing shared MD amount for prior-year retirees
-                (p.type === 'partnerToRetire' && (p.partnerPortionOfYear ?? 0) === 0 ? (p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)) : 0)
-        }))
-    }
     if (!fy) return [] as { id: string; name: string; comp: number }[]
-    const partners = fy.physicians.filter((p) => p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire')
-    const employees = fy.physicians.filter((p) => p.type === 'employee' || p.type === 'employeeToPartner' || p.type === 'newEmployee' || p.type === 'employeeToTerminate')
-    const totalEmployeeCosts = employees.reduce((sum, e) => {
-      const employeePortion = getEmployeePortionOfYear(e)
-      if (employeePortion <= 0) return sum
-      
-      // Calculate full employee cost including benefits and payroll taxes
-      if (e.type === 'newEmployee') {
-        // For new employees, calculate prorated total cost
-        const proratedEmployee = { ...e, salary: (e.salary ?? 0) * employeePortion }
-        return sum + calculateEmployeeTotalCost(proratedEmployee, year, sc.projection.benefitCostsGrowthPct)
-      } else if (e.type === 'employeeToTerminate') {
-        // For terminating employees, calculate prorated total cost
-        const proratedEmployee = { ...e, salary: (e.salary ?? 0) * employeePortion }
-        return sum + calculateEmployeeTotalCost(proratedEmployee, year, sc.projection.benefitCostsGrowthPct)
-      } else if (e.type === 'employeeToPartner') {
-        // For mixed types, only count the employee portion of their total cost
-        const employeePortionSalary = (e.salary ?? 0) * employeePortion
-        const employeePortionPhysician = { ...e, salary: employeePortionSalary }
-        return sum + calculateEmployeeTotalCost(employeePortionPhysician, year, sc.projection.benefitCostsGrowthPct)
-      } else {
-        // For regular employees, calculate full cost
-        return sum + calculateEmployeeTotalCost(e, year, sc.projection.benefitCostsGrowthPct)
-      }
-    }, 0)
-    const totalBuyoutCosts = fy.physicians.reduce((sum, p) => {
-      if (p.type === 'partnerToRetire') {
-        const weight = getPartnerFTEWeight(p)
-        // Only subtract buyout if the partner worked part of the year
-        return sum + (weight > 0 ? (p.buyoutCost ?? 0) : 0)
-      }
-      return sum
-    }, 0)
-    // Calculate delayed W2 payments for employeeToPartner physicians
-    const totalDelayedW2Costs = fy.physicians.reduce((sum, p) => {
-      if (p.type === 'employeeToPartner') {
-        const delayed = calculateDelayedW2Payment(p, year)
-        return sum + delayed.amount + delayed.taxes
-      }
-      return sum
-    }, 0)
-    // Calculate Medical Director income allocations first
-            const medicalDirectorIncome = fy.medicalDirectorHours ?? DEFAULT_MD_SHARED_PROJECTION
-            const prcsMedicalDirectorIncome = fy.prcsDirectorPhysicianId ? (fy.prcsMedicalDirectorHours ?? DEFAULT_MD_PRCS_PROJECTION) : 0
-    
-    // Calculate direct Medical Director allocations to partners
-    const partnerMedicalDirectorAllocations = new Map<string, number>()
-    
-    // Allocate shared Medical Director income based on percentages
-    for (const partner of partners) {
-      if (partner.hasMedicalDirectorHours && partner.medicalDirectorHoursPercentage) {
-        const allocation = (partner.medicalDirectorHoursPercentage / 100) * medicalDirectorIncome
-        partnerMedicalDirectorAllocations.set(partner.id, allocation)
-      }
-    }
-    
-    // Allocate PRCS Medical Director income directly to the assigned physician
-    if (fy.prcsDirectorPhysicianId && prcsMedicalDirectorIncome > 0) {
-      const currentPrcsAllocation = partnerMedicalDirectorAllocations.get(fy.prcsDirectorPhysicianId) ?? 0
-      partnerMedicalDirectorAllocations.set(fy.prcsDirectorPhysicianId, currentPrcsAllocation + prcsMedicalDirectorIncome)
-    }
-    
-    // Calculate total Medical Director allocations to subtract from pool
-    const totalMedicalDirectorAllocations = Array.from(partnerMedicalDirectorAllocations.values()).reduce((sum, allocation) => sum + allocation, 0)
-    
-    const totalCosts = fy.nonEmploymentCosts + fy.nonMdEmploymentCosts + fy.miscEmploymentCosts + fy.locumCosts + totalEmployeeCosts + totalBuyoutCosts + totalDelayedW2Costs
-    const basePool = Math.max(0, fy.therapyIncome - totalCosts)
-    
-    // Subtract Medical Director allocations from the pool to get the FTE-distributable pool
-    const pool = Math.max(0, basePool - totalMedicalDirectorAllocations)
-    
-    if (partners.length === 0) return []
-    const partnerFTEs = partners.map((p) => ({ p, weight: getPartnerFTEWeight(p) }))
-    const totalWeight = partnerFTEs.reduce((s, x) => s + x.weight, 0) || 1
-    return partnerFTEs
-      .filter(({ p, weight }) => {
-        // Exclude partners who retired in prior year and only got buyout (no working portion)
-        if (p.type === 'partnerToRetire' && weight === 0) {
-          return false
-        }
-        return true
-      })
-      .map(({ p, weight }) => ({
-        id: p.id,
-        name: p.name,
-        comp: (weight / totalWeight) * pool + (partnerMedicalDirectorAllocations.get(p.id) ?? 0) + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0) +
-              // Add trailing shared MD amount for prior-year retirees
-              (p.type === 'partnerToRetire' && (p.partnerPortionOfYear ?? 0) === 0 ? (p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)) : 0),
-      }))
-  }, [fy, sc, dataMode, store])
+
+    // Use the canonical compensation engine
+    // For YearPanel (Partner Compensation section): exclude W2 from comp (shown separately with annotation)
+    const allComps = calculateAllCompensations({
+      physicians: fy.physicians,
+      year,
+      fy,
+      benefitCostsGrowthPct: sc.projection.benefitCostsGrowthPct,
+      includeRetired: false,
+      excludeW2FromComp: true
+    })
+
+    // Return only partners (filter out employees)
+    return allComps
+      .filter(c => c.type === 'partner')
+      .map(c => ({ id: c.id, name: c.name, comp: c.comp }))
+  }, [fy, sc, year])
 }
 
 // Helper function to get default values for a specific year
@@ -1221,207 +1027,34 @@ export function arePhysiciansChanged(
 export function computeAllCompensationsForYear(year: number, scenario: ScenarioKey) {
   const state = useDashboardStore.getState()
   const sc = scenario === 'A' ? state.scenarioA : state.scenarioB!
-  // Try to find the future year; if not found and year is 2025, build a synthetic year from historic actuals
-  let fy = sc.future.find((f) => f.year === year) as FutureYear | undefined
-  // For the multi-year summary tables, ALWAYS use true 2025 actuals for the 2025 column
-  if (year === 2025) {
-    const last2025 = state.historic.find((h) => h.year === 2025)
-    if (last2025) {
-      const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
-      const js = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
-      fy = {
-        year: 2025,
-        therapyIncome: last2025.therapyIncome,
-        nonEmploymentCosts: last2025.nonEmploymentCosts,
-        nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
-        locumCosts: 54600,
-        miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-        medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS, // 2025 shared medical director amount
-        prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, // 2025 PRCS medical director amount (JS)
-        consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_2025, // 2025 consulting services amount
-        prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
-        physicians,
-      }
-    }
-  }
+  const fy = sc.future.find((f) => f.year === year)
+
   if (!fy) return [] as { id: string; name: string; type: PhysicianType; comp: number }[]
-  const partners = fy!.physicians.filter((p) => p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire')
-  const employees = fy!.physicians.filter((p) => p.type === 'employee' || p.type === 'employeeToPartner' || p.type === 'newEmployee' || p.type === 'employeeToTerminate')
 
-  const totalEmployeeCosts = employees.reduce((sum, e) => {
-    const portion = e.type === 'employeeToPartner' ? getEmployeePortionOfYear(e) : 
-                   (e.type === 'employee' ? 1 : 
-                   (e.type === 'newEmployee' ? getEmployeePortionOfYear(e) :
-                   (e.type === 'employeeToTerminate' ? getEmployeePortionOfYear(e) : 0)))
-    if (portion <= 0) return sum
-    
-    // Calculate full employee cost including benefits and payroll taxes
-    if (e.type === 'newEmployee') {
-      // For new employees, calculate prorated total cost
-      const proratedEmployee = { ...e, salary: (e.salary ?? 0) * portion }
-      return sum + calculateEmployeeTotalCost(proratedEmployee, year, sc.projection.benefitCostsGrowthPct)
-    } else if (e.type === 'employeeToTerminate') {
-      // For terminating employees, calculate prorated total cost
-      const proratedEmployee = { ...e, salary: (e.salary ?? 0) * portion }
-      return sum + calculateEmployeeTotalCost(proratedEmployee, year, sc.projection.benefitCostsGrowthPct)
-    } else if (e.type === 'employeeToPartner') {
-      // For mixed types, only count the employee portion of their total cost
-      const employeePortionSalary = (e.salary ?? 0) * portion
-      const employeePortionPhysician = { ...e, salary: employeePortionSalary }
-      return sum + calculateEmployeeTotalCost(employeePortionPhysician, year, sc.projection.benefitCostsGrowthPct)
-    } else {
-      // For regular employees, calculate full cost
-      return sum + calculateEmployeeTotalCost(e, year, sc.projection.benefitCostsGrowthPct)
-    }
-  }, 0)
-
-  const totalBuyoutCosts = fy!.physicians.reduce((sum, p) => {
-    if (p.type === 'partnerToRetire') {
-      const weight = getPartnerFTEWeight(p)
-      // Only subtract buyout if the partner worked part of the year
-      return sum + (weight > 0 ? (p.buyoutCost ?? 0) : 0)
-    }
-    return sum
-  }, 0)
-
-  // Calculate delayed W2 payments for employeeToPartner physicians
-  const totalDelayedW2Costs = fy!.physicians.reduce((sum, p) => {
-    if (p.type === 'employeeToPartner') {
-      const delayed = calculateDelayedW2Payment(p, year)
-      return sum + delayed.amount + delayed.taxes
-    }
-    return sum
-  }, 0)
-
-  // Calculate Medical Director income allocations first
-  const medicalDirectorIncome = fy!.medicalDirectorHours ?? DEFAULT_MD_SHARED_PROJECTION
-  const prcsMedicalDirectorIncome = fy!.prcsDirectorPhysicianId ? (fy!.prcsMedicalDirectorHours ?? DEFAULT_MD_PRCS_PROJECTION) : 0
-  
-  // Calculate direct Medical Director allocations to partners
-  const partnerMedicalDirectorAllocations = new Map<string, number>()
-  
-  // Allocate shared Medical Director income based on percentages
-  for (const partner of partners) {
-    if (partner.hasMedicalDirectorHours && partner.medicalDirectorHoursPercentage) {
-      const allocation = (partner.medicalDirectorHoursPercentage / 100) * medicalDirectorIncome
-      partnerMedicalDirectorAllocations.set(partner.id, allocation)
-    }
-  }
-  
-  // Allocate PRCS Medical Director income directly to the assigned physician
-  if (fy!.prcsDirectorPhysicianId && prcsMedicalDirectorIncome > 0) {
-    const currentPrcsAllocation = partnerMedicalDirectorAllocations.get(fy!.prcsDirectorPhysicianId) ?? 0
-    partnerMedicalDirectorAllocations.set(fy!.prcsDirectorPhysicianId, currentPrcsAllocation + prcsMedicalDirectorIncome)
-  }
-  
-  // Calculate total Medical Director allocations to subtract from pool
-  const totalMedicalDirectorAllocations = Array.from(partnerMedicalDirectorAllocations.values()).reduce((sum, allocation) => sum + allocation, 0)
-  
-  // Calculate partner pool excluding Medical Director income that's directly allocated
-  const basePool = year === 2025
-    ? (() => {
-        const historic2025 = state.historic.find(h => h.year === 2025)!
-        const dynamicNetIncome2025 = getTotalIncome(historic2025) - historic2025.nonEmploymentCosts - (historic2025.employeePayroll ?? 0)
-        return dynamicNetIncome2025 - totalBuyoutCosts
-      })()
-    : Math.max(0, fy!.therapyIncome - (fy!.nonEmploymentCosts + fy!.nonMdEmploymentCosts + fy!.miscEmploymentCosts + fy!.locumCosts + totalEmployeeCosts + totalBuyoutCosts + totalDelayedW2Costs))
-    
-  // Subtract Medical Director allocations from the pool to get the FTE-distributable pool
-  const pool = Math.max(0, basePool - totalMedicalDirectorAllocations)
-
-  const parts = partners.map((p) => ({ p, weight: getPartnerFTEWeight(p) }))
-  const workingPartners = parts.filter(({ weight }) => weight > 0)
-  const totalWeight = workingPartners.reduce((s, x) => s + x.weight, 0) || 1
-  const partnerShares = parts.map(({ p, weight }) => ({ 
-    id: p.id, 
-    name: p.name, 
-    type: 'partner' as const, 
-    baseShare: weight > 0 ? (weight / totalWeight) * pool : 0, 
-    physician: p 
-  }))
-
-  // Compose final list per physician (ensure each physician appears once with combined comp if mixed)
-  const results: { id: string; name: string; type: PhysicianType; comp: number }[] = []
-  // Add partner and mixed (exclude retired partners with no working portion)
-  for (const s of partnerShares) {
-    // Skip partners who retired in prior year and only got buyout (no working portion)
-    if (s.physician.type === 'partnerToRetire' && s.baseShare === 0) {
-      continue
-    }
-    
-    let comp = s.baseShare
-    
-    // Add Medical Director income allocation directly to the partner
-    const medicalDirectorAllocation = partnerMedicalDirectorAllocations.get(s.id) ?? 0
-    comp += medicalDirectorAllocation
-    
-    if (s.physician.type === 'employeeToPartner') {
-      const salaryPortion = (s.physician.salary ?? 0) * getEmployeePortionOfYear(s.physician)
-      // Add delayed W2 payments for employeeToPartner physicians
-      const delayedW2 = calculateDelayedW2Payment(s.physician, year)
-      comp += salaryPortion + delayedW2.amount
-    }
-    if (s.physician.type === 'partnerToRetire') {
-      // Add buyout cost back to retiring partner's total compensation
-      comp += s.physician.buyoutCost ?? 0
-      // Add trailing shared MD amount for prior-year retirees
-      if ((s.physician.partnerPortionOfYear ?? 0) === 0) {
-        comp += s.physician.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(s.physician)
-      }
-    }
-    results.push({ id: s.id, name: s.name, type: 'partner', comp })
-  }
-  // Add pure employees (exclude mixed already included)
-  for (const e of fy!.physicians.filter((p) => p.type === 'employee' || p.type === 'newEmployee' || p.type === 'employeeToTerminate')) {
-    const comp = e.type === 'newEmployee' ? (e.salary ?? 0) * getEmployeePortionOfYear(e) :
-                 e.type === 'employeeToTerminate' ? (e.salary ?? 0) * getEmployeePortionOfYear(e) :
-                 (e.salary ?? 0)
-    results.push({ id: e.id, name: e.name, type: 'employee', comp })
-  }
-  return results
+  // Use the canonical compensation engine
+  return calculateAllCompensations({
+    physicians: fy.physicians,
+    year,
+    fy,
+    benefitCostsGrowthPct: sc.projection.benefitCostsGrowthPct,
+    includeRetired: false
+  })
 }
 
 export function computeAllCompensationsForYearWithRetired(year: number, scenario: ScenarioKey) {
-  const regularComps = computeAllCompensationsForYear(year, scenario)
   const state = useDashboardStore.getState()
   const sc = scenario === 'A' ? state.scenarioA : state.scenarioB!
-  let fy = sc.future.find((f) => f.year === year) as FutureYear | undefined
-  
-  if (!fy && year === 2025) {
-    const last2025 = state.historic.find((h) => h.year === 2025)
-    // For the multi-year compensation summary, 2025 should always show 2025 actual values
-    // regardless of the baseline data mode selection
-    if (last2025) {
-      const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
-      const js = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
-      fy = {
-        year: 2025,
-        therapyIncome: last2025.therapyIncome,
-        nonEmploymentCosts: last2025.nonEmploymentCosts,
-        nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
-        locumCosts: 54600,
-        miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-        medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS, // 2025 shared medical director amount
-        prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, // 2025 PRCS medical director amount (JS)
-        consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_2025, // 2025 consulting services amount
-        prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
-        physicians,
-      }
-    }
-  }
-  
-  if (!fy) return regularComps
+  const fy = sc.future.find((f) => f.year === year)
 
-  // Add any retired partners that were excluded
-  const retiredPartners = fy.physicians.filter(p => p.type === 'partnerToRetire' && getPartnerFTEWeight(p) === 0)
-  const retiredComps = retiredPartners.map(p => ({
-    id: p.id,
-    name: p.name,
-    type: 'partner' as const,
-    comp: (p.buyoutCost ?? 0) + (p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)) // Show buyout amount plus trailing MD amount as their compensation
-  }))
+  if (!fy) return [] as { id: string; name: string; type: PhysicianType; comp: number }[]
 
-  return [...regularComps, ...retiredComps]
+  // Use the canonical compensation engine with retired partners included
+  return calculateAllCompensationsWithRetired({
+    physicians: fy.physicians,
+    year,
+    fy,
+    benefitCostsGrowthPct: sc.projection.benefitCostsGrowthPct
+  })
 }
 
 // Helper function to calculate Net Income for MDs (total partner compensation + locums costs)

@@ -867,20 +867,15 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
               partnerComp.forEach((p) => {
                 const md = fy?.physicians.find((x) => x.id === p.id)
                 if (md && md.type === 'employeeToPartner') {
+                  const employeePortion = md.employeePortionOfYear ?? 0
+                  const w2 = (md.salary ?? 0) * employeePortion
                   const delayedW2 = calculateDelayedW2Payment(md, year)
-                  let w2Text = ''
-                  if (delayedW2.amount > 0) {
-                    w2Text = `(+ ${currency(delayedW2.amount)} W2)`
-                  } else {
-                    const employeePortion = md.employeePortionOfYear ?? 0
-                    const w2 = (md.salary ?? 0) * employeePortion
-                    if (w2 > 0) {
-                      w2Text = `(+ ${currency(w2)} W2)`
-                    }
-                  }
-                  if (w2Text) {
+                  const totalW2 = w2 + delayedW2.amount
+
+                  if (totalW2 > 0) {
+                    const w2Text = `(+ ${currency(totalW2)} W2)`
                     // Approximate width: 8px per character (rough estimate for typical fonts)
-                    const textWidth = w2Text.length * 8 + 10 // +16px for padding/spacing
+                    const textWidth = w2Text.length * 8 + 10 // +10px for padding/spacing
                     maxW2TextWidth = Math.max(maxW2TextWidth, textWidth)
                   }
                 }
@@ -895,23 +890,16 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
                   {(() => {
                     const md = fy?.physicians.find((x) => x.id === p.id)
                     if (md && md.type === 'employeeToPartner') {
-                      // Show delayed W2 payments for employeeToPartner physicians
-                      const delayedW2 = calculateDelayedW2Payment(md, year)
-                      if (delayedW2.amount > 0) {
-                        return (
-                          <span style={{ position: 'absolute', left: 'calc(100% + 8px)', top: 0, whiteSpace: 'nowrap', color: '#6b7280', fontWeight: 400 }}>
-                            {`(+ ${currency(delayedW2.amount)} W2)`}
-                          </span>
-                        )
-                      }
-
-                      // Fallback to regular W2 calculation if no delayed payments
+                      // Show W2 component as additional for employeeToPartner physicians
                       const employeePortion = md.employeePortionOfYear ?? 0
                       const w2 = (md.salary ?? 0) * employeePortion
-                      if (w2 > 0) {
+                      const delayedW2 = calculateDelayedW2Payment(md, year)
+                      const totalW2 = w2 + delayedW2.amount
+
+                      if (totalW2 > 0) {
                         return (
                           <span style={{ position: 'absolute', left: 'calc(100% + 8px)', top: 0, whiteSpace: 'nowrap', color: '#6b7280', fontWeight: 400 }}>
-                            {`(+ ${currency(w2)} W2)`}
+                            {`(+ ${currency(totalW2)} W2)`}
                           </span>
                         )
                       }
