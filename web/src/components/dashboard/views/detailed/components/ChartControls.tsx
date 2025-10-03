@@ -183,20 +183,21 @@ export default function ChartControls({
 
   return (
     <div style={{ marginBottom: isSidebar ? 0 : 16, border: '1px solid #ccc', borderRadius: 4, padding: 10 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0 16px', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0 16px', alignItems: 'start', justifyItems: 'start' }}>
         {/* Group 1: Color Scheme */}
         <>
           <label style={{
             fontSize: 14,
             fontWeight: 500,
             paddingTop: 6,
-            padding: '8px 12px'
+            padding: '8px 0'
           }}>Color Scheme:</label>
           <div style={{
             padding: '8px 12px',
             background: '#f9fafb',
             marginRight: -10,
-            paddingRight: 10
+            paddingRight: 10,
+            justifySelf: 'stretch'
           }}>
             <ColorSchemeSelector
               totalColorScheme={colorScheme}
@@ -215,13 +216,14 @@ export default function ChartControls({
             whiteSpace: 'nowrap',
             paddingTop: 6,
             opacity: chartMode === 'proportion' ? 0.5 : 1,
-            padding: '8px 12px'
+            padding: '8px 0'
           }}>Income Mode:</label>
           <div style={{
             padding: '8px 12px',
             background: '#f9fafb',
             marginRight: -10,
-            paddingRight: 10
+            paddingRight: 10,
+            justifySelf: 'stretch'
           }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
             <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
@@ -371,7 +373,7 @@ export default function ChartControls({
             fontSize: 14,
             fontWeight: 500,
             paddingTop: 6,
-            padding: '8px 12px'
+            padding: '8px 0'
           }}>Historical Data:</label>
           <div style={{
             position: 'relative',
@@ -380,7 +382,8 @@ export default function ChartControls({
             marginRight: -10,
             paddingRight: 10,
             display: 'flex',
-            justifyContent: 'flex-start'
+            justifyContent: 'flex-start',
+            justifySelf: 'stretch'
           }}>
           <button
             onClick={() => setIsHistoricalPopupOpen(!isHistoricalPopupOpen)}
@@ -748,13 +751,14 @@ export default function ChartControls({
 
           {/* Combine Options Row (Mean/Median and Std Dev/CI) - continuation row (empty left column) */}
           <div style={{
-            padding: '8px 12px'
+            padding: '8px 0'
           }}></div>
           <div style={{
             padding: '8px 12px',
             background: '#f9fafb',
             marginRight: -10,
-            paddingRight: 10
+            paddingRight: 10,
+            justifySelf: 'stretch'
           }}>
               <div style={{ display: 'flex', gap: 12 }}>
                 {/* Statistic group */}
@@ -882,7 +886,7 @@ export default function ChartControls({
             fontSize: 14,
             fontWeight: 500,
             paddingTop: 6,
-            padding: '8px 12px'
+            padding: '8px 0'
           }}>Chart Type:</label>
           <div style={{
             padding: '8px 12px',
@@ -942,7 +946,7 @@ export default function ChartControls({
 
             {/* Smoothing Row - continuation row (empty left column) */}
             <div style={{
-              padding: '8px 12px'
+              padding: '8px 0'
             }}></div>
             <div style={{
               padding: '8px 12px',
@@ -983,7 +987,7 @@ export default function ChartControls({
             fontWeight: 500,
             paddingTop: 6,
             opacity: chartMode === 'proportion' ? 0.5 : 1,
-            padding: '8px 12px'
+            padding: '8px 0'
           }}>Timeframe:</label>
           <div style={{
             padding: '8px 12px',
