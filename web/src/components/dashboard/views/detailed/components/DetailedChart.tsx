@@ -47,6 +47,7 @@ interface DetailedChartProps {
   chartMode: 'line' | 'bar' | 'proportion'
   timeframe: 'year' | 'quarter' | 'month'
   currentPeriod: { year: number, quarter?: number, month?: number }
+  setCurrentPeriod: (period: { year: number, quarter?: number, month?: number }) => void
   is2025Visible: boolean
   setIs2025Visible: (visible: boolean) => void
   showAllMonths: boolean
@@ -68,6 +69,7 @@ export default function DetailedChart({
   chartMode,
   timeframe,
   currentPeriod,
+  setCurrentPeriod,
   is2025Visible,
   setIs2025Visible,
   showAllMonths,
@@ -548,13 +550,58 @@ export default function DetailedChart({
       selectedYears,
       combineStatistic,
       combineError,
-      visibleSites
+      visibleSites,
+      unfilteredCurrentData: currentYearData,
+      showAllMonths
     })
   }, [
     chartMode, timeframe, showCombined, isNormalized, processedCurrentData,
     is2025Visible, staticLineTraces, currentX, currentY, currentPeriod, incomeMode, selectedYears,
-    combineStatistic, combineError, visibleSites
+    combineStatistic, combineError, visibleSites, currentYearData, showAllMonths
   ])
+
+  // Navigation handlers
+  const handlePrevious = () => {
+    if (timeframe === 'quarter') {
+      const newQuarter = currentPeriod.quarter! - 1
+      if (newQuarter >= 1) {
+        setCurrentPeriod({ ...currentPeriod, quarter: newQuarter })
+      } else {
+        setCurrentPeriod({ ...currentPeriod, quarter: 4 })
+      }
+    } else if (timeframe === 'month') {
+      const newMonth = currentPeriod.month! - 1
+      if (newMonth >= 1) {
+        setCurrentPeriod({ ...currentPeriod, month: newMonth })
+      } else {
+        setCurrentPeriod({ ...currentPeriod, month: 12 })
+      }
+    }
+  }
+
+  const handleNext = () => {
+    if (timeframe === 'quarter') {
+      const newQuarter = currentPeriod.quarter! + 1
+      if (newQuarter <= 4) {
+        setCurrentPeriod({ ...currentPeriod, quarter: newQuarter })
+      } else {
+        setCurrentPeriod({ ...currentPeriod, quarter: 1 })
+      }
+    } else if (timeframe === 'month') {
+      const newMonth = currentPeriod.month! + 1
+      if (newMonth <= 12) {
+        setCurrentPeriod({ ...currentPeriod, month: newMonth })
+      } else {
+        setCurrentPeriod({ ...currentPeriod, month: 1 })
+      }
+    }
+  }
+
+  // Check if we should show navigation controls
+  const shouldShowControls = chartMode !== 'proportion' && (
+    (chartMode === 'line' && (timeframe === 'quarter' || timeframe === 'month')) ||
+    (chartMode === 'bar' && timeframe === 'month' && !showCombined && !showAllMonths)
+  )
 
   // Check if we have any data to display
   const hasData = data.length > 0 || historical2024Data.length > 0 || historical2023Data.length > 0 || historical2022Data.length > 0 || historical2021Data.length > 0 || historical2020Data.length > 0 || historical2019Data.length > 0 || historical2018Data.length > 0 || historical2017Data.length > 0 || historical2016Data.length > 0
@@ -572,8 +619,55 @@ export default function DetailedChart({
         border: '1px solid #d1d5db',
         borderRadius: 6,
         boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        position: 'relative'
       }}>
+        {shouldShowControls && (
+          <>
+            <button
+              onClick={handlePrevious}
+              style={{
+                position: 'absolute',
+                top: 8,
+                left: 8,
+                padding: '6px 10px',
+                border: '1px solid #ccc',
+                borderRadius: 4,
+                background: 'rgba(255, 255, 255, 0.95)',
+                cursor: 'pointer',
+                fontSize: 13,
+                zIndex: 1000,
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#fff'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)'}
+            >
+              ← Previous
+            </button>
+            <button
+              onClick={handleNext}
+              style={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                padding: '6px 10px',
+                border: '1px solid #ccc',
+                borderRadius: 4,
+                background: 'rgba(255, 255, 255, 0.95)',
+                cursor: 'pointer',
+                fontSize: 13,
+                zIndex: 1000,
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#fff'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)'}
+            >
+              Next →
+            </button>
+          </>
+        )}
         <Plot
         data={(chartMode === 'line' ? [
           // Static line traces (memoized for stable legend interaction)

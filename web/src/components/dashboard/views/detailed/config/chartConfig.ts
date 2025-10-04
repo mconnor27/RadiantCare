@@ -291,7 +291,7 @@ export const RADAR_CONFIG = {
     count: 2,
     stagger: 30, // frames between ring starts
     baseSize: 8, // px
-    maxGrowth: 25, // px
+    maxGrowth: 22, // px
     baseOpacity: 0.5
   }
 }

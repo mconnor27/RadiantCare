@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useDashboardStore } from '../../../../Dashboard'
 
 interface SyncButtonProps {
   environment: 'production' | 'sandbox'
 }
 
 // ADMIN MODE: Set to true to bypass sync restrictions for testing
-const ADMIN_OVERRIDE = true
+const ADMIN_OVERRIDE = false
 
 type SyncStep = 'daily' | 'summary' | 'equity' | 'complete' | 'error'
 
@@ -15,6 +16,7 @@ export default function SyncButton({ environment }: SyncButtonProps) {
   const [syncError, setSyncError] = useState<string | null>(null)
   const [syncStep, setSyncStep] = useState<SyncStep | null>(null)
   const [syncMessage, setSyncMessage] = useState<string>('')
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
   // Load last sync timestamp on mount
   useEffect(() => {
@@ -34,8 +36,22 @@ export default function SyncButton({ environment }: SyncButtonProps) {
     }
   }, [environment])
 
+  // Import the store to check for custom values
+  const store = useDashboardStore()
+
   // Handle sync button click
-  const handleSync = async () => {
+  const handleSyncClick = () => {
+    const hasCustomValues = Object.keys(store.customProjectedValues).length > 0
+
+    if (hasCustomValues) {
+      setShowConfirmDialog(true)
+    } else {
+      performSync(false)
+    }
+  }
+
+  const performSync = async (clearCustomValues: boolean) => {
+    setShowConfirmDialog(false)
     setSyncing(true)
     setSyncError(null)
     setSyncStep('daily')
@@ -78,6 +94,11 @@ export default function SyncButton({ environment }: SyncButtonProps) {
         setSyncStep('complete')
         setSyncMessage('Sync completed successfully!')
         setLastSyncTimestamp(data.lastSyncTimestamp)
+
+        // Clear custom values if user chose to
+        if (clearCustomValues) {
+          store.resetCustomProjectedValues()
+        }
 
         // Hide modal and reload after 2 seconds on success
         setTimeout(() => {
@@ -163,12 +184,8 @@ export default function SyncButton({ environment }: SyncButtonProps) {
         nextNeeded.setDate(nextNeeded.getDate() + 1)
       }
 
-      // Next sync available when we need that data (at midnight or 5pm)
-      if (now.getHours() < 17) {
-        nextNeeded.setHours(0, 0, 0, 0)
-      } else {
-        nextNeeded.setHours(17, 0, 0, 0)
-      }
+      // Next sync available at 5pm when new data becomes available
+      nextNeeded.setHours(17, 0, 0, 0)
 
       return nextNeeded
     }
@@ -219,6 +236,71 @@ export default function SyncButton({ environment }: SyncButtonProps) {
 
   return (
     <>
+      {/* Confirmation Dialog */}
+      {showConfirmDialog && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingBottom: '15vh',
+          zIndex: 9999,
+          animation: 'fadeIn 0.2s ease-in'
+        }}>
+          <div style={{
+            background: '#fff',
+            padding: 32,
+            borderRadius: 8,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            maxWidth: 500,
+            animation: 'slideIn 0.3s ease-out'
+          }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: 18, fontWeight: 600 }}>Manual Changes Detected</h3>
+            <p style={{ margin: '0 0 24px 0', fontSize: 14, lineHeight: 1.5, color: '#666' }}>
+              You have manually adjusted some projected values in the grid.
+              Would you like to keep these manual changes or recalculate them based on the new synced data?
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => performSync(false)}
+                style={{
+                  padding: '8px 16px',
+                  background: '#fff',
+                  color: '#333',
+                  border: '1px solid #ccc',
+                  borderRadius: 4,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+              >
+                Keep Manual Changes
+              </button>
+              <button
+                onClick={() => performSync(true)}
+                style={{
+                  padding: '8px 16px',
+                  background: '#0ea5e9',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+              >
+                Recalculate All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sync Modal */}
       {syncStep && (
         <div style={{
@@ -325,7 +407,7 @@ export default function SyncButton({ environment }: SyncButtonProps) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
           <button
-            onClick={handleSync}
+            onClick={handleSyncClick}
             disabled={syncing || !syncAvailable}
           style={{
             padding: '6px 12px',
@@ -375,12 +457,23 @@ export default function SyncButton({ environment }: SyncButtonProps) {
           <span style={{ textAlign: 'right', color: '#64748b', whiteSpace: 'nowrap' }}>Last synced:</span>
           <span style={{ textAlign: 'left', color: '#64748b' }}>{formatTimestamp(lastSyncTimestamp)}</span>
 
-          <span style={{ textAlign: 'right', color: syncAvailable ? '#16a34a' : '#dc2626', whiteSpace: 'nowrap' }}>
-            {syncAvailable ? 'Available to Sync:' : 'Next Allowed:'}
-          </span>
-          <span style={{ textAlign: 'left', color: syncAvailable ? '#16a34a' : '#dc2626' }}>
-            {syncAvailable ? 'Now' : formatNextAllowedTime(lastSyncTimestamp)}
-          </span>
+          {syncAvailable ? (
+            <>
+              <span></span>
+              <span style={{ textAlign: 'left', color: '#16a34a', fontWeight: 500 }}>
+                Available to Sync
+              </span>
+            </>
+          ) : (
+            <>
+              <span style={{ textAlign: 'right', color: '#dc2626', whiteSpace: 'nowrap', fontWeight: 500 }}>
+                Next Allowed:
+              </span>
+              <span style={{ textAlign: 'left', color: '#dc2626', fontWeight: 500 }}>
+                {formatNextAllowedTime(lastSyncTimestamp)}
+              </span>
+            </>
+          )}
         </div>
       </div>
       {syncError && !syncStep && (

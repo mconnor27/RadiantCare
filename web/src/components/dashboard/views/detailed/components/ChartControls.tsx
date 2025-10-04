@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import type { IncomeMode } from '../../../shared/types'
 import { getColorScheme, getSiteColors } from '../config/chartConfig'
 import ColorSchemeSelector from './ColorSchemeSelector'
+import { createTooltip, removeTooltip } from '../../../shared/tooltips'
 
 export interface ChartControlsProps {
   environment: 'production' | 'sandbox'
@@ -241,7 +242,7 @@ export default function ChartControls({
   }
 
   return (
-    <div style={{ marginBottom: isSidebar ? 0 : 16, border: '1px solid #ccc', borderRadius: 4, padding: 10, boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
+    <div style={{ marginBottom: isSidebar ? 0 : 16, border: '1px solid #ccc', borderRadius: 4, padding: 10, boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', minWidth: 360 }}>
       <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 700 }}>Chart Controls</h3>
       <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0 16px', alignItems: 'start', justifyItems: 'start' }}>
         {/* Group 1: Color Scheme */}
@@ -290,41 +291,73 @@ export default function ChartControls({
             margin: '4px 0'
           }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-            <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
-              <button
-                onClick={() => chartMode !== 'proportion' && setIncomeMode('total')}
-                disabled={chartMode === 'proportion'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
+                <button
+                  onClick={() => chartMode !== 'proportion' && setIncomeMode('total')}
+                  disabled={chartMode === 'proportion'}
+                  style={{
+                    padding: '4px 12px',
+                    border: 'none',
+                    background: incomeMode === 'total' ? '#1e40af' : '#fff',
+                    color: incomeMode === 'total' ? '#fff' : '#333',
+                    fontSize: 14,
+                    cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap',
+                    opacity: chartMode === 'proportion' ? 0.5 : 1
+                  }}
+                >
+                  Total
+                </button>
+                <button
+                  onClick={() => chartMode !== 'proportion' && setIncomeMode('per-site')}
+                  disabled={chartMode === 'proportion'}
+                  style={{
+                    padding: '4px 12px',
+                    border: 'none',
+                    background: incomeMode === 'per-site' ? '#1e40af' : '#fff',
+                    color: incomeMode === 'per-site' ? '#fff' : '#333',
+                    fontSize: 14,
+                    cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap',
+                    opacity: chartMode === 'proportion' ? 0.5 : 1
+                  }}
+                >
+                  Per Site
+                </button>
+              </div>
+              <div
                 style={{
-                  padding: '4px 12px',
-                  border: 'none',
-                  background: incomeMode === 'total' ? '#1e40af' : '#fff',
-                  color: incomeMode === 'total' ? '#fff' : '#333',
-                  fontSize: 14,
+                  width: 20,
+                  height: 20,
+                  borderRadius: '50%',
+                  backgroundColor: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s',
-                  whiteSpace: 'nowrap',
-                  opacity: chartMode === 'proportion' ? 0.5 : 1
+                  opacity: chartMode === 'proportion' ? 0.5 : 1,
+                  transition: 'all 0.2s'
                 }}
-              >
-                Total
-              </button>
-              <button
-                onClick={() => chartMode !== 'proportion' && setIncomeMode('per-site')}
-                disabled={chartMode === 'proportion'}
-                style={{
-                  padding: '4px 12px',
-                  border: 'none',
-                  background: incomeMode === 'per-site' ? '#1e40af' : '#fff',
-                  color: incomeMode === 'per-site' ? '#fff' : '#333',
-                  fontSize: 14,
-                  cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s',
-                  whiteSpace: 'nowrap',
-                  opacity: chartMode === 'proportion' ? 0.5 : 1
+                onMouseEnter={(e) => {
+                  if (chartMode !== 'proportion') {
+                    createTooltip('income-mode-info', 'Total Income data available daily. Per Site data available through last complete month', e)
+                  }
                 }}
+                onMouseLeave={() => removeTooltip('income-mode-info')}
               >
-                Per Site
-              </button>
+                  <span style={{
+                    fontSize: 12,
+                    fontWeight: 'bold',
+                    color: '#6b7280',
+                    userSelect: 'none'
+                  }}>
+                    i
+                  </span>
+              </div>
             </div>
 
             {/* Actual vs Normalized radio buttons */}
@@ -953,6 +986,7 @@ export default function ChartControls({
             flexDirection: 'column',
             gap: 12,
             alignItems: 'flex-start',
+            justifySelf: 'stretch',
             border: '1px solid #d1d5db',
             borderRadius: 6,
             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
@@ -1045,7 +1079,10 @@ export default function ChartControls({
             padding: '12px',
             background: '#f9fafb',
             display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
             alignItems: 'flex-start',
+            justifySelf: 'stretch',
             border: '1px solid #d1d5db',
             borderRadius: 6,
             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
@@ -1102,19 +1139,17 @@ export default function ChartControls({
             </button>
             </div>
 
-            {/* Monthly view mode toggle - continuation row (empty left column) - conditionally rendered */}
+            {/* Monthly view mode toggle - shown below buttons when conditions are met */}
             {timeframe === 'month' && chartMode === 'bar' && !showCombined && (
-              <div style={{ padding: 0 }}>
-                <label style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <input
-                    type="checkbox"
-                    checked={showAllMonths}
-                    onChange={(e) => setShowAllMonths(e.target.checked)}
-                    style={{ margin: 0 }}
-                  />
-                  Show all 12 months
-                </label>
-              </div>
+              <label style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="checkbox"
+                  checked={showAllMonths}
+                  onChange={(e) => setShowAllMonths(e.target.checked)}
+                  style={{ margin: 0 }}
+                />
+                Show all 12 months
+              </label>
             )}
           </div>
         </>

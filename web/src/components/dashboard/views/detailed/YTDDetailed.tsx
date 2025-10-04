@@ -8,7 +8,6 @@ import type { IncomeMode } from '../../shared/types'
 
 // Import modular components
 import ChartControls from './components/ChartControls'
-import NavigationControls from './components/NavigationControls'
 import YearlyDataGrid from './components/YearlyDataGrid'
 import DetailedChart from './components/DetailedChart'
 import PartnerCompensation from './components/PartnerCompensation'
@@ -194,15 +193,6 @@ export default function YTDDetailed() {
       </div>
       <div style={{ display: 'flex', gap: 16 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <NavigationControls
-            chartMode={chartMode}
-            timeframe={timeframe}
-            showCombined={showCombined}
-            showAllMonths={showAllMonths}
-            currentPeriod={currentPeriod}
-            setCurrentPeriod={setCurrentPeriod}
-          />
-
           {error === 'not_connected' ? (
             <div>
               <div style={{ marginBottom: 8 }}>Connect your QuickBooks to load real YTD data.</div>
@@ -220,6 +210,7 @@ export default function YTDDetailed() {
               chartMode={chartMode}
               timeframe={timeframe}
               currentPeriod={currentPeriod}
+              setCurrentPeriod={setCurrentPeriod}
               is2025Visible={is2025Visible}
               setIs2025Visible={setIs2025Visible}
               showAllMonths={showAllMonths}
