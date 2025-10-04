@@ -82,9 +82,9 @@ function syncGridValuesToMultiyear(
   customProjectedValues: Record<string, number>,
   gridData: { rows: any[], columns: any[] }
 ) {
-  console.log('🔄 Syncing grid values to multiyear store...')
-  console.log('📊 Grid data rows count:', gridData.rows?.length || 0)
-  console.log('🎛️ Custom projected values:', customProjectedValues)
+  console.log('[RESET DEBUG] 🔄 syncGridValuesToMultiyear called')
+  // console.log('📊 Grid data rows count:', gridData.rows?.length || 0)
+  // console.log('🎛️ Custom projected values:', customProjectedValues)
   
   try {
     // Helper to get current projected value for an account
@@ -122,10 +122,10 @@ function syncGridValuesToMultiyear(
         const projectedCell = row.cells?.[projectedColIndex] as any
         const cellText = projectedCell?.text || '0'
         const value = parseFloat(cellText.replace(/[$,\s]/g, '')) || 0
-        console.log(`📋 Found "${accountName}" -> "${normalizeAccountName(accountName)}" = ${value}`)
+        // console.log(`📋 Found "${accountName}" -> "${normalizeAccountName(accountName)}" = ${value}`)
         return value
       } else {
-        console.log(`❌ No match found for "${accountName}" -> "${normalizeAccountName(accountName)}"`)
+        // console.log(`❌ No match found for "${accountName}" -> "${normalizeAccountName(accountName)}"`)
       }
       
       return 0
@@ -141,7 +141,7 @@ function syncGridValuesToMultiyear(
                             customProjectedValues[normalizedName] !== undefined
       
       // ALWAYS sync grid values to store for compensation calculations
-      console.log(`✅ Syncing "${gridAccountName}" -> "${normalizedName}" (${value}) -> ${multiyearField}${hasCustomValue ? ' [CUSTOM]' : ' [DEFAULT]'}`)
+      console.log(`[RESET DEBUG] ✅ Syncing ${multiyearField} = ${value}`)
       
       // Update both scenarios A and B for 2025
       try {
@@ -149,9 +149,9 @@ function syncGridValuesToMultiyear(
         if (store.scenarioBEnabled) {
           store.setFutureValue('B', 2025, multiyearField, value)
         }
-        console.log(`   ✅ Successfully updated ${multiyearField} = ${value}`)
+        // console.log(`   ✅ Successfully updated ${multiyearField} = ${value}`)
       } catch (error) {
-        console.error(`   ❌ Failed to update ${multiyearField}:`, error)
+        console.error(`[RESET DEBUG]    ❌ Failed to update ${multiyearField}:`, error)
       }
     })
 
@@ -171,9 +171,7 @@ function syncGridValuesToMultiyear(
       therapyIncomeTotal += componentValue
     })
     
-    console.log('💰 Therapy Income Components:', therapyComponents)
-    console.log(`✅ Syncing Therapy Income total (${therapyIncomeTotal}) -> therapyIncome`)
-    console.log(`   Components: ${therapyComponents.map(c => `"${c.name}" -> "${c.normalized}" = ${c.value}`).join(', ')}`)
+    console.log(`[RESET DEBUG] ✅ Syncing therapyIncome = ${therapyIncomeTotal}`)
     
     // ALWAYS sync therapy income total
     try {
@@ -181,9 +179,8 @@ function syncGridValuesToMultiyear(
       if (store.scenarioBEnabled) {
         store.setFutureValue('B', 2025, 'therapyIncome', therapyIncomeTotal)
       }
-      console.log(`   ✅ Successfully updated therapyIncome = ${therapyIncomeTotal}`)
     } catch (error) {
-      console.error(`   ❌ Failed to update therapyIncome:`, error)
+      console.error(`[RESET DEBUG]    ❌ Failed to update therapyIncome:`, error)
     }
 
     // Additionally sync per-site therapy projected totals to store for per-site projections
@@ -191,7 +188,7 @@ function syncGridValuesToMultiyear(
       const lacey = getProjectedValue('7105 Therapy - Lacey')
       const centralia = getProjectedValue('7110 Therapy - Centralia')
       const aberdeen = getProjectedValue('7108 Therapy - Aberdeen')
-      console.log(`🏥 Per-site projected therapy from grid → Lacey=${lacey}, Centralia=${centralia}, Aberdeen=${aberdeen}`)
+      // console.log(`🏥 Per-site projected therapy from grid → Lacey=${lacey}, Centralia=${centralia}, Aberdeen=${aberdeen}`)
       store.setFutureValue('A', 2025, 'therapyLacey', lacey)
       store.setFutureValue('A', 2025, 'therapyCentralia', centralia)
       store.setFutureValue('A', 2025, 'therapyAberdeen', aberdeen)
@@ -201,7 +198,7 @@ function syncGridValuesToMultiyear(
         store.setFutureValue('B', 2025, 'therapyAberdeen', aberdeen)
       }
     } catch (error) {
-      console.error('   ❌ Failed to sync per-site therapy values to store:', error)
+      console.error('[RESET DEBUG]    ❌ Failed to sync per-site therapy values to store:', error)
     }
     
   } catch (error) {
@@ -233,9 +230,9 @@ export default function YearlyDataGrid({
   })
 
   // Debug tooltip state changes
-  useEffect(() => {
-    console.log('[tooltip state]', tooltip)
-  }, [tooltip])
+  // useEffect(() => {
+  //   console.log('[tooltip state]', tooltip)
+  // }, [tooltip])
   
   // Slider state for projected value editing
   const [slider, setSlider] = useState<{
@@ -313,13 +310,14 @@ export default function YearlyDataGrid({
       setProjectionRatio(ratio)
       
       // Debug summary calculations
-      console.log('🔍 Running summary calculation debugging...')
+      // console.log('🔍 Running summary calculation debugging...')
       debugSummaryCalculations(data, store.customProjectedValues)
       
-      // ALWAYS sync grid values to store on initial load for compensation calculations
+      // Always sync grid values to store on initial load for compensation calculations
       setTimeout(() => {
-        console.log('⏰ Initial sync - syncing ALL grid values to store for compensation calculations...')
+        console.log('⏰ [RESET DEBUG] Initial grid sync started')
         syncGridValuesToMultiyear(store, store.customProjectedValues, data)
+        console.log('⏰ [RESET DEBUG] Initial grid sync completed')
       }, 100)
     } catch (err) {
       console.error('Error loading yearly data:', err)
@@ -358,7 +356,7 @@ export default function YearlyDataGrid({
   }, [loading, error, gridData.columns])
 
   const handleCellClick = useCallback((rowId: string, columnId: string, event?: React.MouseEvent) => {
-    console.log('handleCellClick called with:', { rowId, columnId })
+    // console.log('handleCellClick called with:', { rowId, columnId })
     
     // Handle section collapse/expand for first column
     if (columnId === 'col-0' && rowId.startsWith('section-')) {
@@ -487,14 +485,14 @@ export default function YearlyDataGrid({
       store.setCustomProjectedValue(accountName, newValue)
     }
     
-    // Trigger immediate sync to multiyear store after value change
-    // Use setTimeout to allow any dynamic recalculations to complete first
-    setTimeout(() => {
-      if (gridData.rows.length > 0) {
-        console.log('🎯 Syncing after projected value change...')
-        syncGridValuesToMultiyear(store, store.customProjectedValues, gridData)
-      }
-    }, 50) // Short delay to allow dynamic calculations to complete
+      // Trigger immediate sync to multiyear store after value change
+      // Use setTimeout to allow any dynamic recalculations to complete first
+      setTimeout(() => {
+        if (gridData.rows.length > 0) {
+          // console.log('🎯 Syncing after projected value change...')
+          syncGridValuesToMultiyear(store, store.customProjectedValues, gridData)
+        }
+      }, 50) // Short delay to allow dynamic calculations to complete
   }, [slider.accountName, slider.currentValue, slider.annualizedBaseline, store.customProjectedValues, gridData, store])
 
   return (

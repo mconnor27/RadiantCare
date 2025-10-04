@@ -9,8 +9,6 @@ import {
   scenarioADefaultsByYear,
   scenarioBDefaultsByYear,
   DEFAULT_MISC_EMPLOYMENT_COSTS,
-  DEFAULT_THERAPY_INCOME_2025,
-  DEFAULT_NON_EMPLOYMENT_COSTS_2025,
   DEFAULT_LOCUM_COSTS_2025,
   ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS,
   ACTUAL_2024_LOCUM_COSTS,
@@ -56,8 +54,8 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           // Fallback if no custom data exists yet
           return {
             year: 2025,
-            therapyIncome: last2025?.therapyIncome || DEFAULT_THERAPY_INCOME_2025,
-            nonEmploymentCosts: last2025?.nonEmploymentCosts || DEFAULT_NON_EMPLOYMENT_COSTS_2025,
+            therapyIncome: last2025?.therapyIncome || 0,
+            nonEmploymentCosts: last2025?.nonEmploymentCosts || 0,
             nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
             locumCosts: DEFAULT_LOCUM_COSTS_2025,
             miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
@@ -108,8 +106,8 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           const suszko = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
           return {
             year: 2025,
-            therapyIncome: last2025?.therapyIncome || DEFAULT_THERAPY_INCOME_2025,
-            nonEmploymentCosts: last2025?.nonEmploymentCosts || DEFAULT_NON_EMPLOYMENT_COSTS_2025,
+            therapyIncome: last2025?.therapyIncome || 0,
+            nonEmploymentCosts: last2025?.nonEmploymentCosts || 0,
             nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
             locumCosts: DEFAULT_LOCUM_COSTS_2025,
             miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,

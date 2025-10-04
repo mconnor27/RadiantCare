@@ -158,6 +158,33 @@ export function calculateAllCompensations(params: CompensationParams): Compensat
   const basePool = Math.max(0, totalIncome - totalCosts)
   const pool = Math.max(0, basePool - totalMedicalDirectorAllocations - totalAdditionalDaysAllocations)
 
+  // DEBUG: Log pool calculation breakdown
+  if (year === 2025) {
+    console.log('[COMP ENGINE] 📊 Pool calculation breakdown:', {
+      totalIncome,
+      breakdown: {
+        therapyIncome: fy.therapyIncome ?? 0,
+        medicalDirectorIncome,
+        prcsMedicalDirectorIncome,
+        consultingServicesAgreement: fy.consultingServicesAgreement ?? 0
+      },
+      totalCosts,
+      costsBreakdown: {
+        nonEmploymentCosts: fy.nonEmploymentCosts ?? 0,
+        nonMdEmploymentCosts: fy.nonMdEmploymentCosts ?? 0,
+        miscEmploymentCosts: fy.miscEmploymentCosts ?? 0,
+        locumCosts: fy.locumCosts ?? 0,
+        totalEmployeeCosts,
+        totalBuyoutCosts,
+        totalDelayedW2Costs
+      },
+      basePool,
+      totalMedicalDirectorAllocations,
+      totalAdditionalDaysAllocations,
+      finalPool: pool
+    })
+  }
+
   // === STEP 8: Distribute pool by FTE weight ===
   const partnerFTEs = partners.map((p) => ({ p, weight: getPartnerFTEWeight(p) }))
   const totalWeight = partnerFTEs.reduce((s, x) => s + x.weight, 0) || 1

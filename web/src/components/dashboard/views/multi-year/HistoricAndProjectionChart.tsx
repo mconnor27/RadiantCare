@@ -7,7 +7,7 @@ import { getTotalIncome } from '../../shared/calculations'
 import { useIsMobile } from '../../shared/hooks'
 import { getEmployeePortionOfYear, calculateDelayedW2Payment, computeDefaultNonMdEmploymentCosts } from '../../shared/calculations'
 import { calculateNetIncomeForMDs } from '../../../Dashboard'
-import { DEFAULT_MISC_EMPLOYMENT_COSTS, DEFAULT_NON_EMPLOYMENT_COSTS_2025, DEFAULT_LOCUM_COSTS_2025, scenario2024Defaults, scenarioADefaultsByYear, scenarioBDefaultsByYear } from '../../shared/defaults'
+import { DEFAULT_MISC_EMPLOYMENT_COSTS, DEFAULT_LOCUM_COSTS_2025, scenario2024Defaults, scenarioADefaultsByYear, scenarioBDefaultsByYear } from '../../shared/defaults'
 
 export default function HistoricAndProjectionChart() {
   const store = useDashboardStore()
@@ -40,7 +40,7 @@ export default function HistoricAndProjectionChart() {
         return {
           year: 2025,
           therapyIncome: 2700000,
-          nonEmploymentCosts: DEFAULT_NON_EMPLOYMENT_COSTS_2025,
+          nonEmploymentCosts: 0,
           nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
           miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
           medicalDirectorHours: 0,
@@ -87,7 +87,7 @@ export default function HistoricAndProjectionChart() {
       return {
         year: 2025,
         therapyIncome: storeFy2025?.therapyIncome ?? 2700000,
-        nonEmploymentCosts: storeFy2025?.nonEmploymentCosts ?? DEFAULT_NON_EMPLOYMENT_COSTS_2025,
+        nonEmploymentCosts: storeFy2025?.nonEmploymentCosts ?? 0,
         nonMdEmploymentCosts: storeFy2025?.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
         miscEmploymentCosts: storeFy2025?.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
         medicalDirectorHours: storeFy2025?.medicalDirectorHours ?? 0,

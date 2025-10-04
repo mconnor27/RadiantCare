@@ -219,8 +219,8 @@ function calculateProjectionRatio(data2025: MonthlyData): number {
   // Calculate the projection ratio
   const projectionRatio = fullYearDays / dataPeriodDays
   
-  console.log(`Data period: ${startPeriod} to ${endPeriod} (${dataPeriodDays} days)`)
-  console.log(`Projection ratio: ${projectionRatio.toFixed(3)} (${fullYearDays}/${dataPeriodDays})`)
+  // console.log(`Data period: ${startPeriod} to ${endPeriod} (${dataPeriodDays} days)`)
+  // console.log(`Projection ratio: ${projectionRatio.toFixed(3)} (${fullYearDays}/${dataPeriodDays})`)
   
   return projectionRatio
 }
@@ -380,9 +380,9 @@ function flattenRows(rows: any[], level = 0, parentGroup?: string, sectionCounte
       const isSection = headerText && !headerText.match(/^\s*$/) && headerText.trim().length > 0
       const sectionId = isSection ? `section-${sectionCounter.count++}` : undefined
       
-      if (isSection) {
-        console.log('Creating section:', headerText, 'with ID:', sectionId, 'at level:', level)
-      }
+      // if (isSection) {
+      //   console.log('Creating section:', headerText, 'with ID:', sectionId, 'at level:', level)
+      // }
       
       flattened.push({
         colData: row.Header.ColData,
@@ -429,7 +429,7 @@ function flattenRows(rows: any[], level = 0, parentGroup?: string, sectionCounte
 
 // Filter rows based on collapsed sections
 function filterCollapsedRows(rows: any[], collapsedSections: CollapsibleState): any[] {
-  console.log('Filtering rows with collapsed sections:', collapsedSections)
+  // console.log('Filtering rows with collapsed sections:', collapsedSections)
   const filteredRows: any[] = []
   let skipUntilLevel: number | null = null
   
@@ -438,10 +438,10 @@ function filterCollapsedRows(rows: any[], collapsedSections: CollapsibleState): 
     
     // If we're skipping, check if we should stop skipping
     if (skipUntilLevel !== null) {
-      console.log(`Skipping row ${i}: ${row.colData[0]?.value} (level ${row.level}) - waiting for Summary at level ${skipUntilLevel} or higher`)
+      // console.log(`Skipping row ${i}: ${row.colData[0]?.value} (level ${row.level}) - waiting for Summary at level ${skipUntilLevel} or higher`)
       // Stop skipping when we reach a Summary row at the same level or higher
       if (row.type === 'Summary' && row.level <= skipUntilLevel) {
-        console.log(`Found Summary at level ${row.level}, stopping skip`)
+        // console.log(`Found Summary at level ${row.level}, stopping skip`)
         skipUntilLevel = null
         filteredRows.push(row)
         continue
@@ -452,7 +452,7 @@ function filterCollapsedRows(rows: any[], collapsedSections: CollapsibleState): 
     
     // Check if this is a collapsed section
     if (row.type === 'Section' && row.sectionId && collapsedSections[row.sectionId] === true) {
-      console.log(`Section ${row.sectionId} (${row.colData[0]?.value}) is collapsed, starting skip at level ${row.level}`)
+      // console.log(`Section ${row.sectionId} (${row.colData[0]?.value}) is collapsed, starting skip at level ${row.level}`)
       // This section is collapsed, skip everything until the next Summary at the same level
       skipUntilLevel = row.level
     }
@@ -460,7 +460,7 @@ function filterCollapsedRows(rows: any[], collapsedSections: CollapsibleState): 
     filteredRows.push(row)
   }
   
-  console.log(`Filtered from ${rows.length} to ${filteredRows.length} rows`)
+  // console.log(`Filtered from ${rows.length} to ${filteredRows.length} rows`)
   return filteredRows
 }
 
@@ -481,7 +481,7 @@ const isCalculatedRow = (accountName: string): { isCalculated: boolean; type: 'm
   }
   
   const isMatch = false
-  console.log('isCalculatedRow check:', { original: accountName, normalized, isMatch })
+  // console.log('isCalculatedRow check:', { original: accountName, normalized, isMatch })
   return { isCalculated: false, type: null }
 }
 
@@ -696,19 +696,19 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
     // Dynamic calculation for bottom custom data rows
     if (isBottomCustomGroup(r) && r.type === 'Data') {
       const dynamicVal = calculateBottomCustomValue(name)
-      console.log(`    🔁 Bottom custom dynamic for "${normalizeLabel(name)}": ${dynamicVal}`)
+      // // console.log(`    🔁 Bottom custom dynamic for "${normalizeLabel(name)}": ${dynamicVal}`)
       return dynamicVal
     }
     // Prefer custom override
     if (customProjectedValues[name] !== undefined) {
       const customValue = Number(customProjectedValues[name]) || 0
-      console.log(`    🎛️  Using custom override for "${name}": ${customValue}`)
+      // // console.log(`    🎛️  Using custom override for "${name}": ${customValue}`)
       return customValue
     }
     const raw = r.colData?.[lastIdx]?.value
     const num = parseFloat((raw ?? '0').toString().replace(/[,$\s]/g, '')) || 0
     if (num !== 0) {
-      console.log(`    📊 Using calculated value for "${name}": ${num} (raw: "${raw}")`)
+      // // console.log(`    📊 Using calculated value for "${name}": ${num} (raw: "${raw}")`)
     }
     return num
   }
@@ -789,23 +789,23 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       
       // Debug which calculation path each summary row takes
       if (isProjectedColumn && row.type === 'Summary') {
-        console.log(`\n🔍 SUMMARY ROW PROCESSING: "${accountName}"`)
-        console.log(`  📊 Row type: ${row.type}`)
-        console.log(`  🎛️  Has custom value: ${hasCustomValue}`)
-        console.log(`  📈 Current value: "${value}"`)
+        // console.log(`\n🔍 SUMMARY ROW PROCESSING: "${accountName}"`)
+        // console.log(`  📊 Row type: ${row.type}`)
+        // console.log(`  🎛️  Has custom value: ${hasCustomValue}`)
+        // console.log(`  📈 Current value: "${value}"`)
       }
       
       // Apply custom projected value if available
       if (hasCustomValue) {
         if (isProjectedColumn && row.type === 'Summary') {
-          console.log(`  ✅ Using custom override: ${customProjectedValues[accountName]}`)
+          // console.log(`  ✅ Using custom override: ${customProjectedValues[accountName]}`)
         }
         value = customProjectedValues[accountName].toString()
       }
       
       // Special calculated summaries (projected column only)
       if (isProjectedColumn && row.type === 'Summary') {
-        console.log('🔍 SUMMARY CALCULATION DEBUG:', accountName)
+        // console.log('🔍 SUMMARY CALCULATION DEBUG:', accountName)
         
         const computeSummaryByName = (pattern: RegExp): number => {
           // Find the summary row in flattenedRows and sum its section data
@@ -814,12 +814,12 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
             return r.type === 'Summary' && pattern.test(n)
           })
           if (!target) {
-            console.log('  ❌ Target summary row not found for pattern:', pattern)
+            // console.log('  ❌ Target summary row not found for pattern:', pattern)
             return 0
           }
           const originalIndex = flattenedRows.indexOf(target)
           if (originalIndex < 0) {
-            console.log('  ❌ Target not found in flattenedRows')
+            // console.log('  ❌ Target not found in flattenedRows')
             return 0
           }
           // find nearest Section above at the same level
@@ -828,7 +828,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
             const r = flattenedRows[i]
             if (r.type === 'Section' && r.level === target.level) {
               startIdx = i
-              console.log(`  📍 Found section at index ${i}:`, r.colData?.[0]?.value, `(level ${r.level})`)
+              // console.log(`  📍 Found section at index ${i}:`, r.colData?.[0]?.value, `(level ${r.level})`)
               break
             }
           }
@@ -842,39 +842,39 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
               dataRowsIncluded.push({ name: r.colData?.[0]?.value, value, index: i })
             }
           }
-          console.log(`  📊 Data rows included (${dataRowsIncluded.length}):`, dataRowsIncluded)
-          console.log(`  💰 Total sum: ${sum}`)
+          // console.log(`  📊 Data rows included (${dataRowsIncluded.length}):`, dataRowsIncluded)
+          // console.log(`  💰 Total sum: ${sum}`)
           return sum
         }
 
         if (/^net\s+operating\s+income$/i.test(accountName)) {
-          console.log(`  🧮 Using SPECIAL calculation: Net Operating Income`)
+          // console.log(`  🧮 Using SPECIAL calculation: Net Operating Income`)
           const totalGrossIncome = computeSummaryByName(/^total\s+gross\s+income$/i)
           const totalCOGS = computeSummaryByName(/^total\s+cost\s+of\s+goods\s+sold$/i)
           const grossProfit = totalGrossIncome - totalCOGS
           const totalExpenses = computeSummaryByName(/^total\s+expenses$/i)
           const result = grossProfit - totalExpenses
-          console.log(`    Gross Profit: ${grossProfit} - Total Expenses: ${totalExpenses} = ${result}`)
+          // console.log(`    Gross Profit: ${grossProfit} - Total Expenses: ${totalExpenses} = ${result}`)
           value = result.toString()
         } else if (/^net\s+other\s+income$/i.test(accountName)) {
-          console.log(`  🧮 Using SPECIAL calculation: Net Other Income`)
+          // console.log(`  🧮 Using SPECIAL calculation: Net Other Income`)
           const totalOtherIncome = computeSummaryByName(/^total\s+other\s+income$/i)
           const totalOtherExpenses = computeSummaryByName(/^total\s+other\s+expenses$/i)
           const result = totalOtherIncome - totalOtherExpenses
-          console.log(`    Total Other Income: ${totalOtherIncome} - Total Other Expenses: ${totalOtherExpenses} = ${result}`)
+          // console.log(`    Total Other Income: ${totalOtherIncome} - Total Other Expenses: ${totalOtherExpenses} = ${result}`)
           value = result.toString()
         } else if (/^net\s+income\s+for\s+mds$/i.test(accountName)) {
-          console.log(`  🧮 Using SPECIAL calculation: Net Income for MDs (dynamic from main data)`)
+          // console.log(`  🧮 Using SPECIAL calculation: Net Income for MDs (dynamic from main data)`)
           const netIncome = getMainProjectedByPattern(/^Net\s+Income$/i)
           const mdSalary = getMainProjectedByPattern(/8322.*MD.*Associates.*Salary/i)
           const mdBenefits = getMainProjectedByPattern(/8325.*MD.*Associates.*Benefits/i)
           const locumsSalary = getMainProjectedByPattern(/8322.*Locums.*Salary/i)
           const guaranteedPayments = getMainProjectedByPattern(/8343.*Guaranteed.*Payments/i)
           const result = netIncome + mdSalary + mdBenefits + locumsSalary + guaranteedPayments
-          console.log(`    NetIncome(${netIncome}) + MDSalary(${mdSalary}) + MDBenefits(${mdBenefits}) + Locums(${locumsSalary}) + Guaranteed(${guaranteedPayments}) = ${result}`)
+          // console.log(`    NetIncome(${netIncome}) + MDSalary(${mdSalary}) + MDBenefits(${mdBenefits}) + Locums(${locumsSalary}) + Guaranteed(${guaranteedPayments}) = ${result}`)
           value = result.toString()
         } else if (/^net\s+income$/i.test(accountName)) {
-          console.log(`  🧮 Using SPECIAL calculation: Net Income`)
+          // console.log(`  🧮 Using SPECIAL calculation: Net Income`)
           // compute from NOI and Net Other Income
           // Compute NOI
           const totalGrossIncome = computeSummaryByName(/^total\s+gross\s+income$/i)
@@ -887,24 +887,24 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
           const totalOtherExpenses = computeSummaryByName(/^total\s+other\s+expenses$/i)
           const noiOther = totalOtherIncome - totalOtherExpenses
           const result = noi + noiOther
-          console.log(`    NOI: ${noi} + Net Other Income: ${noiOther} = ${result}`)
+          // console.log(`    NOI: ${noi} + Net Other Income: ${noiOther} = ${result}`)
           value = result.toString()
         } else {
-          console.log(`  🔄 Using REGULAR calculation (fallback)`)
+          // console.log(`  🔄 Using REGULAR calculation (fallback)`)
           // For Summary rows that don't match special cases, dynamically sum all Data rows in the same section
           // Find this summary row in the full flattenedRows array
           const originalIndex = flattenedRows.indexOf(row)
-          console.log('  📍 Summary row index:', originalIndex)
+          // console.log('  📍 Summary row index:', originalIndex)
           
           let startIdx = 0
           if (originalIndex > -1) {
             // Search for section header
             for (let i = originalIndex - 1; i >= 0; i--) {
               const r = flattenedRows[i]
-              console.log(`    Checking index ${i}: type=${r.type}, level=${r.level}, name="${r.colData?.[0]?.value}"`)
+              // console.log(`    Checking index ${i}: type=${r.type}, level=${r.level}, name="${r.colData?.[0]?.value}"`)
               if (r.type === 'Section' && r.level === row.level) {
                 startIdx = i
-                console.log(`  🎯 Found matching section at index ${i}: "${r.colData?.[0]?.value}" (level ${r.level})`)
+                // console.log(`  🎯 Found matching section at index ${i}: "${r.colData?.[0]?.value}" (level ${r.level})`)
                 break
               }
             }
@@ -912,10 +912,10 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
             // Sum Data rows between startIdx and originalIndex (exclusive)
             let sum = 0
             const includedRows = []
-            console.log(`  🔢 Summing data rows from index ${startIdx + 1} to ${originalIndex - 1}:`)
+            // console.log(`  🔢 Summing data rows from index ${startIdx + 1} to ${originalIndex - 1}:`)
             for (let i = startIdx + 1; i < originalIndex; i++) {
               const r = flattenedRows[i]
-              console.log(`    Index ${i}: type="${r.type}", name="${r.colData?.[0]?.value}"`)
+              // // console.log(`    Index ${i}: type="${r.type}", name="${r.colData?.[0]?.value}"`)
               if (r.type === 'Data') {
                 const rowValue = getProjectedNumericForRow(r)
                 sum += rowValue
@@ -927,11 +927,11 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
                 })
               }
             }
-            console.log('  📊 Included data rows:', includedRows)
-            console.log(`  💰 Final sum: ${sum}`)
+            // console.log('  📊 Included data rows:', includedRows)
+            // console.log(`  💰 Final sum: ${sum}`)
             value = sum.toString()
           } else {
-            console.log('  ❌ Summary row not found in flattenedRows array')
+            // console.log('  ❌ Summary row not found in flattenedRows array')
           }
         }
       }
@@ -942,7 +942,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
         (row.group && (row.group.startsWith('Summary') || row.group === 'SummaryIncome' || row.group === 'SummaryCosts' || row.group === 'SummaryNetIncome'))
       ) {
         const dynamic = calculateBottomCustomValue(accountName)
-        console.log(`  🔁 Rendering bottom custom data "${normalizeLabel(accountName)}" = ${dynamic}`)
+        // console.log(`  🔁 Rendering bottom custom data "${normalizeLabel(accountName)}" = ${dynamic}`)
         value = dynamic.toString()
       }
       // Apply display adjustments for specific labels (but not for custom projected values)
@@ -974,11 +974,11 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       // Add info icon for calculated rows AFTER formatting
       const calculatedInfo = isCalculatedRow(accountName)
       if (isProjectedColumn && calculatedInfo.isCalculated) {
-        console.log('Attempting to add info icon for calculated row:', accountName, 'type:', calculatedInfo.type, 'formatted value:', formattedValue)
+        // console.log('Attempting to add info icon for calculated row:', accountName, 'type:', calculatedInfo.type, 'formatted value:', formattedValue)
         formattedValue = formattedValue + ' ⓘ'
-        console.log('Added info icon to calculated projected cell:', accountName, '→', formattedValue)
+        // console.log('Added info icon to calculated projected cell:', accountName, '→', formattedValue)
       } else if (isProjectedColumn) {
-        console.log('Projected column but not calculated row:', accountName)
+        // console.log('Projected column but not calculated row:', accountName)
       }
       
       // Right-align all columns except the first column (account names)
@@ -1078,9 +1078,9 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
           tooltipText = 'Interest income is displayed but excluded from all calculations and summaries to maintain operational focus.'
         } else if (isCalculatedInfoIcon) {
           // Get the appropriate tooltip for the calculated row type
-          console.log('Setting calculated tooltip for:', accountName, 'type:', calculatedInfo.type, 'formattedValue:', formattedValue)
+          // console.log('Setting calculated tooltip for:', accountName, 'type:', calculatedInfo.type, 'formattedValue:', formattedValue)
           tooltipText = getTooltipForCalculatedRow(calculatedInfo.type!)
-          console.log('Calculated tooltip set to:', tooltipText)
+          // console.log('Calculated tooltip set to:', tooltipText)
         } else {
           tooltipText = row.tooltip
         }
@@ -1116,7 +1116,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
     
     const rowId = row.sectionId || `row-${index}`
     if (row.type === 'Section') {
-      console.log('Generated section row with ID:', rowId, 'for text:', row.colData[0]?.value)
+      // console.log('Generated section row with ID:', rowId, 'for text:', row.colData[0]?.value)
     }
     
     return {
@@ -1414,7 +1414,8 @@ function addSummaryRows(data: YearlyData, projectionRatio: number): any[] {
 
 // Debug utility to analyze summary calculations
 export function debugSummaryCalculations(gridData: { rows: Row[], columns: any[] }, customProjectedValues: Record<string, number> = {}): void {
-  console.log('🔍 === SUMMARY CALCULATION ANALYSIS ===')
+  return // Disabled for now
+  // console.log('🔍 === SUMMARY CALCULATION ANALYSIS ===')
   
   const projectedColumnIndex = gridData.columns.length - 1
   const summaryRows = gridData.rows.filter(row => {
@@ -1422,7 +1423,7 @@ export function debugSummaryCalculations(gridData: { rows: Row[], columns: any[]
     return firstCell?.rowType === 'Summary'
   })
   
-  console.log(`📊 Found ${summaryRows.length} summary rows:`)
+  // console.log(`📊 Found ${summaryRows.length} summary rows:`)
   
   summaryRows.forEach((row, index) => {
     const firstCell = row.cells?.[0] as any
@@ -1431,11 +1432,11 @@ export function debugSummaryCalculations(gridData: { rows: Row[], columns: any[]
     const projectedValue = projectedCell?.text || '0'
     const numericValue = parseFloat(projectedValue.replace(/[$,\s]/g, '')) || 0
     
-    console.log(`\n${index + 1}. "${accountName}":`)
-    console.log(`   💰 Projected Value: ${projectedValue} (numeric: ${numericValue})`)
-    console.log(`   🎛️  Has Custom Override: ${customProjectedValues[accountName] !== undefined}`)
+    // console.log(`\n${index + 1}. "${accountName}":`)
+    // console.log(`   💰 Projected Value: ${projectedValue} (numeric: ${numericValue})`)
+    // console.log(`   🎛️  Has Custom Override: ${customProjectedValues[accountName] !== undefined}`)
     if (customProjectedValues[accountName] !== undefined) {
-      console.log(`   ⚡ Custom Value: ${customProjectedValues[accountName]}`)
+      // console.log(`   ⚡ Custom Value: ${customProjectedValues[accountName]}`)
     }
     
     // Determine calculation type
@@ -1451,15 +1452,15 @@ export function debugSummaryCalculations(gridData: { rows: Row[], columns: any[]
     } else {
       calculationType = 'Regular (Sum of Data Rows)'
     }
-    console.log(`   🧮 Calculation Type: ${calculationType}`)
+    // console.log(`   🧮 Calculation Type: ${calculationType}`)
   })
   
-  console.log('\n🎛️  All Custom Overrides:')
+  // console.log('\n🎛️  All Custom Overrides:')
   Object.entries(customProjectedValues).forEach(([name, value]) => {
-    console.log(`   "${name}": ${value}`)
+    // console.log(`   "${name}": ${value}`)
   })
   
-  console.log('🔍 === END ANALYSIS ===\n')
+  // console.log('🔍 === END ANALYSIS ===\n')
 }
 
 // Load and transform the yearly data
@@ -1508,7 +1509,7 @@ export async function loadYearlyGridData(collapsedSections: CollapsibleState = {
     
     return transformYearlyDataToGrid(extendedData, collapsedSections, customProjectedValues)
   } catch (error) {
-    console.error('Failed to load yearly data:', error)
+    // console.error('Failed to load yearly data:', error)
     
     // If it's a projection ratio error, provide more specific feedback
     if (error instanceof Error && error.message.includes('projection ratio')) {

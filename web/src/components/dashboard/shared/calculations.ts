@@ -22,8 +22,7 @@ import {
   ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
   ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
   DEFAULT_MD_SHARED_PROJECTION,
-  DEFAULT_MD_PRCS_PROJECTION,
-  DEFAULT_NON_MD_EMPLOYMENT_COSTS_2025
+  DEFAULT_MD_PRCS_PROJECTION
 } from './defaults'
 
 export function getSocialSecurityWageBase(year: number): number {
@@ -64,12 +63,7 @@ export function getBenefitCostsForYear(year: number, benefitGrowthPct: number): 
 
 // Default Staff employment costs (wages + employer taxes + benefits for FT 1)
 export function computeDefaultNonMdEmploymentCosts(year: number = 2025): number {
-  // Return the correct 2025 baseline value
-  if (year === 2025) {
-    return DEFAULT_NON_MD_EMPLOYMENT_COSTS_2025
-  }
-  
-  // For other years, use the original calculation
+  // Calculate based on standard staff structure (for any year including 2025)
   // Employee 1: $31.25/hr, 40 hrs/week, full-time + benefits
   const emp1Wages = 31.25 * 40 * 52
   const emp1Taxes = calculateEmployerPayrollTaxes(emp1Wages, year)

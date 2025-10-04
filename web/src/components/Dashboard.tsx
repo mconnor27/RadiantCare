@@ -36,11 +36,8 @@ import {
   DEFAULT_LOCUM_COSTS_2025,
   DEFAULT_LOCUM_COSTS_2026,
   ACTUAL_2024_LOCUM_COSTS,
-  DEFAULT_THERAPY_INCOME_2025,
-  DEFAULT_NON_EMPLOYMENT_COSTS_2025,
   PROJECTION_DEFAULTS,
   ANNUAL_BENEFITS_FULLTIME,
-  // Removed NET_PARTNER_POOL_2025 import - now calculating dynamically
   INITIAL_FUTURE_YEARS_A,
   INITIAL_FUTURE_YEARS_B
 } from './dashboard/shared/defaults'
@@ -53,6 +50,7 @@ export const useDashboardStore = create<Store>()(
       void get
       return {
         historic: HISTORIC_DATA,
+        suppressNextGridSync: false,
         scenarioA: {
           future: INITIAL_FUTURE_YEARS_A,
           projection: {
@@ -102,6 +100,21 @@ export const useDashboardStore = create<Store>()(
             const store = useDashboardStore.getState()
             if (store.scenarioB) store.applyProjectionFromLastActual('B')
           }
+        },
+        // One-time suppression control for grid->store synchronization
+        setSuppressNextGridSync: (suppress: boolean) => {
+          set((state) => {
+            ;(state as any).suppressNextGridSync = !!suppress
+          })
+        },
+        consumeSuppressNextGridSync: () => {
+          const suppressed = !!(get() as any).suppressNextGridSync
+          if (suppressed) {
+            set((state) => {
+              ;(state as any).suppressNextGridSync = false
+            })
+          }
+          return suppressed
         },
         
         setPrcsDirector: (scenario, year, physicianId) =>
@@ -457,8 +470,8 @@ export const useDashboardStore = create<Store>()(
               } else {
                 // Fallback if Custom baseline missing (shouldn't happen)
                 baselineData = {
-                  therapyIncome: last2025?.therapyIncome || DEFAULT_THERAPY_INCOME_2025,
-                  nonEmploymentCosts: last2025?.nonEmploymentCosts || DEFAULT_NON_EMPLOYMENT_COSTS_2025,
+                  therapyIncome: last2025?.therapyIncome || 0,
+                  nonEmploymentCosts: last2025?.nonEmploymentCosts || 0,
                   miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                   nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
                 }
@@ -480,8 +493,8 @@ export const useDashboardStore = create<Store>()(
             } else {
               // Fallback to 2025 hardcoded values
               baselineData = {
-                therapyIncome: DEFAULT_THERAPY_INCOME_2025,
-                nonEmploymentCosts: DEFAULT_NON_EMPLOYMENT_COSTS_2025,
+                therapyIncome: 0,
+                nonEmploymentCosts: 0,
                 miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                 nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
               }
@@ -553,8 +566,8 @@ export const useDashboardStore = create<Store>()(
               } else {
                 // Fallback if Custom baseline missing (shouldn't happen)
                 baselineData = {
-                  therapyIncome: last2025?.therapyIncome || DEFAULT_THERAPY_INCOME_2025,
-                  nonEmploymentCosts: last2025?.nonEmploymentCosts || DEFAULT_NON_EMPLOYMENT_COSTS_2025,
+                  therapyIncome: last2025?.therapyIncome || 0,
+                  nonEmploymentCosts: last2025?.nonEmploymentCosts || 0,
                   miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                   nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
                 }
@@ -576,8 +589,8 @@ export const useDashboardStore = create<Store>()(
             } else {
               // Fallback to 2025 hardcoded values
               baselineData = {
-                therapyIncome: DEFAULT_THERAPY_INCOME_2025,
-                nonEmploymentCosts: DEFAULT_NON_EMPLOYMENT_COSTS_2025,
+                therapyIncome: 0,
+                nonEmploymentCosts: 0,
                 miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                 nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
               }
@@ -671,8 +684,8 @@ export const useDashboardStore = create<Store>()(
                 const js = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
                 baselineData = {
                   year: 2025,
-                  therapyIncome: last2025?.therapyIncome || DEFAULT_THERAPY_INCOME_2025,
-                  nonEmploymentCosts: last2025?.nonEmploymentCosts || DEFAULT_NON_EMPLOYMENT_COSTS_2025,
+                  therapyIncome: last2025?.therapyIncome || 0,
+                  nonEmploymentCosts: last2025?.nonEmploymentCosts || 0,
                   nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
                   locumCosts: DEFAULT_LOCUM_COSTS_2025,
                   miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
@@ -834,75 +847,173 @@ export const useDashboardStore = create<Store>()(
         },
 
         // Reset only 2025 data (for YTD Detailed view)
-        resetOnly2025: (scenario: ScenarioKey) => {
+        resetOnly2025: async (scenario: ScenarioKey) => {
+          console.log('[RESET DEBUG] ========== resetOnly2025 START ==========')
+          // Import the load function dynamically to avoid circular dependencies
+          const { load2025ValuesForReset } = await import('./dashboard/views/detailed/utils/load2025Data')
+
+          const state = get()
+          const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
+          if (!sc) return
+
+          let year2025 = sc.future.find(f => f.year === 2025)
+          if (!year2025) {
+            // If 2025 baseline doesn't exist yet (e.g., user clicked quickly), create it first
+            await useDashboardStore.getState().ensureBaselineYear(scenario, 2025)
+            year2025 = useDashboardStore.getState()[scenario === 'A' ? 'scenarioA' : 'scenarioB']?.future.find(f => f.year === 2025)
+            if (!year2025) return
+          }
+
+          console.log('[RESET DEBUG] Current store values before reset:', {
+            therapyIncome: year2025.therapyIncome,
+            nonEmploymentCosts: year2025.nonEmploymentCosts,
+            nonMdEmploymentCosts: year2025.nonMdEmploymentCosts
+          })
+
+          // Suppress the next grid->store sync to avoid transient flashes while resetting
           set((state) => {
+            ;(state as any).suppressNextGridSync = true
+          })
+
+          // Reset 2025 physicians to defaults first
+          const defaultPhysicians = scenario === 'A'
+            ? scenarioADefaultsByYear(2025)
+            : scenarioBDefaultsByYear(2025)
+
+          // Load 2025 values dynamically based on environment (tries production, falls back to sandbox)
+          console.log('[RESET DEBUG] Loading 2025 values from grid...')
+          const values = await load2025ValuesForReset(
+            defaultPhysicians,
+            sc.projection.benefitCostsGrowthPct,
+            year2025.locumCosts ?? DEFAULT_LOCUM_COSTS_2025
+          )
+          console.log('[RESET DEBUG] Loaded values:', {
+            therapyIncome: values.therapyIncome,
+            nonEmploymentCosts: values.nonEmploymentCosts,
+            nonMdEmploymentCosts: values.nonMdEmploymentCosts
+          })
+
+          // Batch all updates in a single set call to avoid intermediate renders
+          console.log('[RESET DEBUG] Batching state updates...')
+          set((state) => {
+            state.customProjectedValues = {}
+
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!sc) return
 
             const year2025 = sc.future.find(f => f.year === 2025)
             if (!year2025) return
 
-            // Reset 2025 physicians to defaults
-            const defaultPhysicians = scenario === 'A'
-              ? scenarioADefaultsByYear(2025)
-              : scenarioBDefaultsByYear(2025)
+            // Reset physicians
             year2025.physicians = defaultPhysicians.map(p => ({ ...p }))
 
-            // Reset 2025 grid values to defaults from historic data
-            const historic2025 = state.historic.find(h => h.year === 2025)
-            if (historic2025) {
-              year2025.therapyIncome = historic2025.therapyIncome
-              year2025.nonEmploymentCosts = historic2025.nonEmploymentCosts
-            }
-            year2025.nonMdEmploymentCosts = computeDefaultNonMdEmploymentCosts(2025)
-            year2025.miscEmploymentCosts = DEFAULT_MISC_EMPLOYMENT_COSTS
-            year2025.locumCosts = DEFAULT_LOCUM_COSTS_2025
-            year2025.medicalDirectorHours = ACTUAL_2025_MEDICAL_DIRECTOR_HOURS
-            year2025.prcsMedicalDirectorHours = ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS
-            year2025.consultingServicesAgreement = DEFAULT_CONSULTING_SERVICES_2025
+            // Reset 2025 grid values using dynamically loaded values
+            year2025.therapyIncome = values.therapyIncome
+            year2025.therapyLacey = values.therapyLacey
+            year2025.therapyCentralia = values.therapyCentralia
+            year2025.therapyAberdeen = values.therapyAberdeen
+            year2025.nonEmploymentCosts = values.nonEmploymentCosts
+            year2025.nonMdEmploymentCosts = values.nonMdEmploymentCosts
+            year2025.miscEmploymentCosts = values.miscEmploymentCosts
+            year2025.locumCosts = values.locumCosts
+            year2025.medicalDirectorHours = values.medicalDirectorHours
+            year2025.prcsMedicalDirectorHours = values.prcsMedicalDirectorHours
+            year2025.consultingServicesAgreement = values.consultingServicesAgreement
 
             // Reset PRCS Director to default
             const jsPhysician = year2025.physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
             year2025.prcsDirectorPhysicianId = jsPhysician?.id
-
-            // Reset per-site therapy income values
-            delete year2025.therapyLacey
-            delete year2025.therapyCentralia
-            delete year2025.therapyAberdeen
+            
+            console.log('[RESET DEBUG] Batched update complete. New values:', {
+              therapyIncome: year2025.therapyIncome,
+              nonEmploymentCosts: year2025.nonEmploymentCosts,
+              nonMdEmploymentCosts: year2025.nonMdEmploymentCosts
+            })
           })
+
+          // Recompute projections to keep future years aligned with the reset 2025 baseline
+          try {
+            const api = get()
+            api.applyProjectionFromLastActual(scenario)
+          } catch (e) {
+            console.warn('Post-reset projection update encountered an issue:', e)
+          }
+
+          // Nudge listeners that key projection inputs changed (forces grid reload even if values are same)
+          set((state) => {
+            state.customProjectedValues = { ...state.customProjectedValues }
+          })
+          
+          console.log('[RESET DEBUG] ========== resetOnly2025 END ==========')
         },
 
         // Ensure baseline year exists in future years array for PhysiciansEditor
-        ensureBaselineYear: (scenario: ScenarioKey, year: number) => {
+        ensureBaselineYear: async (scenario: ScenarioKey, year: number) => {
+          const state = get()
+          const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
+          if (!sc) return
+
+          // Check if year already exists
+          const existing = sc.future.find((f) => f.year === year)
+          if (existing) return
+
+          // Create baseline entry with defaults - deep copy to avoid reference issues
+          const defaultPhysicians = scenario === 'A'
+            ? (sc.dataMode === '2024 Data' ? scenario2024Defaults() : scenarioADefaultsByYear(year))
+            : (sc.dataMode === '2024 Data' ? scenario2024Defaults() : scenarioBDefaultsByYear(year))
+          const jsPhysician = defaultPhysicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+
+          let baseline: FutureYear
+
+          // For 2025 specifically, load values dynamically
+          if (year === 2025) {
+            const { load2025ValuesForReset } = await import('./dashboard/views/detailed/utils/load2025Data')
+
+            const values = await load2025ValuesForReset(
+              defaultPhysicians,
+              sc.projection.benefitCostsGrowthPct,
+              DEFAULT_LOCUM_COSTS_2025
+            )
+
+            baseline = {
+              year,
+              therapyIncome: values.therapyIncome,
+              nonEmploymentCosts: values.nonEmploymentCosts,
+              nonMdEmploymentCosts: values.nonMdEmploymentCosts,
+              locumCosts: values.locumCosts,
+              miscEmploymentCosts: values.miscEmploymentCosts,
+              medicalDirectorHours: values.medicalDirectorHours,
+              prcsMedicalDirectorHours: values.prcsMedicalDirectorHours,
+              consultingServicesAgreement: values.consultingServicesAgreement,
+              prcsDirectorPhysicianId: jsPhysician?.id,
+              physicians: defaultPhysicians.map(p => ({ ...p })),
+            }
+          } else {
+            // For other years, use historic data with fallbacks (this is fine for 2026+)
+            const historic = state.historic.find(h => h.year === year)
+            baseline = {
+              year,
+              therapyIncome: historic?.therapyIncome ?? 0,
+              nonEmploymentCosts: historic?.nonEmploymentCosts ?? 0,
+              nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(year),
+              locumCosts: year === 2026 ? DEFAULT_LOCUM_COSTS_2026 : 0,
+              miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+              medicalDirectorHours: DEFAULT_MD_SHARED_PROJECTION,
+              prcsMedicalDirectorHours: DEFAULT_MD_PRCS_PROJECTION,
+              consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_2025,
+              prcsDirectorPhysicianId: jsPhysician?.id,
+              physicians: defaultPhysicians.map(p => ({ ...p })),
+            }
+          }
+
           set((state) => {
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!sc) return
-            
-            // Check if year already exists
+
+            // Double-check it doesn't exist (async race condition)
             const existing = sc.future.find((f) => f.year === year)
             if (existing) return
-            
-            // Create baseline entry with defaults - deep copy to avoid reference issues
-            const defaultPhysicians = scenario === 'A' 
-              ? (sc.dataMode === '2024 Data' ? scenario2024Defaults() : scenarioADefaultsByYear(year))
-              : (sc.dataMode === '2024 Data' ? scenario2024Defaults() : scenarioBDefaultsByYear(year))
-            const jsPhysician = defaultPhysicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
-            
-            const baseline: FutureYear = {
-              year,
-              therapyIncome: state.historic.find(h => h.year === year)?.therapyIncome ?? DEFAULT_THERAPY_INCOME_2025,
-              nonEmploymentCosts: state.historic.find(h => h.year === year)?.nonEmploymentCosts ?? DEFAULT_NON_EMPLOYMENT_COSTS_2025,
-              nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(year),
-              locumCosts: DEFAULT_LOCUM_COSTS_2025,
-              miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-              medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
-              prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
-              consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_2025,
-              prcsDirectorPhysicianId: jsPhysician?.id,
-              // Deep copy physicians to avoid reference issues
-              physicians: defaultPhysicians.map(p => ({ ...p })),
-            }
-            
+
             // Add to the beginning of future years array (since 2025 comes before 2026+)
             sc.future.unshift(baseline)
           })
@@ -1152,8 +1263,8 @@ export function calculateProjectedValue(
     } else {
       const last2025 = store.historic.find((h: any) => h.year === 2025)
       baselineData = {
-        therapyIncome: last2025?.therapyIncome || DEFAULT_THERAPY_INCOME_2025,
-        nonEmploymentCosts: last2025?.nonEmploymentCosts || DEFAULT_NON_EMPLOYMENT_COSTS_2025,
+        therapyIncome: last2025?.therapyIncome || 0,
+        nonEmploymentCosts: last2025?.nonEmploymentCosts || 0,
         miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
         nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
       }
@@ -1176,8 +1287,8 @@ export function calculateProjectedValue(
     }
   } else {
     baselineData = {
-      therapyIncome: DEFAULT_THERAPY_INCOME_2025,
-      nonEmploymentCosts: DEFAULT_NON_EMPLOYMENT_COSTS_2025,
+      therapyIncome: 0,
+      nonEmploymentCosts: 0,
       miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
       nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
     }
@@ -1271,9 +1382,9 @@ export function Dashboard() {
             >Multi-Year</button>
           </div>
           <div style={{ display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end', flexWrap: 'wrap', gap: 8 }}>
-            <button onClick={() => {
+            <button onClick={async () => {
               if (viewMode === 'YTD Detailed') {
-                store.resetOnly2025('A');
+                await store.resetOnly2025('A');
               } else {
                 store.resetToDefaults(true); // skip2025 = true for Multi-Year
               }

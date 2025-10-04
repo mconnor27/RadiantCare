@@ -62,11 +62,9 @@ export const TAX_RATES = {
 } as const
 
 // Default financial values for fallbacks
-export const DEFAULT_THERAPY_INCOME_2025 = 3344068.19
-export const DEFAULT_NON_EMPLOYMENT_COSTS_2025 = 229713.57
-export const DEFAULT_LOCUM_COSTS_2025 = 54600
+// Note: 2025 values are loaded dynamically from actual/cached data, not hardcoded
+export const DEFAULT_LOCUM_COSTS_2025 = 54600 // Used only for grid slider defaults
 export const DEFAULT_LOCUM_COSTS_2026 = 60000
-export const DEFAULT_NON_MD_EMPLOYMENT_COSTS_2025 = 164273.25
 
 // 2024 actual values for data mode
 export const ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS = 157986.94
@@ -397,12 +395,7 @@ export function getFutureYearsBase(): Omit<FutureYear, 'physicians'>[] {
 
 // Local function to avoid circular dependency
 function getDefaultNonMdEmploymentCostsForYear(year: number = 2025): number {
-  // Return the correct 2025 baseline value
-  if (year === 2025) {
-    return DEFAULT_NON_MD_EMPLOYMENT_COSTS_2025
-  }
-
-  // For other years, use simplified calculation (inline the logic)
+  // Calculate based on standard staff structure
   // Employee 1: $31.25/hr, 40 hrs/week, full-time + benefits
   const emp1Wages = 31.25 * 40 * 52
   const emp1Taxes = emp1Wages * 0.0765 // Simplified tax calculation

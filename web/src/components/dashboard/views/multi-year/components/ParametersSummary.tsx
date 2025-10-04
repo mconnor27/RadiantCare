@@ -5,7 +5,7 @@ import {
   computeDefaultNonMdEmploymentCosts,
   getTotalIncome
 } from '../../../shared/calculations'
-import { scenarioADefaultsByYear, scenarioBDefaultsByYear, scenario2024Defaults, DEFAULT_MISC_EMPLOYMENT_COSTS, DEFAULT_CONSULTING_SERVICES_2025, ACTUAL_2025_MEDICAL_DIRECTOR_HOURS, ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, DEFAULT_LOCUM_COSTS_2025, ACTUAL_2024_MISC_EMPLOYMENT_COSTS, DEFAULT_THERAPY_INCOME_2025, DEFAULT_NON_EMPLOYMENT_COSTS_2025, ACTUAL_2024_LOCUM_COSTS } from '../../../shared/defaults'
+import { scenarioADefaultsByYear, scenarioBDefaultsByYear, scenario2024Defaults, DEFAULT_MISC_EMPLOYMENT_COSTS, DEFAULT_CONSULTING_SERVICES_2025, ACTUAL_2025_MEDICAL_DIRECTOR_HOURS, ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, DEFAULT_LOCUM_COSTS_2025, ACTUAL_2024_MISC_EMPLOYMENT_COSTS, ACTUAL_2024_LOCUM_COSTS } from '../../../shared/defaults'
 import {
   currency,
   currencyShort,
@@ -49,9 +49,10 @@ export default function ParametersSummary() {
         nonMdEmploymentCosts: storeFy2025?.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
       }
     } else {
+      // Store should be initialized, but use 0 as ultimate fallback
       baselineData = {
-        therapyIncome: DEFAULT_THERAPY_INCOME_2025,
-        nonEmploymentCosts: DEFAULT_NON_EMPLOYMENT_COSTS_2025,
+        therapyIncome: 0,
+        nonEmploymentCosts: 0,
         miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
         nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
       }

@@ -307,7 +307,27 @@ export default function PartnerCompensation({
   const physicians = fy2025?.physicians || []
   
   // Parse both projected and YTD data
-  const projectedData = useMemo(() => parseProjectedData(physicians, fy2025), [
+  const projectedData = useMemo(() => {
+    console.log('[COMP DEBUG] 🧮 Recalculating compensation with:', {
+      therapyIncome: fy2025?.therapyIncome,
+      nonEmploymentCosts: fy2025?.nonEmploymentCosts,
+      nonMdEmploymentCosts: fy2025?.nonMdEmploymentCosts,
+      miscEmploymentCosts: fy2025?.miscEmploymentCosts,
+      locumCosts: fy2025?.locumCosts,
+      medicalDirectorHours: fy2025?.medicalDirectorHours,
+      prcsMedicalDirectorHours: fy2025?.prcsMedicalDirectorHours,
+      consultingServicesAgreement: fy2025?.consultingServicesAgreement,
+      prcsDirectorPhysicianId: fy2025?.prcsDirectorPhysicianId,
+      physicianCount: physicians.length,
+      physicians: physicians.map(p => ({ name: p.name, type: p.type, buyoutCost: p.buyoutCost }))
+    })
+    
+    const result = parseProjectedData(physicians, fy2025)
+    
+    console.log('[COMP DEBUG] 💰 Calculated totals:', result.totals)
+    
+    return result
+  }, [
     physicians,
     fy2025?.therapyIncome,
     fy2025?.nonEmploymentCosts,
@@ -371,8 +391,28 @@ export default function PartnerCompensation({
       borderRadius: 6,
       padding: 8,
       background: '#ffffff',
-      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' 
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
     }}>
+      {/* DEBUG INFO */}
+      <div style={{
+        marginBottom: 8,
+        padding: 8,
+        background: '#fef3c7',
+        border: '1px solid #fbbf24',
+        borderRadius: 4,
+        fontSize: 11,
+        fontFamily: 'monospace'
+      }}>
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>DEBUG - 2025 Store Values:</div>
+        <div>therapyIncome: ${fy2025?.therapyIncome?.toLocaleString() || 'MISSING'}</div>
+        <div>therapyLacey: ${fy2025?.therapyLacey?.toLocaleString() || 'MISSING'}</div>
+        <div>therapyCentralia: ${fy2025?.therapyCentralia?.toLocaleString() || 'MISSING'}</div>
+        <div>therapyAberdeen: ${fy2025?.therapyAberdeen?.toLocaleString() || 'MISSING'}</div>
+        <div>nonEmploymentCosts: ${fy2025?.nonEmploymentCosts?.toLocaleString() || 'MISSING'}</div>
+        <div>locumCosts: ${fy2025?.locumCosts?.toLocaleString() || 'MISSING'}</div>
+        <div>Projected Total: ${projectedData.totals['Connor']?.toLocaleString()}</div>
+      </div>
+
       <div style={{ fontWeight: 600, marginBottom: 8 }}>Physician Compensation</div>
       
       <div style={{ display: 'grid', gridTemplateColumns: `2.2fr repeat(${physicianNames.length}, 1fr)`, gap: 2, fontWeight: 600 }}>

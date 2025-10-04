@@ -86,15 +86,14 @@ export const projectedDefaultsGlobal: {
  * Examples below demonstrate the full syntax. Replace keys and numbers with your actual rows.
  */
 export const projectedDefaultsByAccount: Record<string, ProjectedAccountDefaults> = {
-  // Therapy Income
+  // Therapy Income - uses annualized values from data, no hardcoded default
   'Total 7100 Therapy Income': {
-    //defaultValue: DEFAULT_THERAPY_INCOME_2025,
-    bounds: { 
-      mode: 'absolute', 
-      min: UI_DEFAULTS.therapyIncomeMin, 
-      max: UI_DEFAULTS.therapyIncomeMax 
+    bounds: {
+      mode: 'absolute',
+      min: UI_DEFAULTS.therapyIncomeMin,
+      max: UI_DEFAULTS.therapyIncomeMax
     },
-    sliderInitial: 'default',
+    sliderInitial: 'annualized',
     sliderStep: UI_DEFAULTS.therapyIncomeStep,
   },
   

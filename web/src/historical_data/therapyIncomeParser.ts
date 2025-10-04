@@ -56,7 +56,7 @@ function parseTherapyIncomeFromReport(report: any, year: string): YTDPoint[] {
       .filter((item: any) => item.startDate) // Only keep columns with valid dates
       .sort((a: any, b: any) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()) // Sort chronologically
     
-    console.log(`${year}: Processing ${validColumns.length} valid columns out of ${allColumns.length} total columns`)
+    // console.log(`${year}: Processing ${validColumns.length} valid columns out of ${allColumns.length} total columns`)
     
     // Find the "Total 7100 Therapy Income" row
     const findTherapyIncomeRow = (rows: any[]): any => {
@@ -74,7 +74,7 @@ function parseTherapyIncomeFromReport(report: any, year: string): YTDPoint[] {
     
     const therapyIncomeRow = findTherapyIncomeRow(report?.Rows?.Row || [])
     if (!therapyIncomeRow) {
-      console.error(`Could not find "Total Income" row in ${year} data`)
+      // console.error(`Could not find "Total Income" row in ${year} data`)
       return []
     }
     
@@ -122,12 +122,12 @@ function parseTherapyIncomeFromReport(report: any, year: string): YTDPoint[] {
       })
     }
     
-    console.log(`Parsed ${points.length} days of ${year} therapy income data`)
-    console.log(`${year} total therapy income:`, cumulativeTotal)
+    // console.log(`Parsed ${points.length} days of ${year} therapy income data`)
+    // console.log(`${year} total therapy income:`, cumulativeTotal)
     
     return points
   } catch (error) {
-    console.error(`Error parsing ${year} therapy income data:`, error)
+    // console.error(`Error parsing ${year} therapy income data:`, error)
     return []
   }
 }
