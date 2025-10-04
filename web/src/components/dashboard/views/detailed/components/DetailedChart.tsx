@@ -520,7 +520,8 @@ export default function DetailedChart({
         is2025Visible,
         pulsePhase,
         isNormalized,
-        colorScheme
+        colorScheme,
+        currentYearData
       )
     }
   }, [chartMode, incomeMode, processedCurrentData, is2025Visible, chartMode === 'line' ? pulsePhase : 0, isNormalized, timeframe, currentPeriod, fy2025, visibleSites, colorScheme, siteColorScheme])

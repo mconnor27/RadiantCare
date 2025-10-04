@@ -132,8 +132,10 @@ function parseTherapyIncomeFromReport(report: any, year: string): YTDPoint[] {
   }
 }
 
-export function parseTherapyIncome2025(): YTDPoint[] {
-  return parseTherapyIncomeFromReport(historical2025Data, '2025')
+export function parseTherapyIncome2025(cachedData?: any): YTDPoint[] {
+  // Use cached data if provided, otherwise fall back to historical JSON
+  const dataSource = cachedData || historical2025Data
+  return parseTherapyIncomeFromReport(dataSource, '2025')
 }
 
 export function parseTherapyIncome2024(): YTDPoint[] {

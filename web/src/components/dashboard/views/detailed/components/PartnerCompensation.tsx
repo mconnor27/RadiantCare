@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import equityData from '../../../../../historical_data/2025_equity.json'
-import summaryData from '../../../../../historical_data/2025_summary.json'
+import equityDataStatic from '../../../../../historical_data/2025_equity.json'
+import summaryDataStatic from '../../../../../historical_data/2025_summary.json'
 import { PARTNER_COMPENSATION_CONFIG, DEFAULT_MD_SHARED_PROJECTION, DEFAULT_MD_PRCS_PROJECTION } from '../../../shared/defaults'
 import { useDashboardStore } from '../../../../Dashboard'
 import { calculateDelayedW2Payment, calculateEmployeeTotalCost, getPartnerFTEWeight, getEmployeePortionOfYear } from '../../../shared/calculations'
@@ -51,7 +51,7 @@ function cleanRowName(accountName: string): string {
 }
 
 // Parse YTD data from summary JSON for employee wages and benefits
-function parseYTDData(): YTDData {
+function parseYTDData(summaryData: any): YTDData {
   const wages: { [physicianName: string]: number } = {}
   const benefits: { [physicianName: string]: number } = {}
   
@@ -139,7 +139,7 @@ function parseProjectedData(physicians: Physician[], fy2025: any): { data: Physi
 }
 
 // Parse YTD actual data from equity and summary files (for "Paid to Date" row)
-function parseYTDPhysicianData(physicians: Physician[]): { data: PhysicianData; totals: PhysicianTotals } {
+function parseYTDPhysicianData(physicians: Physician[], equityData: any, summaryData: any): { data: PhysicianData; totals: PhysicianTotals } {
   const data: PhysicianData = {}
   const totals: PhysicianTotals = {}
   
@@ -197,7 +197,7 @@ function parseYTDPhysicianData(physicians: Physician[]): { data: PhysicianData; 
   }
 
   // Get YTD data from summary file
-  const ytdData = parseYTDData()
+  const ytdData = parseYTDData(summaryData)
 
   // Process YTD data for employees
   physicians.forEach(physician => {
@@ -284,7 +284,20 @@ function parseYTDPhysicianData(physicians: Physician[]): { data: PhysicianData; 
   return { data, totals }
 }
 
-export default function PartnerCompensation() {
+interface PartnerCompensationProps {
+  environment?: 'production' | 'sandbox'
+  cachedSummary?: any
+  cachedEquity?: any
+}
+
+export default function PartnerCompensation({
+  environment = 'sandbox',
+  cachedSummary,
+  cachedEquity
+}: PartnerCompensationProps = {}) {
+  // Use cached data in production mode, otherwise use static files
+  const equityData = (environment === 'production' && cachedEquity) ? cachedEquity : equityDataStatic
+  const summaryData = (environment === 'production' && cachedSummary) ? cachedSummary : summaryDataStatic
   const store = useDashboardStore()
   const [isExpanded, setIsExpanded] = useState(false)
   
@@ -307,7 +320,7 @@ export default function PartnerCompensation() {
     fy2025?.prcsDirectorPhysicianId,
     store.scenarioA.projection?.benefitCostsGrowthPct,
   ])
-  const ytdData = useMemo(() => parseYTDPhysicianData(physicians), [physicians])
+  const ytdData = useMemo(() => parseYTDPhysicianData(physicians, equityData, summaryData), [physicians, equityData, summaryData])
   const physicianNames = physicians.map(p => p.name)
   
   // Helper function to get value 

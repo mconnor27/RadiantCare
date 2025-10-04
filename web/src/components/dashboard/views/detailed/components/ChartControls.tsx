@@ -181,6 +181,67 @@ export default function ChartControls({
 
   const [hoveredGroup, setHoveredGroup] = useState<number | null>(null)
 
+  // Sync state
+  const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
+
+  // Load last sync timestamp on mount
+  useEffect(() => {
+    if (environment === 'production') {
+      fetch('/api/qbo/cached-2025')
+        .then(res => res.ok ? res.json() : null)
+        .then(cache => {
+          if (cache?.lastSyncTimestamp) {
+            setLastSyncTimestamp(cache.lastSyncTimestamp)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [environment])
+
+  // Handle sync button click
+  const handleSync = async () => {
+    setSyncing(true)
+    setSyncError(null)
+    try {
+      const response = await fetch('/api/qbo/sync-2025', { method: 'POST' })
+      const data = await response.json()
+
+      if (!response.ok) {
+        if (data.error === 'already_synced_today') {
+          setSyncError('Already synced today')
+          setLastSyncTimestamp(data.lastSyncTimestamp)
+        } else if (data.error === 'not_connected') {
+          setSyncError('not_connected')
+        } else {
+          setSyncError(data.message || 'Sync failed')
+        }
+      } else {
+        setLastSyncTimestamp(data.lastSyncTimestamp)
+        // Reload the page to refresh data
+        window.location.reload()
+      }
+    } catch (err) {
+      setSyncError('Network error')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  const formatTimestamp = (timestamp: string | null) => {
+    if (!timestamp) return 'Never'
+    const date = new Date(timestamp)
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+  }
+
   return (
     <div style={{ marginBottom: isSidebar ? 0 : 16, border: '1px solid #ccc', borderRadius: 4, padding: 10, boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0 16px', alignItems: 'start', justifyItems: 'start' }}>
@@ -1063,21 +1124,70 @@ export default function ChartControls({
       {isSidebar && loading && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 12 }}>Loading…</div>}
 
       {/* Environment Row - below the panel */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
-        <label style={{ fontSize: 14, fontWeight: 500 }}>Environment:</label>
-        <select
-          value={environment}
-          onChange={(e) => setEnvironment(e.target.value as 'production' | 'sandbox')}
-          style={{
-            padding: '4px 8px',
-            border: '1px solid #ccc',
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label style={{ fontSize: 14, fontWeight: 500 }}>Environment:</label>
+          <select
+            value={environment}
+            onChange={(e) => setEnvironment(e.target.value as 'production' | 'sandbox')}
+            style={{
+              padding: '4px 8px',
+              border: '1px solid #ccc',
+              borderRadius: 4,
+              fontSize: 14
+            }}
+          >
+            <option value="production">Production</option>
+            <option value="sandbox">Sandbox</option>
+          </select>
+        </div>
+
+        {/* Production sync controls */}
+        {environment === 'production' && (
+          <div style={{
+            padding: 8,
+            background: '#f0f9ff',
+            border: '1px solid #bae6fd',
             borderRadius: 4,
-            fontSize: 14
-          }}
-        >
-          <option value="production">Production</option>
-          <option value="sandbox">Sandbox</option>
-        </select>
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                style={{
+                  padding: '6px 12px',
+                  background: syncing ? '#94a3b8' : '#0ea5e9',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: syncing ? 'not-allowed' : 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {syncing ? 'Syncing...' : 'Sync QuickBooks'}
+              </button>
+              <div style={{ fontSize: 12, color: '#64748b' }}>
+                Last synced: {formatTimestamp(lastSyncTimestamp)}
+              </div>
+            </div>
+            {syncError && (
+              <div style={{ fontSize: 12, color: '#dc2626' }}>
+                {syncError === 'not_connected' ? (
+                  <>
+                    QuickBooks not connected. <a href="/api/qbo/connect?env=production" style={{ color: '#0ea5e9', textDecoration: 'underline' }}>Connect now</a>
+                  </>
+                ) : (
+                  syncError
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

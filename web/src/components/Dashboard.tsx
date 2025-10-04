@@ -727,14 +727,15 @@ export const useDashboardStore = create<Store>()(
         },
 
         // Reset all physicians across all years for a scenario
-        resetAllPhysicians: (scenario: ScenarioKey) => {
+        resetAllPhysicians: (scenario: ScenarioKey, skip2025?: boolean) => {
           set((state) => {
             const scenarioState = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!scenarioState) return
-            
+
             scenarioState.future.forEach(fy => {
-              const defaultPhysicians = scenario === 'A' 
-                ? scenarioADefaultsByYear(fy.year) 
+              if (skip2025 && fy.year === 2025) return
+              const defaultPhysicians = scenario === 'A'
+                ? scenarioADefaultsByYear(fy.year)
                 : scenarioBDefaultsByYear(fy.year)
               fy.physicians = defaultPhysicians.map(p => ({ ...p }))
             })
@@ -742,68 +743,82 @@ export const useDashboardStore = create<Store>()(
         },
 
         // Reset projection settings for a scenario to defaults
-        resetProjectionSettings: (scenario: ScenarioKey) => {
+        resetProjectionSettings: (scenario: ScenarioKey, skip2025?: boolean) => {
           set((state) => {
             const scenarioState = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!scenarioState) return
-            
+
             scenarioState.projection = {
-              incomeGrowthPct: PROJECTION_DEFAULTS.A.incomeGrowthPct, 
+              incomeGrowthPct: PROJECTION_DEFAULTS.A.incomeGrowthPct,
               medicalDirectorHours: PROJECTION_DEFAULTS.A.medicalDirectorHours,
               prcsMedicalDirectorHours: PROJECTION_DEFAULTS.A.prcsMedicalDirectorHours,
               consultingServicesAgreement: PROJECTION_DEFAULTS.A.consultingServicesAgreement,
-              nonEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonEmploymentCostsPct, 
-              nonMdEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonMdEmploymentCostsPct, 
-              locumsCosts: PROJECTION_DEFAULTS.A.locumsCosts, 
-              miscEmploymentCostsPct: PROJECTION_DEFAULTS.A.miscEmploymentCostsPct, 
-              benefitCostsGrowthPct: PROJECTION_DEFAULTS.A.benefitCostsGrowthPct 
+              nonEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonEmploymentCostsPct,
+              nonMdEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonMdEmploymentCostsPct,
+              locumsCosts: PROJECTION_DEFAULTS.A.locumsCosts,
+              miscEmploymentCostsPct: PROJECTION_DEFAULTS.A.miscEmploymentCostsPct,
+              benefitCostsGrowthPct: PROJECTION_DEFAULTS.A.benefitCostsGrowthPct
             }
           })
-          
-          // Recalculate projections after resetting settings
+
+          // Recalculate projections after resetting settings (applyProjectionFromLastActual already skips 2025)
           get().applyProjectionFromLastActual(scenario)
         },
 
         // Reset year-by-year income/cost values to projected values for a scenario
-        resetYearByYearValues: (scenario: ScenarioKey) => {
-          // This will reset all custom future values back to projected values
+        resetYearByYearValues: (scenario: ScenarioKey, skip2025?: boolean) => {
+          // This will reset all custom future values back to projected values (applyProjectionFromLastActual already skips 2025)
           get().applyProjectionFromLastActual(scenario)
         },
 
         // Reset app-level view settings (which year selected, data mode, etc.)
-        resetViewSettings: (scenario: ScenarioKey) => {
+        resetViewSettings: (scenario: ScenarioKey, skip2025?: boolean) => {
           set((state) => {
             const scenarioState = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!scenarioState) return
-            
-            scenarioState.selectedYear = 2025 // Reset to Baseline tab
-            scenarioState.dataMode = '2025 Data'
+
+            if (!skip2025) {
+              scenarioState.selectedYear = 2025 // Reset to Baseline tab
+              scenarioState.dataMode = '2025 Data'
+            }
+            // When skip2025 is true, preserve current selectedYear and dataMode
           })
         },
 
-        resetToDefaults: () => {
+        resetToDefaults: (skip2025?: boolean) => {
           set((state) => {
+            // When skip2025 is true, preserve the 2025 year data
+            const existing2025 = skip2025 ? state.scenarioA.future.find(f => f.year === 2025) : null
+            const existingSelectedYear = skip2025 ? state.scenarioA.selectedYear : 2025
+            const existingDataMode = skip2025 ? state.scenarioA.dataMode : '2025 Data'
+
             // Initialize scenario A with basic structure
             state.scenarioA = {
-              future: INITIAL_FUTURE_YEARS_A.map((f) => ({ 
-                ...f, 
-                physicians: [...f.physicians.map(p => ({ ...p }))] 
+              future: INITIAL_FUTURE_YEARS_A.map((f) => ({
+                ...f,
+                physicians: [...f.physicians.map(p => ({ ...p }))]
               })),
-              projection: { 
-                incomeGrowthPct: PROJECTION_DEFAULTS.A.incomeGrowthPct, 
+              projection: {
+                incomeGrowthPct: PROJECTION_DEFAULTS.A.incomeGrowthPct,
                 medicalDirectorHours: PROJECTION_DEFAULTS.A.medicalDirectorHours,
                 prcsMedicalDirectorHours: PROJECTION_DEFAULTS.A.prcsMedicalDirectorHours,
                 consultingServicesAgreement: PROJECTION_DEFAULTS.A.consultingServicesAgreement,
-                nonEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonEmploymentCostsPct, 
-                nonMdEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonMdEmploymentCostsPct, 
-                locumsCosts: PROJECTION_DEFAULTS.A.locumsCosts, 
-                miscEmploymentCostsPct: PROJECTION_DEFAULTS.A.miscEmploymentCostsPct, 
-                benefitCostsGrowthPct: PROJECTION_DEFAULTS.A.benefitCostsGrowthPct 
+                nonEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonEmploymentCostsPct,
+                nonMdEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonMdEmploymentCostsPct,
+                locumsCosts: PROJECTION_DEFAULTS.A.locumsCosts,
+                miscEmploymentCostsPct: PROJECTION_DEFAULTS.A.miscEmploymentCostsPct,
+                benefitCostsGrowthPct: PROJECTION_DEFAULTS.A.benefitCostsGrowthPct
               },
-              selectedYear: 2025, // Reset to Baseline tab
-              dataMode: '2025 Data',
+              selectedYear: existingSelectedYear,
+              dataMode: existingDataMode,
             }
-            
+
+            // If preserving 2025, restore the existing 2025 data
+            if (existing2025) {
+              // INITIAL_FUTURE_YEARS_A starts at 2026, so we need to add 2025 back
+              state.scenarioA.future.unshift({ ...existing2025 })
+            }
+
             // Reset app-level state (not handled by section resets)
             state.scenarioBEnabled = false
             state.scenarioB = undefined
@@ -812,10 +827,49 @@ export const useDashboardStore = create<Store>()(
 
           // Use the dedicated reset functions to ensure consistency
           const state = get()
-          state.resetAllPhysicians('A')
-          state.resetProjectionSettings('A')
-          state.resetYearByYearValues('A')
-          state.resetViewSettings('A')
+          state.resetAllPhysicians('A', skip2025)
+          state.resetProjectionSettings('A', skip2025)
+          state.resetYearByYearValues('A', skip2025)
+          state.resetViewSettings('A', skip2025)
+        },
+
+        // Reset only 2025 data (for YTD Detailed view)
+        resetOnly2025: (scenario: ScenarioKey) => {
+          set((state) => {
+            const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
+            if (!sc) return
+
+            const year2025 = sc.future.find(f => f.year === 2025)
+            if (!year2025) return
+
+            // Reset 2025 physicians to defaults
+            const defaultPhysicians = scenario === 'A'
+              ? scenarioADefaultsByYear(2025)
+              : scenarioBDefaultsByYear(2025)
+            year2025.physicians = defaultPhysicians.map(p => ({ ...p }))
+
+            // Reset 2025 grid values to defaults from historic data
+            const historic2025 = state.historic.find(h => h.year === 2025)
+            if (historic2025) {
+              year2025.therapyIncome = historic2025.therapyIncome
+              year2025.nonEmploymentCosts = historic2025.nonEmploymentCosts
+            }
+            year2025.nonMdEmploymentCosts = computeDefaultNonMdEmploymentCosts(2025)
+            year2025.miscEmploymentCosts = DEFAULT_MISC_EMPLOYMENT_COSTS
+            year2025.locumCosts = DEFAULT_LOCUM_COSTS_2025
+            year2025.medicalDirectorHours = ACTUAL_2025_MEDICAL_DIRECTOR_HOURS
+            year2025.prcsMedicalDirectorHours = ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS
+            year2025.consultingServicesAgreement = DEFAULT_CONSULTING_SERVICES_2025
+
+            // Reset PRCS Director to default
+            const jsPhysician = year2025.physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+            year2025.prcsDirectorPhysicianId = jsPhysician?.id
+
+            // Reset per-site therapy income values
+            delete year2025.therapyLacey
+            delete year2025.therapyCentralia
+            delete year2025.therapyAberdeen
+          })
         },
 
         // Ensure baseline year exists in future years array for PhysiciansEditor
@@ -1158,7 +1212,7 @@ export function calculateProjectedValue(
 export function Dashboard() {
   const store = useDashboardStore()
   const isMobile = useIsMobile()
-  const [viewMode, setViewMode] = useState<'Multi-Year' | 'YTD Detailed'>('Multi-Year')
+  const [viewMode, setViewMode] = useState<'Multi-Year' | 'YTD Detailed'>('YTD Detailed')
 
   // Load from shareable URL hash if present
   useEffect(() => {
@@ -1208,17 +1262,21 @@ export function Dashboard() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
           <div style={{ display: 'flex', gap: 6 }}>
             <button
-              onClick={() => setViewMode('Multi-Year')}
-              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'Multi-Year' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
-            >Multi-Year</button>
-            <button
               onClick={() => setViewMode('YTD Detailed')}
               style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Detailed' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
             >YTD Detailed</button>
+            <button
+              onClick={() => setViewMode('Multi-Year')}
+              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'Multi-Year' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
+            >Multi-Year</button>
           </div>
           <div style={{ display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end', flexWrap: 'wrap', gap: 8 }}>
-            <button onClick={() => { 
-              store.resetToDefaults(); 
+            <button onClick={() => {
+              if (viewMode === 'YTD Detailed') {
+                store.resetOnly2025('A');
+              } else {
+                store.resetToDefaults(true); // skip2025 = true for Multi-Year
+              }
               window.location.hash = '';
             }} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Reset to defaults</button>
             <button onClick={copyShareLink} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Copy shareable link</button>

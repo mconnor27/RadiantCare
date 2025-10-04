@@ -23,7 +23,8 @@ export default function YTDDetailed() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<YTDPoint[]>([])
-  const [environment, setEnvironment] = useState<'production' | 'sandbox'>('production')
+  const [environment, setEnvironment] = useState<'production' | 'sandbox'>('sandbox')
+  const [cachedData, setCachedData] = useState<{ daily?: any, summary?: any, equity?: any } | null>(null)
   const [isNormalized, setIsNormalized] = useState(false)
   const [showCombined, setShowCombined] = useState(false)
   const [combineStatistic, setCombineStatistic] = useState<'mean' | 'median' | null>(null) // Off by default
@@ -69,23 +70,57 @@ export default function YTDDetailed() {
   }, [store, fy2025])
 
   useEffect(() => {
-    // Use 2025 historical data instead of API call
     setLoading(true)
     setError(null)
-    
-    // Simulate a brief loading delay to match the original UX
-    const timer = setTimeout(() => {
-      try {
-        setData(historical2025Data)
-        setError(null)
-      } catch (e: any) {
-        setError(e?.message || 'Failed to load 2025 historical data')
-      } finally {
-        setLoading(false)
-      }
-    }, 100)
-    
-    return () => clearTimeout(timer)
+
+    if (environment === 'sandbox') {
+      // Sandbox mode: use historical JSON files
+      const timer = setTimeout(() => {
+        try {
+          setData(historical2025Data)
+          setError(null)
+        } catch (e: any) {
+          setError(e?.message || 'Failed to load 2025 historical data')
+        } finally {
+          setLoading(false)
+        }
+      }, 100)
+      return () => clearTimeout(timer)
+    } else {
+      // Production mode: try to load cached data, fall back to historical
+      fetch('/api/qbo/cached-2025')
+        .then(res => {
+          if (!res.ok) {
+            // No cached data, use fallback
+            console.log('No cached data available, using historical JSON fallback')
+            setData(historical2025Data)
+            setCachedData(null)
+            setLoading(false)
+            return
+          }
+          return res.json()
+        })
+        .then(cache => {
+          if (cache?.daily) {
+            // Parse the cached daily report
+            const points = parseTherapyIncome2025(cache.daily)
+            setData(points)
+            // Store all cached data for other components
+            setCachedData({ daily: cache.daily, summary: cache.summary, equity: cache.equity })
+          } else {
+            // Fallback to historical
+            setData(historical2025Data)
+            setCachedData(null)
+          }
+          setLoading(false)
+        })
+        .catch(err => {
+          console.error('Error loading cached data, using fallback:', err)
+          setData(historical2025Data)
+          setCachedData(null)
+          setLoading(false)
+        })
+    }
   }, [historical2025Data, environment])
 
   // Initialize current period based on timeframe
@@ -230,7 +265,11 @@ export default function YTDDetailed() {
         </div>
       </div>
 
-      <PartnerCompensation />
+      <PartnerCompensation
+        environment={environment}
+        cachedSummary={cachedData?.summary}
+        cachedEquity={cachedData?.equity}
+      />
 
       <PhysiciansEditor
         year={2025}
@@ -240,7 +279,10 @@ export default function YTDDetailed() {
         onLocumCostsChange={(value) => store.setFutureValue('A', 2025, 'locumCosts', value)}
       />
 
-      <YearlyDataGrid />
+      <YearlyDataGrid
+        environment={environment}
+        cachedSummary={cachedData?.summary}
+      />
     </div>
   )
 }

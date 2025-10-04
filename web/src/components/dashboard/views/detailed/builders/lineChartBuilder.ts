@@ -236,14 +236,24 @@ export const buildPulsingTraces = (
   is2025Visible: boolean,
   pulsePhase: number,
   isNormalized: boolean,
-  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray'
+  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray',
+  unfilteredCurrentData?: YTDPoint[]
 ) => {
   const colors = getColorScheme(colorScheme)
   const CURRENT_YEAR_COLOR = colors.current
   if (processedCurrentData.length === 0 || !is2025Visible) return []
-  
-  const currentX = processedCurrentData.map(p => p.monthDay)
-  const currentY = processedCurrentData.map(p => p.cumulativeIncome)
+
+  // Use unfiltered data to find the true last point, or fall back to processed data
+  const actualCurrentData = unfilteredCurrentData || processedCurrentData
+  const lastActualPoint = actualCurrentData[actualCurrentData.length - 1]
+
+  // Check if the last actual data point is in the processed (filtered) data
+  const isLastPointInView = processedCurrentData.some(p => p.monthDay === lastActualPoint.monthDay)
+  if (!isLastPointInView) return [] // Don't show radar if latest data is outside current timeframe
+
+  // Find the corresponding processed point (for proper normalization/period values)
+  const lastPoint = processedCurrentData.find(p => p.monthDay === lastActualPoint.monthDay) || processedCurrentData[processedCurrentData.length - 1]
+
   const rings = []
   
   // Create expanding rings with different phases
@@ -259,8 +269,8 @@ export const buildPulsingTraces = (
     // Only show ring if it has meaningful opacity
     if (opacity > 0.01) {
       rings.push({
-        x: [currentX[currentX.length - 1]],
-        y: [currentY[currentY.length - 1]],
+        x: [lastActualPoint.monthDay],
+        y: [lastPoint.cumulativeIncome],
         type: 'scatter' as const,
         mode: 'markers' as const,
         name: `Radar Ring ${i}`,
@@ -274,11 +284,11 @@ export const buildPulsingTraces = (
       })
     }
   }
-  
+
   // Add the solid center marker
   rings.push({
-    x: [currentX[currentX.length - 1]],
-    y: [currentY[currentY.length - 1]],
+    x: [lastActualPoint.monthDay],
+    y: [lastPoint.cumulativeIncome],
     type: 'scatter' as const,
     mode: 'markers' as const,
     name: 'Current Position',
@@ -288,7 +298,7 @@ export const buildPulsingTraces = (
       line: { color: '#ffffff', width: 1 }
     },
     showlegend: false,
-    hovertemplate: isNormalized ? 'Latest: %{x}<br>%{y:.1f}%<extra></extra>' : 'Latest: %{x}<br>$%{y:,}<extra></extra>'
+    hovertemplate: isNormalized ? 'Latest: %{x}<br>%{y:.1f}%<extra></extra>' : 'Latest: %{x}<br>$%{y:,.0f}<extra></extra>'
   })
   
   return rings

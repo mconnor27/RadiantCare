@@ -1463,17 +1463,25 @@ export function debugSummaryCalculations(gridData: { rows: Row[], columns: any[]
 }
 
 // Load and transform the yearly data
-export async function loadYearlyGridData(collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number }): Promise<{ rows: Row[], columns: any[] }> {
+export async function loadYearlyGridData(collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number }, cached2025Summary?: any): Promise<{ rows: Row[], columns: any[] }> {
   try {
     // Import the JSON data
     const yearlyDataPromise = import('../../../../../historical_data/2016-2024_yearly.json')
-    const data2025Promise = import('../../../../../historical_data/2025_summary.json')
-    
-    const [yearlyDataModule, data2025Module] = await Promise.all([yearlyDataPromise, data2025Promise])
-    
+
+    let data2025Raw: any
+    if (cached2025Summary) {
+      // Use cached data from API
+      data2025Raw = cached2025Summary
+    } else {
+      // Fall back to static JSON file
+      const data2025Module = await import('../../../../../historical_data/2025_summary.json')
+      data2025Raw = data2025Module.default || data2025Module
+    }
+
+    const yearlyDataModule = await yearlyDataPromise
+
     // Deep copy to prevent mutation of cached module data on re-renders
     const historicalData = JSON.parse(JSON.stringify(yearlyDataModule.default || yearlyDataModule))
-    const data2025Raw = data2025Module.default || data2025Module
 
     // Calculate projection ratio from 2025 data
     const projectionRatio = calculateProjectionRatio(data2025Raw)

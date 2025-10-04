@@ -287,6 +287,162 @@ function extractDailyIncomeFromPL(report) {
   }
 }
 
+// Cache management for 2025 data
+const CACHE_PATH = path.resolve(process.cwd(), 'qboCache.json')
+
+function readCache() {
+  try {
+    const raw = fs.readFileSync(CACHE_PATH, 'utf8')
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+function writeCache(data) {
+  fs.writeFileSync(CACHE_PATH, JSON.stringify(data, null, 2))
+}
+
+function canSyncToday(lastSyncTimestamp) {
+  if (!lastSyncTimestamp) return true
+  const lastSync = new Date(lastSyncTimestamp)
+  const now = new Date()
+  // Check if they're on different days
+  return lastSync.toDateString() !== now.toDateString()
+}
+
+// Sync endpoint for all 2025 data
+app.post('/api/qbo/sync-2025', async (req, res) => {
+  try {
+    let token = readToken()
+    if (!token) return res.status(401).json({ error: 'not_connected' })
+    token = await refreshAccessTokenIfNeeded()
+    if (!token) return res.status(401).json({ error: 'not_connected' })
+
+    // Check if already synced today
+    const cache = readCache()
+    if (cache?.lastSyncTimestamp && !canSyncToday(cache.lastSyncTimestamp)) {
+      return res.status(429).json({
+        error: 'already_synced_today',
+        message: 'Data has already been synced today. Please try again tomorrow.',
+        lastSyncTimestamp: cache.lastSyncTimestamp,
+        data: cache
+      })
+    }
+
+    const now = new Date()
+    const year = now.getFullYear()
+    const start = `${year}-01-01`
+    const end = now.toISOString().slice(0, 10)
+
+    // Fetch all three reports
+    const realmId = token.realmId
+    const baseUrl = 'https://quickbooks.api.intuit.com'
+
+    // 1. Daily P&L (replaces 2025_daily.json)
+    const dailyUrl = new URL(`${baseUrl}/v3/company/${encodeURIComponent(realmId)}/reports/ProfitAndLoss`)
+    dailyUrl.searchParams.set('start_date', start)
+    dailyUrl.searchParams.set('end_date', end)
+    dailyUrl.searchParams.set('summarize_column_by', 'Days')
+    dailyUrl.searchParams.set('minorversion', '75')
+
+    const dailyRes = await fetch(dailyUrl.toString(), {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token.access_token}`,
+        Accept: 'application/json',
+      },
+    })
+    if (!dailyRes.ok) {
+      const text = await dailyRes.text()
+      console.error('Daily P&L failed:', dailyRes.status, text)
+      if (dailyRes.status === 401 || dailyRes.status === 403) {
+        return res.status(401).json({ error: 'not_connected', message: 'QuickBooks authorization failed. Please reconnect.' })
+      }
+      return res.status(500).json({ error: 'daily_pl_failed', message: 'Failed to fetch daily P&L report', details: text })
+    }
+    const dailyData = await dailyRes.json()
+
+    // 2. Class Summary P&L (replaces 2025_summary.json)
+    const summaryUrl = new URL(`${baseUrl}/v3/company/${encodeURIComponent(realmId)}/reports/ProfitAndLoss`)
+    summaryUrl.searchParams.set('start_date', start)
+    summaryUrl.searchParams.set('end_date', end)
+    summaryUrl.searchParams.set('summarize_column_by', 'Classes')
+    summaryUrl.searchParams.set('minorversion', '75')
+
+    const summaryRes = await fetch(summaryUrl.toString(), {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token.access_token}`,
+        Accept: 'application/json',
+      },
+    })
+    if (!summaryRes.ok) {
+      const text = await summaryRes.text()
+      console.error('Class P&L failed:', summaryRes.status, text)
+      if (summaryRes.status === 401 || summaryRes.status === 403) {
+        return res.status(401).json({ error: 'not_connected', message: 'QuickBooks authorization failed. Please reconnect.' })
+      }
+      return res.status(500).json({ error: 'class_pl_failed', message: 'Failed to fetch class P&L report', details: text })
+    }
+    const summaryData = await summaryRes.json()
+
+    // 3. Balance Sheet (replaces 2025_equity.json)
+    const equityUrl = new URL(`${baseUrl}/v3/company/${encodeURIComponent(realmId)}/reports/BalanceSheet`)
+    equityUrl.searchParams.set('date_macro', 'This Fiscal Year-to-date')
+    equityUrl.searchParams.set('minorversion', '75')
+
+    const equityRes = await fetch(equityUrl.toString(), {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token.access_token}`,
+        Accept: 'application/json',
+      },
+    })
+    if (!equityRes.ok) {
+      const text = await equityRes.text()
+      console.error('Balance Sheet failed:', equityRes.status, text)
+      if (equityRes.status === 401 || equityRes.status === 403) {
+        return res.status(401).json({ error: 'not_connected', message: 'QuickBooks authorization failed. Please reconnect.' })
+      }
+      return res.status(500).json({ error: 'balance_sheet_failed', message: 'Failed to fetch balance sheet', details: text })
+    }
+    const equityData = await equityRes.json()
+
+    // Cache the results
+    const cacheData = {
+      lastSyncTimestamp: new Date().toISOString(),
+      daily: dailyData,
+      summary: summaryData,
+      equity: equityData
+    }
+    writeCache(cacheData)
+
+    res.json({
+      success: true,
+      lastSyncTimestamp: cacheData.lastSyncTimestamp,
+      message: 'Successfully synced all 2025 data'
+    })
+  } catch (e) {
+    console.error('Sync error:', e)
+    res.status(500).json({ error: 'server_error', message: e.message })
+  }
+})
+
+// Get cached 2025 data
+app.get('/api/qbo/cached-2025', (req, res) => {
+  try {
+    const cache = readCache()
+    if (!cache) {
+      return res.status(404).json({ error: 'no_cached_data' })
+    }
+    res.json(cache)
+  } catch (e) {
+    console.error('Error reading cache:', e)
+    res.status(500).json({ error: 'server_error', message: e.message })
+  }
+})
+
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`)
 })

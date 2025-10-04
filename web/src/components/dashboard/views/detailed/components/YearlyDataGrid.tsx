@@ -22,10 +22,15 @@ const GRID_TO_MULTIYEAR_MAPPING: Record<string, string> = {
 const THERAPY_INCOME_COMPONENTS = ['Total 7100 Therapy Income', 'Total Other Income']
 
 // Calculate projection ratio from 2025 data - same logic as yearlyDataTransformer
-async function calculateProjectionRatio(): Promise<number> {
+async function calculateProjectionRatio(cached2025?: any): Promise<number> {
   try {
-    const data2025Module = await import('../../../../../historical_data/2025_summary.json')
-    const data2025 = data2025Module.default || data2025Module
+    let data2025: any
+    if (cached2025) {
+      data2025 = cached2025
+    } else {
+      const data2025Module = await import('../../../../../historical_data/2025_summary.json')
+      data2025 = data2025Module.default || data2025Module
+    }
     
     const startPeriod = data2025.Header.StartPeriod
     const endPeriod = data2025.Header.EndPeriod
@@ -204,7 +209,15 @@ function syncGridValuesToMultiyear(
   }
 }
 
-export default function YearlyDataGrid() {
+interface YearlyDataGridProps {
+  environment?: 'production' | 'sandbox'
+  cachedSummary?: any
+}
+
+export default function YearlyDataGrid({
+  environment = 'sandbox',
+  cachedSummary
+}: YearlyDataGridProps = {}) {
   const store = useDashboardStore()
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const [gridData, setGridData] = useState<{ rows: Row[], columns: any[] }>({ rows: [], columns: [] })
@@ -290,9 +303,10 @@ export default function YearlyDataGrid() {
       } : undefined
       
       // Load both the grid data and the projection ratio
+      const cachedSummaryData = (environment === 'production' && cachedSummary) ? cachedSummary : undefined
       const [data, ratio] = await Promise.all([
-        loadYearlyGridData(collapsedSections, store.customProjectedValues, physicianData),
-        calculateProjectionRatio()
+        loadYearlyGridData(collapsedSections, store.customProjectedValues, physicianData, cachedSummaryData),
+        calculateProjectionRatio(cachedSummaryData)
       ])
       
       setGridData(data)
@@ -313,7 +327,7 @@ export default function YearlyDataGrid() {
     } finally {
       setLoading(false)
     }
-  }, [collapsedSections, store.customProjectedValues, store.scenarioA.future, store.scenarioA.projection.benefitCostsGrowthPct, store])
+  }, [collapsedSections, store.customProjectedValues, store.scenarioA.future, store.scenarioA.projection.benefitCostsGrowthPct, store, environment, cachedSummary])
 
   useEffect(() => {
     loadData()
