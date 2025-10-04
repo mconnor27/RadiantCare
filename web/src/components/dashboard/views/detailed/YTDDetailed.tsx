@@ -12,6 +12,7 @@ import NavigationControls from './components/NavigationControls'
 import YearlyDataGrid from './components/YearlyDataGrid'
 import DetailedChart from './components/DetailedChart'
 import PartnerCompensation from './components/PartnerCompensation'
+import SyncButton from './components/SyncButton'
 
 // Import dashboard store and physicians editor
 import { useDashboardStore } from '../../../Dashboard'
@@ -23,7 +24,7 @@ export default function YTDDetailed() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<YTDPoint[]>([])
-  const [environment, setEnvironment] = useState<'production' | 'sandbox'>('sandbox')
+  const [environment] = useState<'production' | 'sandbox'>('production')
   const [cachedData, setCachedData] = useState<{ daily?: any, summary?: any, equity?: any } | null>(null)
   const [isNormalized, setIsNormalized] = useState(false)
   const [showCombined, setShowCombined] = useState(false)
@@ -188,6 +189,9 @@ export default function YTDDetailed() {
 
   return (
     <div style={{ maxWidth: 1600, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+        <SyncButton environment={environment} />
+      </div>
       <div style={{ display: 'flex', gap: 16 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <NavigationControls
@@ -232,7 +236,6 @@ export default function YTDDetailed() {
         <div style={{ flexShrink: 0 }}>
           <ChartControls
             environment={environment}
-            setEnvironment={setEnvironment}
             isNormalized={isNormalized}
             setIsNormalized={setIsNormalized}
             showCombined={showCombined}

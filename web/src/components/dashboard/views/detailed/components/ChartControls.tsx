@@ -4,9 +4,8 @@ import type { IncomeMode } from '../../../shared/types'
 import { getColorScheme, getSiteColors } from '../config/chartConfig'
 import ColorSchemeSelector from './ColorSchemeSelector'
 
-interface ChartControlsProps {
+export interface ChartControlsProps {
   environment: 'production' | 'sandbox'
-  setEnvironment: (env: 'production' | 'sandbox') => void
   isNormalized: boolean
   setIsNormalized: (normalized: boolean) => void
   showCombined: boolean
@@ -39,7 +38,6 @@ interface ChartControlsProps {
 
 export default function ChartControls({
   environment,
-  setEnvironment,
   isNormalized,
   setIsNormalized,
   showCombined,
@@ -244,6 +242,7 @@ export default function ChartControls({
 
   return (
     <div style={{ marginBottom: isSidebar ? 0 : 16, border: '1px solid #ccc', borderRadius: 4, padding: 10, boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
+      <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 700 }}>Chart Controls</h3>
       <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0 16px', alignItems: 'start', justifyItems: 'start' }}>
         {/* Group 1: Color Scheme */}
         <>
@@ -1122,73 +1121,6 @@ export default function ChartControls({
       </div>
       {!isSidebar && loading && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 12 }}>Loading…</div>}
       {isSidebar && loading && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 12 }}>Loading…</div>}
-
-      {/* Environment Row - below the panel */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontSize: 14, fontWeight: 500 }}>Environment:</label>
-          <select
-            value={environment}
-            onChange={(e) => setEnvironment(e.target.value as 'production' | 'sandbox')}
-            style={{
-              padding: '4px 8px',
-              border: '1px solid #ccc',
-              borderRadius: 4,
-              fontSize: 14
-            }}
-          >
-            <option value="production">Production</option>
-            <option value="sandbox">Sandbox</option>
-          </select>
-        </div>
-
-        {/* Production sync controls */}
-        {environment === 'production' && (
-          <div style={{
-            padding: 8,
-            background: '#f0f9ff',
-            border: '1px solid #bae6fd',
-            borderRadius: 4,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 6
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
-              <button
-                onClick={handleSync}
-                disabled={syncing}
-                style={{
-                  padding: '6px 12px',
-                  background: syncing ? '#94a3b8' : '#0ea5e9',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 4,
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: syncing ? 'not-allowed' : 'pointer',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {syncing ? 'Syncing...' : 'Sync QuickBooks'}
-              </button>
-              <div style={{ fontSize: 12, color: '#64748b' }}>
-                Last synced: {formatTimestamp(lastSyncTimestamp)}
-              </div>
-            </div>
-            {syncError && (
-              <div style={{ fontSize: 12, color: '#dc2626' }}>
-                {syncError === 'not_connected' ? (
-                  <>
-                    QuickBooks not connected. <a href="/api/qbo/connect?env=production" style={{ color: '#0ea5e9', textDecoration: 'underline' }}>Connect now</a>
-                  </>
-                ) : (
-                  syncError
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
     </div>
   )
 }

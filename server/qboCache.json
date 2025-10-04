@@ -1,8 +1,8 @@
 {
-  "lastSyncTimestamp": "2025-10-04T04:24:51.814Z",
+  "lastSyncTimestamp": "2025-10-04T20:12:38.714Z",
   "daily": {
     "Header": {
-      "Time": "2025-10-03T21:24:49-07:00",
+      "Time": "2025-10-04T13:12:36-07:00",
       "ReportName": "ProfitAndLoss",
       "ReportBasis": "Cash",
       "StartPeriod": "2025-01-01",
@@ -61582,7 +61582,7 @@
   },
   "summary": {
     "Header": {
-      "Time": "2025-10-03T21:24:50-07:00",
+      "Time": "2025-10-04T13:12:37-07:00",
       "ReportName": "ProfitAndLoss",
       "ReportBasis": "Cash",
       "StartPeriod": "2025-01-01",
@@ -66086,12 +66086,12 @@
   },
   "equity": {
     "Header": {
-      "Time": "2025-10-03T21:24:51-07:00",
+      "Time": "2025-10-04T13:12:38-07:00",
       "ReportName": "BalanceSheet",
       "DateMacro": "this calendar year-to-date",
       "ReportBasis": "Cash",
       "StartPeriod": "2025-01-01",
-      "EndPeriod": "2025-10-03",
+      "EndPeriod": "2025-10-04",
       "SummarizeColumnsBy": "Total",
       "Currency": "USD",
       "Option": [

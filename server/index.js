@@ -303,12 +303,69 @@ function writeCache(data) {
   fs.writeFileSync(CACHE_PATH, JSON.stringify(data, null, 2))
 }
 
-function canSyncToday(lastSyncTimestamp) {
+function getPriorBusinessDay(date) {
+  const prior = new Date(date)
+  prior.setDate(prior.getDate() - 1)
+
+  // Skip back over weekends
+  while (prior.getDay() === 0 || prior.getDay() === 6) {
+    prior.setDate(prior.getDate() - 1)
+  }
+
+  return prior
+}
+
+function canSyncNow(lastSyncTimestamp) {
   if (!lastSyncTimestamp) return true
-  const lastSync = new Date(lastSyncTimestamp)
+
   const now = new Date()
-  // Check if they're on different days
-  return lastSync.toDateString() !== now.toDateString()
+  const dayOfWeek = now.getDay()
+
+  // Check if it's a business day (Monday = 1, Friday = 5)
+  if (dayOfWeek === 0 || dayOfWeek === 6) {
+    return false // No sync on weekends
+  }
+
+  const lastSync = new Date(lastSyncTimestamp)
+
+  // Determine the target date the last sync covered
+  let lastSyncCoveredThrough
+  if (lastSync.getHours() < 17) {
+    // Synced before 5pm - covered through prior business day
+    lastSyncCoveredThrough = getPriorBusinessDay(lastSync)
+  } else {
+    // Synced after 5pm - covered through same day
+    lastSyncCoveredThrough = new Date(lastSync)
+  }
+  lastSyncCoveredThrough.setHours(23, 59, 59, 999) // End of that day
+
+  // Determine what date we need data through now
+  let needDataThrough
+  if (now.getHours() < 17) {
+    // Before 5pm - need data through prior business day
+    needDataThrough = getPriorBusinessDay(now)
+  } else {
+    // After 5pm - need data through today
+    needDataThrough = new Date(now)
+  }
+  needDataThrough.setHours(0, 0, 0, 0) // Start of that day
+
+  // Can sync if last sync doesn't cover what we need now
+  return lastSyncCoveredThrough < needDataThrough
+}
+
+function getPriorBusinessDayEnd(now) {
+  // If before 5pm, query through yesterday
+  // If after 5pm, query through today
+  const queryDate = new Date(now)
+
+  if (now.getHours() < 17) {
+    // Before 5pm: query through yesterday
+    queryDate.setDate(queryDate.getDate() - 1)
+  }
+
+  // Format as YYYY-MM-DD
+  return queryDate.toISOString().slice(0, 10)
 }
 
 // Sync endpoint for all 2025 data
@@ -319,12 +376,12 @@ app.post('/api/qbo/sync-2025', async (req, res) => {
     token = await refreshAccessTokenIfNeeded()
     if (!token) return res.status(401).json({ error: 'not_connected' })
 
-    // Check if already synced today
+    // Check if sync is allowed now
     const cache = readCache()
-    if (cache?.lastSyncTimestamp && !canSyncToday(cache.lastSyncTimestamp)) {
+    if (cache?.lastSyncTimestamp && !canSyncNow(cache.lastSyncTimestamp)) {
       return res.status(429).json({
         error: 'already_synced_today',
-        message: 'Data has already been synced today. Please try again tomorrow.',
+        message: 'Data has already been synced this business day. Please wait until the next business day at 5pm.',
         lastSyncTimestamp: cache.lastSyncTimestamp,
         data: cache
       })
@@ -333,7 +390,7 @@ app.post('/api/qbo/sync-2025', async (req, res) => {
     const now = new Date()
     const year = now.getFullYear()
     const start = `${year}-01-01`
-    const end = now.toISOString().slice(0, 10)
+    const end = getPriorBusinessDayEnd(now)
 
     // Fetch all three reports
     const realmId = token.realmId

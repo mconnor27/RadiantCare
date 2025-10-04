@@ -315,6 +315,13 @@ export default function YearlyDataGrid({
       
       // Always sync grid values to store on initial load for compensation calculations
       setTimeout(() => {
+        // Skip sync if suppression flag is set (e.g., during reset operations)
+        if ((store as any).suppressNextGridSync) {
+          console.log('⏰ [RESET DEBUG] Initial grid sync SKIPPED (suppressed)')
+          ;(store as any).suppressNextGridSync = false
+          return
+        }
+
         console.log('⏰ [RESET DEBUG] Initial grid sync started')
         syncGridValuesToMultiyear(store, store.customProjectedValues, data)
         console.log('⏰ [RESET DEBUG] Initial grid sync completed')

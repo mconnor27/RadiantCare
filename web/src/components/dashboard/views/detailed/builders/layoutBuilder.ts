@@ -247,7 +247,7 @@ export const buildChartLayout = ({
           : (isNormalized
             ? `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income Amounts${getHistoricalDescription()} (Normalized)`
             : `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income Amounts${getHistoricalDescription()}`)),
-      font: { weight: 700 }
+      font: { size: 18, weight: 700, family: 'Inter, system-ui, Arial' }
     },
     dragmode: false as any,
     margin: { 
