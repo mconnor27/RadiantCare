@@ -152,6 +152,7 @@ export const useDashboardStore = create<Store>()(
               // If we're updating a 2025 baseline value, trigger projection recalculation 
               // for future years without switching to Custom mode
               if (year === 2025) {
+                console.log('Setting future value for scenario', scenario, 'year', year, 'field', field, 'value', value)
                 setTimeout(() => {
                   get().applyProjectionFromLastActual(scenario)
                 }, 0)
@@ -545,12 +546,12 @@ export const useDashboardStore = create<Store>()(
           set((state) => {
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!sc) return
-            
+
             // Use baseline data based on selected dataMode
             const dataMode = sc.dataMode
             const last2024 = state.historic.find((h) => h.year === 2024)
             const last2025 = state.historic.find((h) => h.year === 2025)
-            
+
             // Determine starting values based on data mode
             let baselineData
             if (dataMode === 'Custom') {
@@ -580,11 +581,13 @@ export const useDashboardStore = create<Store>()(
                 nonMdEmploymentCosts: ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS,
               }
             } else if (last2025) {
+              // Use updated 2025 values from future array if available (user may have edited them)
+              const updated2025 = sc.future.find(f => f.year === 2025)
               baselineData = {
-                therapyIncome: last2025.therapyIncome,
-                nonEmploymentCosts: last2025.nonEmploymentCosts,
-                miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-                nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+                therapyIncome: updated2025?.therapyIncome ?? last2025.therapyIncome,
+                nonEmploymentCosts: updated2025?.nonEmploymentCosts ?? last2025.nonEmploymentCosts,
+                miscEmploymentCosts: updated2025?.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
+                nonMdEmploymentCosts: updated2025?.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
               }
             } else {
               // Fallback to 2025 hardcoded values
