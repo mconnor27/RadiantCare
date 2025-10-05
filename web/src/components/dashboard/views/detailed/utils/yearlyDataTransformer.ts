@@ -539,7 +539,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
     rowId: 'header',
     cells: columnTitles.map((title, index) => ({
       type: 'header',
-      text: title,
+      text: index === 0 ? `${title}  ▼  ▶` : title, // Add expand/collapse icons to first column header (▼ = expand, ▶ = collapse)
       style: {
         fontWeight: 'bold',
         background: index === 0 ? '#f3f4f6' : '#e5e7eb',
@@ -548,7 +548,8 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
         textAlign: index === 0 ? 'left' : 'center',
         justifyContent: index === 0 ? 'flex-start' : 'center',
         display: 'flex',
-        alignItems: 'center'
+        alignItems: 'center',
+        cursor: 'default' // Prevent text cursor
       }
     }))
   }
@@ -1124,6 +1125,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
         tooltip: tooltipText,
         // Row type metadata for UI logic (e.g., disable slider on non-Data rows)
         rowType: row.type,
+        rowGroup: row.group,
         computedRow: row.computed === true,
         style: {
           background: backgroundColor,

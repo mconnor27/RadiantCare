@@ -206,6 +206,15 @@ interface YearlyDataGridProps {
   cachedSummary?: any
 }
 
+// Click detection coordinates for expand/collapse all icons in header
+const HEADER_ICON_DETECTION = {
+  expandStart: 72,
+  expandEnd: 91,
+  collapseStart: 91,
+  collapseEnd: 110,
+  height: 25
+}
+
 export default function YearlyDataGrid({
   environment = 'sandbox',
   cachedSummary
@@ -613,16 +622,17 @@ export default function YearlyDataGrid({
           </div>
         ) : gridData.rows.length > 0 ? (
           <div ref={scrollContainerRef} style={{ 
-            height: '1200px', 
+            maxHeight: '1200px', 
             overflow: 'auto',
             border: '1px solid #e5e7eb',
             borderRadius: '4px'
           }}>
-            <div 
+            <div
               style={{
                 paddingRight: '8px',
                 paddingBottom: '12px',
-                minWidth: 'fit-content'
+                minWidth: 'fit-content',
+                position: 'relative'
               }}
               data-form="false"
               onClick={(e) => {
@@ -631,20 +641,69 @@ export default function YearlyDataGrid({
                 if (cellElement) {
                   const rowIdx = cellElement.getAttribute('data-cell-rowidx')
                   const colIdx = cellElement.getAttribute('data-cell-colidx')
-                  
+
                   if (rowIdx !== null && colIdx !== null) {
                     const rowIndex = parseInt(rowIdx, 10)
                     const colIndex = parseInt(colIdx, 10)
                     const row = gridData.rows[rowIndex]
                     const rowId = (row as any)?.rowId || `row-${rowIndex}`
                     const columnId = `col-${colIndex}`
-                    
+
+                    // Handle header expand/collapse all clicks (first column, header row)
+                    if (rowIndex === 0 && colIndex === 0 && rowId === 'header') {
+                      const clickX = e.clientX
+                      const cellRect = cellElement.getBoundingClientRect()
+                      const clickRelativeToCell = clickX - cellRect.left
+
+                      // Determine if click was on expand (▼) or collapse (▶) icon using configured detection zones
+                      const isExpandClick = clickRelativeToCell > HEADER_ICON_DETECTION.expandStart && clickRelativeToCell < HEADER_ICON_DETECTION.expandEnd
+                      const isCollapseClick = clickRelativeToCell > HEADER_ICON_DETECTION.collapseStart && clickRelativeToCell < HEADER_ICON_DETECTION.collapseEnd
+
+                      if (isExpandClick) {
+                        // Expand all sections in main table (not bottom summary)
+                        console.log('Expand all clicked')
+                        setCollapsedSections(prev => {
+                          const newState = { ...prev }
+                          // Find all section IDs in main table and set to false (expanded)
+                          gridData.rows.forEach((r: any) => {
+                            const cell = r.cells?.[0] as any
+                            const text = cell?.text || ''
+                            const rowType = cell?.rowType
+                            // Only expand sections in main table (exclude bottom summary sections)
+                            if (rowType === 'Section' && r.rowId?.startsWith('section-') && !text.match(/^(Income|Costs|Net Income for MDs)$/i)) {
+                              newState[r.rowId] = false
+                            }
+                          })
+                          return newState
+                        })
+                        return
+                      } else if (isCollapseClick) {
+                        // Collapse all sections in main table (not bottom summary)
+                        console.log('Collapse all clicked')
+                        setCollapsedSections(prev => {
+                          const newState = { ...prev }
+                          // Find all section IDs in main table and set to true (collapsed)
+                          gridData.rows.forEach((r: any) => {
+                            const cell = r.cells?.[0] as any
+                            const text = cell?.text || ''
+                            const rowType = cell?.rowType
+                            // Only collapse sections in main table (exclude bottom summary sections)
+                            if (rowType === 'Section' && r.rowId?.startsWith('section-') && !text.match(/^(Income|Costs|Net Income for MDs)$/i)) {
+                              newState[r.rowId] = true
+                            }
+                          })
+                          return newState
+                        })
+                        return
+                      }
+                    }
+
                     // Handle section clicks (first column)
                     if (colIndex === 0 && rowId.startsWith('section-')) {
                       console.log('Manual click detected for section:', rowId)
                       handleCellClick(rowId, columnId, e)
                     }
-                    // Handle projected cell clicks (last column) 
+                    // Handle projected cell clicks (last column)
                     else if (gridData.columns && colIndex === gridData.columns.length - 1) {
                       console.log('Manual click detected for projected cell:', { rowIndex, colIndex, rowId })
                       // Check row type from the cell to prevent non-Data rows and custom computed summary group rows
@@ -839,6 +898,116 @@ export default function YearlyDataGrid({
                   }
                 }}
               />
+              {/* Clickable overlays for cursor and click handling */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '0px',
+                  left: `${HEADER_ICON_DETECTION.expandStart}px`,
+                  width: `${HEADER_ICON_DETECTION.expandEnd - HEADER_ICON_DETECTION.expandStart}px`,
+                  height: `${HEADER_ICON_DETECTION.height}px`,
+                  cursor: 'pointer',
+                  pointerEvents: 'auto',
+                  zIndex: 9998,
+                  background: 'transparent'
+                }}
+                onMouseEnter={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  setTooltip({
+                    show: true,
+                    text: 'Expand (Per Level)',
+                    x: rect.left + rect.width / 2,
+                    y: rect.bottom + 8
+                  })
+                }}
+                onMouseLeave={() => {
+                  setTooltip({ show: false, text: '', x: 0, y: 0 })
+                }}
+                onClick={() => {
+                  console.log('Expand all clicked via overlay')
+                  setCollapsedSections(prev => {
+                    const newState = { ...prev }
+                    // Find all section IDs in main table and set to false (expanded)
+                    gridData.rows.forEach((r: any) => {
+                      const cell = r.cells?.[0] as any
+                      const rowType = cell?.rowType
+                      const rowGroup = cell?.rowGroup
+                      // Only expand sections in main table (exclude bottom summary sections by checking rowGroup)
+                      const isBottomSummary = rowGroup && (rowGroup === 'SummaryIncome' || rowGroup === 'SummaryCosts' || rowGroup === 'SummaryNetIncome')
+                      if (rowType === 'Section' && r.rowId?.startsWith('section-') && !isBottomSummary) {
+                        newState[r.rowId] = false
+                      }
+                    })
+                    return newState
+                  })
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '0px',
+                  left: `${HEADER_ICON_DETECTION.collapseStart}px`,
+                  width: `${HEADER_ICON_DETECTION.collapseEnd - HEADER_ICON_DETECTION.collapseStart}px`,
+                  height: `${HEADER_ICON_DETECTION.height}px`,
+                  cursor: 'pointer',
+                  pointerEvents: 'auto',
+                  zIndex: 9998,
+                  background: 'transparent'
+                }}
+                onMouseEnter={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  setTooltip({
+                    show: true,
+                    text: 'Collapse All',
+                    x: rect.left + rect.width / 2,
+                    y: rect.bottom + 8
+                  })
+                }}
+                onMouseLeave={() => {
+                  setTooltip({ show: false, text: '', x: 0, y: 0 })
+                }}
+                onClick={() => {
+                  console.log('Collapse all clicked via overlay')
+                  setCollapsedSections(prev => {
+                    const newState = { ...prev }
+                    // Find all section IDs in main table and set to true (collapsed)
+                    gridData.rows.forEach((r: any) => {
+                      const cell = r.cells?.[0] as any
+                      const rowType = cell?.rowType
+                      const rowGroup = cell?.rowGroup
+                      // Only collapse sections in main table (exclude bottom summary sections by checking rowGroup)
+                      const isBottomSummary = rowGroup && (rowGroup === 'SummaryIncome' || rowGroup === 'SummaryCosts' || rowGroup === 'SummaryNetIncome')
+                      if (rowType === 'Section' && r.rowId?.startsWith('section-') && !isBottomSummary) {
+                        newState[r.rowId] = true
+                      }
+                    })
+                    return newState
+                  })
+                }}
+              />
+              {/* Debug overlays for click detection - automatically synced with HEADER_ICON_DETECTION
+              <div style={{
+                position: 'absolute',
+                top: '0px',
+                left: `${HEADER_ICON_DETECTION.expandStart}px`,
+                width: `${HEADER_ICON_DETECTION.expandEnd - HEADER_ICON_DETECTION.expandStart}px`,
+                height: `${HEADER_ICON_DETECTION.height}px`,
+                border: '2px solid red',
+                pointerEvents: 'none',
+                zIndex: 9999,
+                opacity: 0.5
+              }} title={`Expand all (▼) click area: ${HEADER_ICON_DETECTION.expandStart}-${HEADER_ICON_DETECTION.expandEnd}px`} />
+              <div style={{
+                position: 'absolute',
+                top: '0px',
+                left: `${HEADER_ICON_DETECTION.collapseStart}px`,
+                width: `${HEADER_ICON_DETECTION.collapseEnd - HEADER_ICON_DETECTION.collapseStart}px`,
+                height: `${HEADER_ICON_DETECTION.height}px`,
+                border: '2px solid blue',
+                pointerEvents: 'none',
+                zIndex: 9999,
+                opacity: 0.5
+              }} title={`Collapse all (▶) click area: ${HEADER_ICON_DETECTION.collapseStart}-${HEADER_ICON_DETECTION.collapseEnd}px`} />*/}
               </div>
             </div>
           </div>
