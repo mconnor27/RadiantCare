@@ -855,6 +855,13 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
           const result = grossProfit - totalExpenses
           // console.log(`    Gross Profit: ${grossProfit} - Total Expenses: ${totalExpenses} = ${result}`)
           value = result.toString()
+        } else if (/^gross\s+profit$/i.test(accountName)) {
+          // console.log(`  🧮 Using SPECIAL calculation: Gross Profit`)
+          const totalGrossIncome = computeSummaryByName(/^total\s+gross\s+income$/i)
+          const totalCOGS = computeSummaryByName(/^total\s+cost\s+of\s+goods\s+sold$/i)
+          const result = totalGrossIncome - totalCOGS
+          // console.log(`    Total Gross Income: ${totalGrossIncome} - Total COGS: ${totalCOGS} = ${result}`)
+          value = result.toString()
         } else if (/^net\s+other\s+income$/i.test(accountName)) {
           // console.log(`  🧮 Using SPECIAL calculation: Net Other Income`)
           const totalOtherIncome = computeSummaryByName(/^total\s+other\s+income$/i)

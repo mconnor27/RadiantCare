@@ -327,9 +327,10 @@ export default function YearlyDataGrid({
 
   const loadData = useCallback(async () => {
     try {
+      console.log('loadData called with collapsedSections:', collapsedSections)
       setLoading(true)
       setError(null)
-      
+
       // Get 2025 physician data and benefit growth rate from store
       const fy2025 = store.scenarioA.future.find((f: any) => f.year === 2025)
       const physicianData = fy2025 ? {
@@ -337,14 +338,15 @@ export default function YearlyDataGrid({
         benefitGrowthPct: store.scenarioA.projection.benefitCostsGrowthPct,
         locumCosts: fy2025.locumCosts
       } : undefined
-      
+
       // Load both the grid data and the projection ratio
       const cachedSummaryData = (environment === 'production' && cachedSummary) ? cachedSummary : undefined
       const [data, ratio] = await Promise.all([
         loadYearlyGridData(collapsedSections, store.customProjectedValues, physicianData, cachedSummaryData),
         calculateProjectionRatio(cachedSummaryData)
       ])
-      
+
+      console.log('loadData setting grid data, rows count:', data.rows.length)
       setGridData(data)
       setProjectionRatio(ratio)
       
@@ -433,17 +435,23 @@ export default function YearlyDataGrid({
   }, [])
 
   const handleCellClick = useCallback((rowId: string, columnId: string, event?: React.MouseEvent) => {
-    // console.log('handleCellClick called with:', { rowId, columnId })
-    
+    console.log('handleCellClick called with:', { rowId, columnId })
+
     // Handle section collapse/expand for first column
     if (columnId === 'col-0' && rowId.startsWith('section-')) {
+      if (event) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+
       console.log('Toggling section:', rowId)
+      console.log('Current collapsed state before toggle:', collapsedSections)
       setCollapsedSections(prev => {
         const newState = {
           ...prev,
           [rowId]: !prev[rowId] // Toggle: undefined/false -> true, true -> false
         }
-        console.log('New collapsed state:', newState)
+        console.log('New collapsed state after toggle:', newState)
         return newState
       })
       return
@@ -811,10 +819,8 @@ export default function YearlyDataGrid({
                   // Handle cell clicks
                   onFocusLocationChanged={(location) => {
                   console.log('Focus changed to:', location)
-                  if (location?.rowId && location?.columnId === 'col-0' && typeof location.rowId === 'string' && location.rowId.startsWith('section-')) {
-                    console.log('Section clicked via focus:', location.rowId)
-                    handleCellClick(location.rowId, location.columnId)
-                  }
+                  // Don't trigger section collapse on focus - let the actual click handler do it
+                  // This prevents double-triggering which causes sections to toggle twice
                   // Debug tooltip retrieval on focus as well
                   try {
                     const rowId = location?.rowId as string
