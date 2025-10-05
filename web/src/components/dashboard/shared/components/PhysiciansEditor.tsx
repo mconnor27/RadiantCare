@@ -1740,7 +1740,6 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateRows: '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
-              <div style={{ height: 20 }} />
               <img
                 src={(p.medicalDirectorHoursPercentage ?? 0) > 0 ? '/hours_selected.png' : '/hours_unselected.png'}
                 alt={`Medical Director Hours ${((p.medicalDirectorHoursPercentage ?? 0) > 0) ? 'enabled' : 'disabled'}`}
@@ -1834,6 +1833,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   }
                 }}
               />
+              <div style={{ height: 20 }} />
             </div>
             <div style={{ display: 'grid', gridTemplateRows: '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
               <div

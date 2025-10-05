@@ -427,41 +427,40 @@ function flattenRows(rows: any[], level = 0, parentGroup?: string, sectionCounte
   return flattened
 }
 
-// Filter rows based on collapsed sections
+// Mark rows as visually hidden based on collapsed sections (but keep ALL rows in the data structure)
 function filterCollapsedRows(rows: any[], collapsedSections: CollapsibleState): any[] {
-  // console.log('Filtering rows with collapsed sections:', collapsedSections)
-  const filteredRows: any[] = []
-  let skipUntilLevel: number | null = null
-  
+  // console.log('Marking collapsed rows with collapsed sections:', collapsedSections)
+  const processedRows: any[] = []
+  let hideUntilLevel: number | null = null
+
   for (let i = 0; i < rows.length; i++) {
-    const row = rows[i]
-    
-    // If we're skipping, check if we should stop skipping
-    if (skipUntilLevel !== null) {
-      // console.log(`Skipping row ${i}: ${row.colData[0]?.value} (level ${row.level}) - waiting for Summary at level ${skipUntilLevel} or higher`)
-      // Stop skipping when we reach a Summary row at the same level or higher
-      if (row.type === 'Summary' && row.level <= skipUntilLevel) {
-        // console.log(`Found Summary at level ${row.level}, stopping skip`)
-        skipUntilLevel = null
-        filteredRows.push(row)
+    const row = { ...rows[i] } // Shallow copy to avoid mutating original
+
+    // If we're hiding, check if we should stop hiding
+    if (hideUntilLevel !== null) {
+      // Stop hiding when we reach a Summary row at the same level or higher
+      if (row.type === 'Summary' && row.level <= hideUntilLevel) {
+        hideUntilLevel = null
+        processedRows.push(row)
         continue
       }
-      // Skip this row
+      // Mark this row as collapsed (keep it in array for calculations)
+      row.isCollapsed = true
+      processedRows.push(row)
       continue
     }
-    
+
     // Check if this is a collapsed section
     if (row.type === 'Section' && row.sectionId && collapsedSections[row.sectionId] === true) {
-      // console.log(`Section ${row.sectionId} (${row.colData[0]?.value}) is collapsed, starting skip at level ${row.level}`)
-      // This section is collapsed, skip everything until the next Summary at the same level
-      skipUntilLevel = row.level
+      // This section is collapsed, mark children until the next Summary at the same level
+      hideUntilLevel = row.level
     }
-    
-    filteredRows.push(row)
+
+    processedRows.push(row)
   }
-  
-  // console.log(`Filtered from ${rows.length} to ${filteredRows.length} rows`)
-  return filteredRows
+
+  // console.log(`Processed ${rows.length} rows, all kept for calculations`)
+  return processedRows
 }
 
 // Helper function to check if account is a calculated row (MD Associates, Guaranteed Payments, or Locums)
@@ -769,6 +768,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
 
   const dataRows: Row[] = visibleRows.map((row, index) => {
     const accountName = row.colData[0]?.value || ''
+    const isCollapsedRow = row.isCollapsed === true
     const cells = row.colData.map((cellData: any, cellIndex: number) => {
       let value = cellData.value || ''
       
@@ -1119,7 +1119,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       
       return {
         type: 'text',
-        text: formattedValue,
+        text: isCollapsedRow ? '' : formattedValue, // Empty text for collapsed rows
         nonEditable: true,
         // Store tooltip data in a custom property
         tooltip: tooltipText,
@@ -1132,16 +1132,21 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
           fontWeight,
           paddingLeft: cellIndex === 0 ? `${paddingLeft + 6}px` : '6px',
           paddingRight: '6px',
-          paddingTop: '4px',
-          paddingBottom: '4px',
+          paddingTop: isCollapsedRow ? '0px' : '4px',
+          paddingBottom: isCollapsedRow ? '0px' : '4px',
           textAlign: shouldRightAlign ? 'right' : 'left',
           fontSize: fontSize,
           cursor: hasTooltip ? 'help' : cursor,
-          border: border,
+          border: isCollapsedRow ? 'none' : border,
           // Force text alignment with additional properties
           justifyContent: shouldRightAlign ? 'flex-end' : 'flex-start',
           display: 'flex',
-          alignItems: 'center'
+          alignItems: 'center',
+          height: isCollapsedRow ? '0px' : 'auto',
+          minHeight: isCollapsedRow ? '0px' : 'auto',
+          maxHeight: isCollapsedRow ? '0px' : 'none',
+          overflow: 'hidden',
+          visibility: isCollapsedRow ? 'collapse' : 'visible'
         }
       }
     })
