@@ -39,6 +39,10 @@ interface ProjectedValueSliderProps {
    */
   annualizedBaseline: number
   /**
+   * YTD actual value (not annualized). Used as the minimum slider bound.
+   */
+  ytdActualValue: number
+  /**
    * Origin position of the clicked cell for animation
    */
   originPosition?: { x: number; y: number }
@@ -56,6 +60,7 @@ export default function ProjectedValueSlider({
   accountName,
   position,
   annualizedBaseline,
+  ytdActualValue,
   originPosition,
   originRect
 }: ProjectedValueSliderProps) {
@@ -87,7 +92,10 @@ export default function ProjectedValueSlider({
   })
 
   // Calculate slider range based on config (falls back to standard strategy)
-  const { minValue, maxValue } = getSliderBounds(accountName, annualizedValue)
+  // Use YTD actual value as the minimum (can't project lower than what's already happened)
+  const configBounds = getSliderBounds(accountName, annualizedValue)
+  const minValue = Math.max(configBounds.minValue, Math.round(ytdActualValue))
+  const maxValue = configBounds.maxValue
   const step = getSliderStep(accountName, minValue, maxValue)
   
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -258,7 +266,10 @@ export default function ProjectedValueSlider({
   }
   
   // Calculate the actual height of the slider content for smooth animation
-  const sliderHeight = 52 + 20 + 220 + 20 + 24 + 8 // header + padding + content + padding + buttons + margin
+  // Add extra height when warning is shown (warning box is about 60px)
+  const hasWarning = actualValue < ytdActualValue
+  const warningHeight = hasWarning ? 115 : 0 // warning box + gap
+  const sliderHeight = 52 + 20 + warningHeight + 220 + 20 + 24 + 8 // header + padding + warning + content + padding + buttons + margin
   const targetHeight = `${sliderHeight}px`
   
   const startPosition = originPosition ? {
@@ -612,6 +623,26 @@ export default function ProjectedValueSlider({
               </div>
             </div>
           </div>
+
+          {/* Warning when value is below YTD actual */}
+          {actualValue < ytdActualValue && (
+            <div style={{
+              padding: '10px 12px',
+              backgroundColor: '#fef3c7',
+              borderRadius: '8px',
+              border: '1px solid #fbbf24',
+              fontSize: '12px',
+              color: '#92400e',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span style={{ fontSize: '20px', lineHeight: '1', flexShrink: 0 }}>⚠️</span>
+              <div style={{ textAlign: 'left' }}>
+                <strong>Warning:</strong> Projected value ({formatCurrency(actualValue)}) is below YTD actual ({formatCurrency(ytdActualValue)}). This means your projection is lower than what has already occurred.
+              </div>
+            </div>
+          )}
 
           {/* Input and Slider Row */}
           <div>

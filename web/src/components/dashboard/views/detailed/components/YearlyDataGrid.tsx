@@ -282,6 +282,7 @@ export default function YearlyDataGrid({
     rowIndex: number
     columnIndex: number
     annualizedBaseline: number
+    ytdActualValue: number
   }>({
     isVisible: false,
     position: { x: 0, y: 0 },
@@ -291,7 +292,8 @@ export default function YearlyDataGrid({
     accountName: '',
     rowIndex: -1,
     columnIndex: -1,
-    annualizedBaseline: 0
+    annualizedBaseline: 0,
+    ytdActualValue: 0
   })
   
   // Get custom projected values from store (now persisted across navigation)
@@ -478,13 +480,15 @@ export default function YearlyDataGrid({
         const numCols = gridData.columns?.length || 0
         const ytdColIndex = numCols - 2
         let annualizedBaseline = 0
+        let ytdActualValue = 0
         try {
           const ytdCell = row.cells?.[ytdColIndex] as any
           const ytdText = (ytdCell?.text || '0').toString()
-          const ytdNumeric = parseFloat(ytdText.replace(/[$,\s]/g, '')) || 0
-          annualizedBaseline = ytdNumeric * projectionRatio
+          ytdActualValue = parseFloat(ytdText.replace(/[$,\s]/g, '')) || 0
+          annualizedBaseline = ytdActualValue * projectionRatio
         } catch {
           annualizedBaseline = 0
+          ytdActualValue = 0
         }
         
         // Get cell position and rect for slider placement
@@ -527,7 +531,8 @@ export default function YearlyDataGrid({
           accountName: accountCell.text || '',
           rowIndex,
           columnIndex: colIndex,
-          annualizedBaseline
+          annualizedBaseline,
+          ytdActualValue
         })
       }
     }
@@ -969,6 +974,7 @@ export default function YearlyDataGrid({
           originPosition={slider.originPosition}
           originRect={slider.originRect}
           annualizedBaseline={slider.annualizedBaseline}
+          ytdActualValue={slider.ytdActualValue}
         />
       </div>
     </CollapsibleSection>
