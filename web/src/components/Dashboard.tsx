@@ -1329,6 +1329,7 @@ export function Dashboard() {
   const store = useDashboardStore()
   const isMobile = useIsMobile()
   const [viewMode, setViewMode] = useState<'Multi-Year' | 'YTD Detailed'>('YTD Detailed')
+  const [ytdSettings, setYtdSettings] = useState<any>(null)
 
   // Load from shareable URL hash if present
   useEffect(() => {
@@ -1338,7 +1339,19 @@ export function Dashboard() {
         const encoded = hash.slice(3)
         const json = decodeURIComponent(atob(encoded))
         const snap = JSON.parse(json)
+        
+        // Load store data
         useDashboardStore.getState().loadSnapshot(snap)
+        
+        // Load view mode if present (backward compatible)
+        if (snap.viewMode) {
+          setViewMode(snap.viewMode)
+        }
+        
+        // Load YTD settings if present (backward compatible)
+        if (snap.ytdSettings) {
+          setYtdSettings(snap.ytdSettings)
+        }
       } catch {
         // ignore malformed
       }
@@ -1346,11 +1359,18 @@ export function Dashboard() {
   }, [])
 
   const copyShareLink = async () => {
-    const snap = {
+    const snap: any = {
       scenarioA: store.scenarioA,
       scenarioBEnabled: store.scenarioBEnabled,
       scenarioB: store.scenarioBEnabled ? store.scenarioB : undefined,
+      viewMode: viewMode,
     }
+    
+    // Include YTD settings if we have them
+    if (ytdSettings) {
+      snap.ytdSettings = ytdSettings
+    }
+    
     const json = JSON.stringify(snap)
     const encoded = btoa(encodeURIComponent(json))
     const url = `${window.location.origin}${window.location.pathname}#s=${encoded}`
@@ -1400,7 +1420,10 @@ export function Dashboard() {
         </div>
         
         {viewMode === 'YTD Detailed' ? (
-          <YTDDetailed />
+          <YTDDetailed 
+            initialSettings={ytdSettings}
+            onSettingsChange={setYtdSettings}
+          />
         ) : (
           <MultiYearView />
         )}

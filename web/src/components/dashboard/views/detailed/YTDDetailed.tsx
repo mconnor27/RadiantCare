@@ -18,36 +18,41 @@ import { useDashboardStore } from '../../../Dashboard'
 import PhysiciansEditor from '../../shared/components/PhysiciansEditor'
 import { DEFAULT_LOCUM_COSTS_2025 } from '../../shared/defaults'
 
-export default function YTDDetailed() {
+interface YTDDetailedProps {
+  initialSettings?: any
+  onSettingsChange?: (settings: any) => void
+}
+
+export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDetailedProps) {
   const store = useDashboardStore()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<YTDPoint[]>([])
   const [environment] = useState<'production' | 'sandbox'>('production')
   const [cachedData, setCachedData] = useState<{ daily?: any, summary?: any, equity?: any } | null>(null)
-  const [isNormalized, setIsNormalized] = useState(false)
-  const [showCombined, setShowCombined] = useState(false)
-  const [combineStatistic, setCombineStatistic] = useState<'mean' | 'median' | null>(null) // Off by default
-  const [combineError, setCombineError] = useState<'std' | 'ci' | null>(null) // Off by default
-  const [chartMode, setChartMode] = useState<'line' | 'bar' | 'proportion'>('line')
-  const [timeframe, setTimeframe] = useState<'year' | 'quarter' | 'month'>('year')
-  const [currentPeriod, setCurrentPeriod] = useState<{ year: number, quarter?: number, month?: number }>({ year: new Date().getFullYear() })
-  const [is2025Visible, setIs2025Visible] = useState(true)
-  const [showAllMonths, setShowAllMonths] = useState(true)
-  const [incomeMode, setIncomeMode] = useState<IncomeMode>('total')
+  const [isNormalized, setIsNormalized] = useState(initialSettings?.isNormalized ?? false)
+  const [showCombined, setShowCombined] = useState(initialSettings?.showCombined ?? false)
+  const [combineStatistic, setCombineStatistic] = useState<'mean' | 'median' | null>(initialSettings?.combineStatistic ?? null) // Off by default
+  const [combineError, setCombineError] = useState<'std' | 'ci' | null>(initialSettings?.combineError ?? null) // Off by default
+  const [chartMode, setChartMode] = useState<'line' | 'bar' | 'proportion'>(initialSettings?.chartMode ?? 'line')
+  const [timeframe, setTimeframe] = useState<'year' | 'quarter' | 'month'>(initialSettings?.timeframe ?? 'year')
+  const [currentPeriod, setCurrentPeriod] = useState<{ year: number, quarter?: number, month?: number }>(initialSettings?.currentPeriod ?? { year: new Date().getFullYear() })
+  const [is2025Visible, setIs2025Visible] = useState(initialSettings?.is2025Visible ?? true)
+  const [showAllMonths, setShowAllMonths] = useState(initialSettings?.showAllMonths ?? true)
+  const [incomeMode, setIncomeMode] = useState<IncomeMode>(initialSettings?.incomeMode ?? 'total')
   const [smoothingByMode, setSmoothingByMode] = useState<{
     line: number,
     bar: number,
     proportion: number
-  }>({
+  }>(initialSettings?.smoothingByMode ?? {
     line: 10,
     bar: 0, // Bar charts don't use smoothing
     proportion: 12 // Default for proportion mode
   })
-  const [selectedYears, setSelectedYears] = useState<number[]>(Array.from({ length: 9 }, (_, i) => 2016 + i)) // Default: all years (2016-2024)
-  const [visibleSites, setVisibleSites] = useState<{ lacey: boolean, centralia: boolean, aberdeen: boolean }>({ lacey: true, centralia: true, aberdeen: true })
-  const [colorScheme, setColorScheme] = useState<'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'>('gray')
-  const [siteColorScheme, setSiteColorScheme] = useState<'rgb' | 'radiantCare' | 'jama'>('rgb')
+  const [selectedYears, setSelectedYears] = useState<number[]>(initialSettings?.selectedYears ?? Array.from({ length: 9 }, (_, i) => 2016 + i)) // Default: all years (2016-2024)
+  const [visibleSites, setVisibleSites] = useState<{ lacey: boolean, centralia: boolean, aberdeen: boolean }>(initialSettings?.visibleSites ?? { lacey: true, centralia: true, aberdeen: true })
+  const [colorScheme, setColorScheme] = useState<'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'>(initialSettings?.colorScheme ?? 'gray')
+  const [siteColorScheme, setSiteColorScheme] = useState<'rgb' | 'radiantCare' | 'jama'>(initialSettings?.siteColorScheme ?? 'rgb')
 
   // Helper functions for mode-specific smoothing
   const getCurrentSmoothing = () => smoothingByMode[chartMode]
@@ -184,6 +189,46 @@ export default function YTDDetailed() {
       setIs2025Visible(true)
     }
   }, [chartMode])
+
+  // Report settings changes to parent for shareable link
+  useEffect(() => {
+    if (onSettingsChange) {
+      onSettingsChange({
+        isNormalized,
+        showCombined,
+        combineStatistic,
+        combineError,
+        chartMode,
+        timeframe,
+        currentPeriod,
+        is2025Visible,
+        showAllMonths,
+        incomeMode,
+        smoothingByMode,
+        selectedYears,
+        visibleSites,
+        colorScheme,
+        siteColorScheme
+      })
+    }
+  }, [
+    isNormalized,
+    showCombined,
+    combineStatistic,
+    combineError,
+    chartMode,
+    timeframe,
+    currentPeriod,
+    is2025Visible,
+    showAllMonths,
+    incomeMode,
+    smoothingByMode,
+    selectedYears,
+    visibleSites,
+    colorScheme,
+    siteColorScheme,
+    onSettingsChange
+  ])
 
 
   return (
