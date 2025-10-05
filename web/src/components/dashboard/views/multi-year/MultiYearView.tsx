@@ -83,7 +83,14 @@ export default function MultiYearView() {
 
   return (
     <>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ 
+        maxWidth: 1200, 
+        margin: '0 auto',
+        border: '1px solid #d1d5db',
+        borderRadius: 6,
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+        overflow: 'hidden'
+      }}>
         <HistoricAndProjectionChart key={store.scenarioBEnabled ? 'withB' : 'withoutB'} />
       </div>
 

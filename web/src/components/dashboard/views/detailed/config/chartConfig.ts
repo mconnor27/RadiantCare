@@ -276,7 +276,7 @@ export const CHART_CONFIG = {
   desktop: {
     height: 507,
     minWidth: 800,
-    maxWidth: 1200, // 0 = no max width (flex: 1), or set a number in pixels
+    maxWidth: 1280, // 0 = no max width (flex: 1), or set a number in pixels
     aspectRatio: 10/16 // height/width ratio (0.634)
   },
   margins: {

@@ -324,13 +324,13 @@ export default function HistoricAndProjectionChart() {
         minWidth: isMobile ? undefined : 600,
         maxWidth: 1200,
         margin: '0 auto',
-        border: '1px solid #e5e7eb',
+        //border: '2px solid #d1d5db',
         borderRadius: 8,
         background: '#f9fafb',
         padding: 12,
       }}
     >
-      <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#ffffff', padding: 4 }}>
+      <div style={{ border: '1px solid #d1d5db', borderRadius: 6, background: '#ffffff', padding: 4, boxShadow: '0 6px 10px rgba(0, 0, 0, 0.15)' }}>
       <Plot
         data={(() => {
           const traces: any[] = []

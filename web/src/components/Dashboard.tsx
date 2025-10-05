@@ -1372,7 +1372,7 @@ export function Dashboard() {
       
       <div style={{ 
         marginTop: 20, 
-        maxWidth: 1480, 
+        maxWidth: 1600, 
         margin: '20px auto 0 auto' 
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>

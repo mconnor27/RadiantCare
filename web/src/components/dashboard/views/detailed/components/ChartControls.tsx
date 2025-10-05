@@ -195,7 +195,8 @@ export default function ChartControls({
         border: '1px solid #ccc',
         borderRadius: 4,
         padding: 10,
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+        background: '#fff',
+        boxShadow: '0 6px 10px rgba(0, 0, 0, 0.15)',
         minWidth: 360,
         maxWidth: 'fit-content',
         width: 'fit-content',
@@ -228,7 +229,7 @@ export default function ChartControls({
             justifySelf: 'stretch',
             border: '1px solid #d1d5db',
             borderRadius: 6,
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            boxShadow: '0 3px 6px rgba(0, 0, 0, 0.15)',
             margin: '4px 0',
             transition: 'all 0.3s ease-in-out'
           }}>
@@ -257,7 +258,7 @@ export default function ChartControls({
             justifySelf: 'stretch',
             border: '1px solid #d1d5db',
             borderRadius: 6,
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            boxShadow: '0 3px 6px rgba(0, 0, 0, 0.15)',
             margin: '4px 0',
             transition: 'all 0.3s ease-in-out'
           }}>
@@ -467,7 +468,7 @@ export default function ChartControls({
             justifySelf: 'stretch',
             border: '1px solid #d1d5db',
             borderRadius: 6,
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            boxShadow: '0 3px 6px rgba(0, 0, 0, 0.15)',
             margin: '4px 0',
             transition: 'all 0.3s ease-in-out'
           }}>
@@ -517,7 +518,7 @@ export default function ChartControls({
                 background: '#fff',
                 border: '1px solid #ccc',
                 borderRadius: 4,
-                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                boxShadow: '0 6px 10px rgba(0, 0, 0, 0.15)',
                 padding: '6px',
                 zIndex: 1000,
                 minWidth: chartMode === 'proportion' ? '220px' : '120px',
@@ -975,7 +976,7 @@ export default function ChartControls({
             justifySelf: 'stretch',
             border: '1px solid #d1d5db',
             borderRadius: 6,
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            boxShadow: '0 3px 6px rgba(0, 0, 0, 0.15)',
             margin: '4px 0',
             transition: 'all 0.3s ease-in-out'
           }}>
@@ -1072,7 +1073,7 @@ export default function ChartControls({
             justifySelf: 'stretch',
             border: '1px solid #d1d5db',
             borderRadius: 6,
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            boxShadow: '0 3px 6px rgba(0, 0, 0, 0.15)',
             margin: '4px 0',
             transition: 'all 0.3s ease-in-out'
           }}>

@@ -671,7 +671,7 @@ export default function DetailedChart({
         style={{
           border: '1px solid #d1d5db',
           borderRadius: 6,
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          boxShadow: '0 6px 10px rgba(0, 0, 0, 0.15)',
           overflow: 'hidden',
           position: 'relative',
           minWidth: config.minWidth,

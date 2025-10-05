@@ -188,10 +188,20 @@ export default function YTDDetailed() {
 
   return (
     <div style={{ margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
         <SyncButton environment={environment} />
       </div>
-      <div style={{ display: 'flex', gap: 16 }}>
+      <div style={{
+        display: 'flex',
+        gap: 16,
+        alignItems: 'center',
+        border: '1px solid #d1d5db',
+        borderRadius: 8,
+        padding: 16,
+        background: '#f9fafb',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+        marginBottom: 24
+      }}>
         <div style={{ flex: 1 }}>
           {error === 'not_connected' ? (
             <div>
@@ -258,20 +268,22 @@ export default function YTDDetailed() {
         </div>
       </div>
 
-      <PartnerCompensation
-        environment={environment}
-        cachedSummary={cachedData?.summary}
-        cachedEquity={cachedData?.equity}
-      />
-<div style={{ width: '900px', margin: '0 auto' }}>
-      <PhysiciansEditor
-        year={2025}
-        scenario="A"
-        readOnly={false}
-        locumCosts={currentLocumCosts}
-        onLocumCostsChange={(value) => store.setFutureValue('A', 2025, 'locumCosts', value)}
-      />
-</div>
+      <div style={{ marginBottom: 24 }}>
+        <PartnerCompensation
+          environment={environment}
+          cachedSummary={cachedData?.summary}
+          cachedEquity={cachedData?.equity}
+        />
+      </div>
+      <div style={{ width: '900px', margin: '0 auto', marginBottom: 24 }}>
+        <PhysiciansEditor
+          year={2025}
+          scenario="A"
+          readOnly={false}
+          locumCosts={currentLocumCosts}
+          onLocumCostsChange={(value) => store.setFutureValue('A', 2025, 'locumCosts', value)}
+        />
+      </div>
       <div style={{ maxWidth: '1480px', margin: '0 auto' }}>
         <YearlyDataGrid
           environment={environment}
