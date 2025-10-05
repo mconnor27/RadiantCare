@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import getDefaultValue, { getSliderBounds, getInitialSliderValue, getSliderStep } from '../config/projectedDefaults'
+import getDefaultValue, { getSliderBounds, getInitialSliderValue, getSliderStep, findAccountConfig } from '../config/projectedDefaults'
 
 // ========== ANIMATION CONFIGURATION ==========
 type AnimationStyle = 'two-stage' | 'scale-all'
@@ -77,6 +77,14 @@ export default function ProjectedValueSlider({
   // Resolve immutable baselines
   const annualizedValue = annualizedBaseline
   const defaultValue = getDefaultValue(accountName, annualizedValue)
+
+  // Debug logging
+  console.log('ProjectedValueSlider:', {
+    accountName,
+    annualizedValue,
+    defaultValue,
+    configFound: findAccountConfig(accountName)
+  })
 
   // Calculate slider range based on config (falls back to standard strategy)
   const { minValue, maxValue } = getSliderBounds(accountName, annualizedValue)

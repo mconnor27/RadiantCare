@@ -147,27 +147,25 @@ export const projectedDefaultsByAccount: Record<string, ProjectedAccountDefaults
 }
 
 /**
- * Helper function to find account config by trimmed name (ignores leading/trailing whitespace)
+ * Helper function to find account config by trimmed name (ignores leading/trailing whitespace and info icons)
  */
 export function findAccountConfig(accountName: string): ProjectedAccountDefaults | undefined {
-  // First try exact match
-  if (projectedDefaultsByAccount[accountName]) {
-    return projectedDefaultsByAccount[accountName]
+  // Clean the account name: trim whitespace and remove info icon (ⓘ) and other common UI symbols
+  const cleanName = accountName.trim().replace(/\s*[ⓘℹ️]\s*$/g, '').trim()
+
+  // First try exact match with cleaned name
+  if (projectedDefaultsByAccount[cleanName]) {
+    return projectedDefaultsByAccount[cleanName]
   }
-  
-  // Then try trimmed match
-  const trimmedName = accountName.trim()
-  if (projectedDefaultsByAccount[trimmedName]) {
-    return projectedDefaultsByAccount[trimmedName]
-  }
-  
-  // Finally try finding a config key that matches when both are trimmed
+
+  // Try finding a config key that matches when both are cleaned
   for (const [configKey, config] of Object.entries(projectedDefaultsByAccount)) {
-    if (configKey.trim() === trimmedName) {
+    const cleanConfigKey = configKey.trim().replace(/\s*[ⓘℹ️]\s*$/g, '').trim()
+    if (cleanConfigKey === cleanName) {
       return config
     }
   }
-  
+
   return undefined
 }
 
