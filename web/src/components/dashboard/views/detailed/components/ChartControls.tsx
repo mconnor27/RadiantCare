@@ -180,6 +180,29 @@ export default function ChartControls({
 
   const [hoveredGroup, setHoveredGroup] = useState<number | null>(null)
 
+  // Collapse state
+  const [isCollapsed, setIsCollapsed] = useState(false)
+
+  // Trigger Plotly resize continuously during animation
+  useEffect(() => {
+    // Trigger resize events during the animation at ~60fps
+    const interval = setInterval(() => {
+      window.dispatchEvent(new Event('resize'))
+    }, 16) // ~60fps
+
+    // Stop after animation completes (200ms + small buffer)
+    const timer = setTimeout(() => {
+      clearInterval(interval)
+      // One final resize to ensure it's correct
+      window.dispatchEvent(new Event('resize'))
+    }, 250)
+
+    return () => {
+      clearInterval(interval)
+      clearTimeout(timer)
+    }
+  }, [isCollapsed])
+
   // Sync state
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
@@ -242,9 +265,62 @@ export default function ChartControls({
   }
 
   return (
-    <div style={{ marginBottom: isSidebar ? 0 : 16, border: '1px solid #ccc', borderRadius: 4, padding: 10, boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', minWidth: 360 }}>
-      <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 700 }}>Chart Controls</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0 16px', alignItems: 'start', justifyItems: 'start' }}>
+    <div style={{
+      marginBottom: isSidebar ? 0 : 16,
+      border: '1px solid #ccc',
+      borderRadius: 4,
+      padding: 10,
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+      minWidth: isCollapsed ? 50 : 360,
+      maxWidth: isCollapsed ? 50 : 'fit-content',
+      width: isCollapsed ? 50 : 'fit-content',
+      transition: 'all 0.2s ease-in-out',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      {/* Collapse/Expand Button */}
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        style={{
+          position: 'absolute',
+          top: 8,
+          left: 8,
+          width: 24,
+          height: 24,
+          border: '1px solid #ccc',
+          borderRadius: 4,
+          background: '#fff',
+          color: '#333',
+          fontSize: 14,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.2s',
+          zIndex: 10,
+          padding: 0
+        }}
+        title={isCollapsed ? 'Expand' : 'Collapse'}
+      >
+        {isCollapsed ? '◀' : '▶'}
+      </button>
+
+      <h3 style={{
+        margin: '0 0 16px 0',
+        fontSize: 16,
+        fontWeight: 700,
+        opacity: isCollapsed ? 0 : 1,
+        transition: 'opacity 0.2s ease-in-out'
+      }}>Chart Controls</h3>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(105px, auto) 1fr',
+        gap: '0 16px',
+        alignItems: 'start',
+        justifyItems: 'start',
+        opacity: isCollapsed ? 0 : 1,
+        transition: 'opacity 0.2s ease-in-out'
+      }}>
         {/* Group 1: Color Scheme */}
         <>
           <label style={{
