@@ -70,7 +70,7 @@ async function calculateProjectionRatio(cached2025?: any): Promise<number> {
 // Robust normalization function matching the one used in yearlyDataTransformer
 const normalizeAccountName = (label: string): string => {
   return (label || '')
-    .replace(/\s*ⓘ\s*$/, '') // Remove info icons
+    .replace(/\s*[ⓘℹ]\s*$/, '') // Remove info icons
     .replace(/^\s+/, '') // Remove leading whitespace
     .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
     .trim() // Remove trailing whitespace
@@ -357,6 +357,37 @@ export default function YearlyDataGrid({
     }
   }, [loading, error, gridData.columns])
 
+  // Helper function to calculate smart tooltip position that avoids going off-screen
+  const calculateTooltipPosition = useCallback((mouseX: number, mouseY: number, tooltipWidth: number = 300, tooltipHeight: number = 100) => {
+    const offset = 14
+    const padding = 10 // Distance from screen edge
+
+    let x = mouseX + offset
+    let y = mouseY + 8
+
+    // Check right edge
+    if (x + tooltipWidth > window.innerWidth - padding) {
+      x = mouseX - tooltipWidth - offset // Position to left of cursor
+    }
+
+    // Check bottom edge
+    if (y + tooltipHeight > window.innerHeight - padding) {
+      y = mouseY - tooltipHeight - 8 // Position above cursor
+    }
+
+    // Check left edge
+    if (x < padding) {
+      x = padding
+    }
+
+    // Check top edge
+    if (y < padding) {
+      y = padding
+    }
+
+    return { x, y }
+  }, [])
+
   const handleCellClick = useCallback((rowId: string, columnId: string, event?: React.MouseEvent) => {
     // console.log('handleCellClick called with:', { rowId, columnId })
     
@@ -600,11 +631,12 @@ export default function YearlyDataGrid({
                       console.log('[mouseover] tooltip found:', cell.tooltip)
                       const mouseEvent = (e as unknown as { clientX: number; clientY: number })
                       console.log('[mouseover] tooltip positioning:', { clientX: mouseEvent.clientX, clientY: mouseEvent.clientY })
+                      const pos = calculateTooltipPosition(mouseEvent.clientX, mouseEvent.clientY)
                       setTooltip({
                         show: true,
                         text: cell.tooltip,
-                        x: mouseEvent.clientX + 14,
-                        y: mouseEvent.clientY + 8
+                        x: pos.x,
+                        y: pos.y
                       })
                     } else {
                       console.log('[mouseover] no tooltip on cell')
@@ -638,12 +670,13 @@ export default function YearlyDataGrid({
                       console.log('[mouseover] fallback after no tooltip:', { rawText, normalized, hasFallback: !!fallback })
                       if (fallback) {
                         const mouseEvent = (e as unknown as { clientX: number; clientY: number })
-                        console.log('[mouseover] setting fallback tooltip:', { text: fallback, x: mouseEvent.clientX + 14, y: mouseEvent.clientY + 8 })
+                        const pos = calculateTooltipPosition(mouseEvent.clientX, mouseEvent.clientY)
+                        console.log('[mouseover] setting fallback tooltip:', { text: fallback, x: pos.x, y: pos.y })
                         setTooltip({
                           show: true,
                           text: fallback,
-                          x: mouseEvent.clientX + 14,
-                          y: mouseEvent.clientY + 8
+                          x: pos.x,
+                          y: pos.y
                         })
                       }
                     }
@@ -678,12 +711,13 @@ export default function YearlyDataGrid({
                     console.log('[mouseover] fallback no data attrs:', { rawText, normalized, hasFallback: !!fallback })
                     if (fallback) {
                       const mouseEvent = (e as unknown as { clientX: number; clientY: number })
-                      console.log('[mouseover] setting fallback tooltip (no data attrs):', { text: fallback, x: mouseEvent.clientX + 14, y: mouseEvent.clientY + 8 })
+                      const pos = calculateTooltipPosition(mouseEvent.clientX, mouseEvent.clientY)
+                      console.log('[mouseover] setting fallback tooltip (no data attrs):', { text: fallback, x: pos.x, y: pos.y })
                       setTooltip({
                         show: true,
                         text: fallback,
-                        x: mouseEvent.clientX + 14,
-                        y: mouseEvent.clientY + 8
+                        x: pos.x,
+                        y: pos.y
                       })
                     }
                   }
@@ -692,7 +726,8 @@ export default function YearlyDataGrid({
               onMouseMove={(e) => {
                 if (tooltip.show) {
                   const mouseEvent = (e as unknown as { clientX: number; clientY: number })
-                  setTooltip(prev => prev.show ? { ...prev, x: mouseEvent.clientX + 14, y: mouseEvent.clientY + 8 } : prev)
+                  const pos = calculateTooltipPosition(mouseEvent.clientX, mouseEvent.clientY)
+                  setTooltip(prev => prev.show ? { ...prev, x: pos.x, y: pos.y } : prev)
                 }
               }}
               onMouseOut={() => {
@@ -753,7 +788,7 @@ export default function YearlyDataGrid({
         )}
         
         {!loading && !error && gridData.rows.length > 0 && (
-          <div style={{ 
+          <div style={{
             marginTop: '12px',
             display: 'flex',
             justifyContent: 'center',
@@ -802,6 +837,42 @@ export default function YearlyDataGrid({
               }} />
               <span>Set In Physician Panel</span>
             </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'help',
+                fontSize: '14px',
+                fontFamily: 'Arial, sans-serif',
+                color: '#666',
+                width: '20px',
+                height: '20px',
+                border: '1px solid #ccc',
+                borderRadius: '50%',
+                backgroundColor: '#f8f9fa'
+              }}
+              onMouseEnter={(e) => {
+                const mouseEvent = e as unknown as { clientX: number; clientY: number }
+                const pos = calculateTooltipPosition(mouseEvent.clientX, mouseEvent.clientY)
+                setTooltip({
+                  show: true,
+                  text: 'Click any projected value (rightmost column) to adjust it. The cell background color indicates how the value was determined.',
+                  x: pos.x,
+                  y: pos.y
+                })
+              }}
+              onMouseMove={(e) => {
+                const mouseEvent = e as unknown as { clientX: number; clientY: number }
+                const pos = calculateTooltipPosition(mouseEvent.clientX, mouseEvent.clientY)
+                setTooltip(prev => prev.show ? { ...prev, x: pos.x, y: pos.y } : prev)
+              }}
+              onMouseLeave={() => {
+                setTooltip({ show: false, text: '', x: 0, y: 0 })
+              }}
+            >
+              <span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span>
+            </div>
           </div>
         )}
         
@@ -824,7 +895,7 @@ export default function YearlyDataGrid({
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
               pointerEvents: 'none',
               wordWrap: 'break-word',
-              whiteSpace: 'normal'
+              whiteSpace: 'pre-line'
             }}
             onMouseEnter={() => console.log('[tooltip] tooltip rendered with text:', tooltip.text)}
           >

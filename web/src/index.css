@@ -578,3 +578,4 @@ input[type=number] {
 body.dragging [data-drag-handle] {
   cursor: grabbing !important;
 }
+

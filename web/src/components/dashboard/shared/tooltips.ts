@@ -2,31 +2,63 @@ import type { Physician } from './types'
 import React from 'react'
 import { PRCS_MD_ANNUAL_MAX } from './defaults'
 
+// Helper function to calculate smart tooltip position that avoids going off-screen
+function calculateTooltipPosition(rect: DOMRect, tooltipWidth: number = 300, tooltipHeight: number = 100) {
+  const offset = 10
+  const padding = 10
+
+  let x = rect.right + offset
+  let y = rect.top + window.scrollY
+
+  // Check right edge
+  if (x + tooltipWidth > window.innerWidth - padding) {
+    x = rect.left - tooltipWidth - offset // Position to left of element
+  }
+
+  // Check bottom edge
+  if (y + tooltipHeight > window.innerHeight + window.scrollY - padding) {
+    y = rect.bottom + window.scrollY - tooltipHeight // Position above element
+  }
+
+  // Check left edge
+  if (x < padding) {
+    x = padding
+  }
+
+  // Check top edge
+  if (y < window.scrollY + padding) {
+    y = window.scrollY + padding
+  }
+
+  return { x, y }
+}
+
 // Helper function for creating mobile-friendly tooltips
 export function createTooltip(id: string, content: string, e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>) {
   const existing = document.getElementById(id)
   if (existing) existing.remove()
-  
+
   const tooltip = document.createElement('div')
   tooltip.id = id
   const isMobileTooltip = window.innerWidth <= 768
-  
+
   if (isMobileTooltip) {
     tooltip.className = 'tooltip-mobile'
     tooltip.style.cssText = `position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 9999; max-width: calc(100vw - 40px); box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
   } else {
     tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
   }
-  
+
   tooltip.textContent = content
   document.body.appendChild(tooltip)
-  
+
   if (!isMobileTooltip) {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    tooltip.style.left = `${rect.right + 10}px`
-    tooltip.style.top = `${rect.top + window.scrollY}px`
+    const pos = calculateTooltipPosition(rect)
+    tooltip.style.left = `${pos.x}px`
+    tooltip.style.top = `${pos.y}px`
   }
-  
+
   // Auto-hide tooltip on mobile after 3 seconds
   if (isMobileTooltip) {
     setTimeout(() => {
@@ -86,8 +118,9 @@ export function createBonusTooltip(
   
   if (!isMobileTooltip) {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    tooltip.style.left = `${rect.right + 10}px`
-    tooltip.style.top = `${rect.top + window.scrollY}px`
+    const pos = calculateTooltipPosition(rect, 200, 150)
+    tooltip.style.left = `${pos.x}px`
+    tooltip.style.top = `${pos.y}px`
   }
   
   // Add event listener for real-time updates
@@ -185,8 +218,9 @@ export function createHoursTooltip(
 
   if (!isMobileTooltip) {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    tooltip.style.left = `${rect.right + 10}px`
-    tooltip.style.top = `${rect.top + window.scrollY}px`
+    const pos = calculateTooltipPosition(rect, 200, 150)
+    tooltip.style.left = `${pos.x}px`
+    tooltip.style.top = `${pos.y}px`
   }
 
   const slider = document.getElementById(`${tooltipId}-slider`) as HTMLInputElement
@@ -315,8 +349,9 @@ export function createPrcsAmountTooltip(
 
   if (!isMobileTooltip) {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    tooltip.style.left = `${rect.right + 10}px`
-    tooltip.style.top = `${rect.top + window.scrollY}px`
+    const pos = calculateTooltipPosition(rect, 200, 150)
+    tooltip.style.left = `${pos.x}px`
+    tooltip.style.top = `${pos.y}px`
   }
 
   const slider = document.getElementById(`${tooltipId}-slider`) as HTMLInputElement
@@ -414,8 +449,9 @@ export function createTrailingSharedMdAmountTooltip(
 
   if (!isMobileTooltip) {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    tooltip.style.left = `${rect.right + 10}px`
-    tooltip.style.top = `${rect.top + window.scrollY}px`
+    const pos = calculateTooltipPosition(rect, 200, 150)
+    tooltip.style.left = `${pos.x}px`
+    tooltip.style.top = `${pos.y}px`
   }
 
   const slider = document.getElementById(`${tooltipId}-slider`) as HTMLInputElement

@@ -322,7 +322,7 @@ export default function ChartControls({
                 }}
                 onMouseEnter={(e) => {
                   if (chartMode !== 'proportion') {
-                    createTooltip('income-mode-info', 'Total Income data available daily. Per Site data available through last complete month', e)
+                    createTooltip('income-mode-info', 'Total Income data available daily.\nPer Site data available through prior month.', e)
                   }
                 }}
                 onMouseLeave={() => removeTooltip('income-mode-info')}
@@ -374,8 +374,38 @@ export default function ChartControls({
                   tooltip.textContent = 'Normalized to % of total annual income'
                   document.body.appendChild(tooltip)
                   const rect = e.currentTarget.getBoundingClientRect()
-                  tooltip.style.left = `${rect.right + 10}px`
-                  tooltip.style.top = `${rect.top + window.scrollY}px`
+
+                  // Smart positioning to avoid going off-screen
+                  const tooltipWidth = 300
+                  const tooltipHeight = 50
+                  const offset = 10
+                  const padding = 10
+
+                  let x = rect.right + offset
+                  let y = rect.top + window.scrollY
+
+                  // Check right edge
+                  if (x + tooltipWidth > window.innerWidth - padding) {
+                    x = rect.left - tooltipWidth - offset
+                  }
+
+                  // Check bottom edge
+                  if (y + tooltipHeight > window.innerHeight + window.scrollY - padding) {
+                    y = rect.bottom + window.scrollY - tooltipHeight
+                  }
+
+                  // Check left edge
+                  if (x < padding) {
+                    x = padding
+                  }
+
+                  // Check top edge
+                  if (y < window.scrollY + padding) {
+                    y = window.scrollY + padding
+                  }
+
+                  tooltip.style.left = `${x}px`
+                  tooltip.style.top = `${y}px`
                 }}
                 onMouseLeave={() => {
                   const tooltip = document.getElementById('normalized-tooltip')

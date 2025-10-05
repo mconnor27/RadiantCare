@@ -616,7 +616,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
   // --- Bottom custom section helpers (dynamic) ---
   const normalizeLabel = (label: string): string => {
     return (label || '')
-      .replace(/\s*ⓘ\s*$/, '')
+      .replace(/\s*[ⓘℹ🛈]\s*$/, '')
       .replace(/^\s+/, '')
       .replace(/\s+/g, ' ')
       .trim()
@@ -969,7 +969,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
         }
       }
       let formattedValue = (isNumeric || hasCustomValue) ? formatCurrency(value, accountName) : value
-      
+
       // Add info icon for calculated rows AFTER formatting
       const calculatedInfo = isCalculatedRow(accountName)
       if (isProjectedColumn && calculatedInfo.isCalculated) {
@@ -978,6 +978,22 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
         // console.log('Added info icon to calculated projected cell:', accountName, '→', formattedValue)
       } else if (isProjectedColumn) {
         // console.log('Projected column but not calculated row:', accountName)
+      }
+
+      // Add info icon to account name column (first column) for calculated rows
+      if (cellIndex === 0 && calculatedInfo.isCalculated) {
+        formattedValue = formattedValue + ' ⓘ'
+      }
+
+      // Add info icon for Medical Director Hours and Consulting Agreement rows
+      const trimmedAccountName = accountName.trim()
+      const isMedicalDirectorShared = trimmedAccountName === 'Medical Director Hours (Shared)'
+      const isMedicalDirectorPRCS = trimmedAccountName === 'Medical Director Hours (PRCS)'
+      const isMedicalDirectorTotal = trimmedAccountName === 'Medical Director Hours'
+      const isConsultingAgreement = trimmedAccountName === 'Consulting Agreement/Other'
+
+      if (cellIndex === 0 && (isMedicalDirectorShared || isMedicalDirectorPRCS || isMedicalDirectorTotal || isConsultingAgreement)) {
+        formattedValue = formattedValue + ' ⓘ'
       }
       
       // Right-align all columns except the first column (account names)
@@ -1067,19 +1083,27 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       const isInterestIncomeCell = accountName.includes('7900') && accountName.includes('Interest') && formattedValue.includes('ⓘ')
       const isCalculatedInfoIcon = isProjectedColumn && formattedValue.includes('ⓘ') && calculatedInfo.isCalculated
       const hasTooltip = (cellIndex === 0 && (!!row.tooltip || formattedValue.includes('ⓘ'))) || isAssetDisposalCell || isInterestIncomeCell || isCalculatedInfoIcon
-      
+
       // Determine tooltip text
       let tooltipText = undefined
       if (hasTooltip) {
         if (isAssetDisposalCell) {
           tooltipText = 'This 2016 asset disposal gain is displayed but excluded from all calculations and summaries to maintain operational focus.'
         } else if (isInterestIncomeCell) {
-          tooltipText = 'Interest income is displayed but excluded from all calculations and summaries to maintain operational focus.'
+          tooltipText = 'This 2016 interest income is displayed but excluded from all calculations and summaries to maintain operational focus.'
         } else if (isCalculatedInfoIcon) {
           // Get the appropriate tooltip for the calculated row type
           // console.log('Setting calculated tooltip for:', accountName, 'type:', calculatedInfo.type, 'formattedValue:', formattedValue)
           tooltipText = getTooltipForCalculatedRow(calculatedInfo.type!)
           // console.log('Calculated tooltip set to:', tooltipText)
+        } else if (isMedicalDirectorShared) {
+          tooltipText = 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.'
+        } else if (isMedicalDirectorPRCS) {
+          tooltipText = 'PRCS contract terms: $250/hr up to $90,000 maximum annual. Applies if a PRCS Medical Director is specified in the Physicians section.'
+        } else if (isMedicalDirectorTotal) {
+          tooltipText = 'Total Medical Director Hours includes:\n\nShared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.\n\nPRCS contract terms: $250/hr up to $90,000 maximum annual. Applies if a PRCS Medical Director is specified in the Physicians section.'
+        } else if (isConsultingAgreement) {
+          tooltipText = '$26.20 per hour for work actually performed subject to a limit of $17,030 per year (25 hours per two-week pay period).'
         } else {
           tooltipText = row.tooltip
         }
