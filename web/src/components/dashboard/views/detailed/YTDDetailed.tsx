@@ -273,10 +273,12 @@ export default function YTDDetailed() {
         onLocumCostsChange={(value) => store.setFutureValue('A', 2025, 'locumCosts', value)}
       />
 </div>
-      <YearlyDataGrid
-        environment={environment}
-        cachedSummary={cachedData?.summary}
-      />
+      <div style={{ maxWidth: '1480px', margin: '0 auto' }}>
+        <YearlyDataGrid
+          environment={environment}
+          cachedSummary={cachedData?.summary}
+        />
+      </div>
     </div>
   )
 }

@@ -532,7 +532,7 @@ export default function YearlyDataGrid({
           </div>
         ) : gridData.rows.length > 0 ? (
           <div ref={scrollContainerRef} style={{ 
-            height: '800px', 
+            height: '1200px', 
             overflow: 'auto',
             border: '1px solid #e5e7eb',
             borderRadius: '4px'
