@@ -107,7 +107,7 @@ export default function SyncButton({ environment }: SyncButtonProps) {
           window.location.reload()
         }, 2000)
       }
-    } catch (err) {
+    } catch {
       setSyncStep('error')
       setSyncMessage('Network error - please try again')
 

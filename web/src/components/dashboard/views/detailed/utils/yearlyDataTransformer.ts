@@ -988,7 +988,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       let backgroundColor = '#ffffff'
       let fontWeight = 'normal'
       let fontSize = '12px'
-      let paddingLeft = row.level * 12
+      const paddingLeft = row.level * 12
       let cursor = 'default'
       let border = 'none'
       
@@ -1456,7 +1456,7 @@ export function debugSummaryCalculations(gridData: { rows: Row[], columns: any[]
   })
   
   // console.log('\n🎛️  All Custom Overrides:')
-  Object.entries(customProjectedValues).forEach(([name, value]) => {
+  Object.entries(customProjectedValues).forEach(() => {
     // console.log(`   "${name}": ${value}`)
   })
   

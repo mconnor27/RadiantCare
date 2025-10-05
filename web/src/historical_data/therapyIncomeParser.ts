@@ -41,7 +41,7 @@ export function calculateRollingAverage(data: YTDPoint[], windowSize: number = 7
 }
 
 // Generic function to parse therapy income from any year's data
-function parseTherapyIncomeFromReport(report: any, year: string): YTDPoint[] {
+function parseTherapyIncomeFromReport(report: any): YTDPoint[] {
   try {
     // Get column definitions to map dates
     const allColumns = (report?.Columns?.Column || []).slice(1) // Skip first column (account names)
@@ -124,9 +124,9 @@ function parseTherapyIncomeFromReport(report: any, year: string): YTDPoint[] {
     
     // console.log(`Parsed ${points.length} days of ${year} therapy income data`)
     // console.log(`${year} total therapy income:`, cumulativeTotal)
-    
+
     return points
-  } catch (error) {
+  } catch {
     // console.error(`Error parsing ${year} therapy income data:`, error)
     return []
   }
@@ -135,41 +135,41 @@ function parseTherapyIncomeFromReport(report: any, year: string): YTDPoint[] {
 export function parseTherapyIncome2025(cachedData?: any): YTDPoint[] {
   // Use cached data if provided, otherwise fall back to historical JSON
   const dataSource = cachedData || historical2025Data
-  return parseTherapyIncomeFromReport(dataSource, '2025')
+  return parseTherapyIncomeFromReport(dataSource)
 }
 
 export function parseTherapyIncome2024(): YTDPoint[] {
-  return parseTherapyIncomeFromReport(historical2024Data, '2024')
+  return parseTherapyIncomeFromReport(historical2024Data)
 }
 
 export function parseTherapyIncome2023(): YTDPoint[] {
-  return parseTherapyIncomeFromReport(historical2023Data, '2023')
+  return parseTherapyIncomeFromReport(historical2023Data)
 }
 
 export function parseTherapyIncome2022(): YTDPoint[] {
-  return parseTherapyIncomeFromReport(historical2022Data, '2022')
+  return parseTherapyIncomeFromReport(historical2022Data)
 }
 
 export function parseTherapyIncome2021(): YTDPoint[] {
-  return parseTherapyIncomeFromReport(historical2021Data, '2021')
+  return parseTherapyIncomeFromReport(historical2021Data)
 }
 
 export function parseTherapyIncome2020(): YTDPoint[] {
-  return parseTherapyIncomeFromReport(historical2020Data, '2020')
+  return parseTherapyIncomeFromReport(historical2020Data)
 }
 
 export function parseTherapyIncome2019(): YTDPoint[] {
-  return parseTherapyIncomeFromReport(historical2019Data, '2019')
+  return parseTherapyIncomeFromReport(historical2019Data)
 }
 
 export function parseTherapyIncome2018(): YTDPoint[] {
-  return parseTherapyIncomeFromReport(historical2018Data, '2018')
+  return parseTherapyIncomeFromReport(historical2018Data)
 }
 
 export function parseTherapyIncome2017(): YTDPoint[] {
-  return parseTherapyIncomeFromReport(historical2017Data, '2017')
+  return parseTherapyIncomeFromReport(historical2017Data)
 }
 
 export function parseTherapyIncome2016(): YTDPoint[] {
-  return parseTherapyIncomeFromReport(historical2016Data, '2016')
+  return parseTherapyIncomeFromReport(historical2016Data)
 }

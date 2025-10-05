@@ -759,7 +759,7 @@ export const useDashboardStore = create<Store>()(
         },
 
         // Reset projection settings for a scenario to defaults
-        resetProjectionSettings: (scenario: ScenarioKey, skip2025?: boolean) => {
+        resetProjectionSettings: (scenario: ScenarioKey) => {
           set((state) => {
             const scenarioState = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!scenarioState) return
@@ -782,7 +782,7 @@ export const useDashboardStore = create<Store>()(
         },
 
         // Reset year-by-year income/cost values to projected values for a scenario
-        resetYearByYearValues: (scenario: ScenarioKey, skip2025?: boolean) => {
+        resetYearByYearValues: (scenario: ScenarioKey) => {
           // This will reset all custom future values back to projected values (applyProjectionFromLastActual already skips 2025)
           get().applyProjectionFromLastActual(scenario)
         },
@@ -1187,7 +1187,9 @@ export function arePhysiciansChanged(
     // Check PRCS director selection
     const selectionChanged = (fy?.prcsDirectorPhysicianId ?? undefined) !== (defaults.prcsDirectorPhysicianId ?? undefined)
     if (selectionChanged) return true
-  } catch {}
+  } catch {
+    // Silently handle errors when accessing data
+  }
 
   return false
 }

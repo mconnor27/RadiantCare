@@ -188,7 +188,7 @@ export function calculateDelayedW2Payment(physician: Physician, year: number): {
   const hourlyRate = salary / annualWorkHours
   
   let totalWorkDays = 0
-  let periodDetails: string[] = []
+  const periodDetails: string[] = []
   
   // Helper function to count business days (Mon-Fri) in a date range
   function countBusinessDays(startDate: Date, endDate: Date): number {

@@ -221,7 +221,7 @@ export default function ChartControls({
         // Reload the page to refresh data
         window.location.reload()
       }
-    } catch (err) {
+    } catch {
       setSyncError('Network error')
     } finally {
       setSyncing(false)

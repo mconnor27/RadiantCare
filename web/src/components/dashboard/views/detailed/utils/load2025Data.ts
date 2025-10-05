@@ -1,5 +1,4 @@
 import { parseTherapyIncome2025 } from '../../../../../historical_data/therapyIncomeParser'
-import historical2025Data from '../../../../../historical_data/2025_daily.json'
 import { loadYearlyGridData } from './yearlyDataTransformer'
 import type { Physician } from '../../../shared/types'
 

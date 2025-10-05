@@ -287,7 +287,7 @@ export const generateProjectedIncomeData = (
   // Calculate total days from day after last actual point to end of year for interpolation
   let totalDaysToEnd = 0
   let tempMonth = lastMonth
-  let tempDay = lastDay + 1 // Count days after last actual data
+  const tempDay = lastDay + 1 // Count days after last actual data
   
   while (tempMonth <= 12) {
     const maxDay = daysInMonth[tempMonth - 1]
