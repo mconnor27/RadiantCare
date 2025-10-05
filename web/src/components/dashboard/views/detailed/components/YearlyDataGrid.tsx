@@ -134,11 +134,6 @@ function syncGridValuesToMultiyear(
     // Handle individual field mappings with robust normalization
     Object.entries(GRID_TO_MULTIYEAR_MAPPING).forEach(([gridAccountName, multiyearField]) => {
       const value = getProjectedValue(gridAccountName)
-      const normalizedName = normalizeAccountName(gridAccountName)
-      
-      // Check if we have a custom value for this account (either original or normalized name)
-      const hasCustomValue = customProjectedValues[gridAccountName] !== undefined || 
-                            customProjectedValues[normalizedName] !== undefined
       
       // ALWAYS sync grid values to store for compensation calculations
       console.log(`[RESET DEBUG] ✅ Syncing ${multiyearField} = ${value}`)
@@ -543,6 +538,7 @@ export default function YearlyDataGrid({
                 paddingBottom: '12px',
                 minWidth: 'fit-content'
               }}
+              data-form="false"
               onClick={(e) => {
                 const target = e.target as HTMLElement
                 const cellElement = target.closest('[data-cell-rowidx]')
@@ -704,21 +700,22 @@ export default function YearlyDataGrid({
                 setTooltip({ show: false, text: '', x: 0, y: 0 })
               }}
             >
-              <ReactGrid
-                rows={gridData.rows}
-                columns={gridData.columns}
-                enableRowSelection
-                enableRangeSelection
-                // Make all cells non-editable by default
-                canReorderRows={() => false}
-                canReorderColumns={() => false}
-                // Freeze first column and first row like Excel
-                stickyTopRows={1}
-                stickyLeftColumns={1}
-                // Freeze two right-most columns  
-                stickyRightColumns={1}
-                // Handle cell clicks
-                onFocusLocationChanged={(location) => {
+              <form autoComplete="off" onSubmit={(e) => e.preventDefault()}>
+                <ReactGrid
+                  rows={gridData.rows}
+                  columns={gridData.columns}
+                  enableRowSelection
+                  enableRangeSelection
+                  // Make all cells non-editable by default
+                  canReorderRows={() => false}
+                  canReorderColumns={() => false}
+                  // Freeze first column and first row like Excel
+                  stickyTopRows={1}
+                  stickyLeftColumns={1}
+                  // Freeze two right-most columns  
+                  stickyRightColumns={1}
+                  // Handle cell clicks
+                  onFocusLocationChanged={(location) => {
                   console.log('Focus changed to:', location)
                   if (location?.rowId && location?.columnId === 'col-0' && typeof location.rowId === 'string' && location.rowId.startsWith('section-')) {
                     console.log('Section clicked via focus:', location.rowId)
@@ -742,6 +739,7 @@ export default function YearlyDataGrid({
                   }
                 }}
               />
+              </form>
             </div>
           </div>
         ) : (

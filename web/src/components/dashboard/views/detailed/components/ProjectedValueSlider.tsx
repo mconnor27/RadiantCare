@@ -235,9 +235,18 @@ export default function ProjectedValueSlider({
   if (!isVisible) return null
 
   // Calculate animation positions
+  const sliderWidth = 320
+  const padding = 20
+  
+  // Determine if slider should render to the right or left
+  const spaceOnRight = window.innerWidth - (position.x + padding)
+  const shouldRenderLeft = spaceOnRight < sliderWidth + 30 // 30px safety margin
+  
   const finalPosition = {
     top: position.y - 50,
-    left: Math.min(position.x + 20, window.innerWidth - 350)
+    left: shouldRenderLeft 
+      ? Math.max(10, (originRect?.left || position.x) - sliderWidth - padding) // Render to left using cell's left edge
+      : position.x + padding // Render to right
   }
   
   // Calculate the actual height of the slider content for smooth animation
@@ -246,7 +255,9 @@ export default function ProjectedValueSlider({
   
   const startPosition = originPosition ? {
     top: originPosition.y - 10,
-    left: originPosition.x - 10
+    left: shouldRenderLeft && originRect
+      ? originRect.left - 10  // Start from cell's left edge when rendering left
+      : originPosition.x - 10  // Start from click position when rendering right
   } : finalPosition
 
   return (
@@ -269,7 +280,10 @@ export default function ProjectedValueSlider({
       {/* Funnel connector (optional) */}
       {originRect && ANIMATION_CONFIG.style === 'two-stage' && funnelProgress.width > 0 && (
         <svg
-          width={Math.max(20, finalPosition.left - originRect.right + 10)}
+          width={shouldRenderLeft 
+            ? Math.max(20, originRect.left - (finalPosition.left + sliderWidth) + 10)
+            : Math.max(20, finalPosition.left - originRect.right + 10)
+          }
           height={Math.max(
             originRect.height + 20,
             Math.abs(originRect.bottom - (finalPosition.top - 10)) + 60
@@ -277,7 +291,9 @@ export default function ProjectedValueSlider({
           style={{
             position: 'absolute',
             top: Math.min(originRect.top, finalPosition.top - 10),
-            left: originRect.right - 5,
+            left: shouldRenderLeft 
+              ? finalPosition.left + sliderWidth - 5
+              : originRect.right - 5,
             pointerEvents: 'none',
             zIndex: 1599,
             opacity: 0.9
@@ -292,19 +308,21 @@ export default function ProjectedValueSlider({
           </defs>
           {(() => {
             // Animate funnel dimensions based on progress
-            const fullWidth = Math.max(20, finalPosition.left - originRect.right + 10)
+            const fullWidth = shouldRenderLeft
+              ? Math.max(20, originRect.left - (finalPosition.left + sliderWidth) + 10)
+              : Math.max(20, finalPosition.left - originRect.right + 10)
             const animatedWidth = Math.max(10, fullWidth * (0.1 + 0.9 * funnelProgress.width))
             
             // Calculate positions relative to our SVG container
             const svgTop = Math.min(originRect.top, finalPosition.top - 10)
             const sliderJoinYAbs = (finalPosition.top - 10) + 20 // 20px down from slider top
             
-            // Left edge spans the full cell right border height
+            // Cell edge spans the full cell border height
             const startY1 = originRect.top - svgTop
             const startY2 = originRect.bottom - svgTop - 2
             const cellHeight = startY2 - startY1
             
-            // Right edge animates smoothly from cell level to slider level during width phase
+            // Slider edge animates smoothly from cell level to slider level during width phase
             const cellCenterY = (startY1 + startY2) / 2
             const finalSliderY = sliderJoinYAbs - svgTop
             
@@ -318,7 +336,8 @@ export default function ProjectedValueSlider({
             
             console.log('Funnel connector (full height):', { 
               fullWidth, animatedWidth, cellHeight, startY1, startY2, endY1, endY2,
-              widthProgress: funnelProgress.width, heightProgress: funnelProgress.height 
+              widthProgress: funnelProgress.width, heightProgress: funnelProgress.height,
+              shouldRenderLeft
             })
             
             // Control points for smooth curves - adjust based on width progress
@@ -333,7 +352,16 @@ export default function ProjectedValueSlider({
             const cp1y_bottom = startY2 - Math.abs(startY2 - endY2) * 0.2 // Slightly above start point
             const cp2y_bottom = endY2 + 3 // Slightly below target for gentler curve
             
-            const path = `
+            // Path direction depends on whether we're rendering left or right
+            // When rendering left: x=5 is slider edge, x=animatedWidth-5 is cell edge
+            // When rendering right: x=5 is cell edge, x=animatedWidth-5 is slider edge
+            const path = shouldRenderLeft ? `
+              M 5,${endY1}
+              C ${cp1x},${cp2y_top} ${cp2x},${cp1y_top} ${animatedWidth - 5},${startY1}
+              L ${animatedWidth - 5},${startY2}
+              C ${cp2x},${cp1y_bottom} ${cp1x},${cp2y_bottom} 5,${endY2}
+              Z
+            ` : `
               M 5,${startY1}
               C ${cp1x},${cp1y_top} ${cp2x},${cp2y_top} ${animatedWidth - 5},${endY1}
               L ${animatedWidth - 5},${endY2}
@@ -362,7 +390,7 @@ export default function ProjectedValueSlider({
             // Two-stage animation styles
             top: animationStage === 'initial' ? startPosition.top : finalPosition.top,
             left: animationStage === 'initial' ? startPosition.left : finalPosition.left,
-            width: animationStage === 'initial' ? '20px' : '320px',
+            width: animationStage === 'initial' ? '20px' : `${sliderWidth}px`,
             height: animationStage === 'initial' || animationStage === 'width' ? '20px' : targetHeight,
             transition: animationStage === 'width' 
               ? `width ${ANIMATION_CONFIG.twoStage.widthDuration}ms ${ANIMATION_CONFIG.twoStage.easing}, top ${ANIMATION_CONFIG.twoStage.widthDuration}ms ${ANIMATION_CONFIG.twoStage.easing}, left ${ANIMATION_CONFIG.twoStage.widthDuration}ms ${ANIMATION_CONFIG.twoStage.easing}, box-shadow ${ANIMATION_CONFIG.twoStage.widthDuration}ms ${ANIMATION_CONFIG.twoStage.easing}`
@@ -374,7 +402,7 @@ export default function ProjectedValueSlider({
             // Scale-all animation styles
             top: isAnimating ? startPosition.top : finalPosition.top,
             left: isAnimating ? startPosition.left : finalPosition.left,
-            width: isAnimating ? '20px' : '320px',
+            width: isAnimating ? '20px' : `${sliderWidth}px`,
             height: isAnimating ? '20px' : 'auto',
             transform: isAnimating ? 'scale(0.1)' : 'scale(1)',
             transition: `all ${ANIMATION_CONFIG.scaleAll.duration}ms ${ANIMATION_CONFIG.scaleAll.noOvershoot}`,
@@ -597,6 +625,7 @@ export default function ProjectedValueSlider({
                   step={step}
                   value={sliderValue}
                   onChange={handleSliderChange}
+                  autoComplete="off"
                   style={{
                     width: '100%',
                     height: '6px',
@@ -627,6 +656,8 @@ export default function ProjectedValueSlider({
                     type="text"
                     value={inputValue}
                     onChange={handleInputChange}
+                    autoComplete="off"
+                    inputMode="numeric"
                     style={{
                       width: `${inputWidthCh}ch`,
                       padding: '8px 12px',

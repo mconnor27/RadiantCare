@@ -97,7 +97,7 @@ export default function DetailedChart({
   const historical2017Data = useMemo(() => parseTherapyIncome2017(), [])
   const historical2016Data = useMemo(() => parseTherapyIncome2016(), [])
 
-  // Track container width for aspect ratio
+  // Track container width for aspect ratio using ResizeObserver
   useEffect(() => {
     const updateWidth = () => {
       if (containerRef.current) {
@@ -106,9 +106,37 @@ export default function DetailedChart({
     }
 
     updateWidth()
-    window.addEventListener('resize', updateWidth)
-    return () => window.removeEventListener('resize', updateWidth)
+    
+    // Use ResizeObserver to detect container size changes (not just window resize)
+    // This handles cases like the controls panel changing width
+    if (containerRef.current) {
+      const resizeObserver = new ResizeObserver(() => {
+        updateWidth()
+      })
+      resizeObserver.observe(containerRef.current)
+      
+      // Keep window resize listener as fallback
+      window.addEventListener('resize', updateWidth)
+      
+      return () => {
+        resizeObserver.disconnect()
+        window.removeEventListener('resize', updateWidth)
+      }
+    }
   }, [])
+
+  // Force Plotly to resize when incomeMode changes (controls panel width changes)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (containerRef.current) {
+        const plotlyDiv = containerRef.current.querySelector('.js-plotly-plot') as HTMLElement
+        if (plotlyDiv) {
+          Plotly.Plots.resize(plotlyDiv)
+        }
+      }
+    }, 320) // Match CSS transition duration (300ms) + small buffer
+    return () => clearTimeout(timer)
+  }, [incomeMode])
 
   // Animation for pulsing marker - only active in line mode
   useEffect(() => {
@@ -647,7 +675,8 @@ export default function DetailedChart({
           overflow: 'hidden',
           position: 'relative',
           minWidth: config.minWidth,
-          ...(maxWidth > 0 ? { maxWidth } : { flex: 1 })
+          ...(maxWidth > 0 ? { maxWidth } : { flex: 1 }),
+          transition: 'width 0.3s ease-in-out, min-width 0.3s ease-in-out, max-width 0.3s ease-in-out, flex 0.3s ease-in-out'
         }}>
         {shouldShowControls && (
           <>

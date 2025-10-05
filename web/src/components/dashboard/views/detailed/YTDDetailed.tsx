@@ -226,7 +226,6 @@ export default function YTDDetailed() {
         </div>
         <div style={{ flexShrink: 0 }}>
           <ChartControls
-            environment={environment}
             isNormalized={isNormalized}
             setIsNormalized={setIsNormalized}
             showCombined={showCombined}

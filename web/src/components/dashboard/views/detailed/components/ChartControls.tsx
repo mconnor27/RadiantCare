@@ -6,7 +6,6 @@ import ColorSchemeSelector from './ColorSchemeSelector'
 import { createTooltip, removeTooltip } from '../../../shared/tooltips'
 
 export interface ChartControlsProps {
-  environment: 'production' | 'sandbox'
   isNormalized: boolean
   setIsNormalized: (normalized: boolean) => void
   showCombined: boolean
@@ -38,7 +37,6 @@ export interface ChartControlsProps {
 }
 
 export default function ChartControls({
-  environment,
   isNormalized,
   setIsNormalized,
   showCombined,
@@ -178,81 +176,32 @@ export default function ChartControls({
     setSelectedYears([])
   }
 
-  const [hoveredGroup, setHoveredGroup] = useState<number | null>(null)
-
-  // Sync state
-  const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string | null>(null)
-  const [syncing, setSyncing] = useState(false)
-  const [syncError, setSyncError] = useState<string | null>(null)
-
-  // Load last sync timestamp on mount
-  useEffect(() => {
-    if (environment === 'production') {
-      fetch('/api/qbo/cached-2025')
-        .then(res => res.ok ? res.json() : null)
-        .then(cache => {
-          if (cache?.lastSyncTimestamp) {
-            setLastSyncTimestamp(cache.lastSyncTimestamp)
-          }
-        })
-        .catch(() => {})
-    }
-  }, [environment])
-
-  // Handle sync button click
-  const handleSync = async () => {
-    setSyncing(true)
-    setSyncError(null)
-    try {
-      const response = await fetch('/api/qbo/sync-2025', { method: 'POST' })
-      const data = await response.json()
-
-      if (!response.ok) {
-        if (data.error === 'already_synced_today') {
-          setSyncError('Already synced today')
-          setLastSyncTimestamp(data.lastSyncTimestamp)
-        } else if (data.error === 'not_connected') {
-          setSyncError('not_connected')
-        } else {
-          setSyncError(data.message || 'Sync failed')
-        }
-      } else {
-        setLastSyncTimestamp(data.lastSyncTimestamp)
-        // Reload the page to refresh data
-        window.location.reload()
-      }
-    } catch {
-      setSyncError('Network error')
-    } finally {
-      setSyncing(false)
-    }
-  }
-
-  const formatTimestamp = (timestamp: string | null) => {
-    if (!timestamp) return 'Never'
-    const date = new Date(timestamp)
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    })
-  }
-
   return (
-    <div style={{
-      marginBottom: isSidebar ? 0 : 16,
-      border: '1px solid #ccc',
-      borderRadius: 4,
-      padding: 10,
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-      minWidth: 360,
-      maxWidth: 'fit-content',
-      width: 'fit-content',
-      position: 'relative'
-    }}>
+    <>
+      <style>{`
+        @keyframes fadeInSlide {
+          from {
+            opacity: 0;
+            transform: translateY(-8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
+      <div style={{
+        marginBottom: isSidebar ? 0 : 16,
+        border: '1px solid #ccc',
+        borderRadius: 4,
+        padding: 10,
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+        minWidth: 360,
+        maxWidth: 'fit-content',
+        width: 'fit-content',
+        position: 'relative',
+        transition: 'width 0.3s ease-in-out, min-width 0.3s ease-in-out, max-width 0.3s ease-in-out'
+      }}>
       <h3 style={{
         margin: '0 0 16px 0',
         fontSize: 16,
@@ -280,7 +229,8 @@ export default function ChartControls({
             border: '1px solid #d1d5db',
             borderRadius: 6,
             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-            margin: '4px 0'
+            margin: '4px 0',
+            transition: 'all 0.3s ease-in-out'
           }}>
             <ColorSchemeSelector
               totalColorScheme={colorScheme}
@@ -308,9 +258,16 @@ export default function ChartControls({
             border: '1px solid #d1d5db',
             borderRadius: 6,
             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-            margin: '4px 0'
+            margin: '4px 0',
+            transition: 'all 0.3s ease-in-out'
           }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: 8, 
+            alignItems: 'flex-start',
+            transition: 'all 0.3s ease-in-out'
+          }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
                 <button
@@ -436,8 +393,17 @@ export default function ChartControls({
             </div>
 
             {/* Site visibility legend - show in per-site mode or proportion mode */}
-            {(incomeMode === 'per-site' || chartMode === 'proportion') && (
-              <div style={{ display: 'flex', gap: 6, paddingLeft: 0 }}>
+            <div style={{ 
+              display: 'flex', 
+              gap: 6, 
+              paddingLeft: 0,
+              maxHeight: (incomeMode === 'per-site' || chartMode === 'proportion') ? '50px' : '0px',
+              opacity: (incomeMode === 'per-site' || chartMode === 'proportion') ? 1 : 0,
+              overflow: 'hidden',
+              transition: 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, margin-top 0.3s ease-in-out',
+              pointerEvents: (incomeMode === 'per-site' || chartMode === 'proportion') ? 'auto' : 'none',
+              marginTop: (incomeMode === 'per-site' || chartMode === 'proportion') ? '0px' : '-8px'
+            }}>
                 {[
                   { key: 'lacey' as const, label: 'Lacey', color: SITE_COLORS.lacey.current },
                   { key: 'centralia' as const, label: 'Centralia', color: SITE_COLORS.centralia.current },
@@ -479,7 +445,6 @@ export default function ChartControls({
                   )
                 })}
               </div>
-            )}
           </div>
         </div>
         </>
@@ -503,7 +468,8 @@ export default function ChartControls({
             border: '1px solid #d1d5db',
             borderRadius: 6,
             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-            margin: '4px 0'
+            margin: '4px 0',
+            transition: 'all 0.3s ease-in-out'
           }}>
           <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
           <button
@@ -1010,7 +976,8 @@ export default function ChartControls({
             border: '1px solid #d1d5db',
             borderRadius: 6,
             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-            margin: '4px 0'
+            margin: '4px 0',
+            transition: 'all 0.3s ease-in-out'
           }}>
             <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
             <button
@@ -1106,7 +1073,8 @@ export default function ChartControls({
             border: '1px solid #d1d5db',
             borderRadius: 6,
             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-            margin: '4px 0'
+            margin: '4px 0',
+            transition: 'all 0.3s ease-in-out'
           }}>
             <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
             <button
@@ -1174,8 +1142,9 @@ export default function ChartControls({
           </div>
         </>
       </div>
-      {!isSidebar && loading && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 12 }}>Loading…</div>}
-      {isSidebar && loading && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 12 }}>Loading…</div>}
-    </div>
+        {!isSidebar && loading && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 12 }}>Loading…</div>}
+        {isSidebar && loading && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 12 }}>Loading…</div>}
+      </div>
+    </>
   )
 }
