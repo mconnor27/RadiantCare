@@ -100,7 +100,7 @@ export const CURRENT_BAR_BORDER = {
 
 // Color scheme options for easy swapping
 export const COLOR_SCHEMES = {
-  // Current red-based scheme (ggplot2 2-trace default)
+  
   // RadiantCare brand colors
   radiantCare: {
     historical: Array(9).fill('#9e9e9e'),
@@ -122,6 +122,7 @@ export const COLOR_SCHEMES = {
     projectedBar: 'rgba(248, 118, 109, 0.6)',
     historicalCombined: '#00BFC4' // Same blue/green for combined
   },
+  // Standard ggplot2 blue/green scheme (with color spectrum)
   ggplot2: {
     historical: [
       '#006064', '#00838f', '#0097a7', '#00acc1',
@@ -215,9 +216,6 @@ export const SITE_PROJECTED_PATTERNS = {
   }
 }
 
-// Current active scheme (change this to switch color schemes)
-export const ACTIVE_COLOR_SCHEME = COLOR_SCHEMES.radiantCare
-
 // Helper function to get colors based on color scheme
 export const getColorScheme = (scheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare') => {
   return COLOR_SCHEMES[scheme]
@@ -249,15 +247,8 @@ export const BAR_CONFIG = {
   }
 }
 
-// Color schemes for historical data - uses active color scheme
-export const HISTORICAL_COLORS = ACTIVE_COLOR_SCHEME.historical
-
-export const CURRENT_YEAR_COLOR = ACTIVE_COLOR_SCHEME.current
-export const HISTORICAL_MEAN_COLOR = HISTORICAL_COLORS[Math.floor(HISTORICAL_COLORS.length / 2)]
-
-// Projected data styling configuration - uses active color scheme
+// Projected bar pattern configuration (used for hatching)
 export const PROJECTED_BAR_STYLE = {
-  color: ACTIVE_COLOR_SCHEME.projectedBar,
   pattern: {
     shape: '/',
     size: 4, // Thicker lines (reduced from 8 for denser pattern)
@@ -300,4 +291,23 @@ export const RADAR_CONFIG = {
     maxGrowth: 22, // px
     baseOpacity: 0.5
   }
+}
+
+// Default YTD chart settings
+export const DEFAULT_YTD_SETTINGS = {
+  isNormalized: false,
+  showCombined: false,
+  combineStatistic: null as 'mean' | 'median' | null,
+  combineError: null as 'std' | 'ci' | null,
+  chartMode: 'line' as 'line' | 'bar' | 'proportion',
+  timeframe: 'year' as 'year' | 'quarter' | 'month',
+  currentPeriod: { year: new Date().getFullYear() },
+  is2025Visible: true,
+  showAllMonths: true,
+  incomeMode: 'total' as 'total' | 'per-site',
+  smoothingByMode: { line: 10, bar: 0, proportion: 12 },
+  selectedYears: Array.from({ length: 9 }, (_, i) => 2016 + i),
+  visibleSites: { lacey: true, centralia: true, aberdeen: true },
+  colorScheme: 'radiantCare' as 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare',
+  siteColorScheme: 'rgb' as 'rgb' | 'radiantCare' | 'jama'
 }

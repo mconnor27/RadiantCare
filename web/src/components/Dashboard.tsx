@@ -2,8 +2,10 @@ import { useMemo, useEffect, useState } from 'react'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
+import * as LZString from 'lz-string'
 import YTDDetailed from './dashboard/views/detailed/YTDDetailed'
 import MultiYearView from './dashboard/views/multi-year/MultiYearView'
+import { DEFAULT_YTD_SETTINGS } from './dashboard/views/detailed/config/chartConfig'
 // Import types from types.ts to avoid duplication and binding conflicts
 import type { YearRow, PhysicianType, Physician, FutureYear, ScenarioKey, Store } from './dashboard/shared/types'
 
@@ -1329,7 +1331,9 @@ export function Dashboard() {
   const store = useDashboardStore()
   const isMobile = useIsMobile()
   const [viewMode, setViewMode] = useState<'Multi-Year' | 'YTD Detailed'>('YTD Detailed')
-  const [ytdSettings, setYtdSettings] = useState<any>(null)
+  const [urlLoaded, setUrlLoaded] = useState(false)
+  // Initialize ytdSettings with defaults from chartConfig
+  const [ytdSettings, setYtdSettings] = useState<any>(DEFAULT_YTD_SETTINGS)
 
   // Load from shareable URL hash if present
   useEffect(() => {
@@ -1337,25 +1341,40 @@ export function Dashboard() {
     if (hash && hash.startsWith('#s=')) {
       try {
         const encoded = hash.slice(3)
-        const json = decodeURIComponent(atob(encoded))
+
+        // Try decompressing first (new format)
+        let json: string
+        try {
+          json = LZString.decompressFromEncodedURIComponent(encoded) || ''
+          if (!json) {
+            // Fallback to old base64 format for backward compatibility
+            json = decodeURIComponent(atob(encoded))
+          }
+        } catch {
+          // Fallback to old base64 format for backward compatibility
+          json = decodeURIComponent(atob(encoded))
+        }
+
         const snap = JSON.parse(json)
-        
+
         // Load store data
         useDashboardStore.getState().loadSnapshot(snap)
-        
+
         // Load view mode if present (backward compatible)
         if (snap.viewMode) {
           setViewMode(snap.viewMode)
         }
-        
+
         // Load YTD settings if present (backward compatible)
         if (snap.ytdSettings) {
           setYtdSettings(snap.ytdSettings)
         }
-      } catch {
+      } catch (err) {
+        console.error('Failed to load shareable link:', err)
         // ignore malformed
       }
     }
+    setUrlLoaded(true)
   }, [])
 
   const copyShareLink = async () => {
@@ -1365,21 +1384,25 @@ export function Dashboard() {
       scenarioB: store.scenarioBEnabled ? store.scenarioB : undefined,
       viewMode: viewMode,
     }
-    
-    // Include YTD settings if we have them
-    if (ytdSettings) {
+
+    // Always include YTD settings (chart configuration) for YTD Detailed view
+    if (viewMode === 'YTD Detailed') {
       snap.ytdSettings = ytdSettings
     }
-    
+
     const json = JSON.stringify(snap)
-    const encoded = btoa(encodeURIComponent(json))
-    const url = `${window.location.origin}${window.location.pathname}#s=${encoded}`
+
+    // Compress using LZ-String for shorter URLs
+    const compressed = LZString.compressToEncodedURIComponent(json)
+    const url = `${window.location.origin}${window.location.pathname}#s=${compressed}`
+
     try {
       await navigator.clipboard.writeText(url)
-      alert('Shareable link copied to clipboard')
+      alert('Shareable link copied to clipboard!')
     } catch {
       // fallback: set location hash
-      window.location.hash = `s=${encoded}`
+      window.location.hash = `s=${compressed}`
+      alert('Shareable link updated in URL')
     }
   }
 
@@ -1419,13 +1442,15 @@ export function Dashboard() {
           </div>
         </div>
         
-        {viewMode === 'YTD Detailed' ? (
-          <YTDDetailed 
+        {urlLoaded && viewMode === 'YTD Detailed' ? (
+          <YTDDetailed
             initialSettings={ytdSettings}
             onSettingsChange={setYtdSettings}
           />
-        ) : (
+        ) : urlLoaded && viewMode === 'Multi-Year' ? (
           <MultiYearView />
+        ) : (
+          <div style={{ padding: 20, textAlign: 'center' }}>Loading...</div>
         )}
       </div>
     </div>
