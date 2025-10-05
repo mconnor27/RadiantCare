@@ -213,6 +213,48 @@ export default function YearlyDataGrid({
   const store = useDashboardStore()
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const [gridData, setGridData] = useState<{ rows: Row[], columns: any[] }>({ rows: [], columns: [] })
+
+  // Add global style to prevent autofill
+  useEffect(() => {
+    const style = document.createElement('style')
+    style.textContent = `
+      .rg-cell input:-webkit-autofill,
+      .rg-cell input:-webkit-autofill:hover,
+      .rg-cell input:-webkit-autofill:focus,
+      .rg-cell input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 30px white inset !important;
+        transition: background-color 5000s ease-in-out 0s;
+      }
+      .rg-cell input {
+        autocomplete: off !important;
+      }
+    `
+    document.head.appendChild(style)
+    return () => {
+      document.head.removeChild(style)
+    }
+  }, [])
+
+  // Force autocomplete attributes on ReactGrid inputs
+  useEffect(() => {
+    const inputs = document.querySelectorAll('.rg-cell input')
+    inputs.forEach(input => {
+      input.setAttribute('autocomplete', 'off')
+      input.setAttribute('data-form-type', 'other')
+      input.setAttribute('data-lpignore', 'true')
+      input.setAttribute('readonly', 'readonly')
+
+      // Remove readonly on focus
+      input.addEventListener('focus', () => {
+        input.removeAttribute('readonly')
+      })
+
+      // Add back readonly on blur
+      input.addEventListener('blur', () => {
+        input.setAttribute('readonly', 'readonly')
+      })
+    })
+  }, [gridData])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [collapsedSections, setCollapsedSections] = useState<CollapsibleState>({})
@@ -735,7 +777,17 @@ export default function YearlyDataGrid({
                 setTooltip({ show: false, text: '', x: 0, y: 0 })
               }}
             >
-              <form autoComplete="off" onSubmit={(e) => e.preventDefault()}>
+              <div
+                onFocus={(e) => {
+                  const target = e.target as HTMLInputElement
+                  if (target.tagName === 'INPUT') {
+                    target.setAttribute('autocomplete', 'nope')
+                    target.setAttribute('autocorrect', 'off')
+                    target.setAttribute('autocapitalize', 'off')
+                    target.setAttribute('spellcheck', 'false')
+                  }
+                }}
+              >
                 <ReactGrid
                   rows={gridData.rows}
                   columns={gridData.columns}
@@ -747,8 +799,10 @@ export default function YearlyDataGrid({
                   // Freeze first column and first row like Excel
                   stickyTopRows={1}
                   stickyLeftColumns={1}
-                  // Freeze two right-most columns  
+                  // Freeze two right-most columns
                   stickyRightColumns={1}
+                  enableFillHandle={false}
+                  enableColumnSelection={false}
                   // Handle cell clicks
                   onFocusLocationChanged={(location) => {
                   console.log('Focus changed to:', location)
@@ -774,7 +828,7 @@ export default function YearlyDataGrid({
                   }
                 }}
               />
-              </form>
+              </div>
             </div>
           </div>
         ) : (
