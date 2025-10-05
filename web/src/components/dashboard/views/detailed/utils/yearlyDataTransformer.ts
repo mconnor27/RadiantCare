@@ -1022,10 +1022,10 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       if (isProjectedColumn && row.type === 'Data' && cellIndex > 0 && !isComputedCustomRow && !isTherapyComponent) {
         // Special styling for calculated rows (MD Associates and Guaranteed Payments)
         if (calculatedInfo.isCalculated) {
-          // Calculated values → blue/gray background, not clickable
+          // Calculated values → purple background, not clickable
           cursor = 'default'
-          backgroundColor = '#e0f2fe' // Light blue for calculated
-          border = '1px solid #7dd3fc'
+          backgroundColor = '#f3e8ff' // Light purple for calculated
+          border = '1px solid #d8b4fe'
         } else {
           cursor = 'pointer'
           const config = findAccountConfig(accountName)

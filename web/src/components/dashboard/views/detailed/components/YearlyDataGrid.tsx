@@ -794,6 +794,16 @@ export default function YearlyDataGrid({
               }} />
               <span>User Changed</span>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{
+                width: '20px',
+                height: '12px',
+                backgroundColor: '#f3e8ff',
+                border: '1px solid #d8b4fe',
+                borderRadius: '2px'
+              }} />
+              <span>Set In Physician Panel</span>
+            </div>
           </div>
         )}
         

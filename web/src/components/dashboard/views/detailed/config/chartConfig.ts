@@ -270,17 +270,19 @@ export const CHART_CONFIG = {
   mobile: {
     height: 360,
     minWidth: 300,
-    maxWidth: 0 // 0 = no max width (flex: 1), or set a number in pixels
+    maxWidth: 0, // 0 = no max width (flex: 1), or set a number in pixels
+    aspectRatio: 5/6 // height/width ratio (0.833 = slightly taller than square)
   },
   desktop: {
     height: 507,
     minWidth: 800,
-    maxWidth: 0 // 0 = no max width (flex: 1), or set a number in pixels
+    maxWidth: 0, // 0 = no max width (flex: 1), or set a number in pixels
+    aspectRatio: 3/5 // height/width ratio (0.634)
   },
   margins: {
     left: 80,
     top: 60,
-    bottom: 0,
+    bottom: 60,
     rightDefault: 10,
     rightBarMode: 10,
     rightLineWithRadar: 30

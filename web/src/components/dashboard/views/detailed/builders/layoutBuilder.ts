@@ -367,7 +367,8 @@ export const buildChartLayout = ({
           ? calculateRadarMargin(processedCurrentData, staticLineTraces, currentX, unfilteredCurrentData)
           : CHART_CONFIG.margins.rightDefault),
       t: CHART_CONFIG.margins.top,
-      b: CHART_CONFIG.margins.bottom
+      b: CHART_CONFIG.margins.bottom,
+      autoexpand: false
     },
     // Make bars wider and eliminate gaps in bar mode
     bargap: chartMode === 'bar' ? BAR_CONFIG[timeframe][showCombined ? 'combined' : 'individual'].bargap : undefined,

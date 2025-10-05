@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import createPlotlyComponent from 'react-plotly.js/factory'
 import Plotly from 'plotly.js-dist-min'
 const Plot = createPlotlyComponent(Plotly)
@@ -83,7 +83,9 @@ export default function DetailedChart({
 }: DetailedChartProps) {
   const isMobile = useIsMobile()
   const [pulsePhase, setPulsePhase] = useState(0)
-  
+  const [containerWidth, setContainerWidth] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
+
   // Parse historical data once on component mount
   const historical2024Data = useMemo(() => parseTherapyIncome2024(), [])
   const historical2023Data = useMemo(() => parseTherapyIncome2023(), [])
@@ -94,6 +96,19 @@ export default function DetailedChart({
   const historical2018Data = useMemo(() => parseTherapyIncome2018(), [])
   const historical2017Data = useMemo(() => parseTherapyIncome2017(), [])
   const historical2016Data = useMemo(() => parseTherapyIncome2016(), [])
+
+  // Track container width for aspect ratio
+  useEffect(() => {
+    const updateWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.offsetWidth)
+      }
+    }
+
+    updateWidth()
+    window.addEventListener('resize', updateWidth)
+    return () => window.removeEventListener('resize', updateWidth)
+  }, [])
 
   // Animation for pulsing marker - only active in line mode
   useEffect(() => {
@@ -617,16 +632,23 @@ export default function DetailedChart({
     const config = isMobile ? CHART_CONFIG.mobile : CHART_CONFIG.desktop
     const maxWidth = config.maxWidth
 
+    // Calculate height based on aspect ratio and current container width
+    const chartHeight = containerWidth > 0
+      ? Math.round(containerWidth * config.aspectRatio)
+      : config.height
+
     return (
-      <div style={{
-        border: '1px solid #d1d5db',
-        borderRadius: 6,
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-        overflow: 'hidden',
-        position: 'relative',
-        minWidth: config.minWidth,
-        ...(maxWidth > 0 ? { maxWidth } : { flex: 1 })
-      }}>
+      <div
+        ref={containerRef}
+        style={{
+          border: '1px solid #d1d5db',
+          borderRadius: 6,
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          overflow: 'hidden',
+          position: 'relative',
+          minWidth: config.minWidth,
+          ...(maxWidth > 0 ? { maxWidth } : { flex: 1 })
+        }}>
         {shouldShowControls && (
           <>
             <button
@@ -728,7 +750,7 @@ export default function DetailedChart({
           return true
         } : chartMode === 'proportion' ? undefined : undefined}
         useResizeHandler={true}
-        style={{ width: '100%', height: config.height }}
+        style={{ width: '100%', height: chartHeight }}
       />
     </div>
   )
