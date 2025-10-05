@@ -480,8 +480,7 @@ const isCalculatedRow = (accountName: string): { isCalculated: boolean; type: 'm
     return { isCalculated: true, type: 'locumsSalary' }
   }
   
-  const isMatch = false
-  // console.log('isCalculatedRow check:', { original: accountName, normalized, isMatch })
+  // console.log('isCalculatedRow check:', { original: accountName, normalized })
   return { isCalculated: false, type: null }
 }
 
@@ -1417,7 +1416,6 @@ export function debugSummaryCalculations(gridData: { rows: Row[], columns: any[]
   return // Disabled for now
   // console.log('🔍 === SUMMARY CALCULATION ANALYSIS ===')
   
-  const projectedColumnIndex = gridData.columns.length - 1
   const summaryRows = gridData.rows.filter(row => {
     const firstCell = row.cells?.[0] as any
     return firstCell?.rowType === 'Summary'
@@ -1427,32 +1425,13 @@ export function debugSummaryCalculations(gridData: { rows: Row[], columns: any[]
   
   summaryRows.forEach((row, index) => {
     const firstCell = row.cells?.[0] as any
-    const projectedCell = row.cells?.[projectedColumnIndex] as any
     const accountName = firstCell?.text || `Summary ${index}`
-    const projectedValue = projectedCell?.text || '0'
-    const numericValue = parseFloat(projectedValue.replace(/[$,\s]/g, '')) || 0
     
     // console.log(`\n${index + 1}. "${accountName}":`)
-    // console.log(`   💰 Projected Value: ${projectedValue} (numeric: ${numericValue})`)
     // console.log(`   🎛️  Has Custom Override: ${customProjectedValues[accountName] !== undefined}`)
     if (customProjectedValues[accountName] !== undefined) {
       // console.log(`   ⚡ Custom Value: ${customProjectedValues[accountName]}`)
     }
-    
-    // Determine calculation type
-    let calculationType = 'Unknown'
-    if (customProjectedValues[accountName] !== undefined) {
-      calculationType = 'Custom Override'
-    } else if (/^net\s+operating\s+income$/i.test(accountName)) {
-      calculationType = 'Special (Net Operating Income)'
-    } else if (/^net\s+other\s+income$/i.test(accountName)) {
-      calculationType = 'Special (Net Other Income)'
-    } else if (/^net\s+income$/i.test(accountName)) {
-      calculationType = 'Special (Net Income)'
-    } else {
-      calculationType = 'Regular (Sum of Data Rows)'
-    }
-    // console.log(`   🧮 Calculation Type: ${calculationType}`)
   })
   
   // console.log('\n🎛️  All Custom Overrides:')

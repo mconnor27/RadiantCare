@@ -394,7 +394,7 @@ export function getFutureYearsBase(): Omit<FutureYear, 'physicians'>[] {
 }
 
 // Local function to avoid circular dependency
-function getDefaultNonMdEmploymentCostsForYear(year: number = 2025): number {
+function getDefaultNonMdEmploymentCostsForYear(_year: number = 2025): number {
   // Calculate based on standard staff structure
   // Employee 1: $31.25/hr, 40 hrs/week, full-time + benefits
   const emp1Wages = 31.25 * 40 * 52
