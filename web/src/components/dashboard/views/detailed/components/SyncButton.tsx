@@ -173,7 +173,7 @@ export default function SyncButton({ environment }: SyncButtonProps) {
     }
     needDataThrough.setHours(0, 0, 0, 0) // Start of that day
 
-    // If last sync already covers what we need, return next allowed time
+    // If last sync already covers what we need, calculate next allowed time
     if (lastSyncCoveredThrough >= needDataThrough) {
       // Calculate next time we'll need new data
       const nextNeeded = new Date(needDataThrough)
@@ -190,7 +190,27 @@ export default function SyncButton({ environment }: SyncButtonProps) {
       return nextNeeded
     }
 
-    return null
+    // If we need newer data, calculate when that data will be available
+    // We need data through needDataThrough, but last sync only covered through lastSyncCoveredThrough
+    let nextNeeded: Date
+
+    if (now.getHours() < 17) {
+      // Before 5pm - we need data through prior business day, so next sync at 5pm today
+      nextNeeded = new Date(now)
+      nextNeeded.setHours(17, 0, 0, 0)
+    } else {
+      // After 5pm - we need data through today, so next sync tomorrow at 5pm
+      nextNeeded = new Date(now)
+      nextNeeded.setDate(nextNeeded.getDate() + 1)
+      nextNeeded.setHours(17, 0, 0, 0)
+
+      // Skip weekends
+      while (nextNeeded.getDay() === 0 || nextNeeded.getDay() === 6) {
+        nextNeeded.setDate(nextNeeded.getDate() + 1)
+      }
+    }
+
+    return nextNeeded
   }
 
   const canSyncNow = (timestamp: string | null) => {
@@ -206,6 +226,8 @@ export default function SyncButton({ environment }: SyncButtonProps) {
 
     const nextAllowed = getNextAllowedSync(timestamp)
     if (!nextAllowed) return true
+
+    // If the next allowed time is in the future, we can't sync now
     return now >= nextAllowed
   }
 

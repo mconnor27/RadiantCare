@@ -187,12 +187,12 @@ export default function YTDDetailed() {
 
 
   return (
-    <div style={{ maxWidth: 1600, margin: '0 auto' }}>
+    <div style={{ margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
         <SyncButton environment={environment} />
       </div>
       <div style={{ display: 'flex', gap: 16 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1 }}>
           {error === 'not_connected' ? (
             <div>
               <div style={{ marginBottom: 8 }}>Connect your QuickBooks to load real YTD data.</div>
@@ -264,7 +264,7 @@ export default function YTDDetailed() {
         cachedSummary={cachedData?.summary}
         cachedEquity={cachedData?.equity}
       />
-
+<div style={{ width: '900px', margin: '0 auto' }}>
       <PhysiciansEditor
         year={2025}
         scenario="A"
@@ -272,7 +272,7 @@ export default function YTDDetailed() {
         locumCosts={currentLocumCosts}
         onLocumCostsChange={(value) => store.setFutureValue('A', 2025, 'locumCosts', value)}
       />
-
+</div>
       <YearlyDataGrid
         environment={environment}
         cachedSummary={cachedData?.summary}

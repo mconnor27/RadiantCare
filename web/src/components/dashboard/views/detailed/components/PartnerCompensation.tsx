@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import equityDataStatic from '../../../../../historical_data/2025_equity.json'
 import summaryDataStatic from '../../../../../historical_data/2025_summary.json'
-import { PARTNER_COMPENSATION_CONFIG, DEFAULT_MD_SHARED_PROJECTION, DEFAULT_MD_PRCS_PROJECTION } from '../../../shared/defaults'
+import { PARTNER_COMPENSATION_CONFIG } from '../../../shared/defaults'
 import { useDashboardStore } from '../../../../Dashboard'
-import { calculateDelayedW2Payment, calculateEmployeeTotalCost, getPartnerFTEWeight, getEmployeePortionOfYear } from '../../../shared/calculations'
+import { calculateDelayedW2Payment } from '../../../shared/calculations'
 import { calculateAllCompensations } from '../../../shared/compensationEngine'
 import type { Physician } from '../../../shared/types'
 
@@ -308,25 +308,7 @@ export default function PartnerCompensation({
   
   // Parse both projected and YTD data
   const projectedData = useMemo(() => {
-    console.log('[COMP DEBUG] 🧮 Recalculating compensation with:', {
-      therapyIncome: fy2025?.therapyIncome,
-      nonEmploymentCosts: fy2025?.nonEmploymentCosts,
-      nonMdEmploymentCosts: fy2025?.nonMdEmploymentCosts,
-      miscEmploymentCosts: fy2025?.miscEmploymentCosts,
-      locumCosts: fy2025?.locumCosts,
-      medicalDirectorHours: fy2025?.medicalDirectorHours,
-      prcsMedicalDirectorHours: fy2025?.prcsMedicalDirectorHours,
-      consultingServicesAgreement: fy2025?.consultingServicesAgreement,
-      prcsDirectorPhysicianId: fy2025?.prcsDirectorPhysicianId,
-      physicianCount: physicians.length,
-      physicians: physicians.map(p => ({ name: p.name, type: p.type, buyoutCost: p.buyoutCost }))
-    })
-    
-    const result = parseProjectedData(physicians, fy2025)
-    
-    console.log('[COMP DEBUG] 💰 Calculated totals:', result.totals)
-    
-    return result
+    return parseProjectedData(physicians, fy2025)
   }, [
     physicians,
     fy2025?.therapyIncome,
@@ -385,7 +367,7 @@ export default function PartnerCompensation({
     <div style={{
       marginTop: 16,
       maxWidth: 900,
-      margin: '16px auto 0 auto',
+      margin: '16px auto 16px auto',
       overflowX: 'auto',
       border: '1px solid #e5e7eb',
       borderRadius: 6,
@@ -393,25 +375,6 @@ export default function PartnerCompensation({
       background: '#ffffff',
       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
     }}>
-      {/* DEBUG INFO */}
-      <div style={{
-        marginBottom: 8,
-        padding: 8,
-        background: '#fef3c7',
-        border: '1px solid #fbbf24',
-        borderRadius: 4,
-        fontSize: 11,
-        fontFamily: 'monospace'
-      }}>
-        <div style={{ fontWeight: 600, marginBottom: 4 }}>DEBUG - 2025 Store Values:</div>
-        <div>therapyIncome: ${fy2025?.therapyIncome?.toLocaleString() || 'MISSING'}</div>
-        <div>therapyLacey: ${fy2025?.therapyLacey?.toLocaleString() || 'MISSING'}</div>
-        <div>therapyCentralia: ${fy2025?.therapyCentralia?.toLocaleString() || 'MISSING'}</div>
-        <div>therapyAberdeen: ${fy2025?.therapyAberdeen?.toLocaleString() || 'MISSING'}</div>
-        <div>nonEmploymentCosts: ${fy2025?.nonEmploymentCosts?.toLocaleString() || 'MISSING'}</div>
-        <div>locumCosts: ${fy2025?.locumCosts?.toLocaleString() || 'MISSING'}</div>
-        <div>Projected Total: ${projectedData.totals['Connor']?.toLocaleString()}</div>
-      </div>
 
       <div style={{ fontWeight: 600, marginBottom: 8 }}>Physician Compensation</div>
       
@@ -588,45 +551,6 @@ export default function PartnerCompensation({
         })}
       </div>
       
-      {/* Debug section for fy2025 values */}
-      <details style={{ 
-        marginTop: '16px', 
-        padding: '8px', 
-        border: '1px solid #e5e7eb', 
-        borderRadius: '4px',
-        background: '#f9fafb',
-        fontSize: '12px'
-      }}>
-        <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#374151' }}>
-          Debug: FY2025 Values (for projected calculations)
-        </summary>
-        <div style={{ marginTop: '8px', fontSize: '11px' }}>
-          <strong>Custom Projected Values:</strong>
-          <pre style={{ 
-            marginTop: '4px', 
-            padding: '6px', 
-            background: '#fff', 
-            border: '1px solid #d1d5db',
-            borderRadius: '4px',
-            fontSize: '10px'
-          }}>
-            {JSON.stringify(store.customProjectedValues, null, 2)}
-          </pre>
-        </div>
-        <pre style={{ 
-          marginTop: '8px', 
-          padding: '8px', 
-          background: '#fff', 
-          border: '1px solid #d1d5db',
-          borderRadius: '4px',
-          overflow: 'auto',
-          maxHeight: '300px',
-          fontSize: '11px',
-          lineHeight: '1.4'
-        }}>
-          {JSON.stringify(fy2025, null, 2)}
-        </pre>
-      </details>
       
     </div>
   )

@@ -1035,7 +1035,7 @@ export default function ChartControls({
                 opacity: incomeMode === 'total' ? 0.5 : 1
               }}
             >
-              Projection
+              Proportion
             </button>
             </div>
 

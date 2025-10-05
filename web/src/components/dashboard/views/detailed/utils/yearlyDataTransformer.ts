@@ -1127,7 +1127,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
   
   const columns = columnTitles.map((_, index) => ({
     columnId: `col-${index}`,
-    width: index === 0 ? 350 : (index === columnTitles.length - 1 ? 140 : 100) // Make last column wider to fit title
+    width: index === 0 ? 290 : (index === columnTitles.length - 1 ? 140 : 100) // Make last column wider to fit title
   }))
   
   return {

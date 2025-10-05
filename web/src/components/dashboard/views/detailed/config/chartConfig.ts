@@ -268,15 +268,19 @@ export const PROJECTED_BAR_STYLE = {
 // Chart dimensions and margins
 export const CHART_CONFIG = {
   mobile: {
-    height: 360
+    height: 360,
+    minWidth: 300,
+    maxWidth: 0 // 0 = no max width (flex: 1), or set a number in pixels
   },
   desktop: {
-    height: 500
+    height: 507,
+    minWidth: 800,
+    maxWidth: 0 // 0 = no max width (flex: 1), or set a number in pixels
   },
   margins: {
-    left: 60,
+    left: 80,
     top: 60,
-    bottom: 40,
+    bottom: 0,
     rightDefault: 10,
     rightBarMode: 10,
     rightLineWithRadar: 30

@@ -98,11 +98,11 @@ export default function DetailedChart({
   // Animation for pulsing marker - only active in line mode
   useEffect(() => {
     if (chartMode !== 'line') return
-    
+
     const interval = setInterval(() => {
       setPulsePhase(prev => (prev + 1) % RADAR_CONFIG.frameCount)
     }, RADAR_CONFIG.updateInterval)
-    
+
     return () => clearInterval(interval)
   }, [chartMode])
 
@@ -614,13 +614,18 @@ export default function DetailedChart({
     )
   }
 
+    const config = isMobile ? CHART_CONFIG.mobile : CHART_CONFIG.desktop
+    const maxWidth = config.maxWidth
+
     return (
       <div style={{
         border: '1px solid #d1d5db',
         borderRadius: 6,
         boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
         overflow: 'hidden',
-        position: 'relative'
+        position: 'relative',
+        minWidth: config.minWidth,
+        ...(maxWidth > 0 ? { maxWidth } : { flex: 1 })
       }}>
         {shouldShowControls && (
           <>
@@ -723,7 +728,7 @@ export default function DetailedChart({
           return true
         } : chartMode === 'proportion' ? undefined : undefined}
         useResizeHandler={true}
-        style={{ width: '100%', height: isMobile ? CHART_CONFIG.mobile.height : CHART_CONFIG.desktop.height }}
+        style={{ width: '100%', height: config.height }}
       />
     </div>
   )
