@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from 'react'
 import createPlotlyComponent from 'react-plotly.js/factory'
 import Plotly from 'plotly.js-dist-min'
 const Plot = createPlotlyComponent(Plotly)
@@ -13,6 +14,11 @@ export default function HistoricAndProjectionChart() {
   const store = useDashboardStore()
   const isMobile = useIsMobile()
   const historicYears = store.historic.map((h) => h.year)
+  
+  // Log only on mount (not on every render)
+  useEffect(() => {
+    console.log('📊 Multi-Year Chart: Loaded projections for', store.scenarioA.future.map(f => f.year).join(', '))
+  }, [])
 
   // Helper: build merged 2025 FY and consistent baseline metrics from scenario state
   const getScenarioBaselineMetrics = (scenario: 'A' | 'B') => {
@@ -127,18 +133,41 @@ export default function HistoricAndProjectionChart() {
     }
   }
 
-  const baselineA = getScenarioBaselineMetrics('A')
-  const baselineB = store.scenarioBEnabled && store.scenarioB ? getScenarioBaselineMetrics('B') : null
-
-  // Historic arrays with scenario-derived 2025 values to avoid discontinuities
-  const incomeHistoric = store.historic.map((h) => h.year === 2025 ? baselineA.totalIncome : getTotalIncome(h))
-  const costHistoric = store.historic.map((h) => h.year === 2025 ? baselineA.nonEmploymentCosts : h.nonEmploymentCosts)
-  const netHistoric = store.historic.map((h) => h.year === 2025 ? baselineA.netIncome : getTotalIncome(h) - h.nonEmploymentCosts - (h.employeePayroll ?? 0))
-  const employmentHistoric = store.historic.map((h) => h.year === 2025 ? baselineA.employmentCosts : h.employeePayroll ?? 0)
+  // Memoize baseline calculations to avoid recalculating on every render
+  const baselineA = useMemo(() => getScenarioBaselineMetrics('A'), [
+    store.scenarioA.future,
+    store.scenarioA.dataMode,
+    store.historic
+  ])
   
-  // Historic Net Income for MDs values (2016-2025)
-  // Values from the provided historic data image
-  const netIncomeForMDsHistoric = historicYears.map((year, index) => {
+  const baselineB = useMemo(() => 
+    store.scenarioBEnabled && store.scenarioB ? getScenarioBaselineMetrics('B') : null,
+    [store.scenarioBEnabled, store.scenarioB?.future, store.scenarioB?.dataMode, store.historic]
+  )
+
+  // Memoize historic arrays - only recalculate when baseline changes
+  const incomeHistoric = useMemo(() => 
+    store.historic.map((h) => h.year === 2025 ? baselineA.totalIncome : getTotalIncome(h)),
+    [store.historic, baselineA.totalIncome]
+  )
+  
+  const costHistoric = useMemo(() =>
+    store.historic.map((h) => h.year === 2025 ? baselineA.nonEmploymentCosts : h.nonEmploymentCosts),
+    [store.historic, baselineA.nonEmploymentCosts]
+  )
+  
+  const netHistoric = useMemo(() =>
+    store.historic.map((h) => h.year === 2025 ? baselineA.netIncome : getTotalIncome(h) - h.nonEmploymentCosts - (h.employeePayroll ?? 0)),
+    [store.historic, baselineA.netIncome]
+  )
+  
+  const employmentHistoric = useMemo(() =>
+    store.historic.map((h) => h.year === 2025 ? baselineA.employmentCosts : h.employeePayroll ?? 0),
+    [store.historic, baselineA.employmentCosts]
+  )
+  
+  // Memoize historic Net Income for MDs values (2016-2025)
+  const netIncomeForMDsHistoric = useMemo(() => historicYears.map((year, index) => {
     if (year === 2025) {
       // Use scenario-derived 2025 value to avoid discontinuity
       return calculateNetIncomeForMDs(2025, 'A')
@@ -156,11 +185,10 @@ export default function HistoricAndProjectionChart() {
       2583878, // 2024
     ]
     return historicValues[index] || 0
-  })
+  }), [historicYears, store.scenarioA.future])
 
-  // Historic Staff Employment Costs values (2016-2025)
-  // Values from the provided historic data image
-  const staffEmploymentHistoric = historicYears.map((year, index) => {
+  // Memoize historic Staff Employment Costs values (2016-2025)
+  const staffEmploymentHistoric = useMemo(() => historicYears.map((year, index) => {
     if (year === 2025) {
       // Use scenario-derived 2025 staff employment cost to avoid discontinuity
       return baselineA.staffEmployment
@@ -178,7 +206,7 @@ export default function HistoricAndProjectionChart() {
       157986.94, // 2024
     ]
     return historicValues[index] || 0
-  })
+  }), [historicYears, baselineA.staffEmployment])
 
   // Marker fill: make 2025 points solid white to match plot background
   const plotBackgroundColor = '#ffffff'
@@ -204,8 +232,8 @@ export default function HistoricAndProjectionChart() {
   // For Scenario B: use intermediate color for all markers, we'll overlay white for 2025 later
   const getScenarioBMarkerColor = (traceColor: string) => getIntermediateColor(traceColor)
 
-  // Calculate employment costs for scenarios
-  const scAEmployment = store.scenarioA.future.map(f => {
+  // Memoize employment costs calculations for scenarios
+  const scAEmployment = useMemo(() => store.scenarioA.future.map(f => {
     const md = f.physicians.reduce((s, e) => {
       if (e.type === 'employee') return s + (e.salary ?? 0)
       if (e.type === 'newEmployee') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
@@ -213,7 +241,6 @@ export default function HistoricAndProjectionChart() {
       if (e.type === 'partnerToRetire') return s + (e.buyoutCost ?? 0)
       return s
     }, 0)
-    // Add delayed W2 payments for employeeToPartner physicians
     const delayedW2 = f.physicians.reduce((s, p) => {
       if (p.type === 'employeeToPartner') {
         const delayed = calculateDelayedW2Payment(p, f.year)
@@ -222,99 +249,103 @@ export default function HistoricAndProjectionChart() {
       return s
     }, 0)
     return md + f.nonMdEmploymentCosts + delayedW2
-  })
-  const scBEmployment = store.scenarioB?.future.map(f => {
-    const md = f.physicians.reduce((s, e) => {
-      if (e.type === 'employee') return s + (e.salary ?? 0)
-      if (e.type === 'newEmployee') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
-      if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
-      if (e.type === 'partnerToRetire') return s + (e.buyoutCost ?? 0)
-      return s
-    }, 0)
-    // Add delayed W2 payments for employeeToPartner physicians
-    const delayedW2 = f.physicians.reduce((s, p) => {
-      if (p.type === 'employeeToPartner') {
-        const delayed = calculateDelayedW2Payment(p, f.year)
-        return s + delayed.amount + delayed.taxes
-      }
-      return s
-    }, 0)
-    return md + f.nonMdEmploymentCosts + delayedW2
-  }) || []
-  const scANet = store.scenarioA.future.map(f => {
-    const md = f.physicians.reduce((s, e) => {
-      if (e.type === 'employee') return s + (e.salary ?? 0)
-      if (e.type === 'newEmployee') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
-      if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
-      return s
-    }, 0)
-    const buyouts = f.physicians.reduce((s, p) => s + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0), 0)
-    const delayedW2 = f.physicians.reduce((s, p) => {
-      if (p.type === 'employeeToPartner') {
-        const delayed = calculateDelayedW2Payment(p, f.year)
-        return s + delayed.amount + delayed.taxes
-      }
-      return s
-    }, 0)
-    return getTotalIncome(f) - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - f.locumCosts - md - buyouts - delayedW2
-  })
-  const scBNet = store.scenarioB?.future.map(f => {
-    const md = f.physicians.reduce((s, e) => {
-      if (e.type === 'employee') return s + (e.salary ?? 0)
-      if (e.type === 'newEmployee') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
-      if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
-      return s
-    }, 0)
-    const buyouts = f.physicians.reduce((s, p) => s + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0), 0)
-    const delayedW2 = f.physicians.reduce((s, p) => {
-      if (p.type === 'employeeToPartner') {
-        const delayed = calculateDelayedW2Payment(p, f.year)
-        return s + delayed.amount + delayed.taxes
-      }
-      return s
-    }, 0)
-    return getTotalIncome(f) - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - f.locumCosts - md - buyouts - delayedW2
-  }) || []
+  }), [store.scenarioA.future])
   
-  // Calculate Net Income for MDs for future years
-  const scANetIncomeForMDs = [2025, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => f.year)].map(year => {
-    const value = calculateNetIncomeForMDs(year, 'A')
-    // Debug logging to compare with expected values
-    if (year >= 2025 && year <= 2030) {
-      console.log(`Net Income for MDs Scenario A ${year}: $${value.toLocaleString()}`)
-    }
-    return value
-  })
-  const scBNetIncomeForMDs = store.scenarioBEnabled && store.scenarioB 
-    ? [2025, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.year)].map(year => {
-        const value = calculateNetIncomeForMDs(year, 'B')
-        // Debug logging to compare with expected values
-        if (year >= 2025 && year <= 2030) {
-          console.log(`Net Income for MDs Scenario B ${year}: $${value.toLocaleString()}`)
-        }
-        return value
-      })
-    : []
+  const scBEmployment = useMemo(() => store.scenarioB?.future.map(f => {
+    const md = f.physicians.reduce((s, e) => {
+      if (e.type === 'employee') return s + (e.salary ?? 0)
+      if (e.type === 'newEmployee') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+      if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+      if (e.type === 'partnerToRetire') return s + (e.buyoutCost ?? 0)
+      return s
+    }, 0)
+    const delayedW2 = f.physicians.reduce((s, p) => {
+      if (p.type === 'employeeToPartner') {
+        const delayed = calculateDelayedW2Payment(p, f.year)
+        return s + delayed.amount + delayed.taxes
+      }
+      return s
+    }, 0)
+    return md + f.nonMdEmploymentCosts + delayedW2
+  }) || [], [store.scenarioB?.future])
+  
+  const scANet = useMemo(() => store.scenarioA.future.map(f => {
+    const md = f.physicians.reduce((s, e) => {
+      if (e.type === 'employee') return s + (e.salary ?? 0)
+      if (e.type === 'newEmployee') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+      if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+      return s
+    }, 0)
+    const buyouts = f.physicians.reduce((s, p) => s + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0), 0)
+    const delayedW2 = f.physicians.reduce((s, p) => {
+      if (p.type === 'employeeToPartner') {
+        const delayed = calculateDelayedW2Payment(p, f.year)
+        return s + delayed.amount + delayed.taxes
+      }
+      return s
+    }, 0)
+    return getTotalIncome(f) - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - f.locumCosts - md - buyouts - delayedW2
+  }), [store.scenarioA.future])
+  
+  const scBNet = useMemo(() => store.scenarioB?.future.map(f => {
+    const md = f.physicians.reduce((s, e) => {
+      if (e.type === 'employee') return s + (e.salary ?? 0)
+      if (e.type === 'newEmployee') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+      if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+      return s
+    }, 0)
+    const buyouts = f.physicians.reduce((s, p) => s + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0), 0)
+    const delayedW2 = f.physicians.reduce((s, p) => {
+      if (p.type === 'employeeToPartner') {
+        const delayed = calculateDelayedW2Payment(p, f.year)
+        return s + delayed.amount + delayed.taxes
+      }
+      return s
+    }, 0)
+    return getTotalIncome(f) - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - f.locumCosts - md - buyouts - delayedW2
+  }) || [], [store.scenarioB?.future])
+  
+  // Memoize Net Income for MDs calculations
+  const scANetIncomeForMDs = useMemo(() => 
+    [2025, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => f.year)].map(year => {
+      return calculateNetIncomeForMDs(year, 'A')
+    }),
+    [store.scenarioA.future]
+  )
+  
+  const scBNetIncomeForMDs = useMemo(() => 
+    store.scenarioBEnabled && store.scenarioB 
+      ? [2025, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.year)].map(year => {
+          return calculateNetIncomeForMDs(year, 'B')
+        })
+      : [],
+    [store.scenarioBEnabled, store.scenarioB?.future]
+  )
 
-  // Calculate Staff Employment Costs for future years (nonMdEmploymentCosts + miscEmploymentCosts)
-  const scAStaffEmployment = [2025, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => f.year)].map(year => {
-    if (year === 2025) {
-      // Use 2025 actual staff employment cost from the defined function
-      return computeDefaultNonMdEmploymentCosts(2025)
-    }
-    const fy = store.scenarioA.future.find(f => f.year === year)
-    return (fy?.nonMdEmploymentCosts ?? 0) + (fy?.miscEmploymentCosts ?? 0)
-  })
-  const scBStaffEmployment = store.scenarioBEnabled && store.scenarioB 
-    ? [2025, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.year)].map(year => {
-        if (year === 2025) {
-          // Use 2025 actual staff employment cost from the defined function
-          return computeDefaultNonMdEmploymentCosts(2025)
-        }
-        const fy = store.scenarioB?.future.find(f => f.year === year)
-        return (fy?.nonMdEmploymentCosts ?? 0) + (fy?.miscEmploymentCosts ?? 0)
-      })
-    : []
+  // Memoize Staff Employment Costs calculations
+  const scAStaffEmployment = useMemo(() => 
+    [2025, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => f.year)].map(year => {
+      if (year === 2025) {
+        return computeDefaultNonMdEmploymentCosts(2025)
+      }
+      const fy = store.scenarioA.future.find(f => f.year === year)
+      return (fy?.nonMdEmploymentCosts ?? 0) + (fy?.miscEmploymentCosts ?? 0)
+    }),
+    [store.scenarioA.future]
+  )
+  
+  const scBStaffEmployment = useMemo(() => 
+    store.scenarioBEnabled && store.scenarioB 
+      ? [2025, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.year)].map(year => {
+          if (year === 2025) {
+            return computeDefaultNonMdEmploymentCosts(2025)
+          }
+          const fy = store.scenarioB?.future.find(f => f.year === year)
+          return (fy?.nonMdEmploymentCosts ?? 0) + (fy?.miscEmploymentCosts ?? 0)
+        })
+      : [],
+    [store.scenarioBEnabled, store.scenarioB?.future]
+  )
 
 
   return (

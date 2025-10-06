@@ -1346,21 +1346,30 @@ export function Dashboard() {
   const [urlLoaded, setUrlLoaded] = useState(false)
   // Initialize ytdSettings with defaults from chartConfig
   const [ytdSettings, setYtdSettings] = useState<any>(DEFAULT_YTD_SETTINGS)
+  // Track whether MultiYearView has been visited (for lazy initialization)
+  const [multiYearInitialized, setMultiYearInitialized] = useState(false)
   
   // Wrap setYtdSettings in useCallback to prevent unnecessary re-renders in YTDDetailed
   const handleYtdSettingsChange = useCallback((settings: any) => {
     setYtdSettings(settings)
   }, [])
 
+  // Initialize MultiYearView when first visited
+  useEffect(() => {
+    if (viewMode === 'Multi-Year' && !multiYearInitialized) {
+      setMultiYearInitialized(true)
+    }
+  }, [viewMode, multiYearInitialized])
+
   // Trigger resize event when switching to Multi-Year view to fix Plotly chart dimensions
   useEffect(() => {
-    if (viewMode === 'Multi-Year' && urlLoaded) {
+    if (viewMode === 'Multi-Year' && urlLoaded && multiYearInitialized) {
       // Use requestAnimationFrame to ensure DOM has updated before triggering resize
       requestAnimationFrame(() => {
         window.dispatchEvent(new Event('resize'))
       })
     }
-  }, [viewMode, urlLoaded])
+  }, [viewMode, urlLoaded, multiYearInitialized])
 
   // Load from shareable URL hash if present
   useEffect(() => {
@@ -1390,6 +1399,10 @@ export function Dashboard() {
         // Load view mode if present (backward compatible)
         if (snap.viewMode) {
           setViewMode(snap.viewMode)
+          // If loading Multi-Year from URL, initialize it immediately
+          if (snap.viewMode === 'Multi-Year') {
+            setMultiYearInitialized(true)
+          }
         }
 
         // Load YTD settings if present (backward compatible)
@@ -1479,9 +1492,12 @@ export function Dashboard() {
                 onSettingsChange={handleYtdSettingsChange}
               />
             </div>
-            <div style={{ display: viewMode === 'Multi-Year' ? 'block' : 'none' }}>
-              <MultiYearView />
-            </div>
+            {/* Only render MultiYearView after it's been visited once (lazy initialization) */}
+            {multiYearInitialized && (
+              <div style={{ display: viewMode === 'Multi-Year' ? 'block' : 'none' }}>
+                <MultiYearView />
+              </div>
+            )}
           </>
         )}
       </div>

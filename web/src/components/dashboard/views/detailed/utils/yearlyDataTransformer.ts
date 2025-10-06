@@ -1010,18 +1010,24 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       }
 
       // Add info icon for Medical Director Hours and Consulting Agreement rows
+      // (but skip if already added via calculated row check above)
       const trimmedAccountName = accountName.trim()
       const isMedicalDirectorShared = trimmedAccountName === 'Medical Director Hours (Shared)'
       const isMedicalDirectorPRCS = trimmedAccountName === 'Medical Director Hours (PRCS)'
       const isMedicalDirectorTotal = trimmedAccountName === 'Medical Director Hours'
       const isConsultingAgreement = trimmedAccountName === 'Consulting Agreement/Other'
 
-      if (cellIndex === 0 && (isMedicalDirectorShared || isMedicalDirectorPRCS || isMedicalDirectorTotal || isConsultingAgreement)) {
+      if (cellIndex === 0 && !calculatedInfo.isCalculated && (isMedicalDirectorShared || isMedicalDirectorPRCS || isMedicalDirectorTotal || isConsultingAgreement)) {
         formattedValue = formattedValue + ' ⓘ'
       }
 
       // Add info icon to projected column for Medical Director Hours (Shared)
       if (isProjectedColumn && isMedicalDirectorShared) {
+        formattedValue = formattedValue + ' ⓘ'
+      }
+
+      // Add info icon to projected column for Consulting Agreement/Other
+      if (isProjectedColumn && isConsultingAgreement) {
         formattedValue = formattedValue + ' ⓘ'
       }
       
@@ -1111,7 +1117,9 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       const isAssetDisposalCell = accountName.includes('8530') && accountName.includes('Asset Disposal') && formattedValue.includes('ⓘ')
       const isInterestIncomeCell = accountName.includes('7900') && accountName.includes('Interest') && formattedValue.includes('ⓘ')
       const isCalculatedInfoIcon = isProjectedColumn && formattedValue.includes('ⓘ') && calculatedInfo.isCalculated
-      const hasTooltip = (cellIndex === 0 && (!!row.tooltip || formattedValue.includes('ⓘ'))) || isAssetDisposalCell || isInterestIncomeCell || isCalculatedInfoIcon
+      const isMedicalDirectorSharedProjected = isProjectedColumn && isMedicalDirectorShared && formattedValue.includes('ⓘ')
+      const isConsultingAgreementProjected = isProjectedColumn && isConsultingAgreement && formattedValue.includes('ⓘ')
+      const hasTooltip = (cellIndex === 0 && (!!row.tooltip || formattedValue.includes('ⓘ'))) || isAssetDisposalCell || isInterestIncomeCell || isCalculatedInfoIcon || isMedicalDirectorSharedProjected || isConsultingAgreementProjected
 
       // Determine tooltip text
       let tooltipText = undefined

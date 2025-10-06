@@ -51,6 +51,11 @@ export default function MultiYearView() {
   const [overallOpen, setOverallOpen] = useState(true)
   const [parametersOpen, setParametersOpen] = useState(true)
 
+  // Log only on mount (not on every render)
+  useEffect(() => {
+    console.log('🚀 Multi-Year: View initializing')
+  }, [])
+
   // Memoized summaries that update when projection settings change
   const projectionSummaryA = useMemo(() => 
     createProjectionSummary('A', store), 
