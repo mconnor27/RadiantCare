@@ -6,8 +6,19 @@ export default defineConfig({
   base: '/',
   plugins: [react()],
   server: {
+    host: '0.0.0.0', // Allow external connections (needed for ngrok)
+    strictPort: false,
+    allowedHosts: ["068d58167fe6.ngrok-free.app"], // Allow all hosts (including ngrok domains)
+    hmr: {
+      clientPort: 443, // Use HTTPS port for ngrok
+      protocol: 'wss', // Use secure websocket for HMR
+    },
     proxy: {
-      '/api': 'http://localhost:4000'
+      '/api': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+      }
     }
   },
   optimizeDeps: {
