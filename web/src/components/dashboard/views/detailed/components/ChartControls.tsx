@@ -24,7 +24,6 @@ export interface ChartControlsProps {
   setIncomeMode: (mode: IncomeMode) => void
   smoothing: number
   setSmoothing: (smoothing: number) => void
-  loading: boolean
   variant?: 'inline' | 'sidebar'
   selectedYears: number[]
   setSelectedYears: (years: number[]) => void
@@ -55,7 +54,6 @@ export default function ChartControls({
   setIncomeMode,
   smoothing,
   setSmoothing,
-  loading,
   variant = 'inline',
   selectedYears,
   setSelectedYears,
@@ -1173,8 +1171,6 @@ export default function ChartControls({
           </div>
         </>
       </div>
-        {!isSidebar && loading && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 12 }}>Loading…</div>}
-        {isSidebar && loading && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 12 }}>Loading…</div>}
       </div>
     </>
   )

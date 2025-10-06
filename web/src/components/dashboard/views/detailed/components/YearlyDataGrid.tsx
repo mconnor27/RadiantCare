@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { ReactGrid, type Row } from '@silevis/reactgrid'
 import '@silevis/reactgrid/styles.css'
 import CollapsibleSection from '../../../shared/components/CollapsibleSection'
-import { loadYearlyGridData, debugSummaryCalculations, type CollapsibleState } from '../utils/yearlyDataTransformer'
+import { loadYearlyGridData, type CollapsibleState } from '../utils/yearlyDataTransformer'
 import getDefaultValue from '../config/projectedDefaults'
 import ProjectedValueSlider from './ProjectedValueSlider'
 import { useDashboardStore } from '../../../../Dashboard'
@@ -57,8 +57,7 @@ async function calculateProjectionRatio(cached2025?: any): Promise<number> {
     const fullYearDays = 365
     const projectionRatio = fullYearDays / dataPeriodDays
     
-    console.log(`YearlyDataGrid - Data period: ${startPeriod} to ${endPeriod} (${dataPeriodDays} days)`)
-    console.log(`YearlyDataGrid - Projection ratio: ${projectionRatio.toFixed(3)} (${fullYearDays}/${dataPeriodDays})`)
+    console.log(`📅 Data period: ${startPeriod} to ${endPeriod} (${dataPeriodDays} days, ratio: ${projectionRatio.toFixed(3)})`)
     
     return projectionRatio
   } catch (error) {
@@ -82,10 +81,7 @@ function syncGridValuesToMultiyear(
   customProjectedValues: Record<string, number>,
   gridData: { rows: any[], allRows: any[], columns: any[] }
 ) {
-  console.log('[RESET DEBUG] 🔄 syncGridValuesToMultiyear called')
-  // console.log('📊 Grid data rows count:', gridData.rows?.length || 0)
-  // console.log('🎛️ Custom projected values:', customProjectedValues)
-  
+  console.log('🔄 Syncing grid → store')
   try {
     // Helper to get current projected value for an account
     const getProjectedValue = (accountName: string): number => {
@@ -136,18 +132,14 @@ function syncGridValuesToMultiyear(
     Object.entries(GRID_TO_MULTIYEAR_MAPPING).forEach(([gridAccountName, multiyearField]) => {
       const value = getProjectedValue(gridAccountName)
       
-      // ALWAYS sync grid values to store for compensation calculations
-      console.log(`[RESET DEBUG] ✅ Syncing ${multiyearField} = ${value}`)
-      
       // Update both scenarios A and B for 2025
       try {
         store.setFutureValue('A', 2025, multiyearField, value)
         if (store.scenarioBEnabled) {
           store.setFutureValue('B', 2025, multiyearField, value)
         }
-        // console.log(`   ✅ Successfully updated ${multiyearField} = ${value}`)
       } catch (error) {
-        console.error(`[RESET DEBUG]    ❌ Failed to update ${multiyearField}:`, error)
+        console.error(`Failed to sync ${multiyearField}:`, error)
       }
     })
 
@@ -167,16 +159,14 @@ function syncGridValuesToMultiyear(
       therapyIncomeTotal += componentValue
     })
     
-    console.log(`[RESET DEBUG] ✅ Syncing therapyIncome = ${therapyIncomeTotal}`)
-    
-    // ALWAYS sync therapy income total
+    // Sync therapy income total
     try {
       store.setFutureValue('A', 2025, 'therapyIncome', therapyIncomeTotal)
       if (store.scenarioBEnabled) {
         store.setFutureValue('B', 2025, 'therapyIncome', therapyIncomeTotal)
       }
     } catch (error) {
-      console.error(`[RESET DEBUG]    ❌ Failed to update therapyIncome:`, error)
+      console.error(`Failed to sync therapyIncome:`, error)
     }
 
     // Additionally sync per-site therapy projected totals to store for per-site projections
@@ -184,7 +174,7 @@ function syncGridValuesToMultiyear(
       const lacey = getProjectedValue('7105 Therapy - Lacey')
       const centralia = getProjectedValue('7110 Therapy - Centralia')
       const aberdeen = getProjectedValue('7108 Therapy - Aberdeen')
-      // console.log(`🏥 Per-site projected therapy from grid → Lacey=${lacey}, Centralia=${centralia}, Aberdeen=${aberdeen}`)
+      
       store.setFutureValue('A', 2025, 'therapyLacey', lacey)
       store.setFutureValue('A', 2025, 'therapyCentralia', centralia)
       store.setFutureValue('A', 2025, 'therapyAberdeen', aberdeen)
@@ -194,7 +184,7 @@ function syncGridValuesToMultiyear(
         store.setFutureValue('B', 2025, 'therapyAberdeen', aberdeen)
       }
     } catch (error) {
-      console.error('[RESET DEBUG]    ❌ Failed to sync per-site therapy values to store:', error)
+      console.error('Failed to sync per-site therapy values:', error)
     }
     
   } catch (error) {
@@ -205,6 +195,7 @@ function syncGridValuesToMultiyear(
 interface YearlyDataGridProps {
   environment?: 'production' | 'sandbox'
   cachedSummary?: any
+  isLoadingCache?: boolean  // Add flag to indicate if cached data is still loading
 }
 
 // Click detection coordinates for expand/collapse all icons in header
@@ -218,7 +209,8 @@ const HEADER_ICON_DETECTION = {
 
 export default function YearlyDataGrid({
   environment = 'sandbox',
-  cachedSummary
+  cachedSummary,
+  isLoadingCache = false
 }: YearlyDataGridProps = {}) {
   const store = useDashboardStore()
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
@@ -335,12 +327,18 @@ export default function YearlyDataGrid({
   }
   
 
+  // Track last loaded data signature to prevent redundant loads
+  const lastLoadRef = useRef<string>('')
+  
   const loadData = useCallback(async () => {
     try {
-      console.log('loadData called with collapsedSections:', collapsedSections)
-      setLoading(true)
-      setError(null)
-
+      // In production, wait for cached data to arrive before loading stale historical data
+      if (environment === 'production' && !cachedSummary && isLoadingCache) {
+        console.log('⏳ Waiting for fresh cached data...')
+        setLoading(true)
+        return
+      }
+      
       // Get 2025 physician data and benefit growth rate from store
       const fy2025 = store.scenarioA.future.find((f: any) => f.year === 2025)
       const physicianData = fy2025 ? {
@@ -351,41 +349,58 @@ export default function YearlyDataGrid({
         prcsMedicalDirectorHours: fy2025.prcsMedicalDirectorHours
       } : undefined
 
-      // Load both the grid data and the projection ratio
+      // Create a signature of the data that would affect the load
       const cachedSummaryData = (environment === 'production' && cachedSummary) ? cachedSummary : undefined
+      const dataSignature = JSON.stringify({
+        collapsed: collapsedSections,
+        customs: store.customProjectedValues,
+        physicians: physicianData?.physicians.length,
+        hasCached: !!cachedSummaryData
+      })
+      
+      // Skip if we just loaded the exact same configuration
+      if (lastLoadRef.current === dataSignature) {
+        console.log('⏭️  Skipping redundant load (same data)')
+        return
+      }
+      
+      console.log('📊 YearlyDataGrid: Loading data...')
+      setLoading(true)
+      setError(null)
+
+      // Load both the grid data and the projection ratio
       const [data, ratio] = await Promise.all([
         loadYearlyGridData(collapsedSections, store.customProjectedValues, physicianData, cachedSummaryData),
         calculateProjectionRatio(cachedSummaryData)
       ])
 
-      console.log('loadData setting grid data, rows count:', data.rows.length)
       setGridData(data)
       setProjectionRatio(ratio)
+      lastLoadRef.current = dataSignature
+      console.log(`📊 YearlyDataGrid: Loaded ${data.rows.length} rows, projection ratio: ${ratio.toFixed(3)}`)
       
-      // Debug summary calculations
-      // console.log('🔍 Running summary calculation debugging...')
-      debugSummaryCalculations(data, store.customProjectedValues)
-      
-      // Always sync grid values to store on initial load for compensation calculations
-      setTimeout(() => {
-        // Skip sync if suppression flag is set (e.g., during reset operations)
-        if ((store as any).suppressNextGridSync) {
-          console.log('⏰ [RESET DEBUG] Initial grid sync SKIPPED (suppressed)')
-          ;(store as any).suppressNextGridSync = false
-          return
-        }
+      // Check if suppression flag is set AND consume it before sync
+      const shouldSuppress = store.consumeSuppressNextGridSync()
+      if (shouldSuppress) {
+        console.log('⏭️  Skipping initial sync (suppressed)')
+        return  // Skip sync entirely during reset operations
+      }
 
-        console.log('⏰ [RESET DEBUG] Initial grid sync started')
+      // Always sync grid values to store on initial load for compensation calculations
+      // Use a longer delay to reduce redundant syncs during rapid state changes
+      setTimeout(() => {
         syncGridValuesToMultiyear(store, store.customProjectedValues, data)
-        console.log('⏰ [RESET DEBUG] Initial grid sync completed')
-      }, 100)
+      }, 200)
     } catch (err) {
       console.error('Error loading yearly data:', err)
       setError('Failed to load yearly financial data')
     } finally {
       setLoading(false)
     }
-  }, [collapsedSections, store.customProjectedValues, store.scenarioA.future, store.scenarioA.projection.benefitCostsGrowthPct, store, environment, cachedSummary])
+  // CRITICAL: Do NOT include store objects in dependencies - causes infinite loops
+  // We read store values fresh inside the function
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collapsedSections, environment, cachedSummary, isLoadingCache])
 
   useEffect(() => {
     loadData()
@@ -398,9 +413,7 @@ export default function YearlyDataGrid({
       const scrollToRight = () => {
         const el = scrollContainerRef.current
         if (el) {
-          console.log('Auto-scroll attempt:', { scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, currentScrollLeft: el.scrollLeft })
           el.scrollLeft = el.scrollWidth - el.clientWidth
-          console.log('Auto-scroll result:', { newScrollLeft: el.scrollLeft })
         }
       }
       
@@ -664,7 +677,6 @@ export default function YearlyDataGrid({
 
                       if (isExpandClick) {
                         // Expand all sections in main table (not bottom summary)
-                        console.log('Expand all clicked')
                         setCollapsedSections(prev => {
                           const newState = { ...prev }
                           // Find all section IDs in main table and set to false (expanded)
@@ -682,7 +694,6 @@ export default function YearlyDataGrid({
                         return
                       } else if (isCollapseClick) {
                         // Collapse all sections in main table (not bottom summary)
-                        console.log('Collapse all clicked')
                         setCollapsedSections(prev => {
                           const newState = { ...prev }
                           // Find all section IDs in main table and set to true (collapsed)
@@ -703,12 +714,10 @@ export default function YearlyDataGrid({
 
                     // Handle section clicks (first column)
                     if (colIndex === 0 && rowId.startsWith('section-')) {
-                      console.log('Manual click detected for section:', rowId)
                       handleCellClick(rowId, columnId, e)
                     }
                     // Handle projected cell clicks (last column)
                     else if (gridData.columns && colIndex === gridData.columns.length - 1) {
-                      console.log('Manual click detected for projected cell:', { rowIndex, colIndex, rowId })
                       // Check row type from the cell to prevent non-Data rows and custom computed summary group rows
                       const row = gridData.rows[rowIndex]
                       const cell = row?.cells?.[colIndex] as any
@@ -726,14 +735,10 @@ export default function YearlyDataGrid({
                 }
               }}
               onMouseOver={(e) => {
-                console.log('[mouseover] container')
                 const target = e.target as HTMLElement
                 const cellElement = target.closest('[data-cell-rowidx]') || target.closest('[role="gridcell"]') || target.closest('.rg-cell')
-                if (!cellElement) {
-                  console.log('[mouseover] no cellElement found; target=', target.tagName, target.className)
-                }
+                
                 if (cellElement) {
-                  console.log('[mouseover] cellElement tag:', (cellElement as HTMLElement).tagName, 'class:', (cellElement as HTMLElement).className)
                   const rowIdx = cellElement.getAttribute('data-cell-rowidx')
                   const colIdx = cellElement.getAttribute('data-cell-colidx')
                   
@@ -742,12 +747,9 @@ export default function YearlyDataGrid({
                     const rowIndex = parseInt(rowIdx, 10)
                     const colIndex = parseInt(colIdx, 10)
                     const cell = gridData.rows[rowIndex]?.cells?.[colIndex] as any
-                    console.log('[mouseover] rowIdx:', rowIdx, 'colIdx:', colIdx, 'rowIndex:', rowIndex, 'colIndex:', colIndex)
                     
                     if (cell?.tooltip) {
-                      console.log('[mouseover] tooltip found:', cell.tooltip)
                       const mouseEvent = (e as unknown as { clientX: number; clientY: number })
-                      console.log('[mouseover] tooltip positioning:', { clientX: mouseEvent.clientX, clientY: mouseEvent.clientY })
                       const pos = calculateTooltipPosition(mouseEvent.clientX, mouseEvent.clientY)
                       setTooltip({
                         show: true,
@@ -756,7 +758,6 @@ export default function YearlyDataGrid({
                         y: pos.y
                       })
                     } else {
-                      console.log('[mouseover] no tooltip on cell')
                       // Fallback by visible text when tooltip metadata isn't present
                       const rawText = (cellElement as HTMLElement).textContent || ''
                       const normalized = rawText
@@ -770,7 +771,6 @@ export default function YearlyDataGrid({
                       
                       // Special handling for calculated rows with info icons
                       if (!fallback && isCalculatedAccount(rawText)) {
-                        console.log('[mouseover] Calculated row detected:', rawText)
                         if (rawText.match(/8322.*MD.*Associates.*Salary/i)) {
                           fallback = 'This value is automatically calculated from the sum of employee and part-employee physician salaries in the physician panel. This row is not editable.'
                         } else if (rawText.match(/8325.*MD.*Associates.*Benefits/i)) {
@@ -784,11 +784,9 @@ export default function YearlyDataGrid({
                         }
                       }
                       
-                      console.log('[mouseover] fallback after no tooltip:', { rawText, normalized, hasFallback: !!fallback })
                       if (fallback) {
                         const mouseEvent = (e as unknown as { clientX: number; clientY: number })
                         const pos = calculateTooltipPosition(mouseEvent.clientX, mouseEvent.clientY)
-                        console.log('[mouseover] setting fallback tooltip:', { text: fallback, x: pos.x, y: pos.y })
                         setTooltip({
                           show: true,
                           text: fallback,
@@ -811,7 +809,6 @@ export default function YearlyDataGrid({
                     
                     // Special handling for calculated rows with info icons
                     if (!fallback && isCalculatedAccount(rawText)) {
-                      console.log('[mouseover] Calculated row detected (no data attrs):', rawText)
                       if (rawText.match(/8322.*MD.*Associates.*Salary/i)) {
                         fallback = 'This value is automatically calculated from the sum of employee and part-employee physician salaries in the physician panel. This row is not editable.'
                       } else if (rawText.match(/8325.*MD.*Associates.*Benefits/i)) {
@@ -825,11 +822,9 @@ export default function YearlyDataGrid({
                       }
                     }
                     
-                    console.log('[mouseover] fallback no data attrs:', { rawText, normalized, hasFallback: !!fallback })
                     if (fallback) {
                       const mouseEvent = (e as unknown as { clientX: number; clientY: number })
                       const pos = calculateTooltipPosition(mouseEvent.clientX, mouseEvent.clientY)
-                      console.log('[mouseover] setting fallback tooltip (no data attrs):', { text: fallback, x: pos.x, y: pos.y })
                       setTooltip({
                         show: true,
                         text: fallback,
@@ -848,7 +843,6 @@ export default function YearlyDataGrid({
                 }
               }}
               onMouseOut={() => {
-                console.log('[mouseout] hide tooltip')
                 setTooltip({ show: false, text: '', x: 0, y: 0 })
               }}
             >
@@ -879,26 +873,9 @@ export default function YearlyDataGrid({
                   enableFillHandle={false}
                   enableColumnSelection={false}
                   // Handle cell clicks
-                  onFocusLocationChanged={(location) => {
-                  console.log('Focus changed to:', location)
+                  onFocusLocationChanged={() => {
                   // Don't trigger section collapse on focus - let the actual click handler do it
                   // This prevents double-triggering which causes sections to toggle twice
-                  // Debug tooltip retrieval on focus as well
-                  try {
-                    const rowId = location?.rowId as string
-                    const colId = location?.columnId as string
-                    if (rowId && colId) {
-                      // For focus events, we still need to map from ReactGrid's internal IDs
-                      // to our grid data structure indices
-                      const parsed = parseInt(rowId.replace(/\D/g, ''), 10)
-                      const rowIndex = rowId === 'header' ? 0 : (rowId.startsWith('row-') ? parsed + 1 : parsed)
-                      const colIndex = parseInt(colId.replace(/\D/g, ''), 10)
-                      const cell = (gridData.rows[rowIndex]?.cells?.[colIndex] as any)
-                      console.log('[focus] rowId:', rowId, 'colId:', colId, 'rowIndex:', rowIndex, 'colIndex:', colIndex, 'tooltip:', cell?.tooltip)
-                    }
-                  } catch (e) {
-                    console.log('[focus] tooltip debug error', e)
-                  }
                 }}
               />
               {/* Clickable overlays for cursor and click handling */}
@@ -927,7 +904,6 @@ export default function YearlyDataGrid({
                   setTooltip({ show: false, text: '', x: 0, y: 0 })
                 }}
                 onClick={() => {
-                  console.log('Expand all clicked via overlay')
                   setCollapsedSections(prev => {
                     const newState = { ...prev }
                     // Find all section IDs in main table and set to false (expanded)
@@ -970,7 +946,6 @@ export default function YearlyDataGrid({
                   setTooltip({ show: false, text: '', x: 0, y: 0 })
                 }}
                 onClick={() => {
-                  console.log('Collapse all clicked via overlay')
                   setCollapsedSections(prev => {
                     const newState = { ...prev }
                     // Find all section IDs in main table and set to true (collapsed)

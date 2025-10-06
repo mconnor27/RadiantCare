@@ -25,7 +25,7 @@ interface YTDDetailedProps {
 
 export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDetailedProps) {
   const store = useDashboardStore()
-  const [loading, setLoading] = useState(true)
+  const [showLoadingModal, setShowLoadingModal] = useState(true)  // Start as true to show immediately
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<YTDPoint[]>([])
   const [environment] = useState<'production' | 'sandbox'>('production')
@@ -118,60 +118,77 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
     if (!fy2025) {
       store.ensureBaselineYear('A', 2025)
     }
-  }, [store, fy2025])
+  // Only depend on fy2025 existence, not the entire store object
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fy2025])
 
   useEffect(() => {
-    setLoading(true)
+    const startTime = Date.now()
     setError(null)
 
-    if (environment === 'sandbox') {
-      // Sandbox mode: use historical JSON files
-      const timer = setTimeout(() => {
-        try {
-          setData(historical2025Data)
-          setError(null)
-        } catch (e: any) {
-          setError(e?.message || 'Failed to load 2025 historical data')
-        } finally {
-          setLoading(false)
+    // Delay data fetching to ensure modal is rendered first
+    // Use requestAnimationFrame + small timeout to ensure paint has occurred
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        if (environment === 'sandbox') {
+          // Sandbox mode: use historical JSON files
+          try {
+            const loadedData = historical2025Data
+            
+            // Hold the data until modal is ready to dismiss
+            const elapsed = Date.now() - startTime
+            const remainingTime = Math.max(0, 1000 - elapsed)
+            
+            setTimeout(() => {
+              setData(loadedData)
+              setError(null)
+              setShowLoadingModal(false)
+            }, remainingTime)
+          } catch (e: any) {
+            setError(e?.message || 'Failed to load 2025 historical data')
+            setShowLoadingModal(false)
+          }
+        } else {
+          // Production mode: try to load cached data, fall back to historical
+          fetch('/api/qbo/cached-2025')
+            .then(res => {
+              if (!res.ok) {
+                // No cached data, use fallback
+                console.log('No cached data available, using historical JSON fallback')
+                return { data: historical2025Data, cache: null }
+              }
+              return res.json().then(cache => {
+                if (cache?.daily) {
+                  // Parse the cached daily report
+                  const points = parseTherapyIncome2025(cache.daily)
+                  return { 
+                    data: points, 
+                    cache: { daily: cache.daily, summary: cache.summary, equity: cache.equity }
+                  }
+                } else {
+                  // Fallback to historical
+                  return { data: historical2025Data, cache: null }
+                }
+              })
+            })
+            .catch(err => {
+              console.error('Error loading cached data, using fallback:', err)
+              return { data: historical2025Data, cache: null }
+            })
+            .then(result => {
+              // Hold the data until modal is ready to dismiss
+              const elapsed = Date.now() - startTime
+              const remainingTime = Math.max(0, 1000 - elapsed)
+              
+              setTimeout(() => {
+                setData(result.data)
+                setCachedData(result.cache)
+                setShowLoadingModal(false)
+              }, remainingTime)
+            })
         }
-      }, 100)
-      return () => clearTimeout(timer)
-    } else {
-      // Production mode: try to load cached data, fall back to historical
-      fetch('/api/qbo/cached-2025')
-        .then(res => {
-          if (!res.ok) {
-            // No cached data, use fallback
-            console.log('No cached data available, using historical JSON fallback')
-            setData(historical2025Data)
-            setCachedData(null)
-            setLoading(false)
-            return
-          }
-          return res.json()
-        })
-        .then(cache => {
-          if (cache?.daily) {
-            // Parse the cached daily report
-            const points = parseTherapyIncome2025(cache.daily)
-            setData(points)
-            // Store all cached data for other components
-            setCachedData({ daily: cache.daily, summary: cache.summary, equity: cache.equity })
-          } else {
-            // Fallback to historical
-            setData(historical2025Data)
-            setCachedData(null)
-          }
-          setLoading(false)
-        })
-        .catch(err => {
-          console.error('Error loading cached data, using fallback:', err)
-          setData(historical2025Data)
-          setCachedData(null)
-          setLoading(false)
-        })
-    }
+      }, 50) // Small delay after paint to ensure modal is visible
+    })
   }, [historical2025Data, environment])
 
   // Initialize current period based on timeframe
@@ -278,10 +295,83 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
 
 
   return (
-    <div style={{ margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-        <SyncButton environment={environment} />
-      </div>
+    <>
+      {/* Loading Modal - render FIRST before any content */}
+      {showLoadingModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          animation: 'fadeIn 0.2s ease-in'
+        }}>
+          <div style={{
+            background: '#fff',
+            padding: 40,
+            borderRadius: 12,
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+            textAlign: 'center',
+            minWidth: 300,
+            animation: 'slideIn 0.3s ease-out'
+          }}>
+            <svg
+              width="64"
+              height="64"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#0ea5e9"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                animation: 'spin 1s linear infinite',
+                margin: '0 auto 20px'
+              }}
+            >
+              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            </svg>
+            <div style={{
+              fontSize: 18,
+              fontWeight: 600,
+              color: '#333',
+              marginBottom: 8
+            }}>
+              Loading Dashboard
+            </div>
+            <div style={{
+              fontSize: 14,
+              color: '#666'
+            }}>
+              Loading cached data...
+            </div>
+          </div>
+          <style>{`
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            @keyframes slideIn {
+              from { transform: translateY(-20px); opacity: 0; }
+              to { transform: translateY(0); opacity: 1; }
+            }
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      )}
+
+      <div style={{ margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+          <SyncButton environment={environment} isLoadingDashboard={showLoadingModal} />
+        </div>
       <div style={{
         display: 'flex',
         gap: 16,
@@ -291,8 +381,35 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
         padding: 16,
         background: '#f9fafb',
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-        marginBottom: 24
+        marginBottom: 24,
+        position: 'relative'
       }}>
+        {/* Refreshing indicator for chart projections */}
+        {environment === 'production' && !cachedData?.summary && (
+          <div style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            padding: '4px 10px',
+            background: '#fff3cd',
+            border: '1px solid #ffc107',
+            borderRadius: 4,
+            fontSize: 11,
+            color: '#856404',
+            fontWeight: 500,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            zIndex: 100,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 1s linear infinite' }}>
+              <path d="M21 12a9 9 0 11-6.219-8.56" />
+            </svg>
+            Refreshing projections...
+            <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+          </div>
+        )}
         <div style={{ flex: 1 }}>
           {error === 'not_connected' ? (
             <div>
@@ -345,7 +462,6 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
             setIncomeMode={setIncomeMode}
             smoothing={getCurrentSmoothing()}
             setSmoothing={setCurrentSmoothing}
-            loading={loading}
             variant="sidebar"
             selectedYears={selectedYears}
             setSelectedYears={setSelectedYears}
@@ -380,8 +496,10 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
         <YearlyDataGrid
           environment={environment}
           cachedSummary={cachedData?.summary}
+          isLoadingCache={showLoadingModal}
         />
       </div>
     </div>
+    </>
   )
 }

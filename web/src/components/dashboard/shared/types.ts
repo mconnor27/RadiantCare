@@ -103,6 +103,7 @@ export type Store = {
   scenarioBEnabled: boolean
   customProjectedValues: Record<string, number>
   lastBaselinePropagationTime?: number
+  suppressNextGridSync?: boolean
   setScenarioEnabled: (enabled: boolean) => void
   setFutureValue: (
     scenario: ScenarioKey,
@@ -130,4 +131,6 @@ export type Store = {
   setCustomProjectedValue: (accountName: string, value: number) => void
   removeCustomProjectedValue: (accountName: string) => void
   resetCustomProjectedValues: () => void
+  setSuppressNextGridSync: (suppress: boolean) => void
+  consumeSuppressNextGridSync: () => boolean
 }

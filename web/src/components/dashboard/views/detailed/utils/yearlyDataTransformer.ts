@@ -226,7 +226,7 @@ function calculateProjectionRatio(data2025: MonthlyData): number {
 }
 
 // Function to merge 2025 data into the historical data structure
-function merge2025Data(historicalData: YearlyData, data2025: Record<string, number>, projectionRatio: number, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number }): YearlyData {
+function merge2025Data(historicalData: YearlyData, data2025: Record<string, number>, projectionRatio: number, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number }): YearlyData {
   // Add 2025 YTD column
   historicalData.Columns.Column.push({
     ColTitle: '2025 (YTD)',
@@ -515,7 +515,7 @@ const getTooltipForCalculatedRow = (type: 'mdSalary' | 'mdBenefits' | 'mdPayroll
   }
 }
 
-export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number }): { rows: Row[], columns: any[], allRows: Row[] } {
+export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, _physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number }): { rows: Row[], columns: any[], allRows: Row[] } {
   // Helper to get the absolute 2016 Asset Disposal amount from raw data
   const getAssetDisposal2016Amount = (source: YearlyData): number => {
     const search = (rows: any[]): number => {

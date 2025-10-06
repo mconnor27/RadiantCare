@@ -3,6 +3,7 @@ import { useDashboardStore } from '../../../../Dashboard'
 
 interface SyncButtonProps {
   environment: 'production' | 'sandbox'
+  isLoadingDashboard?: boolean
 }
 
 // ADMIN MODE: Set to true to bypass sync restrictions for testing
@@ -10,7 +11,7 @@ const ADMIN_OVERRIDE = false
 
 type SyncStep = 'daily' | 'summary' | 'equity' | 'complete' | 'error'
 
-export default function SyncButton({ environment }: SyncButtonProps) {
+export default function SyncButton({ environment, isLoadingDashboard = false }: SyncButtonProps) {
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string | null | undefined>(undefined)
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
@@ -18,9 +19,9 @@ export default function SyncButton({ environment }: SyncButtonProps) {
   const [syncMessage, setSyncMessage] = useState<string>('')
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
-  // Load last sync timestamp on mount
+  // Load last sync timestamp on mount - but wait for dashboard loading to complete
   useEffect(() => {
-    if (environment === 'production') {
+    if (environment === 'production' && !isLoadingDashboard) {
       fetch('/api/qbo/cached-2025')
         .then(res => res.ok ? res.json() : null)
         .then(cache => {
@@ -34,7 +35,7 @@ export default function SyncButton({ environment }: SyncButtonProps) {
           setLastSyncTimestamp(null)
         })
     }
-  }, [environment])
+  }, [environment, isLoadingDashboard])
 
   // Import the store to check for custom values
   const store = useDashboardStore()
@@ -249,12 +250,8 @@ export default function SyncButton({ environment }: SyncButtonProps) {
     return null
   }
 
-  // Don't render until we've loaded the timestamp
-  if (lastSyncTimestamp === undefined) {
-    return null
-  }
-
-  const syncAvailable = ADMIN_OVERRIDE || canSyncNow(lastSyncTimestamp)
+  // Determine if sync is available (handle loading state)
+  const syncAvailable = ADMIN_OVERRIDE || (lastSyncTimestamp !== undefined && lastSyncTimestamp !== null && canSyncNow(lastSyncTimestamp)) || (lastSyncTimestamp === null && canSyncNow(null))
 
   return (
     <>
@@ -430,16 +427,16 @@ export default function SyncButton({ environment }: SyncButtonProps) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
           <button
             onClick={handleSyncClick}
-            disabled={syncing || !syncAvailable}
+            disabled={syncing || !syncAvailable || lastSyncTimestamp === undefined}
           style={{
             padding: '6px 12px',
-            background: syncing || !syncAvailable ? '#94a3b8' : '#0ea5e9',
+            background: syncing || !syncAvailable || lastSyncTimestamp === undefined ? '#94a3b8' : '#0ea5e9',
             color: '#fff',
             border: 'none',
             borderRadius: 4,
             fontSize: 14,
             fontWeight: 500,
-            cursor: syncing || !syncAvailable ? 'not-allowed' : 'pointer',
+            cursor: syncing || !syncAvailable || lastSyncTimestamp === undefined ? 'not-allowed' : 'pointer',
             whiteSpace: 'nowrap',
             display: 'flex',
             alignItems: 'center',
@@ -469,34 +466,49 @@ export default function SyncButton({ environment }: SyncButtonProps) {
             }
           `}</style>
         </button>
-        <div style={{
-          fontSize: 12,
-          display: 'grid',
-          gridTemplateColumns: 'auto auto',
-          gap: '2px 8px',
-          alignItems: 'baseline'
-        }}>
-          <span style={{ textAlign: 'right', color: '#64748b', whiteSpace: 'nowrap' }}>Last synced:</span>
-          <span style={{ textAlign: 'left', color: '#64748b' }}>{formatTimestamp(lastSyncTimestamp)}</span>
+        {lastSyncTimestamp === undefined ? (
+          <div style={{
+            minHeight: 40,
+            minWidth: 222,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 12,
+            color: '#64748b'
+          }}>
+            Loading sync status...
+          </div>
+        ) : (
+          <div style={{
+            fontSize: 12,
+            display: 'grid',
+            gridTemplateColumns: 'auto auto',
+            gap: '2px 8px',
+            alignItems: 'baseline',
+            minHeight: 40
+          }}>
+            <span style={{ textAlign: 'right', color: '#64748b', whiteSpace: 'nowrap' }}>Last synced:</span>
+            <span style={{ textAlign: 'left', color: '#64748b' }}>{formatTimestamp(lastSyncTimestamp)}</span>
 
-          {syncAvailable ? (
-            <>
-              <span></span>
-              <span style={{ textAlign: 'left', color: '#16a34a', fontWeight: 500 }}>
-                Available to Sync
-              </span>
-            </>
-          ) : (
-            <>
-              <span style={{ textAlign: 'right', color: '#dc2626', whiteSpace: 'nowrap', fontWeight: 500 }}>
-                Next Allowed:
-              </span>
-              <span style={{ textAlign: 'left', color: '#dc2626', fontWeight: 500 }}>
-                {formatNextAllowedTime(lastSyncTimestamp)}
-              </span>
-            </>
-          )}
-        </div>
+            {syncAvailable ? (
+              <>
+                <span></span>
+                <span style={{ textAlign: 'left', color: '#16a34a', fontWeight: 500 }}>
+                  Available to Sync
+                </span>
+              </>
+            ) : (
+              <>
+                <span style={{ textAlign: 'right', color: '#dc2626', whiteSpace: 'nowrap', fontWeight: 500 }}>
+                  Next Allowed:
+                </span>
+                <span style={{ textAlign: 'left', color: '#dc2626', fontWeight: 500 }}>
+                  {formatNextAllowedTime(lastSyncTimestamp)}
+                </span>
+              </>
+            )}
+          </div>
+        )}
       </div>
       {syncError && !syncStep && (
         <div style={{ fontSize: 12, color: '#dc2626' }}>

@@ -83,7 +83,7 @@ export default function DetailedChart({
 }: DetailedChartProps) {
   const isMobile = useIsMobile()
   const [pulsePhase, setPulsePhase] = useState(0)
-  const [containerWidth, setContainerWidth] = useState(0)
+  const [containerWidth, setContainerWidth] = useState<number | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Parse historical data once on component mount
@@ -105,6 +105,7 @@ export default function DetailedChart({
       }
     }
 
+    // Immediate synchronous measurement to prevent layout shift
     updateWidth()
     
     // Use ResizeObserver to detect container size changes (not just window resize)
@@ -661,9 +662,47 @@ export default function DetailedChart({
     const maxWidth = config.maxWidth
 
     // Calculate height based on aspect ratio and current container width
-    const chartHeight = containerWidth > 0
+    // Use null check to wait for first measurement and prevent layout shift
+    const chartHeight = containerWidth !== null
       ? Math.round(containerWidth * config.aspectRatio)
       : config.height
+
+    // Don't render chart until we have the container width to prevent layout shift
+    if (containerWidth === null) {
+      // Use CSS aspect ratio to automatically calculate correct height based on actual width
+      const aspectRatioPercent = (config.aspectRatio * 100).toFixed(2)
+      
+      return (
+        <div 
+          ref={containerRef} 
+          style={{ 
+            border: '1px solid #d1d5db',
+            borderRadius: 6,
+            background: '#f9fafb',
+            overflow: 'hidden',
+            position: 'relative',
+            minWidth: config.minWidth,
+            ...(maxWidth > 0 ? { maxWidth } : { flex: 1 })
+          }}
+        >
+          {/* Aspect ratio spacer - maintains height based on width */}
+          <div style={{ paddingBottom: `${aspectRatioPercent}%` }} />
+          {/* Content overlay */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <div style={{ color: '#666', fontSize: 14 }}>Loading chart...</div>
+          </div>
+        </div>
+      )
+    }
 
     return (
       <div

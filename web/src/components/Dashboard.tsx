@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from 'react'
+import { useMemo, useEffect, useState, useCallback } from 'react'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
@@ -150,12 +150,21 @@ export const useDashboardStore = create<Store>()(
             if (!sc) return
             const fy = sc.future.find((f) => f.year === year)
             if (fy) {
+              // Guard: Only update if value actually changed to prevent infinite loops
+              const currentValue = (fy as any)[field]
+              const valueChanged = typeof currentValue === 'number' && typeof value === 'number'
+                ? Math.abs(currentValue - value) > 0.01  // Use small epsilon for floating point comparison
+                : currentValue !== value
+              
+              if (!valueChanged) {
+                return  // Skip update if value hasn't changed
+              }
+
               ;(fy as any)[field] = value
 
               // If we're updating a 2025 baseline value, trigger projection recalculation
               // for future years without switching to Custom mode
               if (year === 2025) {
-                console.log('Setting future value for scenario', scenario, 'year', year, 'field', field, 'value', value)
                 // Mark that the next update is from baseline propagation, not manual override
                 ;(state as any).lastBaselinePropagationTime = Date.now()
                 setTimeout(() => {
@@ -1337,6 +1346,11 @@ export function Dashboard() {
   const [urlLoaded, setUrlLoaded] = useState(false)
   // Initialize ytdSettings with defaults from chartConfig
   const [ytdSettings, setYtdSettings] = useState<any>(DEFAULT_YTD_SETTINGS)
+  
+  // Wrap setYtdSettings in useCallback to prevent unnecessary re-renders in YTDDetailed
+  const handleYtdSettingsChange = useCallback((settings: any) => {
+    setYtdSettings(settings)
+  }, [])
 
   // Load from shareable URL hash if present
   useEffect(() => {
@@ -1448,7 +1462,7 @@ export function Dashboard() {
         {urlLoaded && viewMode === 'YTD Detailed' ? (
           <YTDDetailed
             initialSettings={ytdSettings}
-            onSettingsChange={setYtdSettings}
+            onSettingsChange={handleYtdSettingsChange}
           />
         ) : urlLoaded && viewMode === 'Multi-Year' ? (
           <MultiYearView />

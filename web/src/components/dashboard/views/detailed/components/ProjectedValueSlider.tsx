@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import getDefaultValue, { getSliderBounds, getInitialSliderValue, getSliderStep, findAccountConfig } from '../config/projectedDefaults'
+import getDefaultValue, { getSliderBounds, getInitialSliderValue, getSliderStep } from '../config/projectedDefaults'
 
 // ========== ANIMATION CONFIGURATION ==========
 type AnimationStyle = 'two-stage' | 'scale-all'
@@ -83,13 +83,8 @@ export default function ProjectedValueSlider({
   const annualizedValue = annualizedBaseline
   const defaultValue = getDefaultValue(accountName, annualizedValue)
 
-  // Debug logging
-  console.log('ProjectedValueSlider:', {
-    accountName,
-    annualizedValue,
-    defaultValue,
-    configFound: findAccountConfig(accountName)
-  })
+  // Debug logging (commented out to reduce console spam)
+  // console.log('ProjectedValueSlider:', { accountName, annualizedValue, defaultValue, configFound: findAccountConfig(accountName) })
 
   // Calculate slider range based on config (falls back to standard strategy)
   // Use YTD actual value as the minimum (can't project lower than what's already happened)
@@ -157,20 +152,16 @@ export default function ProjectedValueSlider({
 
   // Handle animation when slider becomes visible
   useEffect(() => {
-    console.log('Animation effect triggered:', { isVisible, currentStage: animationStage })
     if (isVisible) {
       if (ANIMATION_CONFIG.style === 'two-stage') {
         // Two-stage animation: width first, then height
         const widthTimer = setTimeout(() => {
-          console.log('Setting stage to width')
           setAnimationStage('width')
         }, 10)
         const heightTimer = setTimeout(() => {
-          console.log('Setting stage to height')
           setAnimationStage('height')
         }, 10 + ANIMATION_CONFIG.twoStage.widthDuration)
         const completeTimer = setTimeout(() => {
-          console.log('Setting stage to complete')
           setAnimationStage('complete')
         }, 10 + ANIMATION_CONFIG.twoStage.widthDuration + ANIMATION_CONFIG.twoStage.heightDuration + ANIMATION_CONFIG.twoStage.contentDelay)
         
@@ -185,7 +176,6 @@ export default function ProjectedValueSlider({
         return () => clearTimeout(timer)
       }
     } else {
-      console.log('Resetting animation stage to initial')
       setAnimationStage('initial')
       setIsAnimating(true)
       setFunnelProgress({ width: 0, height: 0 })
@@ -211,12 +201,6 @@ export default function ProjectedValueSlider({
     const calculatedFunnelDuration = funnelHeightPixels / pixelsPerMs // funnel should take ~10.4ms
     const funnelHeightDuration = calculatedFunnelDuration * ANIMATION_CONFIG.twoStage.funnelHeightScale
     
-    console.log('Animation rates:', { 
-      sliderHeightPixels, funnelHeightPixels, pixelsPerMs, 
-      calculatedFunnelDuration, funnelHeightDuration, 
-      scale: ANIMATION_CONFIG.twoStage.funnelHeightScale 
-    })
-    
     // Easing function to match CSS ease-out
     const easeOut = (t: number) => 1 - Math.pow(1 - t, 3)
 
@@ -233,7 +217,6 @@ export default function ProjectedValueSlider({
         // Height animation phase (using funnel-specific duration)
         const t = Math.min(1, (elapsed - widthDuration) / funnelHeightDuration)
         const heightProgress = easeOut(t)
-        console.log('Height phase:', { elapsed, widthDuration, funnelHeightDuration, t, heightProgress })
         setFunnelProgress({ width: 1, height: heightProgress })
       } else {
         // Animation complete
@@ -339,7 +322,6 @@ export default function ProjectedValueSlider({
             // Cell edge spans the full cell border height
             const startY1 = originRect.top - svgTop
             const startY2 = originRect.bottom - svgTop - 2
-            const cellHeight = startY2 - startY1
             
             // Slider edge animates smoothly from cell level to slider level during width phase
             const cellCenterY = (startY1 + startY2) / 2
@@ -352,12 +334,6 @@ export default function ProjectedValueSlider({
             const endHeightMax = 40
             const endHeight = Math.min(endHeightMax, 12 + 28 * funnelProgress.height)
             const endY2 = endY1 + endHeight
-            
-            console.log('Funnel connector (full height):', { 
-              fullWidth, animatedWidth, cellHeight, startY1, startY2, endY1, endY2,
-              widthProgress: funnelProgress.width, heightProgress: funnelProgress.height,
-              shouldRenderLeft
-            })
             
             // Control points for smooth curves - adjust based on width progress
             const cp1x = animatedWidth * 0.3

@@ -158,8 +158,18 @@ export function calculateAllCompensations(params: CompensationParams): Compensat
   const basePool = Math.max(0, totalIncome - totalCosts)
   const pool = Math.max(0, basePool - totalMedicalDirectorAllocations - totalAdditionalDaysAllocations)
 
-  // DEBUG: Log pool calculation breakdown
+  // DEBUG: Log pool calculation summary (only log once per second to reduce StrictMode duplicates)
   if (year === 2025) {
+    const now = Date.now()
+    const lastLog = (globalThis as any).__lastCompCalcLog ?? 0
+    if (now - lastLog > 100) {  // Throttle to max 10 logs/sec
+      console.log(`💰 Comp calc: Income=$${(totalIncome/1000).toFixed(0)}K, Costs=$${(totalCosts/1000).toFixed(0)}K, Pool=$${(pool/1000).toFixed(0)}K`)
+      ;(globalThis as any).__lastCompCalcLog = now
+    }
+  }
+  
+  // Full breakdown (commented out to reduce spam)
+  if (false && year === 2025) {
     console.log('[COMP ENGINE] 📊 Pool calculation breakdown:', {
       totalIncome,
       breakdown: {

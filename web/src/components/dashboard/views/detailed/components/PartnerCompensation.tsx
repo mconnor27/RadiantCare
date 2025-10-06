@@ -6,6 +6,7 @@ import { useDashboardStore } from '../../../../Dashboard'
 import { calculateDelayedW2Payment } from '../../../shared/calculations'
 import { calculateAllCompensations } from '../../../shared/compensationEngine'
 import type { Physician } from '../../../shared/types'
+import CollapsibleSection from '../../../shared/components/CollapsibleSection'
 
 interface PhysicianData {
   [rowName: string]: {
@@ -61,7 +62,7 @@ function parseYTDData(summaryData: any): YTDData {
   
   // Find physician columns (starting after "2-Associates")
   let foundAssociates = false
-  columns.forEach((col, index) => {
+  columns.forEach((col: any, index: number) => {
     if (col.ColTitle === "2-Associates") {
       foundAssociates = true
       return
@@ -150,21 +151,21 @@ function parseYTDPhysicianData(physicians: Physician[], equityData: any, summary
 
   // Find the Members Equity section for partner compensation data
   const equitySection = equityData.Rows.Row
-    .find(row => row.Header?.ColData?.[0]?.value === "LIABILITIES AND EQUITY")?.Rows?.Row
-    ?.find(row => row.Header?.ColData?.[0]?.value === "Equity")?.Rows?.Row
-    ?.find(row => row.Header?.ColData?.[0]?.value === "3001 Member's Equity")
+    .find((row: any) => row.Header?.ColData?.[0]?.value === "LIABILITIES AND EQUITY")?.Rows?.Row
+    ?.find((row: any) => row.Header?.ColData?.[0]?.value === "Equity")?.Rows?.Row
+    ?.find((row: any) => row.Header?.ColData?.[0]?.value === "3001 Member's Equity")
   
   // Process partner equity data if available
   if (equitySection?.Rows?.Row) {
     Object.entries(PARTNER_COMPENSATION_CONFIG).forEach(([partnerName, sectionName]) => {
       const partnerSection = equitySection.Rows.Row.find(
-        row => row.Header?.ColData?.[0]?.value === sectionName
+        (row: any) => row.Header?.ColData?.[0]?.value === sectionName
       )
       
       if (!partnerSection?.Rows?.Row) return
       
       // Process each line item for this partner
-      partnerSection.Rows.Row.forEach(row => {
+      partnerSection.Rows.Row.forEach((row: any) => {
         if (row.type === "Data" && row.ColData) {
           const accountName = row.ColData[0]?.value || ''
           const value = parseFloat(row.ColData[1]?.value || '0')
@@ -307,6 +308,20 @@ export default function PartnerCompensation({
   const fy2025 = store.scenarioA.future.find((f) => f.year === year)
   const physicians = fy2025?.physicians || []
   
+  // Check if we're still waiting for fresh API data (showing stale localStorage data)
+  const isRefreshing = environment === 'production' && !cachedSummary
+  
+  // Don't calculate until 2025 data exists (prevents wrong calcs on first load without localStorage)
+  if (!fy2025) {
+    return (
+      <CollapsibleSection title="Partner Compensation" defaultOpen={false} tone="purple">
+        <div style={{ padding: 20, textAlign: 'center', color: '#666' }}>
+          Loading compensation data...
+        </div>
+      </CollapsibleSection>
+    )
+  }
+  
   // Parse both projected and YTD data
   const projectedData = useMemo(() => {
     return parseProjectedData(physicians, fy2025)
@@ -421,8 +436,35 @@ export default function PartnerCompensation({
       borderRadius: 6,
       padding: 8,
       background: '#ffffff',
-      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+      position: 'relative'
     }}>
+      {/* Subtle refreshing indicator */}
+      {isRefreshing && (
+        <div style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          padding: '4px 10px',
+          background: '#fff3cd',
+          border: '1px solid #ffc107',
+          borderRadius: 4,
+          fontSize: 11,
+          color: '#856404',
+          fontWeight: 500,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          zIndex: 10,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 1s linear infinite' }}>
+            <path d="M21 12a9 9 0 11-6.219-8.56" />
+          </svg>
+          Refreshing...
+          <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
 
       <div style={{ fontWeight: 600, marginBottom: 8 }}>Physician Compensation</div>
 
