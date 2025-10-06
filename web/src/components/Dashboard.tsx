@@ -53,6 +53,7 @@ export const useDashboardStore = create<Store>()(
       return {
         historic: HISTORIC_DATA,
         suppressNextGridSync: false,
+        lastBaselinePropagationTime: 0,
         scenarioA: {
           future: INITIAL_FUTURE_YEARS_A,
           projection: {
@@ -150,11 +151,13 @@ export const useDashboardStore = create<Store>()(
             const fy = sc.future.find((f) => f.year === year)
             if (fy) {
               ;(fy as any)[field] = value
-              
-              // If we're updating a 2025 baseline value, trigger projection recalculation 
+
+              // If we're updating a 2025 baseline value, trigger projection recalculation
               // for future years without switching to Custom mode
               if (year === 2025) {
                 console.log('Setting future value for scenario', scenario, 'year', year, 'field', field, 'value', value)
+                // Mark that the next update is from baseline propagation, not manual override
+                ;(state as any).lastBaselinePropagationTime = Date.now()
                 setTimeout(() => {
                   get().applyProjectionFromLastActual(scenario)
                 }, 0)
