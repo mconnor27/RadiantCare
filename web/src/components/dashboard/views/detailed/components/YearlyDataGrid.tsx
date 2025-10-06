@@ -330,6 +330,28 @@ export default function YearlyDataGrid({
   // Track last loaded data signature to prevent redundant loads
   const lastLoadRef = useRef<string>('')
   
+  // Extract key physician values for dependency tracking
+  const fy2025 = store.scenarioA.future.find((f: any) => f.year === 2025)
+  const prcsDirectorId = fy2025?.prcsDirectorPhysicianId
+  const prcsMdHours = fy2025?.prcsMedicalDirectorHours
+  const locumCosts = fy2025?.locumCosts
+  
+  // Create a signature of physician data that affects calculated grid rows
+  // (MD Associates Salary/Benefits/Payroll Tax, Guaranteed Payments, Shared MD Hours)
+  const physicianDataSignature = JSON.stringify(
+    fy2025?.physicians.map((p: any) => ({
+      type: p.type,
+      salary: p.salary,
+      receivesBenefits: p.receivesBenefits,
+      employeePortionOfYear: p.employeePortionOfYear,
+      partnerPortionOfYear: p.partnerPortionOfYear,
+      startPortionOfYear: p.startPortionOfYear,
+      terminatePortionOfYear: p.terminatePortionOfYear,
+      buyoutCost: p.buyoutCost,
+      trailingSharedMdAmount: p.trailingSharedMdAmount
+    }))
+  )
+  
   const loadData = useCallback(async () => {
     try {
       // In production, wait for cached data to arrive before loading stale historical data
@@ -355,6 +377,9 @@ export default function YearlyDataGrid({
         collapsed: collapsedSections,
         customs: store.customProjectedValues,
         physicians: physicianData?.physicians.length,
+        prcsDirector: physicianData?.prcsDirectorPhysicianId,
+        prcsMdHours: physicianData?.prcsMedicalDirectorHours,
+        locumCosts: physicianData?.locumCosts,
         hasCached: !!cachedSummaryData
       })
       
@@ -398,9 +423,10 @@ export default function YearlyDataGrid({
       setLoading(false)
     }
   // CRITICAL: Do NOT include store objects in dependencies - causes infinite loops
-  // We read store values fresh inside the function
+  // We read store values fresh inside the function, but track key primitive values
+  // that affect calculated grid rows (MD Associates, Guaranteed Payments, Locums, PRCS MD Hours)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collapsedSections, environment, cachedSummary, isLoadingCache])
+  }, [collapsedSections, environment, cachedSummary, isLoadingCache, prcsDirectorId, prcsMdHours, locumCosts, physicianDataSignature])
 
   useEffect(() => {
     loadData()

@@ -1399,6 +1399,14 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   }}
                   onClick={(e) => {
                     if (!readOnly) {
+                      // Use specific 2024-25 values when in those data modes for baseline year
+                      let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                      if (year === 2025 && sc.dataMode === '2024 Data') {
+                        totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
+                      } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                        totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
+                      }
+                      
                       if ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0) {
                         const initial = p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)
                         createTrailingSharedMdAmountTooltip(p.id, initial, e, (_, amount) => {
@@ -1406,15 +1414,8 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                             ...p,
                             trailingSharedMdAmount: amount
                           })
-                        })
+                        }, 'Fixed amount deducted before allocation to active partners.', totalBudget)
                       } else {
-                        // Use specific 2024-25 values when in those data modes for baseline year
-                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
-                  if (year === 2025 && sc.dataMode === '2024 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
-                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
-                  }
                         const trailingTotal = fy.physicians.reduce((s, ph) => {
                           const isPriorYearRetiree = (ph.type === 'partnerToRetire') && ((ph.partnerPortionOfYear ?? 0) === 0)
                           return s + (isPriorYearRetiree ? (ph.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(ph)) : 0)
@@ -1446,7 +1447,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                           ...p,
                           trailingSharedMdAmount: amount
                         })
-                      })
+                      }, 'Fixed amount deducted before allocation to active partners.', totalBudget)
                     } else {
                       const trailingTotal = fy.physicians.reduce((s, ph) => {
                         const isPriorYearRetiree = (ph.type === 'partnerToRetire') && ((ph.partnerPortionOfYear ?? 0) === 0)
@@ -1463,10 +1464,11 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     }
                     e.currentTarget.style.opacity = '0.8'
                   } else {
-                    // Read-only: show dollar amount only (no percentage)
+                    // Read-only: show dollar amount and percentage
                     if ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0) {
                       const amount = p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)
-                      createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${currency(Math.round(amount))}`, e)
+                      const percentage = totalBudget > 0 ? ((amount / totalBudget) * 100).toFixed(2) : '0.00'
+                      createTooltip(`hours-readonly-${p.id}`, `Medical Director Hours: ${currency(Math.round(amount))} (${percentage}% of total)`, e)
                     } else {
                       const trailingTotal = fy.physicians.reduce((s, ph) => {
                         const isPriorYearRetiree = (ph.type === 'partnerToRetire') && ((ph.partnerPortionOfYear ?? 0) === 0)
@@ -1499,6 +1501,14 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   }}
                   onTouchStart={(e) => {
                     if (!readOnly) {
+                      // Use specific 2024-25 values when in those data modes for baseline year
+                      let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
+                      if (year === 2025 && sc.dataMode === '2024 Data') {
+                        totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
+                      } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                        totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
+                      }
+                      
                       if ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0) {
                         const initial = p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)
                         createTrailingSharedMdAmountTooltip(p.id, initial, e, (_, amount) => {
@@ -1506,15 +1516,8 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                             ...p,
                             trailingSharedMdAmount: amount
                           })
-                        })
+                        }, 'Fixed amount deducted before allocation to active partners.', totalBudget)
                       } else {
-                        // Use specific 2024-25 values when in those data modes for baseline year
-                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
-                  if (year === 2025 && sc.dataMode === '2024 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
-                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
-                  }
                         const trailingTotal = fy.physicians.reduce((s, ph) => {
                           const isPriorYearRetiree = (ph.type === 'partnerToRetire') && ((ph.partnerPortionOfYear ?? 0) === 0)
                           return s + (isPriorYearRetiree ? (ph.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(ph)) : 0)

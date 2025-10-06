@@ -254,7 +254,7 @@ export function scenarioADefaultsByYear(year: number): Physician[] {
       { id: `${year}-MC`, name: 'Connor', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 328840, weeksVacation: 9, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 26.39, additionalDaysWorked: 0 },
       { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 33.33, additionalDaysWorked: 0 },
       { id: `${year}-GA`, name: 'Allen', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 33.33, additionalDaysWorked: 1000 },
-      { id: `${year}-HW`, name: 'Werner', type: 'partnerToRetire', partnerPortionOfYear: 0, buyoutCost: 51666.58, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 6.96, trailingSharedMdAmount: 8302.50, additionalDaysWorked: 0 },
+      { id: `${year}-HW`, name: 'Werner', type: 'partnerToRetire', partnerPortionOfYear: 0, buyoutCost: 51666.58, receivesBonuses: false, bonusAmount: 0, trailingSharedMdAmount: 8302.50, additionalDaysWorked: 0 },
       { id: `${year}-BT`, name: 'Tinnel', type: 'employee', salary: 430760, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
     ]
   }
@@ -317,7 +317,7 @@ export function scenarioBDefaultsByYear(year: number): Physician[] {
       { id: `${year}-MC`, name: 'Connor', type: 'employeeToPartner', employeePortionOfYear: 0, salary: 328840, weeksVacation: 9, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 26.39, additionalDaysWorked: 0 },
       { id: `${year}-JS`, name: 'Suszko', type: 'partner', weeksVacation: 11, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 33.33, additionalDaysWorked: 0 },
       { id: `${year}-GA`, name: 'Allen', type: 'partner', weeksVacation: 16, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 33.33, additionalDaysWorked: 1000 },
-      { id: `${year}-HW`, name: 'Werner', type: 'partnerToRetire', partnerPortionOfYear: 0, buyoutCost: 51666.58, receivesBonuses: false, bonusAmount: 0, hasMedicalDirectorHours: true, medicalDirectorHoursPercentage: 6.96, trailingSharedMdAmount: 8302.50, additionalDaysWorked: 0 },
+      { id: `${year}-HW`, name: 'Werner', type: 'partnerToRetire', partnerPortionOfYear: 0, buyoutCost: 51666.58, receivesBonuses: false, bonusAmount: 0, trailingSharedMdAmount: 8302.50, additionalDaysWorked: 0 },
       { id: `${year}-BT`, name: 'Tinnel', type: 'employee', salary: 430760, receivesBenefits: false, receivesBonuses: false, bonusAmount: 0 },
     ]
   }

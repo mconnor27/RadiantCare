@@ -111,12 +111,25 @@ export function calculateAllCompensations(params: CompensationParams): Compensat
 
   const partnerMedicalDirectorAllocations = new Map<string, number>()
 
-  // Allocate shared Medical Director income based on percentages
-  // Include ALL partners with MD hours, including prior-year retirees
-  // (Their share is deducted from the pool, but they get fixed trailing amount instead)
+  // First, calculate total trailing MD amounts for prior-year retirees
+  // These are fixed dollar amounts that must be subtracted from the total budget FIRST
+  const trailingMdTotal = partners.reduce((sum, p) => {
+    const isPriorYearRetired = p.type === 'partnerToRetire' && (p.partnerPortionOfYear ?? 0) === 0
+    if (isPriorYearRetired) {
+      return sum + (p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p))
+    }
+    return sum
+  }, 0)
+
+  // Calculate remainder budget after subtracting retiree amounts
+  const remainderBudget = Math.max(0, medicalDirectorIncome - trailingMdTotal)
+
+  // Allocate REMAINDER of shared Medical Director income to ACTIVE partners based on percentages
+  // Prior-year retirees are NOT included here - they get their fixed trailing amount separately
   for (const partner of partners) {
-    if (partner.hasMedicalDirectorHours && partner.medicalDirectorHoursPercentage) {
-      const allocation = (partner.medicalDirectorHoursPercentage / 100) * medicalDirectorIncome
+    const isPriorYearRetired = partner.type === 'partnerToRetire' && (partner.partnerPortionOfYear ?? 0) === 0
+    if (!isPriorYearRetired && partner.hasMedicalDirectorHours && partner.medicalDirectorHoursPercentage) {
+      const allocation = (partner.medicalDirectorHoursPercentage / 100) * remainderBudget
       partnerMedicalDirectorAllocations.set(partner.id, allocation)
     }
   }
@@ -127,8 +140,9 @@ export function calculateAllCompensations(params: CompensationParams): Compensat
     partnerMedicalDirectorAllocations.set(fy.prcsDirectorPhysicianId, currentPrcsAllocation + prcsMedicalDirectorIncome)
   }
 
+  // Total MD allocations includes both active partner allocations AND retiree trailing amounts
   const totalMedicalDirectorAllocations = Array.from(partnerMedicalDirectorAllocations.values())
-    .reduce((sum, allocation) => sum + allocation, 0)
+    .reduce((sum, allocation) => sum + allocation, 0) + trailingMdTotal
 
   // === STEP 5: Calculate Additional Days Worked allocations ===
   const partnerAdditionalDaysAllocations = new Map<string, number>()

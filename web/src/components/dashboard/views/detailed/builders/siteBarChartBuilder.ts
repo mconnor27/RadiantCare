@@ -815,14 +815,22 @@ export const buildSiteBarChartTraces = (
       })
 
       // INVISIBLE OVERLAY BAR with border - Quarter combined mode
-      // Calculate total stack height per quarter (all 3 sites combined)
+      // Calculate total stack height per quarter (only visible sites)
       if (siteBarChartData.current?.length > 0) {
         const quarters = ['Q1', 'Q2', 'Q3', 'Q4']
         const totalHeights = quarters.map(quarter => {
           const currentQ = siteBarChartData.current?.find((c: any) => c.quarter === quarter)
           const projectedQ = siteBarChartData.projected?.find((p: any) => p.quarter === quarter)
-          const currentTotal = currentQ ? (currentQ.sites.lacey + currentQ.sites.centralia + currentQ.sites.aberdeen) : 0
-          const projectedTotal = projectedQ ? (projectedQ.sites.lacey + projectedQ.sites.centralia + projectedQ.sites.aberdeen) : 0
+          const currentTotal = currentQ ? (
+            (isSiteVisible('lacey') ? currentQ.sites.lacey : 0) +
+            (isSiteVisible('centralia') ? currentQ.sites.centralia : 0) +
+            (isSiteVisible('aberdeen') ? currentQ.sites.aberdeen : 0)
+          ) : 0
+          const projectedTotal = projectedQ ? (
+            (isSiteVisible('lacey') ? projectedQ.sites.lacey : 0) +
+            (isSiteVisible('centralia') ? projectedQ.sites.centralia : 0) +
+            (isSiteVisible('aberdeen') ? projectedQ.sites.aberdeen : 0)
+          ) : 0
           const denom = getQuarterDenom2025(quarter)
           return isNormalized && denom > 0 ? ((currentTotal + projectedTotal) / denom) * 100 : (currentTotal + projectedTotal)
         })
@@ -964,8 +972,16 @@ export const buildSiteBarChartTraces = (
         const totalHeights = quarters.map(quarter => {
           const actualQ = actual2025.quarters.find((q: any) => q.quarter === quarter)
           const projectedQ = projected2025.quarters.find((q: any) => q.quarter === quarter)
-          const actualTotal = actualQ ? sumSites(actualQ.sites || {} as SiteData) : 0
-          const projectedTotal = projectedQ ? sumSites(projectedQ.sites || {} as SiteData) : 0
+          const actualTotal = actualQ ? (
+            (isSiteVisible('lacey') ? actualQ.sites.lacey : 0) +
+            (isSiteVisible('centralia') ? actualQ.sites.centralia : 0) +
+            (isSiteVisible('aberdeen') ? actualQ.sites.aberdeen : 0)
+          ) : 0
+          const projectedTotal = projectedQ ? (
+            (isSiteVisible('lacey') ? projectedQ.sites.lacey : 0) +
+            (isSiteVisible('centralia') ? projectedQ.sites.centralia : 0) +
+            (isSiteVisible('aberdeen') ? projectedQ.sites.aberdeen : 0)
+          ) : 0
           const denom = actualTotal + projectedTotal
           return isNormalized && denom > 0 ? ((actualTotal + projectedTotal) / denom) * 100 : (actualTotal + projectedTotal)
         })
@@ -1132,8 +1148,16 @@ export const buildSiteBarChartTraces = (
         const totalHeights = months.map(month => {
           const currentM = siteBarChartData.current?.find((c: any) => c.month === month)
           const projectedM = siteBarChartData.projected?.find((p: any) => p.month === month)
-          const currentTotal = currentM ? (currentM.sites.lacey + currentM.sites.centralia + currentM.sites.aberdeen) : 0
-          const projectedTotal = projectedM ? (projectedM.sites.lacey + projectedM.sites.centralia + projectedM.sites.aberdeen) : 0
+          const currentTotal = currentM ? (
+            (isSiteVisible('lacey') ? currentM.sites.lacey : 0) +
+            (isSiteVisible('centralia') ? currentM.sites.centralia : 0) +
+            (isSiteVisible('aberdeen') ? currentM.sites.aberdeen : 0)
+          ) : 0
+          const projectedTotal = projectedM ? (
+            (isSiteVisible('lacey') ? projectedM.sites.lacey : 0) +
+            (isSiteVisible('centralia') ? projectedM.sites.centralia : 0) +
+            (isSiteVisible('aberdeen') ? projectedM.sites.aberdeen : 0)
+          ) : 0
           return isNormalized && denom2025 > 0 ? ((currentTotal + projectedTotal) / denom2025) * 100 : (currentTotal + projectedTotal)
         })
         
@@ -1265,8 +1289,16 @@ export const buildSiteBarChartTraces = (
         const totalHeights = months.map(month => {
           const actualM = actual2025Mon.months.find((m: any) => m.month === month)
           const projectedM = projected2025Mon.months.find((m: any) => m.month === month)
-          const actualTotal = actualM ? sumSites(actualM.sites || {} as SiteData) : 0
-          const projectedTotal = projectedM ? sumSites(projectedM.sites || {} as SiteData) : 0
+          const actualTotal = actualM ? (
+            (isSiteVisible('lacey') ? actualM.sites.lacey : 0) +
+            (isSiteVisible('centralia') ? actualM.sites.centralia : 0) +
+            (isSiteVisible('aberdeen') ? actualM.sites.aberdeen : 0)
+          ) : 0
+          const projectedTotal = projectedM ? (
+            (isSiteVisible('lacey') ? projectedM.sites.lacey : 0) +
+            (isSiteVisible('centralia') ? projectedM.sites.centralia : 0) +
+            (isSiteVisible('aberdeen') ? projectedM.sites.aberdeen : 0)
+          ) : 0
           return isNormalized && denom2025Mon > 0 ? ((actualTotal + projectedTotal) / denom2025Mon) * 100 : (actualTotal + projectedTotal)
         })
         
@@ -1392,8 +1424,12 @@ export const buildSiteBarChartTraces = (
 
     // INVISIBLE OVERLAY BAR with border - Year combined mode
     if (siteBarChartData.current?.length > 0 && siteBarChartData.projected?.length > 0) {
-      const currentTotal = (siteBarChartData.current || []).reduce((acc: number, c: any) => acc + (c.income || 0), 0)
-      const projectedTotal = (siteBarChartData.projected || []).reduce((acc: number, p: any) => acc + (p.income || 0), 0)
+      const currentTotal = (siteBarChartData.current || [])
+        .filter((c: any) => isSiteVisible(c.site.toLowerCase()))
+        .reduce((acc: number, c: any) => acc + (c.income || 0), 0)
+      const projectedTotal = (siteBarChartData.projected || [])
+        .filter((p: any) => isSiteVisible(p.site.toLowerCase()))
+        .reduce((acc: number, p: any) => acc + (p.income || 0), 0)
       const denom2025 = currentTotal + projectedTotal
       const totalHeight = isNormalized && denom2025 > 0 ? 100 : (currentTotal + projectedTotal)
       
@@ -1507,8 +1543,18 @@ export const buildSiteBarChartTraces = (
     const actual2025 = siteBarChartData.individual?.find((item: any) => item.year === '2025')
     const projected2025 = siteBarChartData.projected?.[0]
     if (actual2025 && projected2025) {
-      const actualTotal = sumSites(actual2025.sites || {} as SiteData)
-      const projectedTotal = sumSites(projected2025.sites || {} as SiteData)
+      const actualSites = actual2025.sites || {} as SiteData
+      const projectedSites = projected2025.sites || {} as SiteData
+      const actualTotal = (
+        (isSiteVisible('lacey') ? actualSites.lacey : 0) +
+        (isSiteVisible('centralia') ? actualSites.centralia : 0) +
+        (isSiteVisible('aberdeen') ? actualSites.aberdeen : 0)
+      )
+      const projectedTotal = (
+        (isSiteVisible('lacey') ? projectedSites.lacey : 0) +
+        (isSiteVisible('centralia') ? projectedSites.centralia : 0) +
+        (isSiteVisible('aberdeen') ? projectedSites.aberdeen : 0)
+      )
       const denom = actualTotal + projectedTotal
       const totalHeight = isNormalized && denom > 0 ? 100 : (actualTotal + projectedTotal)
       

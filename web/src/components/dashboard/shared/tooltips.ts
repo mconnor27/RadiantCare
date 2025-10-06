@@ -403,14 +403,15 @@ export function getDefaultTrailingSharedMdAmount(physician: Physician): number {
   return physician.name === 'HW' ? 8302.5 : 2500
 }
 
-// Helper function for creating interactive Prior-Year Retiree Shared MD $ tooltip
+// Helper function for creating interactive Prior-Year Retiree Shared MD % tooltip
+// Shows percentage of total budget (not remainder budget)
 export function createTrailingSharedMdAmountTooltip(
   physicianId: string,
   currentAmount: number,
   e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>,
   onUpdate: (physicianId: string, amount: number) => void,
-  message: string = 'Deducted before allocation to current partners.',
-  maxValue: number = 120000
+  message: string = 'Fixed amount deducted before allocation to active partners.',
+  totalBudget: number = 97200 // Total grid budget, NOT remainder
 ) {
   const tooltipId = `trailing-md-amount-${physicianId}`
   const existing = document.getElementById(tooltipId)
@@ -427,7 +428,9 @@ export function createTrailingSharedMdAmountTooltip(
     tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
   }
 
-  const minValue = 0
+  // Calculate percentage of total budget
+  const currentPercentage = totalBudget > 0 ? (currentAmount / totalBudget) * 100 : 0
+  const displayPercentage = currentPercentage.toFixed(2)
   const displayAmount = `$${Math.round(currentAmount || 0).toLocaleString()}`
   const title = 'Medical Director Hours (Prior Year Retiree)'
 
@@ -435,11 +438,14 @@ export function createTrailingSharedMdAmountTooltip(
     <div style="margin-bottom: 6px; font-weight: 600; white-space: nowrap;">${title}</div>
     <div style="margin-bottom: 6px; font-size: 12px; opacity: 0.9;">${message}</div>
     <div style="padding: 2px 0;">
-      <input type="range" min="${minValue}" max="${maxValue}" step="100" value="${currentAmount}" 
+      <input type="range" min="0" max="100" step="0.01" value="${currentPercentage}" 
         style="width: 200px; margin-bottom: 8px; cursor: pointer;" class="growth-slider" id="${tooltipId}-slider" />
       <div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-        <input type="text" value="${displayAmount}" 
-          style="width: 110px; padding: 2px 6px; border: 1px solid #555; border-radius: 3px; background: #444; color: white; font-size: 12px; text-align: center;" 
+        <input type="text" value="${displayPercentage}%" 
+          style="width: 70px; padding: 2px 6px; border: 1px solid #555; border-radius: 3px; background: #444; color: white; font-size: 12px; text-align: center;" 
+          id="${tooltipId}-percentage" />
+        <input type="text" value="${displayAmount}" readonly
+          style="width: 90px; padding: 2px 6px; border: 1px solid #555; border-radius: 3px; background: #333; color: #999; font-size: 12px; text-align: center;" 
           id="${tooltipId}-amount" />
       </div>
     </div>
@@ -449,29 +455,36 @@ export function createTrailingSharedMdAmountTooltip(
 
   if (!isMobileTooltip) {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    const pos = calculateTooltipPosition(rect, 200, 150)
+    const pos = calculateTooltipPosition(rect, 220, 150)
     tooltip.style.left = `${pos.x}px`
     tooltip.style.top = `${pos.y}px`
   }
 
   const slider = document.getElementById(`${tooltipId}-slider`) as HTMLInputElement
+  const percentageInput = document.getElementById(`${tooltipId}-percentage`) as HTMLInputElement
   const amountInput = document.getElementById(`${tooltipId}-amount`) as HTMLInputElement
 
-  if (slider && amountInput) {
+  if (slider && percentageInput && amountInput) {
+    // Update from slider
     slider.addEventListener('input', (event) => {
       const target = event.target as HTMLInputElement
-      const newAmount = Number(target.value)
-      amountInput.value = `$${Math.round(newAmount).toLocaleString()}`
+      const newPercentage = Number(target.value)
+      const newAmount = Math.round((newPercentage / 100) * totalBudget)
+      percentageInput.value = `${newPercentage.toFixed(2)}%`
+      amountInput.value = `$${newAmount.toLocaleString()}`
       onUpdate(physicianId, newAmount)
     })
 
-    amountInput.addEventListener('input', (event) => {
+    // Update from percentage input
+    percentageInput.addEventListener('input', (event) => {
       const target = event.target as HTMLInputElement
-      const numericValue = Number(target.value.replace(/[^0-9]/g, ''))
-      const clamped = Math.max(minValue, Math.min(maxValue, numericValue))
+      const numericValue = Number(target.value.replace(/[^0-9.]/g, ''))
+      const clamped = Math.max(0, Math.min(100, numericValue))
+      const newAmount = Math.round((clamped / 100) * totalBudget)
       slider.value = String(clamped)
-      target.value = `$${Math.round(clamped).toLocaleString()}`
-      onUpdate(physicianId, clamped)
+      target.value = `${clamped.toFixed(2)}%`
+      amountInput.value = `$${newAmount.toLocaleString()}`
+      onUpdate(physicianId, newAmount)
     })
   }
 
