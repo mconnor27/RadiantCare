@@ -1352,6 +1352,16 @@ export function Dashboard() {
     setYtdSettings(settings)
   }, [])
 
+  // Trigger resize event when switching to Multi-Year view to fix Plotly chart dimensions
+  useEffect(() => {
+    if (viewMode === 'Multi-Year' && urlLoaded) {
+      // Use requestAnimationFrame to ensure DOM has updated before triggering resize
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new Event('resize'))
+      })
+    }
+  }, [viewMode, urlLoaded])
+
   // Load from shareable URL hash if present
   useEffect(() => {
     const hash = window.location.hash
@@ -1459,15 +1469,20 @@ export function Dashboard() {
           </div>
         </div>
         
-        {urlLoaded && viewMode === 'YTD Detailed' ? (
-          <YTDDetailed
-            initialSettings={ytdSettings}
-            onSettingsChange={handleYtdSettingsChange}
-          />
-        ) : urlLoaded && viewMode === 'Multi-Year' ? (
-          <MultiYearView />
-        ) : (
+        {!urlLoaded ? (
           <div style={{ padding: 20, textAlign: 'center' }}>Loading...</div>
+        ) : (
+          <>
+            <div style={{ display: viewMode === 'YTD Detailed' ? 'block' : 'none' }}>
+              <YTDDetailed
+                initialSettings={ytdSettings}
+                onSettingsChange={handleYtdSettingsChange}
+              />
+            </div>
+            <div style={{ display: viewMode === 'Multi-Year' ? 'block' : 'none' }}>
+              <MultiYearView />
+            </div>
+          </>
         )}
       </div>
     </div>
