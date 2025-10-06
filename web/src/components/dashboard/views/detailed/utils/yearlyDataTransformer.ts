@@ -1026,8 +1026,9 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
         formattedValue = formattedValue + ' ⓘ'
       }
 
-      // Add info icon to projected column for Consulting Agreement/Other
-      if (isProjectedColumn && isConsultingAgreement) {
+      // Add info icon to projected column for Consulting Agreement/Other (only in main grid, not bottom summary)
+      const isBottomSummaryRow = row.group && (row.group === 'SummaryIncome' || row.group === 'SummaryCosts' || row.group === 'SummaryNetIncome')
+      if (isProjectedColumn && isConsultingAgreement && !isBottomSummaryRow) {
         formattedValue = formattedValue + ' ⓘ'
       }
       
