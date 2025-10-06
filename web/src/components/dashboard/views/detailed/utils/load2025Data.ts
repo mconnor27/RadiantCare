@@ -121,11 +121,23 @@ export async function load2025ValuesForReset(
   // Load the 2025 data
   const { cachedData } = await load2025Data(environment)
 
+  // Import the actual 2025 PRCS value from defaults
+  const { ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS } = await import('../../../shared/defaults')
+
+  // Find default PRCS director (Suszko for 2025)
+  const defaultPrcsDirector = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+
   // Load grid data with the cached summary if available
   const gridData = await loadYearlyGridData(
     {}, // collapsed sections - empty for reset
     {}, // custom projected values - empty for reset
-    { physicians, benefitGrowthPct, locumCosts },
+    {
+      physicians,
+      benefitGrowthPct,
+      locumCosts,
+      prcsDirectorPhysicianId: defaultPrcsDirector?.id,
+      prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS
+    },
     cachedData?.summary
   )
 

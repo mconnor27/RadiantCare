@@ -407,19 +407,19 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           min={0}
           max={UI_DEFAULTS.medicalDirectorHoursMax}
           step={UI_DEFAULTS.medicalDirectorHoursStep}
-          value={fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback}
+          value={fy.prcsDirectorPhysicianId === null ? 0 : (fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback)}
           onChange={(e) =>
             store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Number(e.target.value))
           }
           disabled={isReadOnly}
           style={{
             width: '100%',
-            ['--fill-percent' as any]: `${((fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback) / UI_DEFAULTS.medicalDirectorHoursMax) * 100}%`
+            ['--fill-percent' as any]: `${(fy.prcsDirectorPhysicianId === null ? 0 : (fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback)) / UI_DEFAULTS.medicalDirectorHoursMax * 100}%`
           }}
         />
         <input
           type="text"
-          value={currency(Math.round(fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback))}
+          value={currency(Math.round(fy.prcsDirectorPhysicianId === null ? 0 : (fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback)))}
           onChange={(e) =>
             store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Number(e.target.value.replace(/[^0-9]/g, '')))
           }
@@ -533,9 +533,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           <span style={{ fontWeight: 600 }}>
             {currency(((fy.therapyIncome || 0)
               + (fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback)
-              + (((fy.prcsDirectorPhysicianId ?? (year >= 2024 ? (fy.physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))?.id) : undefined))
-                  ? (fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback)
-                  : 0))
+              + (fy.prcsDirectorPhysicianId === null ? 0 : (fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback))
               + (fy.consultingServicesAgreement ?? sc.projection.consultingServicesAgreement ?? DEFAULT_CONSULTING_SERVICES_PROJECTION)))}
           </span>
         </div>

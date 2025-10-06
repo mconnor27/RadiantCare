@@ -337,7 +337,7 @@ export function getTotalIncome(yearData: YearRow | FutureYear): number {
   // For future years, calculate from stored values
   const futureYear = yearData as FutureYear
   const medicalDirectorIncome = futureYear.medicalDirectorHours ?? DEFAULT_MD_SHARED_PROJECTION
-  const prcsMedicalDirectorIncome = futureYear.prcsDirectorPhysicianId ? (futureYear.prcsMedicalDirectorHours ?? DEFAULT_MD_PRCS_PROJECTION) : 0
+  const prcsMedicalDirectorIncome = futureYear.prcsDirectorPhysicianId === null ? 0 : (futureYear.prcsMedicalDirectorHours ?? DEFAULT_MD_PRCS_PROJECTION)
   const consultingServicesIncome = futureYear.consultingServicesAgreement ?? DEFAULT_CONSULTING_SERVICES_PROJECTION
   
   return therapyIncome + medicalDirectorIncome + prcsMedicalDirectorIncome + consultingServicesIncome
