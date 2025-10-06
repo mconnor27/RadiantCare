@@ -410,7 +410,7 @@ export function createTrailingSharedMdAmountTooltip(
   currentAmount: number,
   e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>,
   onUpdate: (physicianId: string, amount: number) => void,
-  message: string = 'Fixed amount deducted before allocation to active partners.',
+  message: string = 'Deducted before allocation to active partners.',
   totalBudget: number = 97200 // Total grid budget, NOT remainder
 ) {
   const tooltipId = `trailing-md-amount-${physicianId}`
@@ -439,13 +439,13 @@ export function createTrailingSharedMdAmountTooltip(
     <div style="margin-bottom: 6px; font-size: 12px; opacity: 0.9;">${message}</div>
     <div style="padding: 2px 0;">
       <input type="range" min="0" max="100" step="0.01" value="${currentPercentage}" 
-        style="width: 200px; margin-bottom: 8px; cursor: pointer;" class="growth-slider" id="${tooltipId}-slider" />
+        style="width: 100%; margin-bottom: 8px; cursor: pointer;" class="growth-slider" id="${tooltipId}-slider" />
       <div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
         <input type="text" value="${displayPercentage}%" 
           style="width: 70px; padding: 2px 6px; border: 1px solid #555; border-radius: 3px; background: #444; color: white; font-size: 12px; text-align: center;" 
           id="${tooltipId}-percentage" />
-        <input type="text" value="${displayAmount}" readonly
-          style="width: 90px; padding: 2px 6px; border: 1px solid #555; border-radius: 3px; background: #333; color: #999; font-size: 12px; text-align: center;" 
+        <input type="text" value="${displayAmount}" 
+          style="width: 90px; padding: 2px 6px; border: 1px solid #555; border-radius: 3px; background: #444; color: white; font-size: 12px; text-align: center;" 
           id="${tooltipId}-amount" />
       </div>
     </div>
@@ -485,6 +485,18 @@ export function createTrailingSharedMdAmountTooltip(
       target.value = `${clamped.toFixed(2)}%`
       amountInput.value = `$${newAmount.toLocaleString()}`
       onUpdate(physicianId, newAmount)
+    })
+
+    // Update from dollar amount input
+    amountInput.addEventListener('input', (event) => {
+      const target = event.target as HTMLInputElement
+      const numericValue = Number(target.value.replace(/[^0-9]/g, ''))
+      const clamped = Math.max(0, Math.min(totalBudget, numericValue))
+      const newPercentage = totalBudget > 0 ? (clamped / totalBudget) * 100 : 0
+      slider.value = String(newPercentage)
+      percentageInput.value = `${newPercentage.toFixed(2)}%`
+      target.value = `$${Math.round(clamped).toLocaleString()}`
+      onUpdate(physicianId, Math.round(clamped))
     })
   }
 

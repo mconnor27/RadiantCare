@@ -1414,7 +1414,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                             ...p,
                             trailingSharedMdAmount: amount
                           })
-                        }, 'Fixed amount deducted before allocation to active partners.', totalBudget)
+                        }, 'Deducted before allocation to active partners.', totalBudget)
                       } else {
                         const trailingTotal = fy.physicians.reduce((s, ph) => {
                           const isPriorYearRetiree = (ph.type === 'partnerToRetire') && ((ph.partnerPortionOfYear ?? 0) === 0)
@@ -1447,7 +1447,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                           ...p,
                           trailingSharedMdAmount: amount
                         })
-                      }, 'Fixed amount deducted before allocation to active partners.', totalBudget)
+                      }, 'Deducted before allocation to active partners.', totalBudget)
                     } else {
                       const trailingTotal = fy.physicians.reduce((s, ph) => {
                         const isPriorYearRetiree = (ph.type === 'partnerToRetire') && ((ph.partnerPortionOfYear ?? 0) === 0)
@@ -1516,7 +1516,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                             ...p,
                             trailingSharedMdAmount: amount
                           })
-                        }, 'Fixed amount deducted before allocation to active partners.', totalBudget)
+                        }, 'Deducted before allocation to active partners.', totalBudget)
                       } else {
                         const trailingTotal = fy.physicians.reduce((s, ph) => {
                           const isPriorYearRetiree = (ph.type === 'partnerToRetire') && ((ph.partnerPortionOfYear ?? 0) === 0)
