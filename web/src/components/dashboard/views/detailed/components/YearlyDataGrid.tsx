@@ -80,7 +80,7 @@ const normalizeAccountName = (label: string): string => {
 function syncGridValuesToMultiyear(
   store: any,
   customProjectedValues: Record<string, number>,
-  gridData: { rows: any[], columns: any[] }
+  gridData: { rows: any[], allRows: any[], columns: any[] }
 ) {
   console.log('[RESET DEBUG] 🔄 syncGridValuesToMultiyear called')
   // console.log('📊 Grid data rows count:', gridData.rows?.length || 0)
@@ -105,7 +105,8 @@ function syncGridValuesToMultiyear(
       
       // Find FIRST matching row (prioritizes main table over summary rows)
       // This handles the duplicate names issue
-      const row = gridData.rows.find((row: any) => {
+      // Use allRows to include collapsed rows in the search
+      const row = gridData.allRows.find((row: any) => {
         const accountCell = row.cells?.[0] as any
         const cellText = accountCell?.text?.trim() || ''
         
@@ -221,7 +222,7 @@ export default function YearlyDataGrid({
 }: YearlyDataGridProps = {}) {
   const store = useDashboardStore()
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
-  const [gridData, setGridData] = useState<{ rows: Row[], columns: any[] }>({ rows: [], columns: [] })
+  const [gridData, setGridData] = useState<{ rows: Row[], allRows: Row[], columns: any[] }>({ rows: [], allRows: [], columns: [] })
 
   // Add global style to prevent autofill
   useEffect(() => {

@@ -515,7 +515,7 @@ const getTooltipForCalculatedRow = (type: 'mdSalary' | 'mdBenefits' | 'mdPayroll
   }
 }
 
-export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number }): { rows: Row[], columns: any[] } {
+export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number }): { rows: Row[], columns: any[], allRows: Row[] } {
   // Helper to get the absolute 2016 Asset Disposal amount from raw data
   const getAssetDisposal2016Amount = (source: YearlyData): number => {
     const search = (rows: any[]): number => {
@@ -782,9 +782,9 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
   // Apply proportional scaling based on any custom override
   applyTherapyProportionalScaling(flattenedRows)
 
-  const dataRows: Row[] = visibleRows.map((row, index) => {
+  // Create ALL rows (including collapsed ones) for calculations/sync
+  const allDataRows: Row[] = visibleRows.map((row, index) => {
     const accountName = row.colData[0]?.value || ''
-    const isCollapsedRow = row.isCollapsed === true
     const cells = row.colData.map((cellData: any, cellIndex: number) => {
       let value = cellData.value || ''
       
@@ -1140,7 +1140,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       
       return {
         type: 'text',
-        text: isCollapsedRow ? '' : formattedValue, // Empty text for collapsed rows
+        text: formattedValue,
         nonEditable: true,
         // Store tooltip data in a custom property
         tooltip: tooltipText,
@@ -1153,21 +1153,16 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
           fontWeight,
           paddingLeft: cellIndex === 0 ? `${paddingLeft + 6}px` : '6px',
           paddingRight: '6px',
-          paddingTop: isCollapsedRow ? '0px' : '4px',
-          paddingBottom: isCollapsedRow ? '0px' : '4px',
+          paddingTop: '4px',
+          paddingBottom: '4px',
           textAlign: shouldRightAlign ? 'right' : 'left',
           fontSize: fontSize,
           cursor: hasTooltip ? 'help' : cursor,
-          border: isCollapsedRow ? 'none' : border,
+          border: border,
           // Force text alignment with additional properties
           justifyContent: shouldRightAlign ? 'flex-end' : 'flex-start',
           display: 'flex',
-          alignItems: 'center',
-          height: isCollapsedRow ? '0px' : 'auto',
-          minHeight: isCollapsedRow ? '0px' : 'auto',
-          maxHeight: isCollapsedRow ? '0px' : 'none',
-          overflow: 'hidden',
-          visibility: isCollapsedRow ? 'collapse' : 'visible'
+          alignItems: 'center'
         }
       }
     })
@@ -1183,13 +1178,20 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
     }
   })
   
+  // Filter out collapsed rows for display in ReactGrid (but keep all rows for calculations)
+  const displayRows = allDataRows.filter((_row, index) => {
+    const sourceRow = visibleRows[index]
+    return sourceRow.isCollapsed !== true
+  })
+  
   const columns = columnTitles.map((_, index) => ({
     columnId: `col-${index}`,
     width: index === 0 ? 290 : (index === columnTitles.length - 1 ? 140 : 100) // Make last column wider to fit title
   }))
   
   return {
-    rows: [headerRow, ...dataRows],
+    rows: [headerRow, ...displayRows], // Only display non-collapsed rows
+    allRows: [headerRow, ...allDataRows], // Keep all rows for calculations/sync
     columns
   }
 }
@@ -1502,7 +1504,7 @@ export function debugSummaryCalculations(gridData: { rows: Row[], columns: any[]
 }
 
 // Load and transform the yearly data
-export async function loadYearlyGridData(collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number }, cached2025Summary?: any): Promise<{ rows: Row[], columns: any[] }> {
+export async function loadYearlyGridData(collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number }, cached2025Summary?: any): Promise<{ rows: Row[], allRows: Row[], columns: any[] }> {
   try {
     // Import the JSON data
     const yearlyDataPromise = import('../../../../../historical_data/2016-2024_yearly.json')
@@ -1555,6 +1557,6 @@ export async function loadYearlyGridData(collapsedSections: CollapsibleState = {
       // You could also trigger a user-facing error dialog here if your app has that capability
     }
     
-    return { rows: [], columns: [] }
+    return { rows: [], allRows: [], columns: [] }
   }
 }
