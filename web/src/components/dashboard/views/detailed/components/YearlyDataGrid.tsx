@@ -11,8 +11,8 @@ import { useDashboardStore } from '../../../../Dashboard'
 // Using normalized names to be robust against whitespace, info icons, etc.
 const GRID_TO_MULTIYEAR_MAPPING: Record<string, string> = {
   'Misc Employment': 'miscEmploymentCosts',
-  'Medical Director Hours (Shared)': 'medicalDirectorHours', 
-  'Medical Director Hours (PRCS)': 'prcsMedicalDirectorHours',
+  'Medical Director Hours (Shared)': 'medicalDirectorHours',
+  // NOTE: 'Medical Director Hours (PRCS)' is NOT included here - it's set ONLY from PhysiciansEditor
   'Consulting Agreement/Other': 'consultingServicesAgreement',
   'Non-Employment Costs': 'nonEmploymentCosts',
   'Staff Employment': 'nonMdEmploymentCosts'
@@ -345,7 +345,9 @@ export default function YearlyDataGrid({
       const physicianData = fy2025 ? {
         physicians: fy2025.physicians,
         benefitGrowthPct: store.scenarioA.projection.benefitCostsGrowthPct,
-        locumCosts: fy2025.locumCosts
+        locumCosts: fy2025.locumCosts,
+        prcsDirectorPhysicianId: fy2025.prcsDirectorPhysicianId,
+        prcsMedicalDirectorHours: fy2025.prcsMedicalDirectorHours
       } : undefined
 
       // Load both the grid data and the projection ratio

@@ -71,7 +71,7 @@ export type FutureYear = {
   medicalDirectorHours?: number
   prcsMedicalDirectorHours?: number
   consultingServicesAgreement?: number // Consulting Services Agreement annual amount (overrides projection)
-  prcsDirectorPhysicianId?: string
+  prcsDirectorPhysicianId?: string | null // null = explicitly deselected, undefined = use default
   physicians: Physician[]
 }
 
@@ -124,7 +124,7 @@ export type Store = {
   resetProjectionSettings: (scenario: ScenarioKey, skip2025?: boolean) => void
   resetYearByYearValues: (scenario: ScenarioKey, skip2025?: boolean) => void
   resetViewSettings: (scenario: ScenarioKey, skip2025?: boolean) => void
-  setPrcsDirector: (scenario: ScenarioKey, year: number, physicianId?: string) => void
+  setPrcsDirector: (scenario: ScenarioKey, year: number, physicianId?: string | null) => void
   ensureBaselineYear: (scenario: ScenarioKey, year: number) => Promise<void>
   setCustomProjectedValue: (accountName: string, value: number) => void
   removeCustomProjectedValue: (accountName: string) => void

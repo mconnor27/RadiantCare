@@ -248,18 +248,18 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
         const value2025YTD = data2025[accountName] || data2025[accountName.replace(/Total\s+/, '')] || 0
         // Annualized: Project YTD data to full year using dynamic ratio
         const value2025Annualized = value2025YTD * projectionRatio
-        
+
         // Use calculated values if available and account matches
         let value2025Default = value2025Annualized
         let isCalculated = false
-        
+
         if (physicianData) {
           const calculatedInfo = isCalculatedRow(accountName)
           if (calculatedInfo.isCalculated) {
             const mdCosts = calculateMDAssociatesCosts(physicianData.physicians, 2025, physicianData.benefitGrowthPct)
             const guaranteedPayments = calculateGuaranteedPayments(physicianData.physicians)
             const locumsSalary = calculateLocumsSalary(physicianData.locumCosts)
-            
+
             switch (calculatedInfo.type) {
               case 'mdSalary':
                 value2025Default = mdCosts.totalSalary
@@ -275,6 +275,12 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
                 break
               case 'locumsSalary':
                 value2025Default = locumsSalary
+                break
+              case 'prcsMedicalDirectorHours':
+                // Only show value if someone is actually selected (not null or undefined)
+                value2025Default = (physicianData.prcsDirectorPhysicianId !== null && physicianData.prcsDirectorPhysicianId !== undefined)
+                  ? (physicianData.prcsMedicalDirectorHours ?? 0)
+                  : 0
                 break
             }
             isCalculated = true
@@ -302,18 +308,18 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
         const value2025YTD = data2025[accountName] || data2025[accountName.replace(/Total\s+/, '')] || 0
         // Annualized: Project YTD data to full year using dynamic ratio
         const value2025Annualized = value2025YTD * projectionRatio
-        
+
         // Use calculated values if available and account matches
         let value2025Default = value2025Annualized
         let isCalculated = false
-        
+
         if (physicianData) {
           const calculatedInfo = isCalculatedRow(accountName)
           if (calculatedInfo.isCalculated) {
             const mdCosts = calculateMDAssociatesCosts(physicianData.physicians, 2025, physicianData.benefitGrowthPct)
             const guaranteedPayments = calculateGuaranteedPayments(physicianData.physicians)
             const locumsSalary = calculateLocumsSalary(physicianData.locumCosts)
-            
+
             switch (calculatedInfo.type) {
               case 'mdSalary':
                 value2025Default = mdCosts.totalSalary
@@ -329,6 +335,12 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
                 break
               case 'locumsSalary':
                 value2025Default = locumsSalary
+                break
+              case 'prcsMedicalDirectorHours':
+                // Only show value if someone is actually selected (not null or undefined)
+                value2025Default = (physicianData.prcsDirectorPhysicianId !== null && physicianData.prcsDirectorPhysicianId !== undefined)
+                  ? (physicianData.prcsMedicalDirectorHours ?? 0)
+                  : 0
                 break
             }
             isCalculated = true
@@ -463,10 +475,10 @@ function filterCollapsedRows(rows: any[], collapsedSections: CollapsibleState): 
   return processedRows
 }
 
-// Helper function to check if account is a calculated row (MD Associates, Guaranteed Payments, or Locums)
-const isCalculatedRow = (accountName: string): { isCalculated: boolean; type: 'mdSalary' | 'mdBenefits' | 'mdPayrollTax' | 'guaranteedPayments' | 'locumsSalary' | null } => {
+// Helper function to check if account is a calculated row (MD Associates, Guaranteed Payments, Locums, or PRCS Medical Director Hours)
+const isCalculatedRow = (accountName: string): { isCalculated: boolean; type: 'mdSalary' | 'mdBenefits' | 'mdPayrollTax' | 'guaranteedPayments' | 'locumsSalary' | 'prcsMedicalDirectorHours' | null } => {
   const normalized = accountName.replace(/\s+/g, ' ').trim()
-  
+
   if (normalized.match(/8322.*MD.*Associates.*Salary/i)) {
     return { isCalculated: true, type: 'mdSalary' }
   } else if (normalized.match(/8325.*MD.*Associates.*Benefits/i)) {
@@ -477,14 +489,16 @@ const isCalculatedRow = (accountName: string): { isCalculated: boolean; type: 'm
     return { isCalculated: true, type: 'guaranteedPayments' }
   } else if (normalized.match(/8322.*Locums.*Salary/i)) {
     return { isCalculated: true, type: 'locumsSalary' }
+  } else if (normalized.match(/Medical Director Hours.*PRCS/i)) {
+    return { isCalculated: true, type: 'prcsMedicalDirectorHours' }
   }
-  
+
   // console.log('isCalculatedRow check:', { original: accountName, normalized })
   return { isCalculated: false, type: null }
 }
 
 // Helper function to get tooltip text for calculated rows
-const getTooltipForCalculatedRow = (type: 'mdSalary' | 'mdBenefits' | 'mdPayrollTax' | 'guaranteedPayments' | 'locumsSalary'): string => {
+const getTooltipForCalculatedRow = (type: 'mdSalary' | 'mdBenefits' | 'mdPayrollTax' | 'guaranteedPayments' | 'locumsSalary' | 'prcsMedicalDirectorHours'): string => {
   switch (type) {
     case 'mdSalary':
       return 'This value is automatically calculated from the sum of employee and part-employee physician salaries in the physician panel. This row is not editable.'
@@ -496,10 +510,12 @@ const getTooltipForCalculatedRow = (type: 'mdSalary' | 'mdBenefits' | 'mdPayroll
       return 'This value is automatically calculated from the sum of retiring partner buyout costs in the physician panel. This row is not editable.'
     case 'locumsSalary':
       return 'This value is automatically calculated from the locums costs setting in the physician panel. This row is not editable.'
+    case 'prcsMedicalDirectorHours':
+      return 'This value is set in the physician panel. This row is not editable.'
   }
 }
 
-export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}): { rows: Row[], columns: any[] } {
+export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number }): { rows: Row[], columns: any[] } {
   // Helper to get the absolute 2016 Asset Disposal amount from raw data
   const getAssetDisposal2016Amount = (source: YearlyData): number => {
     const search = (rows: any[]): number => {
@@ -1003,6 +1019,11 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       if (cellIndex === 0 && (isMedicalDirectorShared || isMedicalDirectorPRCS || isMedicalDirectorTotal || isConsultingAgreement)) {
         formattedValue = formattedValue + ' ⓘ'
       }
+
+      // Add info icon to projected column for Medical Director Hours (Shared)
+      if (isProjectedColumn && isMedicalDirectorShared) {
+        formattedValue = formattedValue + ' ⓘ'
+      }
       
       // Right-align all columns except the first column (account names)
       const shouldRightAlign = cellIndex > 0
@@ -1105,7 +1126,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
           tooltipText = getTooltipForCalculatedRow(calculatedInfo.type!)
           // console.log('Calculated tooltip set to:', tooltipText)
         } else if (isMedicalDirectorShared) {
-          tooltipText = 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.'
+          tooltipText = 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners. Apportion in the Physician Panel.'
         } else if (isMedicalDirectorPRCS) {
           tooltipText = 'PRCS contract terms: $250/hr up to $90,000 maximum annual. Applies if a PRCS Medical Director is specified in the Physicians section.'
         } else if (isMedicalDirectorTotal) {
@@ -1481,7 +1502,7 @@ export function debugSummaryCalculations(gridData: { rows: Row[], columns: any[]
 }
 
 // Load and transform the yearly data
-export async function loadYearlyGridData(collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number }, cached2025Summary?: any): Promise<{ rows: Row[], columns: any[] }> {
+export async function loadYearlyGridData(collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number }, cached2025Summary?: any): Promise<{ rows: Row[], columns: any[] }> {
   try {
     // Import the JSON data
     const yearlyDataPromise = import('../../../../../historical_data/2016-2024_yearly.json')
@@ -1524,7 +1545,7 @@ export async function loadYearlyGridData(collapsedSections: CollapsibleState = {
       }
     }
     
-    return transformYearlyDataToGrid(extendedData, collapsedSections, customProjectedValues)
+    return transformYearlyDataToGrid(extendedData, collapsedSections, customProjectedValues, physicianData)
   } catch (error) {
     // console.error('Failed to load yearly data:', error)
     

@@ -134,13 +134,13 @@ export const useDashboardStore = create<Store>()(
             for (const f of sc.future) {
               if (f.year < year) continue
               if (!physicianId) {
-                // Deselect in future years
-                f.prcsDirectorPhysicianId = undefined
+                // Deselect in future years - use null to explicitly mark as deselected
+                f.prcsDirectorPhysicianId = null
                 continue
               }
               // Map by name to each year's physician id, if present
               const match = f.physicians.find((p) => p.name === selectedName && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
-              f.prcsDirectorPhysicianId = match ? match.id : undefined
+              f.prcsDirectorPhysicianId = match ? match.id : null
             }
           }),
         setFutureValue: (scenario, year, field, value) =>

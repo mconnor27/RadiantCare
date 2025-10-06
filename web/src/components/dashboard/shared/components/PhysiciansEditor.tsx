@@ -59,7 +59,8 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
   }
   const physicians = physiciansOverride ?? fy.physicians
   const defaultPrcsDirectorId = suszkoDefault?.id
-  const prcsSelectedId = (fy.prcsDirectorPhysicianId ?? defaultPrcsDirectorId)
+  // Use default only if prcsDirectorPhysicianId is undefined (not set), not if it's null (explicitly deselected)
+  const prcsSelectedId = (fy.prcsDirectorPhysicianId === undefined ? defaultPrcsDirectorId : fy.prcsDirectorPhysicianId)
 
   const handleReorder = (fromIndex: number, toIndex: number) => {
     store.reorderPhysicians(scenario, year, fromIndex, toIndex)
@@ -172,8 +173,8 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 if (readOnly) return
                 const wasSelected = prcsSelectedId === p.id
                 const prevSelectedId = prcsSelectedId
-                // Toggle selection
-                store.setPrcsDirector(scenario, year, wasSelected ? undefined : p.id)
+                // Toggle selection - use null to explicitly deselect (undefined means "use default")
+                store.setPrcsDirector(scenario, year, wasSelected ? null : p.id)
                 // If selecting (none previously or selecting a new one), open the slider immediately
                 if (!wasSelected) {
                   // Remove any tooltips from the previously selected physician
