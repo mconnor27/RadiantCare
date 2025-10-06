@@ -300,7 +300,8 @@ export default function PartnerCompensation({
   const summaryData = (environment === 'production' && cachedSummary) ? cachedSummary : summaryDataStatic
   const store = useDashboardStore()
   const [isExpanded, setIsExpanded] = useState(false)
-  
+  const [hoveredPhysician, setHoveredPhysician] = useState<string | null>(null)
+
   // Get physician data from store (using 2025 and scenario A for now)
   const year = 2025
   const fy2025 = store.scenarioA.future.find((f) => f.year === year)
@@ -361,8 +362,55 @@ export default function PartnerCompensation({
       minimumFractionDigits: 2
     }).format(value)
   }
-  
-  
+
+  // Calculate warnings for each physician
+  const getPhysicianWarnings = (physicianName: string): string[] => {
+    const warnings: string[] = []
+    const physician = physicians.find(p => p.name === physicianName)
+
+    if (!physician) return warnings
+
+    // Warning 1: Paid to Date > Projected
+    const paidToDate = Math.abs(ytdData.totals[physicianName] || 0)
+    const projected = Math.abs(projectedData.totals[physicianName] || 0)
+    if (paidToDate > projected) {
+      warnings.push(`Paid to Date (${formatCurrency(paidToDate)}) exceeds Projected (${formatCurrency(projected)})`)
+    }
+
+    // Warning 2: Medical Director actually paid > amount from panel (shared + PRCS)
+    const medicalDirectorPaid = Math.abs(getValue('Medical Director', physicianName, ytdData.data))
+    if (medicalDirectorPaid > 0) {
+      let projectedMedicalDirector = 0
+
+      // Add shared medical director hours (percentage-based allocation)
+      if (physician.hasMedicalDirectorHours && physician.medicalDirectorHoursPercentage && fy2025?.medicalDirectorHours) {
+        projectedMedicalDirector += fy2025.medicalDirectorHours * (physician.medicalDirectorHoursPercentage / 100)
+      }
+
+      // Add PRCS medical director hours (if this physician is the PRCS director)
+      if (fy2025?.prcsDirectorPhysicianId === physician.id && fy2025?.prcsMedicalDirectorHours) {
+        projectedMedicalDirector += fy2025.prcsMedicalDirectorHours
+      }
+
+      if (projectedMedicalDirector > 0 && medicalDirectorPaid > projectedMedicalDirector) {
+        warnings.push(`Medical Director paid (${formatCurrency(medicalDirectorPaid)}) exceeds projected (${formatCurrency(projectedMedicalDirector)})`)
+      }
+    }
+
+    // Warning 3: Draws Additional Days Worked > internal locums for partners
+    const additionalDaysPaid = Math.abs(getValue('Draws - Additional Days Worked', physicianName, ytdData.data))
+    const isPartner = ['partner', 'newPartner', 'employeeToPartner', 'partnerToRetire'].includes(physician.type)
+    if (additionalDaysPaid > 0 && isPartner) {
+      const projectedAdditionalDays = physician.additionalDaysWorked ?? 0
+      if (additionalDaysPaid > projectedAdditionalDays) {
+        warnings.push(`Additional Days Worked paid (${formatCurrency(additionalDaysPaid)}) exceeds projected (${formatCurrency(projectedAdditionalDays)})`)
+      }
+    }
+
+    return warnings
+  }
+
+
   return (
     <div style={{
       marginTop: 16,
@@ -377,12 +425,75 @@ export default function PartnerCompensation({
     }}>
 
       <div style={{ fontWeight: 600, marginBottom: 8 }}>Physician Compensation</div>
-      
+
       <div style={{ display: 'grid', gridTemplateColumns: `2.2fr repeat(${physicianNames.length}, 1fr)`, gap: 2, fontWeight: 600 }}>
         <div style={{ textAlign: 'right' }}>Account</div>
-        {physicianNames.map(physician => (
-          <div key={physician} style={{ textAlign: 'right' }}>{physician}</div>
-        ))}
+        {physicianNames.map(physician => {
+          const warnings = getPhysicianWarnings(physician)
+          const hasWarnings = warnings.length > 0
+
+          return (
+            <div
+              key={physician}
+              style={{
+                textAlign: 'right',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: '4px',
+                position: 'relative'
+              }}
+              onMouseEnter={() => hasWarnings && setHoveredPhysician(physician)}
+              onMouseLeave={() => setHoveredPhysician(null)}
+            >
+              {hasWarnings && (
+                <>
+                  <span style={{
+                    color: '#dc3545',
+                    fontSize: '14px',
+                    cursor: 'help'
+                  }}>
+                    ⚠️
+                  </span>
+                  {hoveredPhysician === physician && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      right: 0,
+                      zIndex: 1000,
+                      backgroundColor: '#fff',
+                      border: '1px solid #dc3545',
+                      borderRadius: '4px',
+                      padding: '8px 12px',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                      minWidth: '250px',
+                      maxWidth: '350px',
+                      marginTop: '4px',
+                      fontSize: '12px',
+                      textAlign: 'left',
+                      lineHeight: '1.4'
+                    }}>
+                      <div style={{ fontWeight: 600, marginBottom: '6px', color: '#dc3545' }}>
+                        Warnings:
+                      </div>
+                      {warnings.map((warning, idx) => (
+                        <div key={idx} style={{
+                          marginBottom: idx < warnings.length - 1 ? '4px' : 0,
+                          display: 'flex',
+                          gap: '6px'
+                        }}>
+                          <span style={{ flexShrink: 0 }}>•</span>
+                          <span>{warning}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+              {physician}
+            </div>
+          )
+        })}
       </div>
       
       {/* 2025 Projected row */}

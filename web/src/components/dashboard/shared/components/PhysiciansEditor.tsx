@@ -39,7 +39,7 @@ import {
 } from '../tooltips'
 import { useDashboardStore, arePhysiciansChanged } from '../../../Dashboard'
 
-export default function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride, locumCosts, onLocumCostsChange }: { year: number; scenario: ScenarioKey; readOnly?: boolean; physiciansOverride?: Physician[]; locumCosts: number; onLocumCostsChange: (value: number) => void }) {
+export default function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride, locumCosts, onLocumCostsChange, ytdLocumsMin }: { year: number; scenario: ScenarioKey; readOnly?: boolean; physiciansOverride?: Physician[]; locumCosts: number; onLocumCostsChange: (value: number) => void; ytdLocumsMin?: number }) {
   const store = useDashboardStore()
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
   const fyExisting = sc.future.find((f) => f.year === year)
@@ -416,7 +416,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   type="range"
                   min={350000}
                   max={650000}
-                  step={1000}
+                  step={100}
                   value={p.salary ?? 0}
                   onChange={(e) =>
                     store.upsertPhysician(scenario, year, {
@@ -767,7 +767,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   type="range"
                   min={350000}
                   max={650000}
-                  step={1000}
+                  step={100}
                   value={p.salary ?? 0}
                   onChange={(e) =>
                     store.upsertPhysician(scenario, year, {
@@ -916,7 +916,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 type="range"
                 min={350000}
                 max={650000}
-                step={1000}
+                step={100}
                 value={p.salary ?? 0}
                 onChange={(e) =>
                   store.upsertPhysician(scenario, year, {
@@ -1293,7 +1293,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     type="range"
                     min={0}
                     max={20000}
-                    step={1000}
+                    step={100}
                     value={p.additionalDaysWorked ?? 0}
                     onChange={(e) =>
                       store.upsertPhysician(scenario, year, {
@@ -1336,7 +1336,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   type="range"
                   min={0}
                   max={100000}
-                  step={1000}
+                  step={100}
                   value={p.buyoutCost ?? 0}
                   onChange={(e) =>
                     store.upsertPhysician(scenario, year, {
@@ -2049,7 +2049,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   type="range"
                   min={350000}
                   max={650000}
-                  step={1000}
+                  step={100}
                   value={p.salary ?? 0}
                   onChange={(e) =>
                     store.upsertPhysician(scenario, year, {
@@ -2519,15 +2519,15 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
           <div className="control-panel" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
             <input
               type="range"
-              min={0}
-              max={240000}
-              step={1000}
+              min={ytdLocumsMin ?? 0}
+              max={200000}
+              step={100}
               value={locumCosts}
               onChange={(e) => onLocumCostsChange(Number(e.target.value))}
               disabled={readOnly}
-              style={{ 
+              style={{
                 width: '100%',
-                ['--fill-percent' as any]: `${(locumCosts / 240000) * 100}%`
+                ['--fill-percent' as any]: `${((locumCosts - (ytdLocumsMin ?? 0)) / (200000 - (ytdLocumsMin ?? 0))) * 100}%`
               }}
             />
             <input

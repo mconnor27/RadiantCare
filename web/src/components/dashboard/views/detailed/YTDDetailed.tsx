@@ -67,6 +67,52 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
   const fy2025 = store.scenarioA.future.find((f) => f.year === 2025)
   const currentLocumCosts = fy2025?.locumCosts ?? DEFAULT_LOCUM_COSTS_2025
 
+  // Parse YTD Locums amount from summary data (row 8323 Salary Locums, TOTAL column)
+  const ytdLocumsAmount = useMemo(() => {
+    if (!cachedData?.summary) {
+      return 0
+    }
+
+    // First, find the TOTAL column index from the column headers
+    const columns = cachedData.summary.Columns?.Column || []
+    let totalColumnIndex = -1
+    columns.forEach((col: any, index: number) => {
+      if (col.ColTitle === 'TOTAL') {
+        totalColumnIndex = index
+      }
+    })
+
+    if (totalColumnIndex === -1) {
+      return 0
+    }
+
+    // Now find the Locums row
+    const findRowByPattern = (rows: any[]): any => {
+      for (const row of rows) {
+        const accountValue = row.ColData?.[0]?.value?.toString() || ''
+
+        // Match "8323 Salary Locums" or similar variations
+        if (accountValue.match(/832[23].*Salary.*Locums/i) || accountValue.match(/832[23].*Locums.*Salary/i)) {
+          return row
+        }
+
+        if (row.Rows?.Row) {
+          const found = findRowByPattern(row.Rows.Row)
+          if (found) return found
+        }
+      }
+      return null
+    }
+
+    const locumsRow = findRowByPattern(cachedData.summary.Rows.Row)
+    if (locumsRow?.ColData?.[totalColumnIndex]) {
+      const value = Math.abs(parseFloat(locumsRow.ColData[totalColumnIndex]?.value || '0'))
+      // Round to nearest 100 to align with slider step
+      return Math.round(value / 100) * 100
+    }
+    return 0
+  }, [cachedData?.summary])
+
   // Ensure 2025 entry exists in the store for PhysiciansEditor to work properly
   useEffect(() => {
     if (!fy2025) {
@@ -325,8 +371,9 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
           year={2025}
           scenario="A"
           readOnly={false}
-          locumCosts={currentLocumCosts}
+          locumCosts={Math.max(currentLocumCosts, ytdLocumsAmount)}
           onLocumCostsChange={(value) => store.setFutureValue('A', 2025, 'locumCosts', value)}
+          ytdLocumsMin={ytdLocumsAmount}
         />
       </div>
       <div style={{ maxWidth: '1480px', margin: '0 auto' }}>
