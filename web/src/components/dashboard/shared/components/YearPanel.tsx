@@ -39,14 +39,6 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
   const dataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
   const isReadOnly = year === 2025 && dataMode !== 'Custom'
-
-  // Check if values were recently updated via baseline propagation (not manual override)
-  // Only suppress reset buttons for years > 2025 (future years affected by baseline changes)
-  const isRecentBaselinePropagation = () => {
-    if (year === 2025) return false // Never suppress for baseline year itself
-    const lastPropTime = (store as any).lastBaselinePropagationTime || 0
-    return (Date.now() - lastPropTime) < 500 // Within 500ms = baseline propagation
-  }
   
   // Get all available years for the year buttons
   const availableYears = [2025, ...sc.future.filter((f) => f.year !== 2025).map((f) => f.year)]
@@ -202,8 +194,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           const projectedValue = calculateProjectedValue(scenario, year, 'therapyIncome', store)
           const currentValue = fy.therapyIncome || 0
           const isChanged = projectedValue > 0 && Math.abs(currentValue - projectedValue) > UI_DEFAULTS.changeThreshold
-          // Don't show reset button if this is a recent baseline propagation (not a manual override)
-          const shouldShowReset = isChanged && !isReadOnly && !isRecentBaselinePropagation()
+          const shouldShowReset = isChanged && !isReadOnly
           return shouldShowReset ? (
             <button
               onClick={() => {
@@ -291,8 +282,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
               const projectionValue = sc.projection.medicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback
               const currentValue = fy.medicalDirectorHours ?? projectionValue
               const isChanged = Math.abs(currentValue - projectionValue) > UI_DEFAULTS.changeThreshold
-              // Don't show reset button if this is a recent baseline propagation (not a manual override)
-              const shouldShowReset = isChanged && !isReadOnly && !isRecentBaselinePropagation()
+              const shouldShowReset = isChanged && !isReadOnly
               return shouldShowReset ? (
                 <button
                   onClick={() => {
@@ -378,8 +368,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
               const projectionValue = sc.projection.prcsMedicalDirectorHours ?? UI_DEFAULTS.medicalDirectorHoursFallback
               const currentValue = fy.prcsMedicalDirectorHours ?? projectionValue
               const isChanged = Math.abs(currentValue - projectionValue) > UI_DEFAULTS.changeThreshold
-              // Don't show reset button if this is a recent baseline propagation (not a manual override)
-              const shouldShowReset = isChanged && !isReadOnly && !isRecentBaselinePropagation()
+              const shouldShowReset = isChanged && !isReadOnly
               return shouldShowReset ? (
                 <button
                   onClick={() => {
@@ -465,8 +454,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           const projectionValue = sc.projection.consultingServicesAgreement ?? DEFAULT_CONSULTING_SERVICES_PROJECTION
           const currentValue = fy.consultingServicesAgreement ?? projectionValue
           const isChanged = Math.abs(currentValue - projectionValue) > UI_DEFAULTS.changeThreshold
-          // Don't show reset button if this is a recent baseline propagation (not a manual override)
-          const shouldShowReset = isChanged && !isReadOnly && !isRecentBaselinePropagation()
+          const shouldShowReset = isChanged && !isReadOnly
           return shouldShowReset ? (
             <button
               onClick={() => {
@@ -565,8 +553,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           const projectedValue = calculateProjectedValue(scenario, year, 'nonEmploymentCosts', store)
           const currentValue = fy.nonEmploymentCosts || 0
           const isChanged = projectedValue > 0 && Math.abs(currentValue - projectedValue) > UI_DEFAULTS.changeThreshold
-          // Don't show reset button if this is a recent baseline propagation (not a manual override)
-          const shouldShowReset = isChanged && !isReadOnly && !isRecentBaselinePropagation()
+          const shouldShowReset = isChanged && !isReadOnly
           return shouldShowReset ? (
             <button
               onClick={() => {
@@ -660,8 +647,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           const projectedValue = calculateProjectedValue(scenario, year, 'nonMdEmploymentCosts', store)
           const currentValue = fy.nonMdEmploymentCosts || 0
           const isChanged = projectedValue > 0 && Math.abs(currentValue - projectedValue) > UI_DEFAULTS.changeThreshold
-          // Don't show reset button if this is a recent baseline propagation (not a manual override)
-          const shouldShowReset = isChanged && !isReadOnly && !isRecentBaselinePropagation()
+          const shouldShowReset = isChanged && !isReadOnly
           return shouldShowReset ? (
             <button
               onClick={() => {
@@ -757,8 +743,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           const projectedValue = calculateProjectedValue(scenario, year, 'miscEmploymentCosts', store)
           const currentValue = fy.miscEmploymentCosts || 0
           const isChanged = projectedValue > 0 && Math.abs(currentValue - projectedValue) > 100 // $100 threshold for smaller amounts
-          // Don't show reset button if this is a recent baseline propagation (not a manual override)
-          const shouldShowReset = isChanged && !isReadOnly && !isRecentBaselinePropagation()
+          const shouldShowReset = isChanged && !isReadOnly
           return shouldShowReset ? (
             <button
               onClick={() => {

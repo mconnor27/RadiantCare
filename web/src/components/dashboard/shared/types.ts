@@ -102,7 +102,6 @@ export type Store = {
   scenarioB?: ScenarioState
   scenarioBEnabled: boolean
   customProjectedValues: Record<string, number>
-  lastBaselinePropagationTime?: number
   suppressNextGridSync?: boolean
   setScenarioEnabled: (enabled: boolean) => void
   setFutureValue: (
