@@ -13,17 +13,30 @@ export default function OverallCompensationSummary() {
   const isMobile = useIsMobile()
   const years = Array.from(new Set([2025, ...store.scenarioA.future.map((f) => f.year)]))
   const perYearA = years.map((y) => ({ year: y, comps: computeAllCompensationsForYear(y, 'A') }))
+  
+  // Scenario B: Use Scenario A's 2025 values (shared baseline), then B's own values for 2026+
   const perYearB = store.scenarioBEnabled && store.scenarioB
-    ? years.map((y) => ({ year: y, comps: computeAllCompensationsForYear(y, 'B') }))
+    ? years.map((y) => ({ 
+        year: y, 
+        comps: y === 2025 
+          ? computeAllCompensationsForYear(y, 'A') // Use shared baseline for 2025
+          : computeAllCompensationsForYear(y, 'B') 
+      }))
     : undefined
-  // const totalPerYear = perYear.map(({ year, comps }) => ({ year, total: comps.reduce((s, c) => s + c.comp, 0) }))
 
   // For the "Per Physician By Year" table, we want to include retired partners
   // Using the shared function from calculations.ts
 
   const perYearAWithRetired = years.map((y) => ({ year: y, comps: computeAllCompensationsForYearWithRetired(y, 'A') }))
+  
+  // Scenario B: Use Scenario A's 2025 values (shared baseline), then B's own values for 2026+
   const perYearBWithRetired = store.scenarioBEnabled && store.scenarioB
-    ? years.map((y) => ({ year: y, comps: computeAllCompensationsForYearWithRetired(y, 'B') }))
+    ? years.map((y) => ({ 
+        year: y, 
+        comps: y === 2025 
+          ? computeAllCompensationsForYearWithRetired(y, 'A') // Use shared baseline for 2025
+          : computeAllCompensationsForYearWithRetired(y, 'B') 
+      }))
     : undefined
 
   // Collect all physician names from both scenarios (including retired)
@@ -57,11 +70,18 @@ export default function OverallCompensationSummary() {
     // Use merged future[2025] data (includes grid overrides) or fallback to default
     return fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
   })
+  
+  // Scenario B: Use Scenario A's 2025 locums value (shared baseline), then B's own values for 2026+
   const locumsSeriesB = store.scenarioBEnabled && store.scenarioB
     ? years.map((y) => {
+        if (y === 2025) {
+          // Use shared baseline from Scenario A for 2025
+          const fy2025 = store.scenarioA.future.find(f => f.year === 2025)
+          return fy2025?.locumCosts ?? DEFAULT_LOCUM_COSTS_2025
+        }
+        // For 2026+, use Scenario B's own data
         const fy = store.scenarioB!.future.find(f => f.year === y)
-        // Use merged future[2025] data (includes grid overrides) or fallback to default
-        return fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
+        return fy?.locumCosts ?? 0
       })
     : []
 

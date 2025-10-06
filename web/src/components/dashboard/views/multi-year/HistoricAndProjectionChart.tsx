@@ -3,12 +3,10 @@ import createPlotlyComponent from 'react-plotly.js/factory'
 import Plotly from 'plotly.js-dist-min'
 const Plot = createPlotlyComponent(Plotly)
 import { useDashboardStore } from '../../../Dashboard'
-// Removed NET_PARTNER_POOL_2025 import - now calculating dynamically
 import { getTotalIncome } from '../../shared/calculations'
 import { useIsMobile } from '../../shared/hooks'
 import { getEmployeePortionOfYear, calculateDelayedW2Payment, computeDefaultNonMdEmploymentCosts } from '../../shared/calculations'
 import { calculateNetIncomeForMDs } from '../../../Dashboard'
-import { DEFAULT_MISC_EMPLOYMENT_COSTS, DEFAULT_LOCUM_COSTS_2025, scenario2024Defaults, scenarioADefaultsByYear, scenarioBDefaultsByYear } from '../../shared/defaults'
 
 export default function HistoricAndProjectionChart() {
   const store = useDashboardStore()
@@ -20,130 +18,54 @@ export default function HistoricAndProjectionChart() {
     console.log('📊 Multi-Year Chart: Loaded projections for', store.scenarioA.future.map(f => f.year).join(', '))
   }, [])
 
-  // Helper: build merged 2025 FY and consistent baseline metrics from scenario state
-  const getScenarioBaselineMetrics = (scenario: 'A' | 'B') => {
-    const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
-    const dataMode = sc.dataMode
-    const last2024 = store.historic.find((h) => h.year === 2024)
-    const last2025 = store.historic.find((h) => h.year === 2025)
-    const storeFy2025 = sc.future.find(f => f.year === 2025)
-
-    // Construct merged FY 2025 based on dataMode and overrides
-    const mergedFy = (() => {
-      if (dataMode === 'Custom' && storeFy2025) {
-        // Ensure Custom mode has physicians populated, fallback to defaults if needed
-        const defaultPhysicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
-        return {
-          ...storeFy2025,
-          physicians: storeFy2025.physicians && storeFy2025.physicians.length > 0 
-            ? storeFy2025.physicians 
-            : defaultPhysicians
-        }
-      }
-      if (dataMode === 'Custom') {
-        // Custom mode fallback when no storeFy2025 exists
-        const defaultPhysicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
-        return {
-          year: 2025,
-          therapyIncome: 2700000,
-          nonEmploymentCosts: 0,
-          nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
-          miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-          medicalDirectorHours: 0,
-          prcsMedicalDirectorHours: 0,
-          consultingServicesAgreement: 0,
-          locumCosts: DEFAULT_LOCUM_COSTS_2025,
-          physicians: defaultPhysicians
-        } as any
-      }
-      if (dataMode === '2024 Data' && last2024) {
-        const defaultPhysicians = scenario2024Defaults()
-        return {
-          year: 2025,
-          therapyIncome: storeFy2025?.therapyIncome ?? last2024.therapyIncome,
-          nonEmploymentCosts: storeFy2025?.nonEmploymentCosts ?? last2024.nonEmploymentCosts,
-          nonMdEmploymentCosts: storeFy2025?.nonMdEmploymentCosts ?? 164677.44,
-          miscEmploymentCosts: storeFy2025?.miscEmploymentCosts ?? 24623.49,
-          medicalDirectorHours: storeFy2025?.medicalDirectorHours ?? 0,
-          prcsMedicalDirectorHours: storeFy2025?.prcsMedicalDirectorHours ?? 0,
-          prcsDirectorPhysicianId: storeFy2025?.prcsDirectorPhysicianId,
-          consultingServicesAgreement: storeFy2025?.consultingServicesAgreement ?? 0,
-          locumCosts: storeFy2025?.locumCosts ?? DEFAULT_LOCUM_COSTS_2025,
-          physicians: storeFy2025?.physicians ?? defaultPhysicians
-        } as any
-      }
-      if (dataMode === '2025 Data' && last2025) {
-        const defaultPhysicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
-        return {
-          year: 2025,
-          therapyIncome: storeFy2025?.therapyIncome ?? last2025.therapyIncome,
-          nonEmploymentCosts: storeFy2025?.nonEmploymentCosts ?? last2025.nonEmploymentCosts,
-          nonMdEmploymentCosts: storeFy2025?.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
-          miscEmploymentCosts: storeFy2025?.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
-          medicalDirectorHours: storeFy2025?.medicalDirectorHours ?? 0,
-          prcsMedicalDirectorHours: storeFy2025?.prcsMedicalDirectorHours ?? 0,
-          prcsDirectorPhysicianId: storeFy2025?.prcsDirectorPhysicianId,
-          consultingServicesAgreement: storeFy2025?.consultingServicesAgreement ?? 0,
-          locumCosts: storeFy2025?.locumCosts ?? DEFAULT_LOCUM_COSTS_2025,
-          physicians: storeFy2025?.physicians ?? defaultPhysicians
-        } as any
-      }
-      // Fallback to defaults if no historic available
-      const defaultPhysicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
-      return {
-        year: 2025,
-        therapyIncome: storeFy2025?.therapyIncome ?? 2700000,
-        nonEmploymentCosts: storeFy2025?.nonEmploymentCosts ?? 0,
-        nonMdEmploymentCosts: storeFy2025?.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
-        miscEmploymentCosts: storeFy2025?.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
-        medicalDirectorHours: storeFy2025?.medicalDirectorHours ?? 0,
-        prcsMedicalDirectorHours: storeFy2025?.prcsMedicalDirectorHours ?? 0,
-        consultingServicesAgreement: storeFy2025?.consultingServicesAgreement ?? 0,
-        locumCosts: storeFy2025?.locumCosts ?? DEFAULT_LOCUM_COSTS_2025,
-        physicians: storeFy2025?.physicians ?? defaultPhysicians
-      } as any
-    })()
-
-    // Derived metrics consistent with other parts of the app
-    const totalIncome = getTotalIncome(mergedFy)
-    const staffEmployment = (mergedFy.nonMdEmploymentCosts ?? 0) + (mergedFy.miscEmploymentCosts ?? 0)
-    const mdEmployment = mergedFy.physicians.reduce((s: number, e: any) => {
+  // Helper: Calculate metrics from a FutureYear entry (used for 2025 baseline from store)
+  const calculateMetricsFromFutureYear = (fy: any) => {
+    const totalIncome = getTotalIncome(fy)
+    const staffEmployment = (fy.nonMdEmploymentCosts ?? 0) + (fy.miscEmploymentCosts ?? 0)
+    const mdEmployment = fy.physicians.reduce((s: number, e: any) => {
       if (e.type === 'employee') return s + (e.salary ?? 0)
       if (e.type === 'newEmployee') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
       if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
       return s
     }, 0)
-    const delayedW2 = mergedFy.physicians.reduce((s: number, p: any) => {
+    const delayedW2 = fy.physicians.reduce((s: number, p: any) => {
       if (p.type === 'employeeToPartner') {
-        const delayed = calculateDelayedW2Payment(p, 2025)
+        const delayed = calculateDelayedW2Payment(p, fy.year)
         return s + delayed.amount + delayed.taxes
       }
       return s
     }, 0)
-    const buyouts = mergedFy.physicians.reduce((s: number, p: any) => s + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0), 0)
-    const employmentCosts = mdEmployment + staffEmployment + delayedW2 + (mergedFy.locumCosts ?? 0)
-    const netIncome = totalIncome - (mergedFy.nonEmploymentCosts ?? 0) - staffEmployment - (mergedFy.locumCosts ?? 0) - mdEmployment - buyouts - delayedW2
+    const buyouts = fy.physicians.reduce((s: number, p: any) => s + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0), 0)
+    const employmentCosts = mdEmployment + staffEmployment + delayedW2 + (fy.locumCosts ?? 0)
+    const netIncome = totalIncome - (fy.nonEmploymentCosts ?? 0) - staffEmployment - (fy.locumCosts ?? 0) - mdEmployment - buyouts - delayedW2
 
     return {
       totalIncome,
-      nonEmploymentCosts: mergedFy.nonEmploymentCosts ?? 0,
+      nonEmploymentCosts: fy.nonEmploymentCosts ?? 0,
       employmentCosts,
       staffEmployment,
       netIncome,
     }
   }
 
-  // Memoize baseline calculations to avoid recalculating on every render
-  const baselineA = useMemo(() => getScenarioBaselineMetrics('A'), [
-    store.scenarioA.future,
-    store.scenarioA.dataMode,
-    store.historic
-  ])
+  // Memoize baseline calculations - use stored 2025 data directly to avoid discontinuity
+  // IMPORTANT: 2025 is the ground truth baseline shared by both scenarios
+  // It comes from YTDDetailed sync and is stored in scenarioA.future
+  const baselineA = useMemo(() => {
+    const fy2025 = store.scenarioA.future.find(f => f.year === 2025)
+    if (!fy2025) {
+      // Fallback if 2025 not in store (shouldn't happen)
+      return { totalIncome: 0, nonEmploymentCosts: 0, employmentCosts: 0, staffEmployment: 0, netIncome: 0 }
+    }
+    return calculateMetricsFromFutureYear(fy2025)
+  }, [store.scenarioA.future])
   
-  const baselineB = useMemo(() => 
-    store.scenarioBEnabled && store.scenarioB ? getScenarioBaselineMetrics('B') : null,
-    [store.scenarioBEnabled, store.scenarioB?.future, store.scenarioB?.dataMode, store.historic]
-  )
+  // Scenario B uses the SAME 2025 baseline as Scenario A (there's only one ground truth)
+  const baselineB = useMemo(() => {
+    if (!store.scenarioBEnabled || !store.scenarioB) return null
+    // Use Scenario A's 2025 data as the shared baseline
+    return baselineA
+  }, [store.scenarioBEnabled, store.scenarioB, baselineA])
 
   // Memoize historic arrays - only recalculate when baseline changes
   const incomeHistoric = useMemo(() => 
@@ -313,20 +235,21 @@ export default function HistoricAndProjectionChart() {
     [store.scenarioA.future]
   )
   
-  const scBNetIncomeForMDs = useMemo(() => 
-    store.scenarioBEnabled && store.scenarioB 
-      ? [2025, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.year)].map(year => {
-          return calculateNetIncomeForMDs(year, 'B')
-        })
-      : [],
-    [store.scenarioBEnabled, store.scenarioB?.future]
-  )
+  const scBNetIncomeForMDs = useMemo(() => {
+    if (!store.scenarioBEnabled || !store.scenarioB) return []
+    // For 2025, use Scenario A's value (shared baseline)
+    const value2025 = scANetIncomeForMDs[0]
+    // For 2026+, use Scenario B's calculations
+    const values2026Plus = store.scenarioB.future.filter(f => f.year !== 2025).map(f => calculateNetIncomeForMDs(f.year, 'B'))
+    return [value2025, ...values2026Plus]
+  }, [store.scenarioBEnabled, store.scenarioB?.future, scANetIncomeForMDs])
 
   // Memoize Staff Employment Costs calculations
   const scAStaffEmployment = useMemo(() => 
     [2025, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => f.year)].map(year => {
       if (year === 2025) {
-        return computeDefaultNonMdEmploymentCosts(2025)
+        const fy2025 = store.scenarioA.future.find(f => f.year === 2025)
+        return fy2025 ? ((fy2025.nonMdEmploymentCosts ?? 0) + (fy2025.miscEmploymentCosts ?? 0)) : computeDefaultNonMdEmploymentCosts(2025)
       }
       const fy = store.scenarioA.future.find(f => f.year === year)
       return (fy?.nonMdEmploymentCosts ?? 0) + (fy?.miscEmploymentCosts ?? 0)
@@ -334,18 +257,16 @@ export default function HistoricAndProjectionChart() {
     [store.scenarioA.future]
   )
   
-  const scBStaffEmployment = useMemo(() => 
-    store.scenarioBEnabled && store.scenarioB 
-      ? [2025, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.year)].map(year => {
-          if (year === 2025) {
-            return computeDefaultNonMdEmploymentCosts(2025)
-          }
-          const fy = store.scenarioB?.future.find(f => f.year === year)
-          return (fy?.nonMdEmploymentCosts ?? 0) + (fy?.miscEmploymentCosts ?? 0)
-        })
-      : [],
-    [store.scenarioBEnabled, store.scenarioB?.future]
-  )
+  const scBStaffEmployment = useMemo(() => {
+    if (!store.scenarioBEnabled || !store.scenarioB) return []
+    // For 2025, use Scenario A's value (shared baseline)
+    const value2025 = scAStaffEmployment[0]
+    // For 2026+, use Scenario B's calculations
+    const values2026Plus = store.scenarioB.future.filter(f => f.year !== 2025).map(f => {
+      return (f.nonMdEmploymentCosts ?? 0) + (f.miscEmploymentCosts ?? 0)
+    })
+    return [value2025, ...values2026Plus]
+  }, [store.scenarioBEnabled, store.scenarioB?.future, scAStaffEmployment])
 
 
   return (

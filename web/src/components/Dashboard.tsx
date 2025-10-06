@@ -1351,6 +1351,7 @@ export function Dashboard() {
   const [ytdSettings, setYtdSettings] = useState<any>(DEFAULT_YTD_SETTINGS)
   // Track whether MultiYearView has been visited (for lazy initialization)
   const [multiYearInitialized, setMultiYearInitialized] = useState(false)
+  const [showHelpModal, setShowHelpModal] = useState(false)
   
   // Wrap setYtdSettings in useCallback to prevent unnecessary re-renders in YTDDetailed
   const handleYtdSettingsChange = useCallback((settings: any) => {
@@ -1450,7 +1451,42 @@ export function Dashboard() {
   }
 
   return (
-    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16 }}>
+    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16, position: 'relative' }}>
+      {/* Help Icon in Very Top Right Corner */}
+      <div 
+        onClick={() => setShowHelpModal(true)}
+        title="Click for help"
+        style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          width: 32,
+          height: 32,
+          borderRadius: '50%',
+          border: '2px solid #7c2a83',
+          backgroundColor: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          fontSize: 18,
+          fontWeight: 'bold',
+          color: '#7c2a83',
+          transition: 'all 0.2s',
+          zIndex: 10
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = '#7c2a83'
+          e.currentTarget.style.color = '#fff'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = '#fff'
+          e.currentTarget.style.color = '#7c2a83'
+        }}
+      >
+        ?
+      </div>
+
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: isMobile ? '8px 0' : '0 0 4px', justifyContent: 'center' }}>
         <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 60, width: 'auto', display: 'block' }} />
         <h2 style={{ margin: 0, fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif', color: '#7c2a83', fontWeight: 900, fontSize: 36, lineHeight: 1.05 }}>Compensation Dashboard</h2>
@@ -1504,6 +1540,160 @@ export function Dashboard() {
           </>
         )}
       </div>
+
+      {/* Help Modal */}
+      {showHelpModal && (
+        <>
+          {/* Dimmed Background Overlay */}
+          <div 
+            onClick={() => setShowHelpModal(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            {/* Modal Content */}
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: '#fff',
+                borderRadius: 12,
+                padding: isMobile ? 20 : 40,
+                maxWidth: isMobile ? '90%' : 800,
+                maxHeight: '80vh',
+                overflowY: 'auto',
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1), 0 10px 20px rgba(0, 0, 0, 0.2)',
+              }}
+            >
+              <h2 style={{ 
+                margin: '0 0 20px 0', 
+                color: '#7c2a83', 
+                fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif',
+                fontSize: 28,
+                fontWeight: 900
+              }}>
+                Compensation Dashboard Help
+              </h2>
+
+              <div style={{ lineHeight: 1.6, color: '#333', textAlign: 'left' }}>
+                <h3 style={{ color: '#7c2a83', marginTop: 0 }}>Overview</h3>
+                <p>
+                  The RadiantCare Compensation Dashboard is a financial planning tool designed to project 
+                  and analyze physician compensation across multiple years. It allows you to model different 
+                  scenarios, adjust key financial parameters, and visualize the impact on compensation.
+                </p>
+
+                <h3 style={{ color: '#7c2a83', marginTop: 24 }}>Two Main Views</h3>
+                
+                <h4 style={{ marginTop: 16, marginBottom: 8 }}>YTD Detailed View</h4>
+                <p>
+                  This view focuses on the current year with detailed day-to-day tracking. It includes:
+                </p>
+                <ul style={{ marginTop: 8, paddingLeft: 20 }}>
+                  <li>Real-time data synchronization with QuickBooks Online</li>
+                  <li>Actual year-to-date as well as projected physician compensation</li>
+                  <li>Interactive and customizable charts showing income trends with historical comparison</li>
+                  <li>Site-specific breakdowns (Lacey, Centralia, Aberdeen)</li>
+                  <li>Ability to adjust physician details, salaries, and benefits</li>
+                  <li>Interactive P&L sheet showing historical data as well as projected data</li>
+                </ul>
+
+                <h4 style={{ marginTop: 16, marginBottom: 8 }}>Multi-Year View</h4>
+                <p>
+                  This view provides long-term projections (current year plus 5 years). It features:
+                </p>
+                <ul style={{ marginTop: 8, paddingLeft: 20 }}>
+                  <li>Year-by-year financial projections</li>
+                  <li>Adjustable growth rates for income, costs, and employment expenses</li>
+                  <li>Physician roster planning (hires, retirements, promotions)</li>
+                  <li>Scenario comparison (Scenario A vs Scenario B)</li>
+                  <li>Medical director hours and consulting services allocation</li>
+                </ul>
+
+                <h3 style={{ color: '#7c2a83', marginTop: 24 }}>Key Features</h3>
+                <ul style={{ marginTop: 8, paddingLeft: 20 }}>
+                  <li><strong>Reset to Defaults:</strong> Return all settings on the view to their original values</li>
+                  <li><strong>Copy Shareable Link:</strong> Generate a URL preserving the current configuration for easy sharing</li>
+                  <li><strong>Interactive Charts:</strong> Hover over data points for detailed information</li>
+                  <li><strong>Real-time Calculations:</strong> All compensation values update automatically as you make changes</li>
+                </ul>
+
+                <h3 style={{ color: '#7c2a83', marginTop: 24 }}>Getting Started</h3>
+                <ol style={{ marginTop: 8, paddingLeft: 20 }}>
+                  <li>Choose between "YTD Detailed" and "Multi-Year" views using the tabs</li>
+                  <li>Review the default projections and adjust parameters as needed</li>
+                  <li>Modify physician details, growth rates, and other financial assumptions</li>
+                  <li>Use the charts and tables to analyze the impact of your changes</li>
+                  <li>Share your scenarios with colleagues using the "Copy shareable link" button</li>
+                </ol>
+              </div>
+
+              <div style={{ 
+                display: 'flex', 
+                gap: 12, 
+                marginTop: 32,
+                justifyContent: 'flex-end',
+                flexWrap: 'wrap'
+              }}>
+                <button
+                  onClick={() => {
+                    window.location.href = 'mailto:connor@radiantcare.com?subject=Compensation Dashboard Support'
+                  }}
+                  style={{
+                    padding: '10px 20px',
+                    border: '1px solid #7c2a83',
+                    borderRadius: 6,
+                    backgroundColor: '#fff',
+                    color: '#7c2a83',
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f3f4f6'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#fff'
+                  }}
+                >
+                  Contact Support
+                </button>
+                <button
+                  onClick={() => setShowHelpModal(false)}
+                  style={{
+                    padding: '10px 20px',
+                    border: 'none',
+                    borderRadius: 6,
+                    backgroundColor: '#7c2a83',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#651f6b'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#7c2a83'
+                  }}
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
