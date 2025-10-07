@@ -4,7 +4,7 @@ import {
   type YTDPoint 
 } from '../../../../historical_data/therapyIncomeParser'
 import { getCurrentDateInfo } from './utils/dataProcessing'
-import { authenticatedFetch } from '../../../lib/api'
+import { authenticatedFetch } from '../../../../lib/api'
 import type { IncomeMode } from '../../shared/types'
 
 // Import modular components
@@ -152,13 +152,13 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
         } else {
           // Production mode: try to load cached data, fall back to historical
           authenticatedFetch('/api/qbo/cached-2025')
-            .then(res => {
+            .then((res: Response) => {
               if (!res.ok) {
                 // No cached data, use fallback
                 console.log('No cached data available, using historical JSON fallback')
                 return { data: historical2025Data, cache: null }
               }
-              return res.json().then(cache => {
+              return res.json().then((cache: any) => {
                 if (cache?.daily) {
                   // Parse the cached daily report
                   const points = parseTherapyIncome2025(cache.daily)
@@ -172,11 +172,11 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
                 }
               })
             })
-            .catch(err => {
+            .catch((err: any) => {
               console.error('Error loading cached data, using fallback:', err)
               return { data: historical2025Data, cache: null }
             })
-            .then(result => {
+            .then((result: any) => {
               // Hold the data until modal is ready to dismiss
               const elapsed = Date.now() - startTime
               const remainingTime = Math.max(0, 1000 - elapsed)
