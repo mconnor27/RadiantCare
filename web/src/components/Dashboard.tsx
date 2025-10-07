@@ -1594,16 +1594,17 @@ export function Dashboard() {
         }}>
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 80, width: 'auto', marginBottom: 16 }} />
-            <h1 style={{ 
-              margin: '0 0 8px 0', 
-              fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif', 
-              color: '#7c2a83', 
-              fontWeight: 900, 
-              fontSize: 32 
+            <h1 style={{
+              margin: '0 0 8px 0',
+              fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif',
+              color: '#7c2a83',
+              fontWeight: 900,
+              fontSize: 32,
+              textAlign: 'center'
             }}>
               Compensation Dashboard
             </h1>
-            <p style={{ margin: 0, fontSize: 16, color: '#6b7280' }}>
+            <p style={{ margin: 0, fontSize: 16, color: '#6b7280', textAlign: 'center' }}>
               Sign in to access the dashboard
             </p>
           </div>
