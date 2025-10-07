@@ -28,23 +28,6 @@ export interface Profile {
   updated_at: string
 }
 
-export interface SavedScenario {
-  id: string
-  user_id: string
-  name: string
-  description: string | null
-  tags: string[]
-  is_public: boolean
-  scenario_data: {
-    physicians: any[]
-    projectionSettings: any
-    customProjectedValues: Record<string, any>
-  }
-  created_at: string
-  updated_at: string
-  creator_email?: string // Joined from profiles
-}
-
 export interface UserInvitation {
   id: string
   email: string

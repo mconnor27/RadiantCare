@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { supabase, type SavedScenario } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
+import type { SavedScenario } from '../dashboard/shared/types'
 import { useAuth } from '../auth/AuthProvider'
 import { useDashboardStore } from '../Dashboard'
 import ScenarioList from './ScenarioList'
