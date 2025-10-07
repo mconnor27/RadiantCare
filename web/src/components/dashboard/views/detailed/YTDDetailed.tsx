@@ -31,6 +31,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
   const [data, setData] = useState<YTDPoint[]>([])
   const [environment] = useState<'production' | 'sandbox'>('production')
   const [cachedData, setCachedData] = useState<{ daily?: any, summary?: any, equity?: any } | null>(null)
+  const [refreshTrigger, setRefreshTrigger] = useState(0) // Used to trigger data refresh after sync
   const [isNormalized, setIsNormalized] = useState(initialSettings?.isNormalized ?? false)
   const [showCombined, setShowCombined] = useState(initialSettings?.showCombined ?? false)
   const [combineStatistic, setCombineStatistic] = useState<'mean' | 'median' | null>(initialSettings?.combineStatistic ?? null) // Off by default
@@ -190,7 +191,30 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
         }
       }, 50) // Small delay after paint to ensure modal is visible
     })
-  }, [historical2025Data, environment])
+  }, [historical2025Data, environment, refreshTrigger])
+  
+  // Callback to refresh data after sync (without showing loading modal)
+  const handleRefreshAfterSync = () => {
+    if (environment === 'production') {
+      authenticatedFetch('/api/qbo/cached-2025')
+        .then((res: Response) => {
+          if (res.ok) {
+            return res.json()
+          }
+          return null
+        })
+        .then((cache: any) => {
+          if (cache?.daily) {
+            const points = parseTherapyIncome2025(cache.daily)
+            setData(points)
+            setCachedData({ daily: cache.daily, summary: cache.summary, equity: cache.equity })
+          }
+        })
+        .catch((err: any) => {
+          console.error('Error refreshing cached data:', err)
+        })
+    }
+  }
 
   // Initialize current period based on timeframe
   useEffect(() => {
@@ -371,7 +395,11 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
 
       <div style={{ margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-          <SyncButton environment={environment} isLoadingDashboard={showLoadingModal} />
+          <SyncButton 
+            environment={environment} 
+            isLoadingDashboard={showLoadingModal}
+            onSyncComplete={handleRefreshAfterSync}
+          />
         </div>
       <div style={{
         display: 'flex',

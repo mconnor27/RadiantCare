@@ -6,11 +6,12 @@ import { useAuth } from '../../../../auth/AuthProvider'
 interface SyncButtonProps {
   environment: 'production' | 'sandbox'
   isLoadingDashboard?: boolean
+  onSyncComplete?: () => void
 }
 
 type SyncStep = 'daily' | 'summary' | 'equity' | 'complete' | 'error'
 
-export default function SyncButton({ environment, isLoadingDashboard = false }: SyncButtonProps) {
+export default function SyncButton({ environment, isLoadingDashboard = false, onSyncComplete }: SyncButtonProps) {
   const { profile } = useAuth()
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string | null | undefined>(undefined)
   const [syncing, setSyncing] = useState(false)
@@ -105,12 +106,13 @@ export default function SyncButton({ environment, isLoadingDashboard = false }: 
           store.resetCustomProjectedValues()
         }
 
-        // Hide modal and reload after 2 seconds on success
+        // Hide modal after 1.5 seconds and refresh data
         setTimeout(() => {
           setSyncStep(null)
           setSyncing(false)
-          window.location.reload()
-        }, 2000)
+          // Trigger data refresh in parent component
+          onSyncComplete?.()
+        }, 1500)
       }
     } catch {
       setSyncStep('error')
