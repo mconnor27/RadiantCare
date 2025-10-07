@@ -6,6 +6,7 @@ interface ScenarioCardProps {
   onClone: (id: string) => void
   onEdit: (scenario: SavedScenario) => void
   onDelete: (id: string) => void
+  onUpdateBaseline?: (id: string) => void
   isOwner: boolean
 }
 
@@ -15,6 +16,7 @@ export default function ScenarioCard({
   onClone,
   onEdit,
   onDelete,
+  onUpdateBaseline,
   isOwner,
 }: ScenarioCardProps) {
   const formatDate = (dateString: string) => {
@@ -209,6 +211,25 @@ export default function ScenarioCard({
         </button>
         {isOwner && (
           <>
+            {/* Show Update Baseline button for 2025 scenarios */}
+            {onUpdateBaseline && scenario.baseline_mode === '2025 Data' && (
+              <button
+                onClick={() => onUpdateBaseline(scenario.id)}
+                style={{
+                  padding: '6px 12px',
+                  background: '#fff',
+                  color: '#059669',
+                  border: '1px solid #059669',
+                  borderRadius: '4px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+                title="Update this scenario with the latest 2025 data"
+              >
+                🔄 Update Data
+              </button>
+            )}
             <button
               onClick={() => onEdit(scenario)}
               style={{

@@ -9,6 +9,7 @@ interface ScenarioListProps {
   onClone: (id: string) => void
   onEdit: (scenario: SavedScenario) => void
   onDelete: (id: string) => void
+  onUpdateBaseline?: (id: string) => void
   loading?: boolean
 }
 
@@ -19,6 +20,7 @@ export default function ScenarioList({
   onClone,
   onEdit,
   onDelete,
+  onUpdateBaseline,
   loading = false,
 }: ScenarioListProps) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -126,6 +128,7 @@ export default function ScenarioList({
               onClone={onClone}
               onEdit={onEdit}
               onDelete={onDelete}
+              onUpdateBaseline={onUpdateBaseline}
               isOwner={scenario.user_id === currentUserId}
             />
           ))}

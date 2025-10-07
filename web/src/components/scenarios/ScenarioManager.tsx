@@ -135,6 +135,39 @@ export default function ScenarioManager({ isOpen, onClose, viewMode }: ScenarioM
     }
   }
 
+  async function handleUpdateBaseline(id: string) {
+    if (!confirm('Update this scenario with latest 2025 QuickBooks data? This will preserve your projection settings and future years.')) {
+      return
+    }
+
+    try {
+      // Get fresh QBO sync timestamp
+      const { data: cacheData } = await supabase
+        .from('qbo_cache')
+        .select('last_sync_timestamp')
+        .eq('id', 1)
+        .single()
+
+      // Update the scenario with new metadata
+      const { error: updateError } = await supabase
+        .from('scenarios')
+        .update({
+          baseline_date: new Date().toISOString().split('T')[0],
+          qbo_sync_timestamp: cacheData?.last_sync_timestamp,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+
+      if (updateError) throw updateError
+
+      await loadScenarios()
+      
+      alert('✅ Scenario updated with latest 2025 data!')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update baseline')
+    }
+  }
+
   async function handleDeleteScenario(id: string) {
     if (!confirm('Are you sure you want to delete this scenario? This action cannot be undone.')) {
       return
@@ -326,6 +359,7 @@ export default function ScenarioManager({ isOpen, onClose, viewMode }: ScenarioM
                     onClone={handleCloneScenario}
                     onEdit={handleEditScenario}
                     onDelete={handleDeleteScenario}
+                    onUpdateBaseline={handleUpdateBaseline}
                     loading={loading}
                   />
                 </>
@@ -362,6 +396,7 @@ export default function ScenarioManager({ isOpen, onClose, viewMode }: ScenarioM
                     onClone={handleCloneScenario}
                     onEdit={handleEditScenario}
                     onDelete={handleDeleteScenario}
+                    onUpdateBaseline={handleUpdateBaseline}
                     loading={loading}
                   />
                 </>
