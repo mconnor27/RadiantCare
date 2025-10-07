@@ -1,8 +1,22 @@
 -- ============================================================================
--- MIGRATION: Add Scenario Metadata
--- Purpose: Add metadata fields to track scenario type, baseline, and timestamps
+-- MIGRATION: Add Scenario Metadata & Consolidate Data Column
+-- Purpose: Add metadata fields and consolidate scenario data into single column
 -- Run this in Supabase SQL Editor AFTER running supabase-setup.sql
 -- ============================================================================
+
+-- Add scenario_data column (consolidated storage)
+ALTER TABLE public.scenarios
+  ADD COLUMN IF NOT EXISTS scenario_data JSONB;
+
+-- Migrate existing data from scenario_a/b to scenario_data
+UPDATE public.scenarios
+SET scenario_data = jsonb_build_object(
+  'scenarioA', scenario_a,
+  'scenarioBEnabled', scenario_b_enabled,
+  'scenarioB', scenario_b,
+  'customProjectedValues', '{}'::jsonb
+)
+WHERE scenario_data IS NULL;
 
 -- Add new metadata columns to scenarios table
 ALTER TABLE public.scenarios
