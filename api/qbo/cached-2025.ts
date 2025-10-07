@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { requireAuth, handleCors } from '../_lib/auth.js'
-import { getSupabaseClient } from '../_lib/supabase.js'
+import { getSupabaseFromRequest } from '../_lib/supabase.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleCors(req, res)) return
@@ -14,7 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!user) return
 
   try {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseFromRequest(req)
 
     // Get cached data
     const { data, error } = await supabase
@@ -23,13 +23,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .eq('id', 1)
       .single()
 
-    if (error || !data) {
+    if (error) {
+      console.error('Supabase error reading cache:', error)
       return res.status(404).json({ 
         error: 'no_cached_data',
-        message: 'No cached data available' 
+        message: 'No cached data available',
+        details: error.message 
       })
     }
 
+    if (!data) {
+      console.error('No data returned from qbo_cache query')
+      return res.status(404).json({ 
+        error: 'no_cached_data',
+        message: 'No cached data available (no rows returned)' 
+      })
+    }
+
+    console.log('Successfully returning cached data')
     res.status(200).json(data)
   } catch (error) {
     console.error('Error reading cache:', error)
