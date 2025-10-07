@@ -26,6 +26,7 @@ export default function ScenarioManager({ isOpen, onClose, viewMode }: ScenarioM
   const [editingScenario, setEditingScenario] = useState<SavedScenario | undefined>()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [typeFilter, setTypeFilter] = useState<string>('all')
 
   useEffect(() => {
     if (isOpen && profile) {
@@ -95,6 +96,11 @@ export default function ScenarioManager({ isOpen, onClose, viewMode }: ScenarioM
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load scenario')
     }
+  }
+
+  function filterScenarios(scenarios: SavedScenario[]) {
+    if (typeFilter === 'all') return scenarios
+    return scenarios.filter(s => s.scenario_type === typeFilter)
   }
 
   async function handleCloneScenario(id: string) {
@@ -274,9 +280,28 @@ export default function ScenarioManager({ isOpen, onClose, viewMode }: ScenarioM
 
               {activeTab === 'my-scenarios' ? (
                 <>
-                  <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                      {myScenarios.length} scenario{myScenarios.length !== 1 ? 's' : ''}
+                  <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                        {filterScenarios(myScenarios).length} of {myScenarios.length} scenario{myScenarios.length !== 1 ? 's' : ''}
+                      </div>
+                      <select
+                        value={typeFilter}
+                        onChange={(e) => setTypeFilter(e.target.value)}
+                        style={{
+                          padding: '4px 8px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '4px',
+                          fontSize: '13px',
+                          color: '#374151',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <option value="all">All Types</option>
+                        <option value="ytd-analysis">📊 YTD Analysis</option>
+                        <option value="forward-projection">📈 Forward Projection</option>
+                        <option value="historical-projection">📅 Historical Analysis</option>
+                      </select>
                     </div>
                     <button
                       onClick={() => setView('form')}
@@ -295,7 +320,7 @@ export default function ScenarioManager({ isOpen, onClose, viewMode }: ScenarioM
                     </button>
                   </div>
                   <ScenarioList
-                    scenarios={myScenarios}
+                    scenarios={filterScenarios(myScenarios)}
                     currentUserId={profile?.id}
                     onLoad={handleLoadScenario}
                     onClone={handleCloneScenario}
@@ -305,15 +330,41 @@ export default function ScenarioManager({ isOpen, onClose, viewMode }: ScenarioM
                   />
                 </>
               ) : (
-                <ScenarioList
-                  scenarios={publicScenarios}
-                  currentUserId={profile?.id}
-                  onLoad={handleLoadScenario}
-                  onClone={handleCloneScenario}
-                  onEdit={handleEditScenario}
-                  onDelete={handleDeleteScenario}
-                  loading={loading}
-                />
+                <>
+                  <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                        {filterScenarios(publicScenarios).length} of {publicScenarios.length} scenario{publicScenarios.length !== 1 ? 's' : ''}
+                      </div>
+                      <select
+                        value={typeFilter}
+                        onChange={(e) => setTypeFilter(e.target.value)}
+                        style={{
+                          padding: '4px 8px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '4px',
+                          fontSize: '13px',
+                          color: '#374151',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <option value="all">All Types</option>
+                        <option value="ytd-analysis">📊 YTD Analysis</option>
+                        <option value="forward-projection">📈 Forward Projection</option>
+                        <option value="historical-projection">📅 Historical Analysis</option>
+                      </select>
+                    </div>
+                  </div>
+                  <ScenarioList
+                    scenarios={filterScenarios(publicScenarios)}
+                    currentUserId={profile?.id}
+                    onLoad={handleLoadScenario}
+                    onClone={handleCloneScenario}
+                    onEdit={handleEditScenario}
+                    onDelete={handleDeleteScenario}
+                    loading={loading}
+                  />
+                </>
               )}
             </div>
           </>
