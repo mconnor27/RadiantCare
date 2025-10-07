@@ -31,7 +31,6 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
   const [data, setData] = useState<YTDPoint[]>([])
   const [environment] = useState<'production' | 'sandbox'>('production')
   const [cachedData, setCachedData] = useState<{ daily?: any, summary?: any, equity?: any } | null>(null)
-  const [refreshTrigger, setRefreshTrigger] = useState(0) // Used to trigger data refresh after sync
   const [isNormalized, setIsNormalized] = useState(initialSettings?.isNormalized ?? false)
   const [showCombined, setShowCombined] = useState(initialSettings?.showCombined ?? false)
   const [combineStatistic, setCombineStatistic] = useState<'mean' | 'median' | null>(initialSettings?.combineStatistic ?? null) // Off by default
@@ -191,7 +190,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
         }
       }, 50) // Small delay after paint to ensure modal is visible
     })
-  }, [historical2025Data, environment, refreshTrigger])
+  }, [historical2025Data, environment])
   
   // Callback to refresh data after sync (without showing loading modal)
   const handleRefreshAfterSync = () => {
