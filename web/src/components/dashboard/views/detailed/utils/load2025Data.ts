@@ -1,5 +1,6 @@
 import { parseTherapyIncome2025 } from '../../../../../historical_data/therapyIncomeParser'
 import { loadYearlyGridData } from './yearlyDataTransformer'
+import { authenticatedFetch } from '../../../../../lib/api'
 import type { Physician } from '../../../shared/types'
 
 export type Cached2025Data = {
@@ -46,7 +47,7 @@ export async function load2025Data(environment?: 'sandbox' | 'production'): Prom
 
   // Production mode (or auto-detect): try to load cached data, fall back to historical
   try {
-    const res = await fetch('/api/qbo/cached-2025')
+    const res = await authenticatedFetch('/api/qbo/cached-2025')
 
     if (!res.ok) {
       // No cached data, use fallback

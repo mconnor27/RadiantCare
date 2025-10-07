@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useDashboardStore } from '../../../../Dashboard'
+import { authenticatedFetch } from '../../../../../lib/api'
 
 interface SyncButtonProps {
   environment: 'production' | 'sandbox'
@@ -22,7 +23,7 @@ export default function SyncButton({ environment, isLoadingDashboard = false }: 
   // Load last sync timestamp on mount - but wait for dashboard loading to complete
   useEffect(() => {
     if (environment === 'production' && !isLoadingDashboard) {
-      fetch('/api/qbo/cached-2025')
+      authenticatedFetch('/api/qbo/cached-2025')
         .then(res => res.ok ? res.json() : null)
         .then(cache => {
           if (cache?.lastSyncTimestamp) {
@@ -59,21 +60,9 @@ export default function SyncButton({ environment, isLoadingDashboard = false }: 
     setSyncMessage('Fetching daily P&L report...')
 
     try {
-      // Get current session token
-      const { supabase } = await import('../../../../../lib/supabase')
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        throw new Error('Not authenticated')
-      }
-
       // Simulate the sync process with step updates
-      const response = await fetch('/api/qbo/sync-2025', {
+      const response = await authenticatedFetch('/api/qbo/sync-2025', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
       })
 
       // Update step to summary

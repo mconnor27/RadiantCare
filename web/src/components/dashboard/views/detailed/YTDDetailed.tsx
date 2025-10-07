@@ -4,6 +4,7 @@ import {
   type YTDPoint 
 } from '../../../../historical_data/therapyIncomeParser'
 import { getCurrentDateInfo } from './utils/dataProcessing'
+import { authenticatedFetch } from '../../../lib/api'
 import type { IncomeMode } from '../../shared/types'
 
 // Import modular components
@@ -150,7 +151,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
           }
         } else {
           // Production mode: try to load cached data, fall back to historical
-          fetch('/api/qbo/cached-2025')
+          authenticatedFetch('/api/qbo/cached-2025')
             .then(res => {
               if (!res.ok) {
                 // No cached data, use fallback
