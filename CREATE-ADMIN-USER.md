@@ -15,15 +15,14 @@
 -- Replace YOUR_EMAIL with your actual email
 
 -- Step 1: Create an invitation for yourself
-INSERT INTO public.user_invitations (email, invitation_code, invited_by, expires_at)
+INSERT INTO public.user_invitations (email, invitation_token, expires_at)
 VALUES (
   'YOUR_EMAIL@example.com',  -- Replace with your email
-  'ADMIN_SETUP_2025',         -- Your invitation code
-  '00000000-0000-0000-0000-000000000000',  -- System/self-invite
-  NOW() + INTERVAL '7 days'   -- Expires in 7 days
+  'ADMIN_SETUP_2025',         -- Your invitation token
+  NOW() + INTERVAL '30 days'  -- Expires in 30 days
 );
 
--- Step 2: You'll create the actual user via signup UI with this code
+-- Step 2: You'll create the actual user via signup UI with this token
 ```
 
 6. Click **Run** (bottom right)
@@ -36,7 +35,7 @@ VALUES (
 3. Click **Create account**
 4. Enter:
    - Email: (the email you used above)
-   - Invitation Code: `ADMIN_SETUP_2025`
+   - Invitation Code: `ADMIN_SETUP_2025` (case-sensitive!)
    - Password: (your password)
 5. Click **Create Account**
 

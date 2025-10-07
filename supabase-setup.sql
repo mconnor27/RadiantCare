@@ -15,17 +15,10 @@ CREATE TABLE public.user_invitations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT UNIQUE NOT NULL,
   invited_by UUID REFERENCES auth.users(id),
-  invitation_token TEXT UNIQUE NOT NULL DEFAULT encode(gen_random_bytes(32), 'base64url'),
-  expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '7 days'),
-  claimed_at TIMESTAMPTZ,
-  claimed_by UUID REFERENCES auth.users(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  -- Ensure unclaimed invitations have null claimed_by
-  CONSTRAINT valid_claim CHECK (
-    (claimed_at IS NULL AND claimed_by IS NULL) OR 
-    (claimed_at IS NOT NULL AND claimed_by IS NOT NULL)
-  )
+  invitation_code TEXT UNIQUE NOT NULL DEFAULT encode(gen_random_bytes(32), 'base64url'),
+  expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days'),
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- User profiles (extends auth.users)
@@ -102,7 +95,7 @@ CREATE TABLE public.qbo_cache (
 
 -- User invitations indexes
 CREATE INDEX user_invitations_email_idx ON public.user_invitations(email);
-CREATE INDEX user_invitations_token_idx ON public.user_invitations(invitation_token);
+CREATE INDEX user_invitations_code_idx ON public.user_invitations(invitation_code);
 CREATE INDEX user_invitations_expires_idx ON public.user_invitations(expires_at);
 
 -- Profiles indexes
@@ -271,8 +264,8 @@ BEGIN
   SELECT * INTO invitation_record
   FROM public.user_invitations
   WHERE email = NEW.email
-    AND claimed_at IS NULL
-    AND expires_at > NOW()
+    AND used_at IS NULL
+    AND (expires_at IS NULL OR expires_at > NOW())
   LIMIT 1;
 
   -- If no valid invitation found, prevent registration
@@ -289,9 +282,9 @@ BEGIN
     invitation_record.id
   );
 
-  -- Mark invitation as claimed
+  -- Mark invitation as used
   UPDATE public.user_invitations
-  SET claimed_at = NOW(), claimed_by = NEW.id
+  SET used_at = NOW()
   WHERE id = invitation_record.id;
 
   RETURN NEW;
@@ -355,12 +348,12 @@ BEGIN
     RAISE EXCEPTION 'Only administrators can access invitation URLs';
   END IF;
 
-  -- Get invitation token
-  SELECT invitation_token INTO token
+  -- Get invitation code
+  SELECT invitation_code INTO token
   FROM public.user_invitations
   WHERE id = invitation_id
-    AND claimed_at IS NULL
-    AND expires_at > NOW();
+    AND used_at IS NULL
+    AND (expires_at IS NULL OR expires_at > NOW());
 
   IF token IS NULL THEN
     RAISE EXCEPTION 'Invitation not found or expired';
@@ -392,8 +385,8 @@ $$ LANGUAGE plpgsql;
 -- Create your first admin user invitation (replace with your email)
 -- You'll need to run this manually after creating your Supabase project
 -- 
--- INSERT INTO public.user_invitations (email, invitation_token, expires_at)
--- VALUES ('your-admin-email@example.com', 'admin-setup-token', NOW() + INTERVAL '30 days');
+-- INSERT INTO public.user_invitations (email, invitation_code, expires_at)
+-- VALUES ('your-admin-email@example.com', 'ADMIN_SETUP_2025', NOW() + INTERVAL '30 days');
 -- 
 -- After you sign up with this invitation, promote yourself to admin:
 -- UPDATE public.profiles SET is_admin = TRUE WHERE email = 'your-admin-email@example.com';
@@ -410,9 +403,9 @@ SELECT
   p.display_name,
   p.is_admin,
   p.created_at,
-  i.invitation_token,
+  i.invitation_code,
   i.expires_at as invitation_expires,
-  i.claimed_at as invitation_claimed,
+  i.used_at as invitation_used,
   (SELECT COUNT(*) FROM public.scenarios WHERE user_id = p.id) as scenario_count,
   (SELECT COUNT(*) FROM public.scenarios WHERE user_id = p.id AND is_public = TRUE) as public_scenario_count
 FROM public.profiles p
@@ -424,15 +417,15 @@ CREATE VIEW public.pending_invitations AS
 SELECT 
   id,
   email,
-  invitation_token,
+  invitation_code,
   expires_at,
   created_at,
   CASE 
-    WHEN expires_at < NOW() THEN 'expired'
+    WHEN expires_at IS NOT NULL AND expires_at < NOW() THEN 'expired'
     ELSE 'pending'
   END as status
 FROM public.user_invitations
-WHERE claimed_at IS NULL
+WHERE used_at IS NULL
 ORDER BY created_at DESC;
 
 -- Note: Views inherit RLS from their underlying tables
