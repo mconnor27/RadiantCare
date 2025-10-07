@@ -1,24 +1,25 @@
 import { useEffect, useState } from 'react'
 import { useDashboardStore } from '../../../../Dashboard'
 import { authenticatedFetch } from '../../../../../lib/api'
+import { useAuth } from '../../../../auth/AuthProvider'
 
 interface SyncButtonProps {
   environment: 'production' | 'sandbox'
   isLoadingDashboard?: boolean
 }
 
-// ADMIN MODE: Set to true to bypass sync restrictions for testing
-const ADMIN_OVERRIDE = false
-
 type SyncStep = 'daily' | 'summary' | 'equity' | 'complete' | 'error'
 
 export default function SyncButton({ environment, isLoadingDashboard = false }: SyncButtonProps) {
+  const { profile } = useAuth()
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string | null | undefined>(undefined)
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
   const [syncStep, setSyncStep] = useState<SyncStep | null>(null)
   const [syncMessage, setSyncMessage] = useState<string>('')
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  
+  const isAdmin = profile?.is_admin === true
 
   // Load last sync timestamp on mount - but wait for dashboard loading to complete
   useEffect(() => {
@@ -245,7 +246,8 @@ export default function SyncButton({ environment, isLoadingDashboard = false }: 
   }
 
   // Determine if sync is available (handle loading state)
-  const syncAvailable = ADMIN_OVERRIDE || (lastSyncTimestamp !== undefined && lastSyncTimestamp !== null && canSyncNow(lastSyncTimestamp)) || (lastSyncTimestamp === null && canSyncNow(null))
+  // Admins can always sync, regular users must respect business day restrictions
+  const syncAvailable = isAdmin || (lastSyncTimestamp !== undefined && lastSyncTimestamp !== null && canSyncNow(lastSyncTimestamp)) || (lastSyncTimestamp === null && canSyncNow(null))
 
   return (
     <>
@@ -488,7 +490,7 @@ export default function SyncButton({ environment, isLoadingDashboard = false }: 
               <>
                 <span></span>
                 <span style={{ textAlign: 'left', color: '#16a34a', fontWeight: 500 }}>
-                  Available to Sync
+                  {isAdmin ? 'Available to Sync (Admin)' : 'Available to Sync'}
                 </span>
               </>
             ) : (
