@@ -149,7 +149,7 @@ export function buildProportionTraces(
   data: MonthlyProportionData[],
   smoothingFactor: number = 5,
   visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean },
-  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray',
+  _colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray',
   siteColorScheme: 'rgb' | 'radiantCare' | 'jama' = 'rgb'
 ) {
   if (data.length === 0) return []

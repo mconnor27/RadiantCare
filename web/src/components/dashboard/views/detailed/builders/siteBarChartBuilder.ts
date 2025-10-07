@@ -633,7 +633,7 @@ export const buildSiteBarChartTraces = (
   visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean },
   showAllMonths?: boolean,
   currentPeriod?: { year: number, quarter?: number, month?: number },
-  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray',
+  _colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray',
   siteColorScheme: 'rgb' | 'radiantCare' | 'jama' = 'rgb'
 ) => {
   const traces: any[] = []

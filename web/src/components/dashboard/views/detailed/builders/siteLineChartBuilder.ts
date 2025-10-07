@@ -22,7 +22,7 @@ interface SiteLineChartBuilderProps {
   combineError?: 'std' | 'ci' | null
   visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean }
   selectedYears?: number[]
-  colorScheme?: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'
+  _colorScheme?: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'
   siteColorScheme?: 'rgb' | 'radiantCare' | 'jama'
 }
 
@@ -408,7 +408,7 @@ export const buildSiteLineTraces = ({
   combineError = null,
   visibleSites,
   selectedYears = [],
-  colorScheme = 'gray',
+  _colorScheme = 'gray',
   siteColorScheme = 'rgb'
 }: SiteLineChartBuilderProps) => {
   const traces: any[] = []
@@ -696,7 +696,7 @@ export const buildSitePulsingTraces = (
   currentPeriod: { year: number, quarter?: number, month?: number },
   fy2025: any,
   visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean },
-  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray',
+  _colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray',
   siteColorScheme: 'rgb' | 'radiantCare' | 'jama' = 'rgb'
 ) => {
   if (!is2025Visible) return []
