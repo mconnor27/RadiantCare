@@ -54,12 +54,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   }
 
-  // Get the redirect URI (same as used in connect)
-  const baseUrl = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}`
-    : `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}`
-  
-  const redirectUri = `${baseUrl}/api/qbo/callback`
+  // Get the redirect URI (must match what was used in connect)
+  const redirectUri = process.env.QBO_REDIRECT_URI || 
+    (process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}/api/qbo/callback`
+      : `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/api/qbo/callback`)
 
   // Exchange code for tokens
   const body = new URLSearchParams()

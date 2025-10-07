@@ -32,12 +32,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   }
 
-  // Get the base URL from environment or construct from request
-  const baseUrl = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}`
-    : `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}`
-  
-  const redirectUri = `${baseUrl}/api/qbo/callback`
+  // Use configured redirect URI or construct from request
+  const redirectUri = process.env.QBO_REDIRECT_URI || 
+    (process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}/api/qbo/callback`
+      : `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/api/qbo/callback`)
 
   console.log('QBO Connect - Environment:', environment)
   console.log('QBO Connect - Redirect URI:', redirectUri)
