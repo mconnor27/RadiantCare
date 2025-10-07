@@ -1,8 +1,8 @@
 {
   "framework": "vite",
-  "buildCommand": "cd web && npm install && npm run build",
+  "buildCommand": "cd web && npm run build",
   "outputDirectory": "web/dist",
-  "installCommand": "npm install --prefix web && npm install --prefix api",
+  "installCommand": "npm install --legacy-peer-deps --prefix web && npm install --prefix api",
   "devCommand": "cd web && npm run dev",
   "rewrites": [
     {
