@@ -41,7 +41,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     console.log('Successfully returning cached data')
-    res.status(200).json(data)
+    
+    // Transform to camelCase for frontend
+    const response = {
+      lastSyncTimestamp: data.last_sync_timestamp,
+      daily: data.daily,
+      summary: data.summary,
+      equity: data.equity,
+      syncedBy: data.synced_by,
+      updatedAt: data.updated_at
+    }
+    
+    res.status(200).json(response)
   } catch (error) {
     console.error('Error reading cache:', error)
     return res.status(500).json({ 
