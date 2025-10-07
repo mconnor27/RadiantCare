@@ -8,7 +8,7 @@
 ALTER TABLE public.scenarios
   ADD COLUMN IF NOT EXISTS scenario_data JSONB;
 
--- Migrate existing data from scenario_a/b to scenario_data
+-- Migrate existing data from scenario_a/b to scenario_data (if any rows exist)
 UPDATE public.scenarios
 SET scenario_data = jsonb_build_object(
   'scenarioA', scenario_a,
@@ -16,7 +16,12 @@ SET scenario_data = jsonb_build_object(
   'scenarioB', scenario_b,
   'customProjectedValues', '{}'::jsonb
 )
-WHERE scenario_data IS NULL;
+WHERE scenario_data IS NULL AND scenario_a IS NOT NULL;
+
+-- Make old columns nullable since we're using scenario_data now
+ALTER TABLE public.scenarios
+  ALTER COLUMN scenario_a DROP NOT NULL,
+  ALTER COLUMN scenario_b_enabled DROP NOT NULL;
 
 -- Add new metadata columns to scenarios table
 ALTER TABLE public.scenarios
@@ -29,6 +34,10 @@ ALTER TABLE public.scenarios
 
 -- Create index for filtering by scenario type
 CREATE INDEX IF NOT EXISTS scenarios_type_idx ON public.scenarios(scenario_type);
+
+-- Note: To enable joining scenarios -> profiles for creator_email,
+-- we rely on profiles.id matching auth.users.id via the handle_new_user trigger.
+-- PostgREST can infer this relationship automatically.
 
 -- Add comment for documentation
 COMMENT ON COLUMN public.scenarios.scenario_type IS 

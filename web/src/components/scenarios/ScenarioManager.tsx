@@ -52,24 +52,32 @@ export default function ScenarioManager({ isOpen, onClose, viewMode }: ScenarioM
       // Load public scenarios
       const { data: publicData, error: publicError } = await supabase
         .from('scenarios')
-        .select(`
-          *,
-          profiles!scenarios_user_id_fkey(email)
-        `)
+        .select('*')
         .eq('is_public', true)
         .neq('user_id', profile?.id)
         .order('updated_at', { ascending: false })
 
       if (publicError) throw publicError
       
-      // Map the joined profile email to creator_email
-      const publicWithEmail = (publicData || []).map((s: any) => ({
-        ...s,
-        creator_email: s.profiles?.email,
-        profiles: undefined,
-      }))
-      
-      setPublicScenarios(publicWithEmail)
+      // Fetch creator emails separately if we have public scenarios
+      if (publicData && publicData.length > 0) {
+        const userIds = [...new Set(publicData.map((s: any) => s.user_id))]
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, email')
+          .in('id', userIds)
+        
+        // Map emails to scenarios
+        const emailMap = new Map(profilesData?.map((p: any) => [p.id, p.email]) || [])
+        const publicWithEmail = publicData.map((s: any) => ({
+          ...s,
+          creator_email: emailMap.get(s.user_id),
+        }))
+        
+        setPublicScenarios(publicWithEmail)
+      } else {
+        setPublicScenarios([])
+      }
     } catch (err) {
       console.error('Error loading scenarios:', err)
       setError(err instanceof Error ? err.message : 'Failed to load scenarios')
