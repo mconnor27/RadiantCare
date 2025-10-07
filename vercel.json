@@ -4,9 +4,14 @@
   "outputDirectory": "web/dist",
   "installCommand": "npm install --legacy-peer-deps --prefix web && npm install --prefix api",
   "devCommand": "cd web && npm run dev",
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "nodejs20.x"
+    }
+  },
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api).*)",
       "destination": "/index.html"
     }
   ],
