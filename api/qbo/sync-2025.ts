@@ -173,12 +173,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .eq('id', 1)
       .single()
 
+    // Check if already synced (admins can bypass this restriction)
     if (cacheData?.last_sync_timestamp && !canSyncNow(cacheData.last_sync_timestamp)) {
-      return res.status(429).json({
-        error: 'already_synced_today',
-        message: 'Data has already been synced this business day. Please wait until the next business day at 5pm.',
-        lastSyncTimestamp: cacheData.last_sync_timestamp,
-      })
+      if (!user.isAdmin) {
+        return res.status(429).json({
+          error: 'already_synced_today',
+          message: 'Data has already been synced this business day. Please wait until the next business day at 5pm.',
+          lastSyncTimestamp: cacheData.last_sync_timestamp,
+        })
+      }
+      // Admin user - allow sync even if already synced today
+      console.log('Admin override: allowing sync even though data was synced today')
     }
 
     // Refresh token if needed
