@@ -5,9 +5,10 @@ interface LoginModalProps {
   isOpen: boolean
   onClose: () => void
   onSwitchToSignup: () => void
+  embedded?: boolean
 }
 
-export default function LoginModal({ isOpen, onClose, onSwitchToSignup }: LoginModalProps) {
+export default function LoginModal({ isOpen, onClose, onSwitchToSignup, embedded = false }: LoginModalProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -22,7 +23,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup }: LoginM
 
     try {
       await signIn(email, password)
-      onClose()
+      if (!embedded) onClose()
       // Reset form
       setEmail('')
       setPassword('')
@@ -40,35 +41,10 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup }: LoginM
     onClose()
   }
 
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 10000,
-        animation: 'fadeIn 0.2s ease-in',
-      }}
-      onClick={handleClose}
-    >
-      <div
-        style={{
-          background: '#fff',
-          padding: '32px',
-          borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-          maxWidth: '400px',
-          width: '100%',
-          animation: 'slideIn 0.3s ease-out',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
+  // Render embedded form (no modal overlay)
+  const formContent = (
+    <>
+      {!embedded && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>Sign In</h2>
           <button
@@ -90,8 +66,9 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup }: LoginM
             ×
           </button>
         </div>
+      )}
 
-        <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '16px' }}>
             <label
               htmlFor="email"
@@ -203,7 +180,46 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup }: LoginM
               Create account
             </button>
           </div>
-        </form>
+      </form>
+    </>
+  )
+
+  // If embedded, just return the form without modal wrapper
+  if (embedded) {
+    return formContent
+  }
+
+  // Otherwise, render as a modal
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10000,
+        animation: 'fadeIn 0.2s ease-in',
+      }}
+      onClick={handleClose}
+    >
+      <div
+        style={{
+          background: '#fff',
+          padding: '32px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+          maxWidth: '400px',
+          width: '100%',
+          animation: 'slideIn 0.3s ease-out',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {formContent}
 
         <style>{`
           @keyframes fadeIn {

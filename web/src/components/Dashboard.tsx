@@ -1446,7 +1446,7 @@ export function calculateProjectedValue(
 export function Dashboard() {
   const store = useDashboardStore()
   const isMobile = useIsMobile()
-  const { profile, signOut } = useAuth()
+  const { profile, loading, signOut } = useAuth()
   const [viewMode, setViewMode] = useState<'Multi-Year' | 'YTD Detailed'>('YTD Detailed')
   const [urlLoaded, setUrlLoaded] = useState(false)
   // Initialize ytdSettings with defaults from chartConfig
@@ -1555,66 +1555,119 @@ export function Dashboard() {
     }
   }
 
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div style={{ 
+        fontFamily: 'Inter, system-ui, Arial', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        minHeight: '100vh',
+        flexDirection: 'column',
+        gap: 16
+      }}>
+        <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 80, width: 'auto' }} />
+        <div style={{ fontSize: 18, color: '#6b7280' }}>Loading...</div>
+      </div>
+    )
+  }
+
+  // Show login screen if not authenticated
+  if (!profile) {
+    return (
+      <div style={{ 
+        fontFamily: 'Inter, system-ui, Arial', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: 20
+      }}>
+        <div style={{
+          background: '#fff',
+          borderRadius: 12,
+          padding: isMobile ? 32 : 48,
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+          maxWidth: 440,
+          width: '100%'
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 80, width: 'auto', marginBottom: 16 }} />
+            <h1 style={{ 
+              margin: '0 0 8px 0', 
+              fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif', 
+              color: '#7c2a83', 
+              fontWeight: 900, 
+              fontSize: 32 
+            }}>
+              Compensation Dashboard
+            </h1>
+            <p style={{ margin: 0, fontSize: 16, color: '#6b7280' }}>
+              Sign in to access the dashboard
+            </p>
+          </div>
+          
+          <LoginModal
+            isOpen={true}
+            onClose={() => {}}
+            onSwitchToSignup={() => setShowSignupModal(true)}
+            embedded={true}
+          />
+        </div>
+
+        {/* Signup Modal */}
+        <SignupModal
+          isOpen={showSignupModal}
+          onClose={() => setShowSignupModal(false)}
+          onSwitchToLogin={() => setShowSignupModal(false)}
+        />
+      </div>
+    )
+  }
+
+  // User is authenticated - show the full dashboard
   return (
     <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16, position: 'relative' }}>
       {/* Top Bar with Auth and Help */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
-        {profile ? (
-          <>
-            <span style={{ fontSize: 14, color: '#6b7280' }}>
-              {profile.email}
-            </span>
-            <button
-              onClick={() => setShowScenarioManager(true)}
-              style={{
-                padding: '8px 16px',
-                background: '#0ea5e9',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              📊 Scenarios
-            </button>
-            <button
-              onClick={() => {
-                signOut()
-                store.setCurrentScenario(null, null)
-              }}
-              style={{
-                padding: '8px 16px',
-                background: '#fff',
-                color: '#6b7280',
-                border: '1px solid #d1d5db',
-                borderRadius: '4px',
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              Sign Out
-            </button>
-          </>
-        ) : (
-          <button
-            onClick={() => setShowLoginModal(true)}
-            style={{
-              padding: '8px 16px',
-              background: '#0ea5e9',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
-          >
-            Sign In
-          </button>
-        )}
+        <span style={{ fontSize: 14, color: '#6b7280' }}>
+          {profile.email}
+        </span>
+        <button
+          onClick={() => setShowScenarioManager(true)}
+          style={{
+            padding: '8px 16px',
+            background: '#0ea5e9',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: 'pointer',
+          }}
+        >
+          📊 Scenarios
+        </button>
+        <button
+          onClick={() => {
+            signOut()
+            store.setCurrentScenario(null, null)
+          }}
+          style={{
+            padding: '8px 16px',
+            background: '#fff',
+            color: '#6b7280',
+            border: '1px solid #d1d5db',
+            borderRadius: '4px',
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: 'pointer',
+          }}
+        >
+          Sign Out
+        </button>
         
         {/* Help Icon */}
         <div 
@@ -1857,25 +1910,6 @@ export function Dashboard() {
           </div>
         </>
       )}
-
-      {/* Auth Modals */}
-      <LoginModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-        onSwitchToSignup={() => {
-          setShowLoginModal(false)
-          setShowSignupModal(true)
-        }}
-      />
-
-      <SignupModal
-        isOpen={showSignupModal}
-        onClose={() => setShowSignupModal(false)}
-        onSwitchToLogin={() => {
-          setShowSignupModal(false)
-          setShowLoginModal(true)
-        }}
-      />
 
       {/* Scenario Manager Modal */}
       <ScenarioManager
