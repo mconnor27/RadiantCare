@@ -1557,90 +1557,15 @@ export function Dashboard() {
 
   return (
     <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16, position: 'relative' }}>
-      {/* Help Icon in Very Top Right Corner */}
-      <div 
-        onClick={() => setShowHelpModal(true)}
-        title="Click for help"
-        style={{
-          position: 'absolute',
-          top: 8,
-          right: 8,
-          width: 32,
-          height: 32,
-          borderRadius: '50%',
-          border: '2px solid #7c2a83',
-          backgroundColor: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          fontSize: 18,
-          fontWeight: 'bold',
-          color: '#7c2a83',
-          transition: 'all 0.2s',
-          zIndex: 10
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = '#7c2a83'
-          e.currentTarget.style.color = '#fff'
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = '#fff'
-          e.currentTarget.style.color = '#7c2a83'
-        }}
-      >
-        ?
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-          <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 60, width: 'auto', display: 'block' }} />
-          <h2 style={{ margin: 0, fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif', color: '#7c2a83', fontWeight: 900, fontSize: 36, lineHeight: 1.05 }}>Compensation Dashboard</h2>
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 40 }}>
-          {profile ? (
-            <>
-              <span style={{ fontSize: 14, color: '#6b7280', marginRight: 8 }}>
-                {profile.email}
-              </span>
-              <button
-                onClick={() => setShowScenarioManager(true)}
-                style={{
-                  padding: '8px 16px',
-                  background: '#0ea5e9',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                }}
-              >
-                📊 Scenarios
-              </button>
-              <button
-                onClick={() => {
-                  signOut()
-                  store.setCurrentScenario(null, null)
-                }}
-                style={{
-                  padding: '8px 16px',
-                  background: '#fff',
-                  color: '#6b7280',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '4px',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                }}
-              >
-                Sign Out
-              </button>
-            </>
-          ) : (
+      {/* Top Bar with Auth and Help */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
+        {profile ? (
+          <>
+            <span style={{ fontSize: 14, color: '#6b7280' }}>
+              {profile.email}
+            </span>
             <button
-              onClick={() => setShowLoginModal(true)}
+              onClick={() => setShowScenarioManager(true)}
               style={{
                 padding: '8px 16px',
                 background: '#0ea5e9',
@@ -1652,10 +1577,82 @@ export function Dashboard() {
                 cursor: 'pointer',
               }}
             >
-              Sign In
+              📊 Scenarios
             </button>
-          )}
+            <button
+              onClick={() => {
+                signOut()
+                store.setCurrentScenario(null, null)
+              }}
+              style={{
+                padding: '8px 16px',
+                background: '#fff',
+                color: '#6b7280',
+                border: '1px solid #d1d5db',
+                borderRadius: '4px',
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              Sign Out
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => setShowLoginModal(true)}
+            style={{
+              padding: '8px 16px',
+              background: '#0ea5e9',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: 14,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            Sign In
+          </button>
+        )}
+        
+        {/* Help Icon */}
+        <div 
+          onClick={() => setShowHelpModal(true)}
+          title="Click for help"
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: '50%',
+            border: '2px solid #7c2a83',
+            backgroundColor: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            fontSize: 18,
+            fontWeight: 'bold',
+            color: '#7c2a83',
+            transition: 'all 0.2s',
+            flexShrink: 0
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#7c2a83'
+            e.currentTarget.style.color = '#fff'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#fff'
+            e.currentTarget.style.color = '#7c2a83'
+          }}
+        >
+          ?
         </div>
+      </div>
+
+      {/* Centered Header */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
+        <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 60, width: 'auto', display: 'block' }} />
+        <h2 style={{ margin: 0, fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif', color: '#7c2a83', fontWeight: 900, fontSize: 36, lineHeight: 1.05 }}>Compensation Dashboard</h2>
       </div>
       
       <div style={{ 
