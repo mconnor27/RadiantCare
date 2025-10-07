@@ -141,19 +141,29 @@ export default function ScenarioManager({ isOpen, onClose, viewMode }: ScenarioM
     }
 
     try {
-      // Get fresh QBO sync timestamp
-      const { data: cacheData } = await supabase
-        .from('qbo_cache')
-        .select('last_sync_timestamp')
-        .eq('id', 1)
-        .single()
+      // Get fresh QBO sync timestamp (optional)
+      let qboSyncTimestamp: string | undefined
+      try {
+        const { data: cacheData, error: cacheError } = await supabase
+          .from('qbo_cache')
+          .select('last_sync_timestamp')
+          .eq('id', 1)
+          .single()
+
+        if (!cacheError && cacheData) {
+          qboSyncTimestamp = cacheData.last_sync_timestamp
+        }
+      } catch (err) {
+        console.warn('Could not fetch QBO sync timestamp:', err)
+        // Continue with update even if timestamp fetch fails
+      }
 
       // Update the scenario with new metadata
       const { error: updateError } = await supabase
         .from('scenarios')
         .update({
           baseline_date: new Date().toISOString().split('T')[0],
-          qbo_sync_timestamp: cacheData?.last_sync_timestamp,
+          qbo_sync_timestamp: qboSyncTimestamp,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)

@@ -1096,21 +1096,29 @@ export const useDashboardStore = create<Store>()(
             baselineDate = new Date().toISOString().split('T')[0]
           }
           
-          // Fetch QBO sync timestamp if using 2025 data
+          // Fetch QBO sync timestamp if using 2025 data (optional - don't fail save if unavailable)
           let qboSyncTimestamp: string | undefined
           if (dataMode === '2025 Data' || dataMode === 'Custom') {
             try {
-              const { data: cacheData } = await supabase
-                .from('qbo_cache')
-                .select('last_sync_timestamp')
-                .eq('id', 1)
-                .single()
+              // Try to get current session to ensure auth
+              const { data: { session } } = await supabase.auth.getSession()
               
-              if (cacheData) {
-                qboSyncTimestamp = cacheData.last_sync_timestamp
+              if (session) {
+                const { data: cacheData, error: cacheError } = await supabase
+                  .from('qbo_cache')
+                  .select('last_sync_timestamp')
+                  .eq('id', 1)
+                  .single()
+                
+                if (cacheError) {
+                  console.warn('Could not fetch QBO sync timestamp:', cacheError)
+                } else if (cacheData) {
+                  qboSyncTimestamp = cacheData.last_sync_timestamp
+                }
               }
             } catch (err) {
               console.warn('Could not fetch QBO sync timestamp:', err)
+              // Continue with save even if timestamp fetch fails
             }
           }
 
