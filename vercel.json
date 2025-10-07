@@ -1,25 +1,10 @@
 {
-  "version": 2,
-  "buildCommand": "cd web && npm install && npm run build",
+  "framework": "vite",
+  "buildCommand": "cd web && npm run build",
   "outputDirectory": "web/dist",
-  "framework": null,
-  "installCommand": "npm install --prefix api && npm install --prefix web",
-  "devCommand": "npm run dev --prefix web",
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/web/dist/$1"
-    }
-  ],
+  "installCommand": "npm install --prefix web && npm install --prefix api",
+  "devCommand": "cd web && npm run dev",
   "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
-    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
@@ -52,9 +37,6 @@
         }
       ]
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
 
