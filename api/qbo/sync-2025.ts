@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAuth, handleCors } from '../_lib/auth'
-import { getSupabaseAdmin } from '../_lib/supabase'
+import { requireAuth, handleCors } from '../_lib/auth.js'
+import { getSupabaseAdmin } from '../_lib/supabase.js'
 
 const TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
 
