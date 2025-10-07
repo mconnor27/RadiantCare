@@ -1454,7 +1454,6 @@ export function Dashboard() {
   // Track whether MultiYearView has been visited (for lazy initialization)
   const [multiYearInitialized, setMultiYearInitialized] = useState(false)
   const [showHelpModal, setShowHelpModal] = useState(false)
-  const [showLoginModal, setShowLoginModal] = useState(false)
   const [showSignupModal, setShowSignupModal] = useState(false)
   const [showScenarioManager, setShowScenarioManager] = useState(false)
   
