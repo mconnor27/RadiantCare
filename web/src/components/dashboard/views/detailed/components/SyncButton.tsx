@@ -60,7 +60,7 @@ export default function SyncButton({ environment, isLoadingDashboard = false }: 
 
     try {
       // Get current session token
-      const { supabase } = await import('../../../../lib/supabase')
+      const { supabase } = await import('../../../../../lib/supabase')
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session) {
