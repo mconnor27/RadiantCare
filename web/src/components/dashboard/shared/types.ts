@@ -97,6 +97,9 @@ export type ScenarioState = {
 export type ScenarioKey = 'A' | 'B'
 
 // Saved scenario from database
+export type ScenarioType = 'historical-projection' | 'ytd-analysis' | 'forward-projection'
+export type BaselineMode = '2024 Data' | '2025 Data' | 'Custom'
+
 export type SavedScenario = {
   id: string
   user_id: string
@@ -113,6 +116,12 @@ export type SavedScenario = {
   created_at: string
   updated_at: string
   creator_email?: string
+  
+  // Metadata for scenario organization and versioning
+  scenario_type?: ScenarioType
+  baseline_mode?: BaselineMode
+  baseline_date?: string // ISO date (YYYY-MM-DD)
+  qbo_sync_timestamp?: string // ISO timestamp
 }
 
 export type Store = {
@@ -154,7 +163,7 @@ export type Store = {
   setSuppressNextGridSync: (suppress: boolean) => void
   consumeSuppressNextGridSync: () => boolean
   // Scenario management methods
-  saveScenarioToDatabase: (name: string, description: string, tags: string[], isPublic: boolean) => Promise<SavedScenario>
+  saveScenarioToDatabase: (name: string, description: string, tags: string[], isPublic: boolean, viewMode?: string) => Promise<SavedScenario>
   loadScenarioFromDatabase: (id: string) => Promise<void>
   setCurrentScenario: (id: string | null, name: string | null) => void
 }

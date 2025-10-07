@@ -9,12 +9,13 @@ import ScenarioForm from './ScenarioForm'
 interface ScenarioManagerProps {
   isOpen: boolean
   onClose: () => void
+  viewMode?: string
 }
 
 type Tab = 'my-scenarios' | 'public-scenarios'
 type View = 'list' | 'form' | 'edit'
 
-export default function ScenarioManager({ isOpen, onClose }: ScenarioManagerProps) {
+export default function ScenarioManager({ isOpen, onClose, viewMode }: ScenarioManagerProps) {
   const { profile } = useAuth()
   const store = useDashboardStore()
   
@@ -78,7 +79,7 @@ export default function ScenarioManager({ isOpen, onClose }: ScenarioManagerProp
 
   async function handleSaveScenario(name: string, description: string, tags: string[], isPublic: boolean) {
     try {
-      await store.saveScenarioToDatabase(name, description, tags, isPublic)
+      await store.saveScenarioToDatabase(name, description, tags, isPublic, viewMode)
       await loadScenarios()
       setView('list')
       setEditingScenario(undefined)

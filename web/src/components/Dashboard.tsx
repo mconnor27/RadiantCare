@@ -1062,7 +1062,7 @@ export const useDashboardStore = create<Store>()(
             state.currentScenarioName = name
           }),
 
-        saveScenarioToDatabase: async (name: string, description: string, tags: string[], isPublic: boolean) => {
+        saveScenarioToDatabase: async (name: string, description: string, tags: string[], isPublic: boolean, viewMode?: string) => {
           const state = get()
           const { supabase } = await import('../lib/supabase')
           
@@ -1071,6 +1071,47 @@ export const useDashboardStore = create<Store>()(
             scenarioBEnabled: state.scenarioBEnabled,
             scenarioB: state.scenarioB,
             customProjectedValues: state.customProjectedValues,
+          }
+
+          // Compute metadata
+          const dataMode = state.scenarioA.dataMode
+          const currentViewMode = viewMode || 'Multi-Year' // Fallback to Multi-Year if not provided
+          
+          // Determine scenario type
+          let scenarioType: 'historical-projection' | 'ytd-analysis' | 'forward-projection'
+          if (dataMode === '2024 Data') {
+            scenarioType = 'historical-projection'
+          } else if (currentViewMode === 'YTD Detailed') {
+            scenarioType = 'ytd-analysis'
+          } else {
+            scenarioType = 'forward-projection'
+          }
+          
+          // Determine baseline date
+          let baselineDate: string
+          if (dataMode === '2024 Data') {
+            baselineDate = '2024-12-31'
+          } else {
+            // Use current date for 2025 baseline
+            baselineDate = new Date().toISOString().split('T')[0]
+          }
+          
+          // Fetch QBO sync timestamp if using 2025 data
+          let qboSyncTimestamp: string | undefined
+          if (dataMode === '2025 Data' || dataMode === 'Custom') {
+            try {
+              const { data: cacheData } = await supabase
+                .from('qbo_cache')
+                .select('last_sync_timestamp')
+                .eq('id', 1)
+                .single()
+              
+              if (cacheData) {
+                qboSyncTimestamp = cacheData.last_sync_timestamp
+              }
+            } catch (err) {
+              console.warn('Could not fetch QBO sync timestamp:', err)
+            }
           }
 
           // If updating existing scenario
@@ -1083,6 +1124,10 @@ export const useDashboardStore = create<Store>()(
                 tags,
                 is_public: isPublic,
                 scenario_data: scenarioData,
+                scenario_type: scenarioType,
+                baseline_mode: dataMode,
+                baseline_date: baselineDate,
+                qbo_sync_timestamp: qboSyncTimestamp,
               })
               .eq('id', state.currentScenarioId)
               .select()
@@ -1109,6 +1154,10 @@ export const useDashboardStore = create<Store>()(
                 tags,
                 is_public: isPublic,
                 scenario_data: scenarioData,
+                scenario_type: scenarioType,
+                baseline_mode: dataMode,
+                baseline_date: baselineDate,
+                qbo_sync_timestamp: qboSyncTimestamp,
               })
               .select()
               .single()
@@ -1589,8 +1638,6 @@ export function Dashboard() {
           borderRadius: 12,
           padding: isMobile ? 32 : 48,
           boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-          maxWidth: 440,
-          width: '100%'
         }}>
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 80, width: 'auto', marginBottom: 16 }} />
@@ -1915,6 +1962,7 @@ export function Dashboard() {
       <ScenarioManager
         isOpen={showScenarioManager}
         onClose={() => setShowScenarioManager(false)}
+        viewMode={viewMode}
       />
     </div>
   )

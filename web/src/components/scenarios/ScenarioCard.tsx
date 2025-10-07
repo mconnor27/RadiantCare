@@ -37,6 +37,34 @@ export default function ScenarioCard({
     })
   }
 
+  const getScenarioTypeLabel = () => {
+    switch (scenario.scenario_type) {
+      case 'historical-projection':
+        return { label: '📅 Historical Analysis', color: '#9333ea', bg: '#f3e8ff' }
+      case 'ytd-analysis':
+        return { label: '📊 YTD Analysis', color: '#0369a1', bg: '#e0f2fe' }
+      case 'forward-projection':
+        return { label: '📈 Forward Projection', color: '#15803d', bg: '#dcfce7' }
+      default:
+        return { label: '📊 Scenario', color: '#6b7280', bg: '#f3f4f6' }
+    }
+  }
+
+  const typeInfo = getScenarioTypeLabel()
+  
+  const formatBaselineDate = (dateStr: string) => {
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  // Check if baseline data is potentially stale (for 2025 scenarios)
+  const isStale = scenario.scenario_type !== 'historical-projection' && 
+                  scenario.baseline_mode === '2025 Data' &&
+                  scenario.baseline_date
+  
+  const daysSinceBaseline = isStale ? 
+    Math.floor((Date.now() - new Date(scenario.baseline_date).getTime()) / 86400000) : 0
+
   return (
     <div
       style={{
@@ -60,7 +88,7 @@ export default function ScenarioCard({
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#111' }}>
-              📊 {scenario.name}
+              {scenario.name}
             </h3>
             <span
               style={{
@@ -75,6 +103,47 @@ export default function ScenarioCard({
               {scenario.is_public ? '🌐 Public' : '🔒 Private'}
             </span>
           </div>
+          
+          {/* Scenario type and baseline metadata */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+            <span
+              style={{
+                fontSize: '12px',
+                padding: '3px 10px',
+                borderRadius: '4px',
+                background: typeInfo.bg,
+                color: typeInfo.color,
+                fontWeight: 500,
+              }}
+            >
+              {typeInfo.label}
+            </span>
+            {scenario.baseline_mode && (
+              <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                • {scenario.baseline_mode}
+              </span>
+            )}
+            {scenario.baseline_date && (
+              <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                ({formatBaselineDate(scenario.baseline_date)})
+              </span>
+            )}
+          </div>
+          
+          {/* Staleness warning */}
+          {isStale && daysSinceBaseline > 7 && (
+            <div style={{ 
+              fontSize: '12px', 
+              color: '#d97706', 
+              marginBottom: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              ⚠️ Baseline is {daysSinceBaseline} days old • Consider updating
+            </div>
+          )}
+          
           <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
             Last edited: {formatDate(scenario.updated_at)}
             {scenario.creator_email && ` • by ${scenario.creator_email}`}
