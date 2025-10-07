@@ -3,6 +3,10 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import * as LZString from 'lz-string'
+import { useAuth } from './auth/AuthProvider'
+import LoginModal from './auth/LoginModal'
+import SignupModal from './auth/SignupModal'
+import ScenarioManager from './scenarios/ScenarioManager'
 import YTDDetailed from './dashboard/views/detailed/YTDDetailed'
 import MultiYearView from './dashboard/views/multi-year/MultiYearView'
 import { DEFAULT_YTD_SETTINGS } from './dashboard/views/detailed/config/chartConfig'
@@ -72,6 +76,8 @@ export const useDashboardStore = create<Store>()(
         scenarioB: undefined,
         scenarioBEnabled: false,
         customProjectedValues: {},
+        currentScenarioId: null,
+        currentScenarioName: null,
         setScenarioEnabled: (enabled) => {
           set((state) => {
             state.scenarioBEnabled = enabled
@@ -1048,6 +1054,99 @@ export const useDashboardStore = create<Store>()(
           set((state) => {
             state.customProjectedValues = {}
           }),
+        
+        // Scenario management
+        setCurrentScenario: (id: string | null, name: string | null) =>
+          set((state) => {
+            state.currentScenarioId = id
+            state.currentScenarioName = name
+          }),
+
+        saveScenarioToDatabase: async (name: string, description: string, tags: string[], isPublic: boolean) => {
+          const state = get()
+          const { supabase } = await import('../lib/supabase')
+          
+          const scenarioData = {
+            scenarioA: state.scenarioA,
+            scenarioBEnabled: state.scenarioBEnabled,
+            scenarioB: state.scenarioB,
+            customProjectedValues: state.customProjectedValues,
+          }
+
+          // If updating existing scenario
+          if (state.currentScenarioId) {
+            const { data, error } = await supabase
+              .from('scenarios')
+              .update({
+                name,
+                description,
+                tags,
+                is_public: isPublic,
+                scenario_data: scenarioData,
+              })
+              .eq('id', state.currentScenarioId)
+              .select()
+              .single()
+
+            if (error) throw error
+            
+            set((state) => {
+              state.currentScenarioName = name
+            })
+            
+            return data
+          } else {
+            // Creating new scenario
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session) throw new Error('Not authenticated')
+
+            const { data, error } = await supabase
+              .from('scenarios')
+              .insert({
+                user_id: session.user.id,
+                name,
+                description,
+                tags,
+                is_public: isPublic,
+                scenario_data: scenarioData,
+              })
+              .select()
+              .single()
+
+            if (error) throw error
+            
+            set((state) => {
+              state.currentScenarioId = data.id
+              state.currentScenarioName = name
+            })
+            
+            return data
+          }
+        },
+
+        loadScenarioFromDatabase: async (id: string) => {
+          const { supabase } = await import('../lib/supabase')
+          
+          const { data, error } = await supabase
+            .from('scenarios')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+          if (error) throw error
+          if (!data) throw new Error('Scenario not found')
+
+          const scenarioData = data.scenario_data
+
+          set((state) => {
+            state.scenarioA = scenarioData.scenarioA
+            state.scenarioBEnabled = scenarioData.scenarioBEnabled
+            state.scenarioB = scenarioData.scenarioB
+            state.customProjectedValues = scenarioData.customProjectedValues || {}
+            state.currentScenarioId = data.id
+            state.currentScenarioName = data.name
+          })
+        },
       }
     }),
     {
@@ -1058,6 +1157,8 @@ export const useDashboardStore = create<Store>()(
         scenarioBEnabled: state.scenarioBEnabled,
         scenarioB: state.scenarioB,
         customProjectedValues: state.customProjectedValues,
+        currentScenarioId: state.currentScenarioId,
+        currentScenarioName: state.currentScenarioName,
       }),
     }
   )
@@ -1345,6 +1446,7 @@ export function calculateProjectedValue(
 export function Dashboard() {
   const store = useDashboardStore()
   const isMobile = useIsMobile()
+  const { profile, signOut } = useAuth()
   const [viewMode, setViewMode] = useState<'Multi-Year' | 'YTD Detailed'>('YTD Detailed')
   const [urlLoaded, setUrlLoaded] = useState(false)
   // Initialize ytdSettings with defaults from chartConfig
@@ -1352,6 +1454,9 @@ export function Dashboard() {
   // Track whether MultiYearView has been visited (for lazy initialization)
   const [multiYearInitialized, setMultiYearInitialized] = useState(false)
   const [showHelpModal, setShowHelpModal] = useState(false)
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [showSignupModal, setShowSignupModal] = useState(false)
+  const [showScenarioManager, setShowScenarioManager] = useState(false)
   
   // Wrap setYtdSettings in useCallback to prevent unnecessary re-renders in YTDDetailed
   const handleYtdSettingsChange = useCallback((settings: any) => {
@@ -1487,9 +1592,70 @@ export function Dashboard() {
         ?
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: isMobile ? '8px 0' : '0 0 4px', justifyContent: 'center' }}>
-        <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 60, width: 'auto', display: 'block' }} />
-        <h2 style={{ margin: 0, fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif', color: '#7c2a83', fontWeight: 900, fontSize: 36, lineHeight: 1.05 }}>Compensation Dashboard</h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+          <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 60, width: 'auto', display: 'block' }} />
+          <h2 style={{ margin: 0, fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif', color: '#7c2a83', fontWeight: 900, fontSize: 36, lineHeight: 1.05 }}>Compensation Dashboard</h2>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 40 }}>
+          {profile ? (
+            <>
+              <span style={{ fontSize: 14, color: '#6b7280', marginRight: 8 }}>
+                {profile.email}
+              </span>
+              <button
+                onClick={() => setShowScenarioManager(true)}
+                style={{
+                  padding: '8px 16px',
+                  background: '#0ea5e9',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                📊 Scenarios
+              </button>
+              <button
+                onClick={() => {
+                  signOut()
+                  store.setCurrentScenario(null, null)
+                }}
+                style={{
+                  padding: '8px 16px',
+                  background: '#fff',
+                  color: '#6b7280',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '4px',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                Sign Out
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setShowLoginModal(true)}
+              style={{
+                padding: '8px 16px',
+                background: '#0ea5e9',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              Sign In
+            </button>
+          )}
+        </div>
       </div>
       
       <div style={{ 
@@ -1694,6 +1860,31 @@ export function Dashboard() {
           </div>
         </>
       )}
+
+      {/* Auth Modals */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onSwitchToSignup={() => {
+          setShowLoginModal(false)
+          setShowSignupModal(true)
+        }}
+      />
+
+      <SignupModal
+        isOpen={showSignupModal}
+        onClose={() => setShowSignupModal(false)}
+        onSwitchToLogin={() => {
+          setShowSignupModal(false)
+          setShowLoginModal(true)
+        }}
+      />
+
+      {/* Scenario Manager Modal */}
+      <ScenarioManager
+        isOpen={showScenarioManager}
+        onClose={() => setShowScenarioManager(false)}
+      />
     </div>
   )
 }

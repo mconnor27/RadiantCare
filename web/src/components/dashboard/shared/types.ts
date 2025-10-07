@@ -96,6 +96,25 @@ export type ScenarioState = {
 
 export type ScenarioKey = 'A' | 'B'
 
+// Saved scenario from database
+export type SavedScenario = {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  tags: string[]
+  is_public: boolean
+  scenario_data: {
+    scenarioA: ScenarioState
+    scenarioBEnabled: boolean
+    scenarioB?: ScenarioState
+    customProjectedValues: Record<string, number>
+  }
+  created_at: string
+  updated_at: string
+  creator_email?: string
+}
+
 export type Store = {
   historic: YearRow[]
   scenarioA: ScenarioState
@@ -103,6 +122,8 @@ export type Store = {
   scenarioBEnabled: boolean
   customProjectedValues: Record<string, number>
   suppressNextGridSync?: boolean
+  currentScenarioId: string | null
+  currentScenarioName: string | null
   setScenarioEnabled: (enabled: boolean) => void
   setFutureValue: (
     scenario: ScenarioKey,
@@ -132,4 +153,8 @@ export type Store = {
   resetCustomProjectedValues: () => void
   setSuppressNextGridSync: (suppress: boolean) => void
   consumeSuppressNextGridSync: () => boolean
+  // Scenario management methods
+  saveScenarioToDatabase: (name: string, description: string, tags: string[], isPublic: boolean) => Promise<SavedScenario>
+  loadScenarioFromDatabase: (id: string) => Promise<void>
+  setCurrentScenario: (id: string | null, name: string | null) => void
 }
