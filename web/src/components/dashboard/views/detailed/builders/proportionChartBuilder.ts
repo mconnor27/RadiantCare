@@ -149,9 +149,11 @@ export function buildProportionTraces(
   data: MonthlyProportionData[],
   smoothingFactor: number = 5,
   visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean },
-  _colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray',
+  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray',
   siteColorScheme: 'rgb' | 'radiantCare' | 'jama' = 'rgb'
 ) {
+  // Note: colorScheme parameter reserved for future use
+  void colorScheme
   if (data.length === 0) return []
   const SITE_COLORS = getSiteColors(siteColorScheme)
 

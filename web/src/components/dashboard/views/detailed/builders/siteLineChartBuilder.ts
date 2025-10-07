@@ -22,7 +22,7 @@ interface SiteLineChartBuilderProps {
   combineError?: 'std' | 'ci' | null
   visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean }
   selectedYears?: number[]
-  _colorScheme?: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'
+  colorScheme?: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'
   siteColorScheme?: 'rgb' | 'radiantCare' | 'jama'
 }
 
@@ -408,9 +408,11 @@ export const buildSiteLineTraces = ({
   combineError = null,
   visibleSites,
   selectedYears = [],
-  _colorScheme = 'gray',
+  colorScheme = 'gray',
   siteColorScheme = 'rgb'
 }: SiteLineChartBuilderProps) => {
+  // Note: colorScheme parameter reserved for future use
+  void colorScheme
   const traces: any[] = []
   const SITE_COLORS = getSiteColors(siteColorScheme)
 
@@ -696,9 +698,11 @@ export const buildSitePulsingTraces = (
   currentPeriod: { year: number, quarter?: number, month?: number },
   fy2025: any,
   visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean },
-  _colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray',
+  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray',
   siteColorScheme: 'rgb' | 'radiantCare' | 'jama' = 'rgb'
 ) => {
+  // Note: colorScheme parameter reserved for future use
+  void colorScheme
   if (!is2025Visible) return []
   const SITE_COLORS = getSiteColors(siteColorScheme)
 
