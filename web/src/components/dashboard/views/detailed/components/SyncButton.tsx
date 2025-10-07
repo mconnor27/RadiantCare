@@ -59,8 +59,22 @@ export default function SyncButton({ environment, isLoadingDashboard = false }: 
     setSyncMessage('Fetching daily P&L report...')
 
     try {
+      // Get current session token
+      const { supabase } = await import('../../../../lib/supabase')
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        throw new Error('Not authenticated')
+      }
+
       // Simulate the sync process with step updates
-      const response = await fetch('/api/qbo/sync-2025', { method: 'POST' })
+      const response = await fetch('/api/qbo/sync-2025', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      })
 
       // Update step to summary
       setSyncStep('summary')

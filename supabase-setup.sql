@@ -114,6 +114,19 @@ CREATE INDEX scenarios_user_public_idx ON public.scenarios(user_id, is_public);
 -- 5. ROW LEVEL SECURITY (RLS) POLICIES
 -- ============================================================================
 
+-- Helper function to check admin status (prevents infinite recursion in RLS)
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.profiles
+    WHERE id = auth.uid()
+      AND is_admin = true
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Enable RLS on all tables
 ALTER TABLE public.user_invitations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -124,12 +137,13 @@ ALTER TABLE public.qbo_cache ENABLE ROW LEVEL SECURITY;
 -- User invitations policies
 CREATE POLICY "Admins can manage all invitations"
   ON public.user_invitations
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles 
-      WHERE profiles.id = auth.uid() AND profiles.is_admin = TRUE
-    )
-  );
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+CREATE POLICY "Anyone can verify invitations for signup"
+  ON public.user_invitations FOR SELECT
+  TO anon
+  USING (used_at IS NULL AND (expires_at IS NULL OR expires_at > NOW()));
 
 CREATE POLICY "Users can view their own invitation"
   ON public.user_invitations FOR SELECT
@@ -147,12 +161,7 @@ CREATE POLICY "Users can update their own profile"
 
 CREATE POLICY "Admins can view all profiles"
   ON public.profiles FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles 
-      WHERE profiles.id = auth.uid() AND profiles.is_admin = TRUE
-    )
-  );
+  USING (public.is_admin());
 
 -- Scenarios policies
 CREATE POLICY "Users can view their own scenarios"
@@ -184,12 +193,8 @@ CREATE POLICY "Authenticated users can read QBO tokens"
 
 CREATE POLICY "Admins can manage QBO tokens"
   ON public.qbo_tokens
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles 
-      WHERE profiles.id = auth.uid() AND profiles.is_admin = TRUE
-    )
-  );
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
 
 -- QBO cache policies (read-only for authenticated users, admin-writable)
 CREATE POLICY "Authenticated users can read QBO cache"
@@ -199,12 +204,8 @@ CREATE POLICY "Authenticated users can read QBO cache"
 
 CREATE POLICY "Admins can manage QBO cache"
   ON public.qbo_cache
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles 
-      WHERE profiles.id = auth.uid() AND profiles.is_admin = TRUE
-    )
-  );
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
 
 -- ============================================================================
 -- 6. FUNCTIONS AND TRIGGERS
