@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getSupabaseFromRequest } from './supabase'
+import { getSupabaseFromRequest } from './supabase.js'
 
 export interface AuthenticatedUser {
   id: string
