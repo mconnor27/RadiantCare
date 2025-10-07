@@ -64,7 +64,7 @@ export default function ScenarioCard({
                   scenario.baseline_mode === '2025 Data' &&
                   scenario.baseline_date
   
-  const daysSinceBaseline = isStale ? 
+  const daysSinceBaseline = isStale && scenario.baseline_date ? 
     Math.floor((Date.now() - new Date(scenario.baseline_date).getTime()) / 86400000) : 0
 
   return (
