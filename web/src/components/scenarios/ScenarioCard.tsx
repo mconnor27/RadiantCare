@@ -1,4 +1,5 @@
 import type { SavedScenario } from '../dashboard/shared/types'
+import { isYTDScenario, isMultiYearScenario } from '../dashboard/shared/types'
 
 interface ScenarioCardProps {
   scenario: SavedScenario
@@ -39,28 +40,24 @@ export default function ScenarioCard({
     })
   }
 
-  const getScenarioTypeLabel = () => {
-    switch (scenario.scenario_type) {
-      case 'historical-projection':
-        return { label: '📅 Historical Analysis', color: '#9333ea', bg: '#f3e8ff' }
-      case 'ytd-analysis':
-        return { label: '📊 YTD Analysis', color: '#0369a1', bg: '#e0f2fe' }
-      case 'forward-projection':
-        return { label: '📈 Forward Projection', color: '#15803d', bg: '#dcfce7' }
-      default:
-        return { label: '📊 Scenario', color: '#6b7280', bg: '#f3f4f6' }
+  // Get view mode badge info
+  const getViewModeInfo = () => {
+    if (isYTDScenario(scenario)) {
+      return { label: '📊 YTD View', color: '#0369a1', bg: '#e0f2fe' }
+    } else {
+      return { label: '📈 Multi-Year', color: '#15803d', bg: '#dcfce7' }
     }
   }
 
-  const typeInfo = getScenarioTypeLabel()
+  const viewModeInfo = getViewModeInfo()
   
   const formatBaselineDate = (dateStr: string) => {
     const date = new Date(dateStr)
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
 
-  // Check if baseline data is potentially stale (for 2025 scenarios)
-  const isStale = scenario.scenario_type !== 'historical-projection' && 
+  // Check if baseline data is potentially stale (only for Multi-Year scenarios with 2025 Data)
+  const isStale = isMultiYearScenario(scenario) && 
                   scenario.baseline_mode === '2025 Data' &&
                   scenario.baseline_date
   
@@ -106,21 +103,21 @@ export default function ScenarioCard({
             </span>
           </div>
           
-          {/* Scenario type and baseline metadata */}
+          {/* View mode and baseline metadata */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
             <span
               style={{
                 fontSize: '12px',
                 padding: '3px 10px',
                 borderRadius: '4px',
-                background: typeInfo.bg,
-                color: typeInfo.color,
+                background: viewModeInfo.bg,
+                color: viewModeInfo.color,
                 fontWeight: 500,
               }}
             >
-              {typeInfo.label}
+              {viewModeInfo.label}
             </span>
-            {scenario.baseline_mode && (
+            {isMultiYearScenario(scenario) && scenario.baseline_mode && (
               <span style={{ fontSize: '12px', color: '#6b7280' }}>
                 • {scenario.baseline_mode}
               </span>
@@ -211,8 +208,8 @@ export default function ScenarioCard({
         </button>
         {isOwner && (
           <>
-            {/* Show Update Baseline button for 2025 scenarios */}
-            {onUpdateBaseline && scenario.baseline_mode === '2025 Data' && (
+            {/* Show Update Baseline button for Multi-Year scenarios with 2025 Data */}
+            {onUpdateBaseline && isMultiYearScenario(scenario) && scenario.baseline_mode === '2025 Data' && (
               <button
                 onClick={() => onUpdateBaseline(scenario.id)}
                 style={{
