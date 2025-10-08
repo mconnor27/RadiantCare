@@ -24,16 +24,8 @@ export default function ScenarioList({
   loading = false,
 }: ScenarioListProps) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [tagFilter, setTagFilter] = useState('')
 
-  // Get all unique tags from scenarios
-  const allTags = useMemo(() => {
-    const tags = new Set<string>()
-    scenarios.forEach((s) => s.tags.forEach((t) => tags.add(t)))
-    return Array.from(tags).sort()
-  }, [scenarios])
-
-  // Filter scenarios based on search and tag
+  // Filter scenarios based on search
   const filteredScenarios = useMemo(() => {
     return scenarios.filter((scenario) => {
       const matchesSearch =
@@ -41,11 +33,9 @@ export default function ScenarioList({
         scenario.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         scenario.description?.toLowerCase().includes(searchQuery.toLowerCase())
 
-      const matchesTag = !tagFilter || scenario.tags.includes(tagFilter)
-
-      return matchesSearch && matchesTag
+      return matchesSearch
     })
-  }, [scenarios, searchQuery, tagFilter])
+  }, [scenarios, searchQuery])
 
   if (loading) {
     return (
@@ -57,44 +47,20 @@ export default function ScenarioList({
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: '200px' }}>
-          <input
-            type="text"
-            placeholder="🔍 Search scenarios..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              border: '1px solid #d1d5db',
-              borderRadius: '4px',
-              fontSize: '14px',
-            }}
-          />
-        </div>
-        <div style={{ minWidth: '150px' }}>
-          <select
-            value={tagFilter}
-            onChange={(e) => setTagFilter(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              border: '1px solid #d1d5db',
-              borderRadius: '4px',
-              fontSize: '14px',
-              background: '#fff',
-              cursor: 'pointer',
-            }}
-          >
-            <option value="">All Tags</option>
-            {allTags.map((tag) => (
-              <option key={tag} value={tag}>
-                🏷️ {tag}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div style={{ marginBottom: '16px' }}>
+        <input
+          type="text"
+          placeholder="🔍 Search scenarios..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            border: '1px solid #d1d5db',
+            borderRadius: '4px',
+            fontSize: '14px',
+          }}
+        />
       </div>
 
       {filteredScenarios.length === 0 ? (
