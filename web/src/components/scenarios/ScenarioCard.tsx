@@ -3,7 +3,7 @@ import { isYTDScenario, isMultiYearScenario } from '../dashboard/shared/types'
 
 interface ScenarioCardProps {
   scenario: SavedScenario
-  onLoad: (id: string) => void
+  onLoad: (id: string, target?: 'A' | 'B') => void
   onClone: (id: string) => void
   onEdit: (scenario: SavedScenario) => void
   onDelete: (id: string) => void
@@ -176,21 +176,58 @@ export default function ScenarioCard({
       )}
 
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-        <button
-          onClick={() => onLoad(scenario.id)}
-          style={{
-            padding: '6px 12px',
-            background: '#0ea5e9',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '4px',
-            fontSize: '13px',
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
-        >
-          Load
-        </button>
+        {/* For Multi-Year scenarios, show Load into A/B buttons */}
+        {isMultiYearScenario(scenario) ? (
+          <>
+            <button
+              onClick={() => onLoad(scenario.id, 'A')}
+              style={{
+                padding: '6px 12px',
+                background: '#0ea5e9',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              Load into A
+            </button>
+            <button
+              onClick={() => onLoad(scenario.id, 'B')}
+              style={{
+                padding: '6px 12px',
+                background: '#fff',
+                color: '#0ea5e9',
+                border: '1px solid #0ea5e9',
+                borderRadius: '4px',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              Load into B
+            </button>
+          </>
+        ) : (
+          /* For YTD scenarios, single Load button */
+          <button
+            onClick={() => onLoad(scenario.id)}
+            style={{
+              padding: '6px 12px',
+              background: '#0ea5e9',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            Load
+          </button>
+        )}
         <button
           onClick={() => onClone(scenario.id)}
           style={{

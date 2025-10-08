@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import type { SavedScenario } from '../dashboard/shared/types'
+import type { SavedScenario, MultiYearScenario } from '../dashboard/shared/types'
+import { isMultiYearScenario } from '../dashboard/shared/types'
 import { useAuth } from '../auth/AuthProvider'
 import { useDashboardStore } from '../Dashboard'
 import ScenarioList from './ScenarioList'
 import ScenarioForm from './ScenarioForm'
+import BaselineWarningModal from './BaselineWarningModal'
 
 interface ScenarioManagerProps {
   isOpen: boolean
@@ -34,6 +36,11 @@ export default function ScenarioManager({
   const [editingScenario, setEditingScenario] = useState<SavedScenario | undefined>()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // Baseline warning modal state
+  const [showBaselineWarning, setShowBaselineWarning] = useState(false)
+  const [pendingScenario, setPendingScenario] = useState<SavedScenario | null>(null)
+  const [pendingTarget, setPendingTarget] = useState<'A' | 'B'>('A')
 
   useEffect(() => {
     if (isOpen && profile) {
@@ -106,9 +113,28 @@ export default function ScenarioManager({
     }
   }
 
-  async function handleLoadScenario(id: string) {
+  async function handleLoadScenario(id: string, target: 'A' | 'B' = 'A') {
     try {
-      const loadedData = await store.loadScenarioFromDatabase(id)
+      // Fetch the scenario to check if we need to show warning
+      const { data: scenario, error: fetchError } = await supabase
+        .from('scenarios')
+        .select('*')
+        .eq('id', id)
+        .single()
+      
+      if (fetchError) throw fetchError
+      if (!scenario) throw new Error('Scenario not found')
+      
+      // Show warning modal if loading Multi-Year scenario into B
+      if (target === 'B' && isMultiYearScenario(scenario)) {
+        setPendingScenario(scenario)
+        setPendingTarget('B')
+        setShowBaselineWarning(true)
+        return // Wait for user decision
+      }
+      
+      // Otherwise, load directly
+      const loadedData = await store.loadScenarioFromDatabase(id, target, true)
       
       // If YTD scenario, update ytdSettings
       if (loadedData && loadedData.view_mode === 'YTD Detailed' && onYtdSettingsChange) {
@@ -118,6 +144,31 @@ export default function ScenarioManager({
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load scenario')
+    }
+  }
+  
+  async function handleConfirmLoad(loadBaseline: boolean) {
+    if (!pendingScenario) return
+    
+    try {
+      const loadedData = await store.loadScenarioFromDatabase(
+        pendingScenario.id, 
+        pendingTarget, 
+        loadBaseline
+      )
+      
+      // If YTD scenario, update ytdSettings
+      if (loadedData && loadedData.view_mode === 'YTD Detailed' && onYtdSettingsChange) {
+        onYtdSettingsChange(loadedData.ytd_settings)
+      }
+      
+      setShowBaselineWarning(false)
+      setPendingScenario(null)
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load scenario')
+      setShowBaselineWarning(false)
+      setPendingScenario(null)
     }
   }
 
@@ -425,6 +476,21 @@ export default function ScenarioManager({
           }
         `}</style>
       </div>
+
+      {/* Baseline Warning Modal */}
+      {pendingScenario && isMultiYearScenario(pendingScenario) && (
+        <BaselineWarningModal
+          isOpen={showBaselineWarning}
+          scenarioName={pendingScenario.name}
+          baselineMode={pendingScenario.baseline_mode}
+          baselineDate={pendingScenario.baseline_date}
+          onConfirm={handleConfirmLoad}
+          onCancel={() => {
+            setShowBaselineWarning(false)
+            setPendingScenario(null)
+          }}
+        />
+      )}
     </div>
   )
 }
