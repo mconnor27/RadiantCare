@@ -11,7 +11,21 @@ DROP INDEX IF EXISTS public.scenarios_tags_idx;
 ALTER TABLE public.scenarios 
   DROP COLUMN IF EXISTS tags;
 
--- Step 3: Verify the changes
+-- Step 3: Recreate the search_vector trigger function WITHOUT tags reference
+CREATE OR REPLACE FUNCTION public.update_scenarios_search_vector()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $function$
+BEGIN
+  NEW.search_vector := to_tsvector('english', 
+    COALESCE(NEW.name, '') || ' ' || 
+    COALESCE(NEW.description, '')
+  );
+  RETURN NEW;
+END;
+$function$;
+
+-- Step 4: Verify the changes
 SELECT 
   column_name,
   data_type,
