@@ -212,6 +212,6 @@ export type Store = {
     viewMode: ViewMode,
     ytdSettings?: YTDSettings
   ) => Promise<SavedScenario>
-  loadScenarioFromDatabase: (id: string, target?: 'A' | 'B', loadBaseline?: boolean) => Promise<void>
+  loadScenarioFromDatabase: (id: string, target?: 'A' | 'B', loadBaseline?: boolean) => Promise<any>
   setCurrentScenario: (id: string | null, name: string | null) => void
 }
