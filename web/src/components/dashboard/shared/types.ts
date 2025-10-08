@@ -112,7 +112,7 @@ export type YTDSettings = {
   [key: string]: any // Allow other YTD chart settings
 }
 
-// YTD Scenario (lightweight, view-specific)
+// YTD Scenario (2025 baseline customizations + chart settings)
 export type YTDScenario = {
   id: string
   user_id: string
@@ -123,6 +123,9 @@ export type YTDScenario = {
   ytd_settings: YTDSettings
   baseline_date: string // ISO date (YYYY-MM-DD)
   qbo_sync_timestamp: string | null // ISO timestamp
+  // 2025 baseline customizations (physicians + grid overrides)
+  year_2025_data: FutureYear // Physician panel settings for 2025
+  custom_projected_values: Record<string, number> // User's grid overrides for 2025
   created_at: string
   updated_at: string
   creator_email?: string

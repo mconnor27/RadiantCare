@@ -195,6 +195,8 @@ export default function ScenarioManager({
           view_mode: data.view_mode,
           scenario_data: data.scenario_data,
           ytd_settings: data.ytd_settings,
+          year_2025_data: data.year_2025_data,
+          custom_projected_values: data.custom_projected_values,
           baseline_mode: data.baseline_mode,
           baseline_date: data.baseline_date,
           qbo_sync_timestamp: data.qbo_sync_timestamp,

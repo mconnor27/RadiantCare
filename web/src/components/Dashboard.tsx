@@ -1097,7 +1097,18 @@ export const useDashboardStore = create<Store>()(
           let saveData: any
           
           if (viewMode === 'YTD Detailed') {
-            // YTD Save - lightweight, view-specific
+            // YTD Save - 2025 baseline customizations + chart settings
+            // Get the 2025 year data (includes physicians and their settings)
+            const year2025 = state.scenarioA.future.find(f => f.year === 2025) || {
+              year: 2025,
+              therapyIncome: 0,
+              nonEmploymentCosts: 0,
+              nonMdEmploymentCosts: 0,
+              locumCosts: 0,
+              miscEmploymentCosts: 0,
+              physicians: []
+            }
+            
             saveData = {
               name,
               description,
@@ -1106,6 +1117,9 @@ export const useDashboardStore = create<Store>()(
               ytd_settings: ytdSettings,
               baseline_date: new Date().toISOString().split('T')[0],
               qbo_sync_timestamp: qboSyncTimestamp,
+              // Store 2025 physician settings and grid overrides
+              year_2025_data: year2025,
+              custom_projected_values: state.customProjectedValues,
               // Explicitly set scenario_data to null for YTD saves
               scenario_data: null,
               baseline_mode: null,
@@ -1195,7 +1209,27 @@ export const useDashboardStore = create<Store>()(
 
           // Handle based on scenario type
           if (data.view_mode === 'YTD Detailed') {
-            // YTD Scenario - handled by caller (Dashboard will set ytdSettings)
+            // YTD Scenario - restore 2025 baseline customizations
+            set((state) => {
+              // Restore 2025 year data (physicians, settings)
+              if (data.year_2025_data) {
+                const existingFutureIndex = state.scenarioA.future.findIndex(f => f.year === 2025)
+                if (existingFutureIndex >= 0) {
+                  state.scenarioA.future[existingFutureIndex] = data.year_2025_data
+                } else {
+                  state.scenarioA.future.push(data.year_2025_data)
+                }
+              }
+              
+              // Restore custom projected values (grid overrides)
+              if (data.custom_projected_values) {
+                state.customProjectedValues = data.custom_projected_values
+              }
+              
+              state.currentScenarioId = data.id
+              state.currentScenarioName = data.name
+            })
+            
             // Return the data so caller can access ytd_settings
             return data
           } else {

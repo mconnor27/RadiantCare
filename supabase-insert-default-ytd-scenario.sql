@@ -35,6 +35,8 @@ BEGIN
     ytd_settings,
     baseline_date,
     qbo_sync_timestamp,
+    year_2025_data,
+    custom_projected_values,
     scenario_data,
     baseline_mode
   ) VALUES (
@@ -62,6 +64,8 @@ BEGIN
     ),
     CURRENT_DATE,
     qbo_timestamp,
+    null,  -- No year_2025_data yet (will be populated when user saves)
+    '{}'::jsonb,  -- Empty custom_projected_values (no overrides yet)
     null,  -- No scenario_data for YTD scenarios
     null   -- No baseline_mode for YTD scenarios
   )
