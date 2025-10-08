@@ -96,17 +96,51 @@ export type ScenarioState = {
 
 export type ScenarioKey = 'A' | 'B'
 
-// Saved scenario from database
-export type ScenarioType = 'historical-projection' | 'ytd-analysis' | 'forward-projection'
+// View mode for scenarios
+export type ViewMode = 'YTD Detailed' | 'Multi-Year'
+
+// Baseline mode for Multi-Year scenarios
 export type BaselineMode = '2024 Data' | '2025 Data' | 'Custom'
 
-export type SavedScenario = {
+// YTD-specific settings
+export type YTDSettings = {
+  isNormalized: boolean
+  smoothing: number
+  chartType: string
+  incomeMode: string
+  showTarget: boolean
+  [key: string]: any // Allow other YTD chart settings
+}
+
+// YTD Scenario (lightweight, view-specific)
+export type YTDScenario = {
   id: string
   user_id: string
   name: string
   description: string | null
   tags: string[]
   is_public: boolean
+  view_mode: 'YTD Detailed'
+  ytd_settings: YTDSettings
+  baseline_date: string // ISO date (YYYY-MM-DD)
+  qbo_sync_timestamp: string | null // ISO timestamp
+  created_at: string
+  updated_at: string
+  creator_email?: string
+}
+
+// Multi-Year Scenario (complete with baseline + projections)
+export type MultiYearScenario = {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  tags: string[]
+  is_public: boolean
+  view_mode: 'Multi-Year'
+  baseline_mode: BaselineMode
+  baseline_date: string // ISO date (YYYY-MM-DD)
+  qbo_sync_timestamp: string | null // ISO timestamp
   scenario_data: {
     scenarioA: ScenarioState
     scenarioBEnabled: boolean
@@ -116,12 +150,19 @@ export type SavedScenario = {
   created_at: string
   updated_at: string
   creator_email?: string
-  
-  // Metadata for scenario organization and versioning
-  scenario_type?: ScenarioType
-  baseline_mode?: BaselineMode
-  baseline_date?: string // ISO date (YYYY-MM-DD)
-  qbo_sync_timestamp?: string // ISO timestamp
+}
+
+// Union type for all scenarios
+export type SavedScenario = YTDScenario | MultiYearScenario
+
+// Type guard to check if scenario is YTD
+export function isYTDScenario(scenario: SavedScenario): scenario is YTDScenario {
+  return scenario.view_mode === 'YTD Detailed'
+}
+
+// Type guard to check if scenario is Multi-Year
+export function isMultiYearScenario(scenario: SavedScenario): scenario is MultiYearScenario {
+  return scenario.view_mode === 'Multi-Year'
 }
 
 export type Store = {
@@ -163,7 +204,14 @@ export type Store = {
   setSuppressNextGridSync: (suppress: boolean) => void
   consumeSuppressNextGridSync: () => boolean
   // Scenario management methods
-  saveScenarioToDatabase: (name: string, description: string, tags: string[], isPublic: boolean, viewMode?: string) => Promise<SavedScenario>
-  loadScenarioFromDatabase: (id: string) => Promise<void>
+  saveScenarioToDatabase: (
+    name: string, 
+    description: string, 
+    tags: string[], 
+    isPublic: boolean, 
+    viewMode: ViewMode,
+    ytdSettings?: YTDSettings
+  ) => Promise<SavedScenario>
+  loadScenarioFromDatabase: (id: string, target?: 'A' | 'B', loadBaseline?: boolean) => Promise<void>
   setCurrentScenario: (id: string | null, name: string | null) => void
 }

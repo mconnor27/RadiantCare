@@ -1062,63 +1062,83 @@ export const useDashboardStore = create<Store>()(
             state.currentScenarioName = name
           }),
 
-        saveScenarioToDatabase: async (name: string, description: string, tags: string[], isPublic: boolean, viewMode?: string) => {
+        saveScenarioToDatabase: async (
+          name: string, 
+          description: string, 
+          tags: string[], 
+          isPublic: boolean, 
+          viewMode: 'YTD Detailed' | 'Multi-Year',
+          ytdSettings?: any
+        ) => {
           const state = get()
           const { supabase } = await import('../lib/supabase')
           
-          const scenarioData = {
-            scenarioA: state.scenarioA,
-            scenarioBEnabled: state.scenarioBEnabled,
-            scenarioB: state.scenarioB,
-            customProjectedValues: state.customProjectedValues,
+          // Get current session
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session) throw new Error('Not authenticated')
+
+          // Fetch QBO sync timestamp (optional - don't fail save if unavailable)
+          let qboSyncTimestamp: string | null = null
+          try {
+            const { data: cacheData, error: cacheError } = await supabase
+              .from('qbo_cache')
+              .select('last_sync_timestamp')
+              .eq('id', 1)
+              .single()
+            
+            if (!cacheError && cacheData) {
+              qboSyncTimestamp = cacheData.last_sync_timestamp
+            }
+          } catch (err) {
+            console.warn('Could not fetch QBO sync timestamp:', err)
+            // Continue with save even if timestamp fetch fails
           }
 
-          // Compute metadata
-          const dataMode = state.scenarioA.dataMode
-          const currentViewMode = viewMode || 'Multi-Year' // Fallback to Multi-Year if not provided
+          // Prepare data based on view mode
+          let saveData: any
           
-          // Determine scenario type
-          let scenarioType: 'historical-projection' | 'ytd-analysis' | 'forward-projection'
-          if (dataMode === '2024 Data') {
-            scenarioType = 'historical-projection'
-          } else if (currentViewMode === 'YTD Detailed') {
-            scenarioType = 'ytd-analysis'
+          if (viewMode === 'YTD Detailed') {
+            // YTD Save - lightweight, view-specific
+            saveData = {
+              name,
+              description,
+              tags,
+              is_public: isPublic,
+              view_mode: 'YTD Detailed',
+              ytd_settings: ytdSettings,
+              baseline_date: new Date().toISOString().split('T')[0],
+              qbo_sync_timestamp: qboSyncTimestamp,
+              // Explicitly set scenario_data to null for YTD saves
+              scenario_data: null,
+              baseline_mode: null,
+            }
           } else {
-            scenarioType = 'forward-projection'
-          }
-          
-          // Determine baseline date
-          let baselineDate: string
-          if (dataMode === '2024 Data') {
-            baselineDate = '2024-12-31'
-          } else {
-            // Use current date for 2025 baseline
-            baselineDate = new Date().toISOString().split('T')[0]
-          }
-          
-          // Fetch QBO sync timestamp if using 2025 data (optional - don't fail save if unavailable)
-          let qboSyncTimestamp: string | undefined
-          if (dataMode === '2025 Data' || dataMode === 'Custom') {
-            try {
-              // Try to get current session to ensure auth
-              const { data: { session } } = await supabase.auth.getSession()
-              
-              if (session) {
-                const { data: cacheData, error: cacheError } = await supabase
-                  .from('qbo_cache')
-                  .select('last_sync_timestamp')
-                  .eq('id', 1)
-                  .single()
-                
-                if (cacheError) {
-                  console.warn('Could not fetch QBO sync timestamp:', cacheError)
-                } else if (cacheData) {
-                  qboSyncTimestamp = cacheData.last_sync_timestamp
-                }
-              }
-            } catch (err) {
-              console.warn('Could not fetch QBO sync timestamp:', err)
-              // Continue with save even if timestamp fetch fails
+            // Multi-Year Save - complete with baseline + projections
+            const dataMode = state.scenarioA.dataMode
+            const scenarioData = {
+              scenarioA: state.scenarioA,
+              scenarioBEnabled: state.scenarioBEnabled,
+              scenarioB: state.scenarioB,
+              customProjectedValues: state.customProjectedValues,
+            }
+            
+            // Determine baseline date
+            const baselineDate = dataMode === '2024 Data' 
+              ? '2024-12-31' 
+              : new Date().toISOString().split('T')[0]
+            
+            saveData = {
+              name,
+              description,
+              tags,
+              is_public: isPublic,
+              view_mode: 'Multi-Year',
+              baseline_mode: dataMode,
+              baseline_date: baselineDate,
+              qbo_sync_timestamp: qboSyncTimestamp,
+              scenario_data: scenarioData,
+              // Explicitly set ytd_settings to null for Multi-Year saves
+              ytd_settings: null,
             }
           }
 
@@ -1126,17 +1146,7 @@ export const useDashboardStore = create<Store>()(
           if (state.currentScenarioId) {
             const { data, error } = await supabase
               .from('scenarios')
-              .update({
-                name,
-                description,
-                tags,
-                is_public: isPublic,
-                scenario_data: scenarioData,
-                scenario_type: scenarioType,
-                baseline_mode: dataMode,
-                baseline_date: baselineDate,
-                qbo_sync_timestamp: qboSyncTimestamp,
-              })
+              .update(saveData)
               .eq('id', state.currentScenarioId)
               .select()
               .single()
@@ -1150,22 +1160,11 @@ export const useDashboardStore = create<Store>()(
             return data
           } else {
             // Creating new scenario
-            const { data: { session } } = await supabase.auth.getSession()
-            if (!session) throw new Error('Not authenticated')
-
             const { data, error } = await supabase
               .from('scenarios')
               .insert({
                 user_id: session.user.id,
-                name,
-                description,
-                tags,
-                is_public: isPublic,
-                scenario_data: scenarioData,
-                scenario_type: scenarioType,
-                baseline_mode: dataMode,
-                baseline_date: baselineDate,
-                qbo_sync_timestamp: qboSyncTimestamp,
+                ...saveData,
               })
               .select()
               .single()
@@ -1181,7 +1180,11 @@ export const useDashboardStore = create<Store>()(
           }
         },
 
-        loadScenarioFromDatabase: async (id: string) => {
+        loadScenarioFromDatabase: async (
+          id: string, 
+          target: 'A' | 'B' = 'A', 
+          loadBaseline: boolean = true
+        ) => {
           const { supabase } = await import('../lib/supabase')
           
           const { data, error } = await supabase
@@ -1193,16 +1196,47 @@ export const useDashboardStore = create<Store>()(
           if (error) throw error
           if (!data) throw new Error('Scenario not found')
 
-          const scenarioData = data.scenario_data
+          // Handle based on scenario type
+          if (data.view_mode === 'YTD Detailed') {
+            // YTD Scenario - handled by caller (Dashboard will set ytdSettings)
+            // Return the data so caller can access ytd_settings
+            return data
+          } else {
+            // Multi-Year Scenario
+            const scenarioData = data.scenario_data
+            
+            if (!scenarioData) {
+              throw new Error('Invalid Multi-Year scenario: missing scenario_data')
+            }
 
-          set((state) => {
-            state.scenarioA = scenarioData.scenarioA
-            state.scenarioBEnabled = scenarioData.scenarioBEnabled
-            state.scenarioB = scenarioData.scenarioB
-            state.customProjectedValues = scenarioData.customProjectedValues || {}
-            state.currentScenarioId = data.id
-            state.currentScenarioName = data.name
-          })
+            set((state) => {
+              if (target === 'A' || loadBaseline) {
+                // Loading into A, or loading baseline (affects both A and B)
+                state.scenarioA = scenarioData.scenarioA
+                state.customProjectedValues = scenarioData.customProjectedValues || {}
+                state.currentScenarioId = data.id
+                state.currentScenarioName = data.name
+              }
+              
+              if (target === 'B') {
+                // Loading into B
+                if (loadBaseline) {
+                  // Load baseline into A (shared)
+                  state.scenarioA = scenarioData.scenarioA
+                  state.customProjectedValues = scenarioData.customProjectedValues || {}
+                }
+                // Always load B's projection state
+                state.scenarioB = scenarioData.scenarioA // Load the scenario into B
+                state.scenarioBEnabled = true
+              } else {
+                // Loading into A, also handle B if it was included
+                state.scenarioBEnabled = scenarioData.scenarioBEnabled
+                state.scenarioB = scenarioData.scenarioB
+              }
+            })
+            
+            return data
+          }
         },
       }
     }),
