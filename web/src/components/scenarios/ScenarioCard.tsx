@@ -156,25 +156,6 @@ export default function ScenarioCard({
         </p>
       )}
 
-      {scenario.tags.length > 0 && (
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
-          {scenario.tags.map((tag) => (
-            <span
-              key={tag}
-              style={{
-                fontSize: '12px',
-                padding: '2px 8px',
-                borderRadius: '12px',
-                background: '#ede9fe',
-                color: '#6d28d9',
-              }}
-            >
-              🏷️ {tag}
-            </span>
-          ))}
-        </div>
-      )}
-
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         {/* For Multi-Year scenarios, show Load into A/B buttons */}
         {isMultiYearScenario(scenario) ? (

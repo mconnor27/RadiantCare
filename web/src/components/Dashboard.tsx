@@ -1065,7 +1065,6 @@ export const useDashboardStore = create<Store>()(
         saveScenarioToDatabase: async (
           name: string, 
           description: string, 
-          tags: string[], 
           isPublic: boolean, 
           viewMode: 'YTD Detailed' | 'Multi-Year',
           ytdSettings?: any
@@ -1102,7 +1101,6 @@ export const useDashboardStore = create<Store>()(
             saveData = {
               name,
               description,
-              tags,
               is_public: isPublic,
               view_mode: 'YTD Detailed',
               ytd_settings: ytdSettings,
@@ -1130,7 +1128,6 @@ export const useDashboardStore = create<Store>()(
             saveData = {
               name,
               description,
-              tags,
               is_public: isPublic,
               view_mode: 'Multi-Year',
               baseline_mode: dataMode,

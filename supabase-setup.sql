@@ -42,7 +42,6 @@ CREATE TABLE public.scenarios (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name TEXT NOT NULL,
   description TEXT,
-  tags TEXT[] DEFAULT '{}', -- Array of tags
   is_public BOOLEAN DEFAULT FALSE,
   
   -- Scenario data (JSON)
@@ -107,7 +106,6 @@ CREATE INDEX scenarios_user_id_idx ON public.scenarios(user_id);
 CREATE INDEX scenarios_is_public_idx ON public.scenarios(is_public);
 CREATE INDEX scenarios_created_at_idx ON public.scenarios(created_at DESC);
 CREATE INDEX scenarios_search_idx ON public.scenarios USING gin(search_vector);
-CREATE INDEX scenarios_tags_idx ON public.scenarios USING gin(tags);
 CREATE INDEX scenarios_user_public_idx ON public.scenarios(user_id, is_public);
 
 -- ============================================================================
@@ -226,8 +224,7 @@ RETURNS TRIGGER AS $$
 BEGIN
   NEW.search_vector := to_tsvector('english', 
     COALESCE(NEW.name, '') || ' ' || 
-    COALESCE(NEW.description, '') || ' ' || 
-    array_to_string(COALESCE(NEW.tags, '{}'), ' ')
+    COALESCE(NEW.description, '')
   );
   RETURN NEW;
 END;

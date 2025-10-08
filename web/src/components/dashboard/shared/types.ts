@@ -118,7 +118,6 @@ export type YTDScenario = {
   user_id: string
   name: string
   description: string | null
-  tags: string[]
   is_public: boolean
   view_mode: 'YTD Detailed'
   ytd_settings: YTDSettings
@@ -135,7 +134,6 @@ export type MultiYearScenario = {
   user_id: string
   name: string
   description: string | null
-  tags: string[]
   is_public: boolean
   view_mode: 'Multi-Year'
   baseline_mode: BaselineMode
@@ -207,7 +205,6 @@ export type Store = {
   saveScenarioToDatabase: (
     name: string, 
     description: string, 
-    tags: string[], 
     isPublic: boolean, 
     viewMode: ViewMode,
     ytdSettings?: YTDSettings

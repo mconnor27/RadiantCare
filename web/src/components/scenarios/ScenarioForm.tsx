@@ -3,14 +3,13 @@ import type { SavedScenario } from '../dashboard/shared/types'
 
 interface ScenarioFormProps {
   existingScenario?: SavedScenario
-  onSave: (name: string, description: string, tags: string[], isPublic: boolean) => Promise<void>
+  onSave: (name: string, description: string, isPublic: boolean) => Promise<void>
   onCancel: () => void
 }
 
 export default function ScenarioForm({ existingScenario, onSave, onCancel }: ScenarioFormProps) {
   const [name, setName] = useState(existingScenario?.name || '')
   const [description, setDescription] = useState(existingScenario?.description || '')
-  const [tagsInput, setTagsInput] = useState(existingScenario?.tags.join(', ') || '')
   const [isPublic, setIsPublic] = useState(existingScenario?.is_public || false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -21,12 +20,7 @@ export default function ScenarioForm({ existingScenario, onSave, onCancel }: Sce
     setSaving(true)
 
     try {
-      const tags = tagsInput
-        .split(',')
-        .map((t) => t.trim())
-        .filter((t) => t.length > 0)
-
-      await onSave(name, description, tags, isPublic)
+      await onSave(name, description, isPublic)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save scenario')
       setSaving(false)
@@ -96,35 +90,6 @@ export default function ScenarioForm({ existingScenario, onSave, onCancel }: Sce
             fontSize: '14px',
             fontFamily: 'inherit',
             resize: 'vertical',
-          }}
-        />
-      </div>
-
-      <div style={{ marginBottom: '16px' }}>
-        <label
-          htmlFor="scenario-tags"
-          style={{
-            display: 'block',
-            marginBottom: '8px',
-            fontSize: '14px',
-            fontWeight: 500,
-            color: '#333',
-          }}
-        >
-          Tags
-        </label>
-        <input
-          id="scenario-tags"
-          type="text"
-          value={tagsInput}
-          onChange={(e) => setTagsInput(e.target.value)}
-          placeholder="e.g., conservative, 5-year, new-hires (comma-separated)"
-          style={{
-            width: '100%',
-            padding: '8px 12px',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            fontSize: '14px',
           }}
         />
       </div>

@@ -102,9 +102,9 @@ export default function ScenarioManager({
     }
   }
 
-  async function handleSaveScenario(name: string, description: string, tags: string[], isPublic: boolean) {
+  async function handleSaveScenario(name: string, description: string, isPublic: boolean) {
     try {
-      await store.saveScenarioToDatabase(name, description, tags, isPublic, viewMode, ytdSettings)
+      await store.saveScenarioToDatabase(name, description, isPublic, viewMode, ytdSettings)
       await loadScenarios()
       setView('list')
       setEditingScenario(undefined)
@@ -191,7 +191,6 @@ export default function ScenarioManager({
           user_id: profile?.id,
           name: `${data.name} (Copy)`,
           description: data.description,
-          tags: data.tags,
           is_public: false, // Clones are always private
           view_mode: data.view_mode,
           scenario_data: data.scenario_data,

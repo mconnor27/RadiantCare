@@ -30,7 +30,6 @@ BEGIN
     user_id,
     name,
     description,
-    tags,
     is_public,
     view_mode,
     ytd_settings,
@@ -42,7 +41,6 @@ BEGIN
     admin_user_id,
     'Default',
     'Configured by Administrator',
-    ARRAY['default', 'template', 'admin']::TEXT[],
     true,  -- Public so all users can see it
     'YTD Detailed',
     jsonb_build_object(
