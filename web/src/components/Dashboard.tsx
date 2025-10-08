@@ -2005,6 +2005,8 @@ export function Dashboard() {
         isOpen={showScenarioManager}
         onClose={() => setShowScenarioManager(false)}
         viewMode={viewMode}
+        ytdSettings={ytdSettings}
+        onYtdSettingsChange={handleYtdSettingsChange}
       />
     </div>
   )

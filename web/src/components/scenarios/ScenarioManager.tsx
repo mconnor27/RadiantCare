@@ -133,7 +133,7 @@ export default function ScenarioManager({
       if (error) throw error
       if (!data) throw new Error('Scenario not found')
 
-      // Create a new scenario with cloned data
+      // Create a new scenario with cloned data - preserve all metadata
       const { error: insertError } = await supabase
         .from('scenarios')
         .insert({
@@ -141,8 +141,13 @@ export default function ScenarioManager({
           name: `${data.name} (Copy)`,
           description: data.description,
           tags: data.tags,
-          is_public: false,
+          is_public: false, // Clones are always private
+          view_mode: data.view_mode,
           scenario_data: data.scenario_data,
+          ytd_settings: data.ytd_settings,
+          baseline_mode: data.baseline_mode,
+          baseline_date: data.baseline_date,
+          qbo_sync_timestamp: data.qbo_sync_timestamp,
         })
 
       if (insertError) throw insertError
