@@ -3,7 +3,7 @@
   "buildCommand": "cd web && npm run build",
   "outputDirectory": "web/dist",
   "installCommand": "npm install --legacy-peer-deps --prefix web && npm install --prefix api",
-  "devCommand": "cd web && npm run dev",
+  "devCommand": "cd web && npm run dev -- --port 3000 --host 0.0.0.0",
   "rewrites": [
     {
       "source": "/((?!api).*)",
