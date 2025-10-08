@@ -6,9 +6,9 @@ export default defineConfig({
   base: '/',
   plugins: [react()],
   server: {
-    port: 3000, // Fixed port for consistent development
-    strictPort: true, // Fail if port 3000 is already in use
-    host: '0.0.0.0', // Allow external connections (needed for ngrok if needed)
+    port: 5174, // Fixed port for consistent development (Vite default)
+    strictPort: true, // Fail if port is already in use
+    host: '0.0.0.0', // Allow external connections
     proxy: {
       '/api': {
         target: 'http://localhost:4000',
