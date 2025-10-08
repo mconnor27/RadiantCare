@@ -67,7 +67,7 @@ export default function ScenarioCard({
   return (
     <div
       style={{
-        padding: '16px',
+        padding: '12px',
         background: '#fff',
         border: '1px solid #e5e7eb',
         borderRadius: '6px',
@@ -83,200 +83,208 @@ export default function ScenarioCard({
         e.currentTarget.style.borderColor = '#e5e7eb'
       }}
     >
+      {/* Header: Title + Public/Private (left) | Scenario Type (right) */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#111' }}>
-              {scenario.name}
-            </h3>
-            <span
-              style={{
-                fontSize: '12px',
-                padding: '2px 8px',
-                borderRadius: '4px',
-                background: scenario.is_public ? '#dbeafe' : '#f3f4f6',
-                color: scenario.is_public ? '#0369a1' : '#6b7280',
-                fontWeight: 500,
-              }}
-            >
-              {scenario.is_public ? '🌐 Public' : '🔒 Private'}
-            </span>
-          </div>
-          
-          {/* View mode and baseline metadata */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
-            <span
-              style={{
-                fontSize: '12px',
-                padding: '3px 10px',
-                borderRadius: '4px',
-                background: viewModeInfo.bg,
-                color: viewModeInfo.color,
-                fontWeight: 500,
-              }}
-            >
-              {viewModeInfo.label}
-            </span>
-            {isMultiYearScenario(scenario) && scenario.baseline_mode && (
-              <span style={{ fontSize: '12px', color: '#6b7280' }}>
-                • {scenario.baseline_mode}
-              </span>
-            )}
-            {scenario.baseline_date && (
-              <span style={{ fontSize: '12px', color: '#6b7280' }}>
-                ({formatBaselineDate(scenario.baseline_date)})
-              </span>
-            )}
-          </div>
-          
-          {/* Staleness warning */}
-          {isStale && daysSinceBaseline > 7 && (
-            <div style={{ 
-              fontSize: '12px', 
-              color: '#d97706', 
-              marginBottom: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}>
-              ⚠️ Baseline is {daysSinceBaseline} days old • Consider updating
-            </div>
-          )}
-          
-          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
-            Last edited: {formatDate(scenario.updated_at)}
-            {scenario.creator_email && ` • by ${scenario.creator_email}`}
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#111' }}>
+            {scenario.name}
+          </h3>
+          <span
+            style={{
+              fontSize: '11px',
+              padding: '2px 8px',
+              borderRadius: '3px',
+              background: scenario.is_public ? '#dbeafe' : '#f3f4f6',
+              color: scenario.is_public ? '#0369a1' : '#6b7280',
+              fontWeight: 500,
+            }}
+          >
+            {scenario.is_public ? '🌐 Public' : '🔒 Private'}
+          </span>
         </div>
+        
+        {/* Scenario type badge on right */}
+        <span
+          style={{
+            fontSize: '11px',
+            padding: '3px 10px',
+            borderRadius: '4px',
+            background: viewModeInfo.bg,
+            color: viewModeInfo.color,
+            fontWeight: 500,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {viewModeInfo.label}
+        </span>
       </div>
 
+      {/* Description */}
       {scenario.description && (
-        <p style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#4b5563', lineHeight: 1.5 }}>
+        <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#6b7280', lineHeight: 1.4 }}>
           {scenario.description}
         </p>
       )}
 
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-        {/* For Multi-Year scenarios, show Load into A/B buttons */}
-        {isMultiYearScenario(scenario) ? (
-          <>
-            <button
-              onClick={() => onLoad(scenario.id, 'A')}
-              style={{
-                padding: '6px 12px',
-                background: '#0ea5e9',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '13px',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              Load into A
-            </button>
-            <button
-              onClick={() => onLoad(scenario.id, 'B')}
-              style={{
-                padding: '6px 12px',
-                background: '#fff',
-                color: '#0ea5e9',
-                border: '1px solid #0ea5e9',
-                borderRadius: '4px',
-                fontSize: '13px',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              Load into B
-            </button>
-          </>
-        ) : (
-          /* For YTD scenarios, single Load button */
+      {/* Baseline metadata (for Multi-Year) */}
+      {isMultiYearScenario(scenario) && scenario.baseline_mode && (
+        <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '8px' }}>
+          {scenario.baseline_mode}
+          {scenario.baseline_date && ` • ${formatBaselineDate(scenario.baseline_date)}`}
+        </div>
+      )}
+
+      {/* Staleness warning */}
+      {isStale && daysSinceBaseline > 7 && (
+        <div style={{ 
+          fontSize: '11px', 
+          color: '#d97706', 
+          marginBottom: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px'
+        }}>
+          ⚠️ Baseline is {daysSinceBaseline} days old
+        </div>
+      )}
+
+      {/* Footer: Timestamps (left) | Buttons (right) */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+        {/* Left: Timestamps */}
+        <div style={{ fontSize: '11px', color: '#9ca3af', flexShrink: 0 }}>
+          <div>Created: {formatDate(scenario.created_at)}</div>
+          <div>
+            Last edited: {formatDate(scenario.updated_at)}
+            {scenario.creator_email && <span> • {scenario.creator_email}</span>}
+          </div>
+        </div>
+
+        {/* Right: Buttons (reversed order) */}
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {/* Owner buttons (Delete, Edit, Update Data) */}
+          {isOwner && (
+            <>
+              <button
+                onClick={() => onDelete(scenario.id)}
+                style={{
+                  padding: '5px 10px',
+                  background: '#fff',
+                  color: '#dc2626',
+                  border: '1px solid #dc2626',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => onEdit(scenario)}
+                style={{
+                  padding: '5px 10px',
+                  background: '#fff',
+                  color: '#6b7280',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                Edit
+              </button>
+              {/* Show Update Baseline button for Multi-Year scenarios with 2025 Data */}
+              {onUpdateBaseline && isMultiYearScenario(scenario) && scenario.baseline_mode === '2025 Data' && (
+                <button
+                  onClick={() => onUpdateBaseline(scenario.id)}
+                  style={{
+                    padding: '5px 10px',
+                    background: '#fff',
+                    color: '#059669',
+                    border: '1px solid #059669',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                  title="Update this scenario with the latest 2025 data"
+                >
+                  🔄 Update
+                </button>
+              )}
+            </>
+          )}
+          
+          {/* Clone button */}
           <button
-            onClick={() => onLoad(scenario.id)}
+            onClick={() => onClone(scenario.id)}
             style={{
-              padding: '6px 12px',
-              background: '#0ea5e9',
-              color: '#fff',
-              border: 'none',
+              padding: '5px 10px',
+              background: '#fff',
+              color: '#0ea5e9',
+              border: '1px solid #0ea5e9',
               borderRadius: '4px',
-              fontSize: '13px',
+              fontSize: '12px',
               fontWeight: 500,
               cursor: 'pointer',
             }}
           >
-            Load
+            Clone
           </button>
-        )}
-        <button
-          onClick={() => onClone(scenario.id)}
-          style={{
-            padding: '6px 12px',
-            background: '#fff',
-            color: '#0ea5e9',
-            border: '1px solid #0ea5e9',
-            borderRadius: '4px',
-            fontSize: '13px',
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
-        >
-          Clone
-        </button>
-        {isOwner && (
-          <>
-            {/* Show Update Baseline button for Multi-Year scenarios with 2025 Data */}
-            {onUpdateBaseline && isMultiYearScenario(scenario) && scenario.baseline_mode === '2025 Data' && (
+
+          {/* Load buttons */}
+          {isMultiYearScenario(scenario) ? (
+            <>
               <button
-                onClick={() => onUpdateBaseline(scenario.id)}
+                onClick={() => onLoad(scenario.id, 'B')}
                 style={{
-                  padding: '6px 12px',
+                  padding: '5px 10px',
                   background: '#fff',
-                  color: '#059669',
-                  border: '1px solid #059669',
+                  color: '#0ea5e9',
+                  border: '1px solid #0ea5e9',
                   borderRadius: '4px',
-                  fontSize: '13px',
+                  fontSize: '12px',
                   fontWeight: 500,
                   cursor: 'pointer',
                 }}
-                title="Update this scenario with the latest 2025 data"
               >
-                🔄 Update Data
+                Load into B
               </button>
-            )}
+              <button
+                onClick={() => onLoad(scenario.id, 'A')}
+                style={{
+                  padding: '5px 10px',
+                  background: '#0ea5e9',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                Load into A
+              </button>
+            </>
+          ) : (
             <button
-              onClick={() => onEdit(scenario)}
+              onClick={() => onLoad(scenario.id)}
               style={{
-                padding: '6px 12px',
-                background: '#fff',
-                color: '#6b7280',
-                border: '1px solid #d1d5db',
+                padding: '5px 10px',
+                background: '#0ea5e9',
+                color: '#fff',
+                border: 'none',
                 borderRadius: '4px',
-                fontSize: '13px',
+                fontSize: '12px',
                 fontWeight: 500,
                 cursor: 'pointer',
               }}
             >
-              Edit
+              Load
             </button>
-            <button
-              onClick={() => onDelete(scenario.id)}
-              style={{
-                padding: '6px 12px',
-                background: '#fff',
-                color: '#dc2626',
-                border: '1px solid #dc2626',
-                borderRadius: '4px',
-                fontSize: '13px',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              Delete
-            </button>
-          </>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )
