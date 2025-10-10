@@ -198,7 +198,7 @@ export function getSiteQuarterTotals(year: string): { quarter: 'Q1' | 'Q2' | 'Q3
     const buckets = [{ q:'Q1' as const },{ q:'Q2' as const },{ q:'Q3' as const },{ q:'Q4' as const }]
     const sums = buckets.map(() => ({ lacey: 0, centralia: 0, aberdeen: 0 }))
     for (const { originalIndex, startDate } of validColumns) {
-      const d = new Date(startDate + 'T00:00:00Z')
+      const d = new Date(startDate + 'T00:00:00')
       const month = d.getUTCMonth() + 1
       const quarterIndex = Math.floor((month - 1) / 3)
       sums[quarterIndex].lacey += laceyVals[originalIndex] || 0
@@ -226,7 +226,7 @@ export function getSiteMonthTotals(year: string): { month: string, sites: SiteDa
     const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
     const sums = monthNames.map(() => ({ lacey: 0, centralia: 0, aberdeen: 0 }))
     for (const { originalIndex, startDate } of validColumns) {
-      const d = new Date(startDate + 'T00:00:00Z')
+      const d = new Date(startDate + 'T00:00:00')
       const monthIndex = d.getUTCMonth()
       sums[monthIndex].lacey += laceyVals[originalIndex] || 0
       sums[monthIndex].centralia += centraliaVals[originalIndex] || 0
@@ -327,8 +327,8 @@ export function getSiteMonthlyEndPoints(year: string): YTDPointWithSites[] {
     
     // Group by month
     for (const { originalIndex, startDate } of validColumns) {
-      const date = new Date(startDate + 'T00:00:00Z')
-      const monthKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+      const date = new Date(startDate + 'T00:00:00')
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
       
       if (!monthGroups.has(monthKey)) {
         monthGroups.set(monthKey, [])
@@ -404,8 +404,8 @@ export function getSiteMonthlyEndPoints(year: string): YTDPointWithSites[] {
       // Check for Feb 29 data in this month's data and extract it
       if (monthNum === 2) {
         const feb29Data = monthData.filter(day => {
-          const dayDate = new Date(day.startDate + 'T00:00:00Z')
-          return dayDate.getUTCDate() === 29
+          const dayDate = new Date(day.startDate + 'T00:00:00')
+          return dayDate.getDate() === 29
         })
         
         if (feb29Data.length > 0) {
@@ -455,9 +455,9 @@ export function get2025SiteMonthlyEndPoints(): YTDPointWithSites[] {
     
     // Get the last actual date with data
     const lastDataDate = validColumns[validColumns.length - 1].startDate
-    const lastDataDateObj = new Date(lastDataDate + 'T00:00:00Z')
-    const lastDataMonth = lastDataDateObj.getUTCMonth() + 1 // 1-based
-    const lastDataDay = lastDataDateObj.getUTCDate()
+    const lastDataDateObj = new Date(lastDataDate + 'T00:00:00')
+    const lastDataMonth = lastDataDateObj.getMonth() + 1 // 1-based
+    const lastDataDay = lastDataDateObj.getDate()
     
     // For site data, we only trust complete months. If we're mid-month, use the previous month end.
     // Check if the last data date is the end of the month
@@ -555,9 +555,9 @@ export function generateProjectedSiteMonthlyPoints(
   if (!lastActualPoint.sites) return []
   
   // Parse the last reliable site data date (this should be end of last complete month)
-  const lastReliableDate = new Date(lastActualPoint.date + 'T00:00:00Z')
-  const lastReliableMonth = lastReliableDate.getUTCMonth() + 1 // 1-based
-  const lastReliableDay = lastReliableDate.getUTCDate()
+  const lastReliableDate = new Date(lastActualPoint.date + 'T00:00:00')
+  const lastReliableMonth = lastReliableDate.getMonth() + 1 // 1-based
+  const lastReliableDay = lastReliableDate.getDate()
   
   const projectedTotalIncome = getTotalIncome(fy2025)
   // Prefer explicit per-site projections from the store/grid if available

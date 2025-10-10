@@ -609,9 +609,57 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
     )
   }
 
+  const currentScenarioName = store.currentScenarioName
+
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+        <button
+          onClick={() => {
+            // Trigger scenario manager to open
+            const event = new CustomEvent('openScenarioManager')
+            window.dispatchEvent(event)
+          }}
+          style={{
+            background: '#0ea5e9',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 4,
+            cursor: 'pointer',
+            fontSize: 11,
+            padding: '4px 8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            fontWeight: 500,
+            transition: 'background 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#0284c7'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#0ea5e9'
+          }}
+        >
+          📊 Load Scenario
+        </button>
+
+        {currentScenarioName && (
+          <div style={{
+            padding: '4px 8px',
+            background: '#f0f9ff',
+            border: '1px solid #bae6fd',
+            borderRadius: 4,
+            fontSize: 11,
+            fontWeight: 500,
+            color: '#0369a1',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4
+          }}>
+            Current: {currentScenarioName}
+          </div>
+        )}
         
         <button
           onClick={() => {

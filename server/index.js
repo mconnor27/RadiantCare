@@ -364,8 +364,11 @@ function getPriorBusinessDayEnd(now) {
     queryDate.setDate(queryDate.getDate() - 1)
   }
 
-  // Format as YYYY-MM-DD
-  return queryDate.toISOString().slice(0, 10)
+  // Format as YYYY-MM-DD using local timezone, not UTC
+  const year = queryDate.getFullYear()
+  const month = String(queryDate.getMonth() + 1).padStart(2, '0')
+  const day = String(queryDate.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 // Sync endpoint for all 2025 data
@@ -376,15 +379,19 @@ app.post('/api/qbo/sync-2025', async (req, res) => {
     token = await refreshAccessTokenIfNeeded()
     if (!token) return res.status(401).json({ error: 'not_connected' })
 
-    // Check if sync is allowed now
+    // Check if sync is allowed now (allow admin override via request body)
     const cache = readCache()
-    if (cache?.lastSyncTimestamp && !canSyncNow(cache.lastSyncTimestamp)) {
+    const isAdminOverride = req.body?.adminOverride === true
+    if (cache?.lastSyncTimestamp && !canSyncNow(cache.lastSyncTimestamp) && !isAdminOverride) {
       return res.status(429).json({
         error: 'already_synced_today',
         message: 'Data has already been synced this business day. Please wait until the next business day at 5pm.',
         lastSyncTimestamp: cache.lastSyncTimestamp,
         data: cache
       })
+    }
+    if (isAdminOverride) {
+      console.log('Admin override: allowing sync even though data was synced today')
     }
 
     const now = new Date()

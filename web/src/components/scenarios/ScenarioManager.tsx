@@ -53,25 +53,34 @@ export default function ScenarioManager({
     setError(null)
 
     try {
-      // Load user's scenarios - FILTERED by view_mode
-      const { data: myData, error: myError } = await supabase
+      // In YTD Detailed mode, show ALL scenarios (no filtering)
+      // In Multi-Year mode, only show Multi-Year scenarios
+      let myQuery = supabase
         .from('scenarios')
         .select('*')
         .eq('user_id', profile?.id)
-        .eq('view_mode', viewMode) // Filter by current view
-        .order('updated_at', { ascending: false })
+      
+      if (viewMode === 'Multi-Year') {
+        myQuery = myQuery.eq('view_mode', 'Multi-Year')
+      }
+      
+      const { data: myData, error: myError } = await myQuery.order('updated_at', { ascending: false })
 
       if (myError) throw myError
       setMyScenarios(myData || [])
 
-      // Load public scenarios - FILTERED by view_mode
-      const { data: publicData, error: publicError } = await supabase
+      // Load public scenarios with same filtering logic
+      let publicQuery = supabase
         .from('scenarios')
         .select('*')
         .eq('is_public', true)
-        .eq('view_mode', viewMode) // Filter by current view
         .neq('user_id', profile?.id)
-        .order('updated_at', { ascending: false })
+      
+      if (viewMode === 'Multi-Year') {
+        publicQuery = publicQuery.eq('view_mode', 'Multi-Year')
+      }
+      
+      const { data: publicData, error: publicError } = await publicQuery.order('updated_at', { ascending: false })
 
       if (publicError) throw publicError
       
@@ -104,7 +113,15 @@ export default function ScenarioManager({
 
   async function handleSaveScenario(name: string, description: string, isPublic: boolean) {
     try {
-      await store.saveScenarioToDatabase(name, description, isPublic, viewMode, ytdSettings)
+      // If we're in 'form' view (not 'edit'), clear the current scenario ID to force a new save
+      if (view === 'form') {
+        store.setCurrentScenario(null, null) // Temporarily clear to force new scenario creation
+        await store.saveScenarioToDatabase(name, description, isPublic, viewMode, ytdSettings)
+        // Don't restore the old ID - we want the new scenario to be the current one
+      } else {
+        // In edit mode, keep the current scenario ID to update existing
+        await store.saveScenarioToDatabase(name, description, isPublic, viewMode, ytdSettings)
+      }
       await loadScenarios()
       setView('list')
       setEditingScenario(undefined)
@@ -125,20 +142,29 @@ export default function ScenarioManager({
       if (fetchError) throw fetchError
       if (!scenario) throw new Error('Scenario not found')
       
-      // Show warning modal if loading Multi-Year scenario into B
-      if (target === 'B' && isMultiYearScenario(scenario)) {
+      // In YTD mode: Always load into A only (ignore target parameter)
+      const loadTarget = viewMode === 'YTD Detailed' ? 'A' : target
+      
+      // In Multi-Year mode: Show warning modal if loading Multi-Year scenario into B
+      if (viewMode === 'Multi-Year' && loadTarget === 'B' && isMultiYearScenario(scenario)) {
         setPendingScenario(scenario)
         setPendingTarget('B')
         setShowBaselineWarning(true)
         return // Wait for user decision
       }
       
-      // Otherwise, load directly
-      const loadedData = await store.loadScenarioFromDatabase(id, target, true)
+      // Load the scenario
+      const loadedData = await store.loadScenarioFromDatabase(id, loadTarget, true)
       
-      // If YTD scenario, update ytdSettings
-      if (loadedData && loadedData.view_mode === 'YTD Detailed' && onYtdSettingsChange) {
-        onYtdSettingsChange(loadedData.ytd_settings)
+      // If YTD scenario or loading into YTD mode, update ytdSettings
+      if (loadedData && onYtdSettingsChange) {
+        if (loadedData.view_mode === 'YTD Detailed' && loadedData.ytd_settings) {
+          // YTD scenario - use its ytd_settings
+          onYtdSettingsChange(loadedData.ytd_settings)
+        } else if (viewMode === 'YTD Detailed' && !loadedData.ytd_settings) {
+          // Multi-Year scenario loaded into YTD mode - no ytd_settings to apply
+          // The 2025 data is already loaded by loadScenarioFromDatabase
+        }
       }
       
       onClose()
@@ -276,8 +302,7 @@ export default function ScenarioManager({
   }
 
   function handleEditScenario(scenario: SavedScenario) {
-    // Load the scenario into the store first
-    store.loadScenarioFromDatabase(scenario.id)
+    // Just set the editing scenario - no need to reload data
     setEditingScenario(scenario)
     setView('edit')
   }
@@ -299,14 +324,19 @@ export default function ScenarioManager({
         zIndex: 10000,
         animation: 'fadeIn 0.2s ease-in',
       }}
-      onClick={onClose}
+      onMouseDown={(e) => {
+        // Only close if clicking directly on backdrop, not if mouse was down on a child element
+        if (e.target === e.currentTarget) {
+          onClose()
+        }
+      }}
     >
       <div
         style={{
           background: '#fff',
           borderRadius: '8px',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-          maxWidth: '900px',
+          maxWidth: '700px',
           width: '100%',
           maxHeight: '80vh',
           display: 'flex',
@@ -428,6 +458,7 @@ export default function ScenarioManager({
                     onDelete={handleDeleteScenario}
                     onUpdateBaseline={handleUpdateBaseline}
                     loading={loading}
+                    viewMode={viewMode}
                   />
                 </>
               ) : (
@@ -446,6 +477,7 @@ export default function ScenarioManager({
                     onDelete={handleDeleteScenario}
                     onUpdateBaseline={handleUpdateBaseline}
                     loading={loading}
+                    viewMode={viewMode}
                   />
                 </>
               )}

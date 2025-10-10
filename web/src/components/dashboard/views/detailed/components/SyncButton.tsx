@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useDashboardStore } from '../../../../Dashboard'
 import { authenticatedFetch } from '../../../../../lib/api'
 import { useAuth } from '../../../../auth/AuthProvider'
+import { removeTooltip } from '../../../shared/tooltips'
 
 interface SyncButtonProps {
   environment: 'production' | 'sandbox'
@@ -10,6 +11,40 @@ interface SyncButtonProps {
 }
 
 type SyncStep = 'daily' | 'summary' | 'equity' | 'complete' | 'error'
+
+// Custom tooltip function that positions below the button
+function createSyncTooltip(content: string, e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>) {
+  const id = 'sync-button-tooltip'
+  const existing = document.getElementById(id)
+  if (existing) existing.remove()
+
+  const tooltip = document.createElement('div')
+  tooltip.id = id
+  const isMobileTooltip = window.innerWidth <= 768
+
+  if (isMobileTooltip) {
+    tooltip.style.cssText = `position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 9999; max-width: calc(100vw - 40px); box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+  } else {
+    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+  }
+
+  tooltip.textContent = content
+  document.body.appendChild(tooltip)
+
+  if (!isMobileTooltip) {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    tooltip.style.left = `${rect.left+50}px`
+    tooltip.style.top = `${rect.bottom + window.scrollY + 8}px`
+  }
+
+  // Auto-hide tooltip on mobile after 3 seconds
+  if (isMobileTooltip) {
+    setTimeout(() => {
+      const t = document.getElementById(id)
+      if (t) t.remove()
+    }, 3000)
+  }
+}
 
 export default function SyncButton({ environment, isLoadingDashboard = false, onSyncComplete }: SyncButtonProps) {
   const { profile } = useAuth()
@@ -40,6 +75,13 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
     }
   }, [environment, isLoadingDashboard])
 
+  // Clean up tooltip on unmount
+  useEffect(() => {
+    return () => {
+      removeTooltip('sync-button-tooltip')
+    }
+  }, [])
+
   // Import the store to check for custom values
   const store = useDashboardStore()
 
@@ -60,11 +102,19 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
     setSyncError(null)
     setSyncStep('daily')
     setSyncMessage('Fetching daily P&L report...')
+    // Clean up tooltip when sync starts
+    removeTooltip('sync-button-tooltip')
 
     try {
       // Simulate the sync process with step updates
       const response = await authenticatedFetch('/api/qbo/sync-2025', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          adminOverride: isAdmin // Allow admin to bypass daily sync restriction
+        }),
       })
 
       // Update step to summary
@@ -251,6 +301,18 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
   // Admins can always sync, regular users must respect business day restrictions
   const syncAvailable = isAdmin || (lastSyncTimestamp !== undefined && lastSyncTimestamp !== null && canSyncNow(lastSyncTimestamp)) || (lastSyncTimestamp === null && canSyncNow(null))
 
+  // Generate tooltip text for button
+  const getButtonTooltip = () => {
+    if (syncing) return 'Sync in progress...'
+    if (lastSyncTimestamp === undefined) return 'Loading sync status...'
+    if (syncAvailable) {
+      return isAdmin ? 'Available to Sync (Admin)' : 'Available to Sync'
+    } else {
+      const nextTime = formatNextAllowedTime(lastSyncTimestamp)
+      return `Next sync allowed: ${nextTime}`
+    }
+  }
+
   return (
     <>
       {/* Confirmation Dialog */}
@@ -426,6 +488,9 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
           <button
             onClick={handleSyncClick}
             disabled={syncing || !syncAvailable || lastSyncTimestamp === undefined}
+            onMouseEnter={(e) => createSyncTooltip(getButtonTooltip(), e)}
+            onMouseLeave={() => removeTooltip('sync-button-tooltip')}
+            onTouchStart={(e) => createSyncTooltip(getButtonTooltip(), e)}
           style={{
             padding: '6px 12px',
             background: syncing || !syncAvailable || lastSyncTimestamp === undefined ? '#94a3b8' : '#0ea5e9',
@@ -466,7 +531,7 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
         </button>
         {lastSyncTimestamp === undefined ? (
           <div style={{
-            minHeight: 40,
+            minHeight: 20,
             minWidth: 222,
             display: 'flex',
             alignItems: 'center',
@@ -479,32 +544,12 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
         ) : (
           <div style={{
             fontSize: 12,
-            display: 'grid',
-            gridTemplateColumns: 'auto auto',
-            gap: '2px 8px',
-            alignItems: 'baseline',
-            minHeight: 40
+            display: 'flex',
+            gap: 8,
+            alignItems: 'baseline'
           }}>
-            <span style={{ textAlign: 'right', color: '#64748b', whiteSpace: 'nowrap' }}>Last synced:</span>
-            <span style={{ textAlign: 'left', color: '#64748b' }}>{formatTimestamp(lastSyncTimestamp)}</span>
-
-            {syncAvailable ? (
-              <>
-                <span></span>
-                <span style={{ textAlign: 'left', color: '#16a34a', fontWeight: 500 }}>
-                  {isAdmin ? 'Available to Sync (Admin)' : 'Available to Sync'}
-                </span>
-              </>
-            ) : (
-              <>
-                <span style={{ textAlign: 'right', color: '#dc2626', whiteSpace: 'nowrap', fontWeight: 500 }}>
-                  Next Allowed:
-                </span>
-                <span style={{ textAlign: 'left', color: '#dc2626', fontWeight: 500 }}>
-                  {formatNextAllowedTime(lastSyncTimestamp)}
-                </span>
-              </>
-            )}
+            <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>Last synced:</span>
+            <span style={{ color: '#64748b' }}>{formatTimestamp(lastSyncTimestamp)}</span>
           </div>
         )}
       </div>

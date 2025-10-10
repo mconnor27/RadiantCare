@@ -93,10 +93,10 @@ function parseTherapyIncomeFromReport(report: any): YTDPoint[] {
       cumulativeTotal += dailyIncome
       
       // Create month-day format for year overlay (MM-DD)
-      // Use UTC parsing to avoid timezone issues with date strings
-      const dateObj = new Date(startDate + 'T00:00:00Z')
-      const month = dateObj.getUTCMonth() + 1
-      const day = dateObj.getUTCDate()
+      // Parse date in local timezone to match QuickBooks data
+      const dateObj = new Date(startDate + 'T00:00:00')
+      const month = dateObj.getMonth() + 1
+      const day = dateObj.getDate()
       
       // Handle Feb 29 by adding its income to Feb 28
       if (month === 2 && day === 29) {

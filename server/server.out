@@ -1,5 +1,8 @@
+
+> radiantcare-server@0.1.0 start
+> node index.js
+
 Server listening on http://localhost:4000
-DEBUG: Callback using environment: production
-DEBUG: Using REDIRECT_URI: https://unodored-bethanie-rambunctiously.ngrok-free.app/api/qbo/callback
-DEBUG: Using environment: production
-DEBUG: Callback using environment: production
+Admin override: allowing sync even though data was synced today
+Admin override: allowing sync even though data was synced today
+Admin override: allowing sync even though data was synced today

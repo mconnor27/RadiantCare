@@ -11,6 +11,7 @@ interface ScenarioListProps {
   onDelete: (id: string) => void
   onUpdateBaseline?: (id: string) => void
   loading?: boolean
+  viewMode?: 'YTD Detailed' | 'Multi-Year'
 }
 
 export default function ScenarioList({
@@ -22,6 +23,7 @@ export default function ScenarioList({
   onDelete,
   onUpdateBaseline,
   loading = false,
+  viewMode = 'Multi-Year',
 }: ScenarioListProps) {
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -96,6 +98,7 @@ export default function ScenarioList({
               onDelete={onDelete}
               onUpdateBaseline={onUpdateBaseline}
               isOwner={scenario.user_id === currentUserId}
+              viewMode={viewMode}
             />
           ))}
         </div>

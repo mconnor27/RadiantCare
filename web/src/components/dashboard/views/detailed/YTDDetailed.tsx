@@ -12,7 +12,6 @@ import ChartControls from './components/ChartControls'
 import YearlyDataGrid from './components/YearlyDataGrid'
 import DetailedChart from './components/DetailedChart'
 import PartnerCompensation from './components/PartnerCompensation'
-import SyncButton from './components/SyncButton'
 
 // Import dashboard store and physicians editor
 import { useDashboardStore } from '../../../Dashboard'
@@ -22,15 +21,17 @@ import { DEFAULT_LOCUM_COSTS_2025 } from '../../shared/defaults'
 interface YTDDetailedProps {
   initialSettings?: any
   onSettingsChange?: (settings: any) => void
+  onRefreshRequest?: (callback: () => void) => void // Callback to register refresh function with parent
 }
 
-export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDetailedProps) {
+export default function YTDDetailed({ initialSettings, onSettingsChange, onRefreshRequest }: YTDDetailedProps) {
   const store = useDashboardStore()
   const [showLoadingModal, setShowLoadingModal] = useState(true)  // Start as true to show immediately
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<YTDPoint[]>([])
   const [environment] = useState<'production' | 'sandbox'>('production')
   const [cachedData, setCachedData] = useState<{ daily?: any, summary?: any, equity?: any } | null>(null)
+  const [refreshTrigger, setRefreshTrigger] = useState(0) // Trigger for data refresh after sync
   const [isNormalized, setIsNormalized] = useState(initialSettings?.isNormalized ?? false)
   const [showCombined, setShowCombined] = useState(initialSettings?.showCombined ?? false)
   const [combineStatistic, setCombineStatistic] = useState<'mean' | 'median' | null>(initialSettings?.combineStatistic ?? null) // Off by default
@@ -123,9 +124,24 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fy2025])
 
+  // Register refresh callback with parent
+  useEffect(() => {
+    if (onRefreshRequest) {
+      onRefreshRequest(() => {
+        console.log('🔄 Triggering data refresh after sync')
+        setRefreshTrigger(prev => prev + 1)
+      })
+    }
+  }, [onRefreshRequest])
+
   useEffect(() => {
     const startTime = Date.now()
     setError(null)
+    
+    // Show loading modal for refreshes after initial load
+    if (refreshTrigger > 0) {
+      setShowLoadingModal(true)
+    }
 
     // Delay data fetching to ensure modal is rendered first
     // Use requestAnimationFrame + small timeout to ensure paint has occurred
@@ -190,30 +206,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
         }
       }, 50) // Small delay after paint to ensure modal is visible
     })
-  }, [historical2025Data, environment])
-  
-  // Callback to refresh data after sync (without showing loading modal)
-  const handleRefreshAfterSync = () => {
-    if (environment === 'production') {
-      authenticatedFetch('/api/qbo/cached-2025')
-        .then((res: Response) => {
-          if (res.ok) {
-            return res.json()
-          }
-          return null
-        })
-        .then((cache: any) => {
-          if (cache?.daily) {
-            const points = parseTherapyIncome2025(cache.daily)
-            setData(points)
-            setCachedData({ daily: cache.daily, summary: cache.summary, equity: cache.equity })
-          }
-        })
-        .catch((err: any) => {
-          console.error('Error refreshing cached data:', err)
-        })
-    }
-  }
+  }, [historical2025Data, environment, refreshTrigger])
 
   // Initialize current period based on timeframe
   useEffect(() => {
@@ -318,6 +311,9 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
   ])
 
 
+  // Get current scenario info from store
+  const currentScenarioName = store.currentScenarioName
+
   return (
     <>
       {/* Loading Modal - render FIRST before any content */}
@@ -392,14 +388,53 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
         </div>
       )}
 
-      <div style={{ margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-          <SyncButton 
-            environment={environment} 
-            isLoadingDashboard={showLoadingModal}
-            onSyncComplete={handleRefreshAfterSync}
-          />
-        </div>
+      {/* Scenario Manager Section */}
+      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+        <button
+          onClick={() => {
+            // Trigger scenario manager to open - we'll need to pass this functionality down
+            const event = new CustomEvent('openScenarioManager')
+            window.dispatchEvent(event)
+          }}
+          style={{
+            padding: '8px 16px',
+            background: '#0ea5e9',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 6,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: 'pointer',
+            transition: 'background 0.2s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = '#0284c7'}
+          onMouseLeave={(e) => e.currentTarget.style.background = '#0ea5e9'}
+        >
+          <span>📊</span>
+          <span>Scenarios</span>
+        </button>
+        
+        {currentScenarioName && (
+          <div style={{
+            padding: '8px 16px',
+            background: '#f0f9ff',
+            border: '1px solid #bae6fd',
+            borderRadius: 6,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 14,
+            fontWeight: 500,
+            color: '#0369a1'
+          }}>
+            <span>Current: {currentScenarioName}</span>
+          </div>
+        )}
+      </div>
+
       <div style={{
         display: 'flex',
         gap: 16,
@@ -527,7 +562,6 @@ export default function YTDDetailed({ initialSettings, onSettingsChange }: YTDDe
           isLoadingCache={showLoadingModal}
         />
       </div>
-    </div>
     </>
   )
 }

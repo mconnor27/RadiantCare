@@ -9,6 +9,7 @@ interface ScenarioCardProps {
   onDelete: (id: string) => void
   onUpdateBaseline?: (id: string) => void
   isOwner: boolean
+  viewMode?: 'YTD Detailed' | 'Multi-Year'
 }
 
 export default function ScenarioCard({
@@ -19,6 +20,7 @@ export default function ScenarioCard({
   onDelete,
   onUpdateBaseline,
   isOwner,
+  viewMode = 'Multi-Year',
 }: ScenarioCardProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -121,7 +123,7 @@ export default function ScenarioCard({
 
       {/* Description */}
       {scenario.description && (
-        <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#6b7280', lineHeight: 1.4 }}>
+        <p style={{ textAlign: 'left', margin: '0 0 8px 0', fontSize: '13px', color: '#6b7280', lineHeight: 1.4 }}>
           {scenario.description}
         </p>
       )}
@@ -149,14 +151,13 @@ export default function ScenarioCard({
       )}
 
       {/* Footer: Timestamps (left) | Buttons (right) */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: '12px' }}>
         {/* Left: Timestamps */}
         <div style={{ fontSize: '11px', color: '#9ca3af', flexShrink: 0 }}>
           <div>Created: {formatDate(scenario.created_at)}</div>
-          <div>
+          {/*<div>
             Last edited: {formatDate(scenario.updated_at)}
-            {scenario.creator_email && <span> • {scenario.creator_email}</span>}
-          </div>
+          </div>*/}
         </div>
 
         {/* Right: Buttons (reversed order) */}
@@ -234,7 +235,7 @@ export default function ScenarioCard({
           </button>
 
           {/* Load buttons */}
-          {isMultiYearScenario(scenario) ? (
+          {viewMode === 'Multi-Year' && isMultiYearScenario(scenario) ? (
             <>
               <button
                 onClick={() => onLoad(scenario.id, 'B')}

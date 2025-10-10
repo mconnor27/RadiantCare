@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState, useCallback } from 'react'
+import { useMemo, useEffect, useState, useCallback, useRef } from 'react'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
@@ -9,6 +9,7 @@ import SignupModal from './auth/SignupModal'
 import ScenarioManager from './scenarios/ScenarioManager'
 import YTDDetailed from './dashboard/views/detailed/YTDDetailed'
 import MultiYearView from './dashboard/views/multi-year/MultiYearView'
+import SyncButton from './dashboard/views/detailed/components/SyncButton'
 import { DEFAULT_YTD_SETTINGS } from './dashboard/views/detailed/config/chartConfig'
 // Import types from types.ts to avoid duplication and binding conflicts
 import type { YearRow, PhysicianType, Physician, FutureYear, ScenarioKey, Store } from './dashboard/shared/types'
@@ -1578,10 +1579,17 @@ export function Dashboard() {
   const [showHelpModal, setShowHelpModal] = useState(false)
   const [showSignupModal, setShowSignupModal] = useState(false)
   const [showScenarioManager, setShowScenarioManager] = useState(false)
+  // Store refresh callback for YTD data after sync
+  const ytdRefreshCallbackRef = useRef<(() => void) | null>(null)
   
   // Wrap setYtdSettings in useCallback to prevent unnecessary re-renders in YTDDetailed
   const handleYtdSettingsChange = useCallback((settings: any) => {
     setYtdSettings(settings)
+  }, [])
+
+  // Callback to register YTD refresh function
+  const handleYtdRefreshRequest = useCallback((callback: () => void) => {
+    ytdRefreshCallbackRef.current = callback
   }, [])
 
   // Initialize MultiYearView when first visited
@@ -1600,6 +1608,17 @@ export function Dashboard() {
       })
     }
   }, [viewMode, urlLoaded, multiYearInitialized])
+
+  // Listen for openScenarioManager event from YTDDetailed
+  useEffect(() => {
+    const handleOpenScenarioManager = () => {
+      setShowScenarioManager(true)
+    }
+    window.addEventListener('openScenarioManager', handleOpenScenarioManager)
+    return () => {
+      window.removeEventListener('openScenarioManager', handleOpenScenarioManager)
+    }
+  }, [])
 
   // Load from shareable URL hash if present
   useEffect(() => {
@@ -1751,25 +1770,24 @@ export function Dashboard() {
   return (
     <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16, position: 'relative' }}>
       {/* Top Bar with Auth and Help */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
-        <span style={{ fontSize: 14, color: '#6b7280' }}>
-          {profile.email}
-        </span>
-        <button
-          onClick={() => setShowScenarioManager(true)}
-          style={{
-            padding: '8px 16px',
-            background: '#0ea5e9',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '4px',
-            fontSize: 14,
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
-        >
-          📊 Scenarios
-        </button>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 12, paddingTop: 0 }}>
+        {/* Sync Button - only show in YTD Detailed view */}
+        {viewMode === 'YTD Detailed' && (
+          <SyncButton 
+            environment="production" 
+            isLoadingDashboard={false}
+            onSyncComplete={() => {
+              // Trigger data refresh in YTDDetailed component
+              ytdRefreshCallbackRef.current?.()
+            }}
+          />
+        )}
+        {/* Spacer to push right elements to the right when SyncButton is hidden */}
+        {viewMode !== 'YTD Detailed' && <div style={{ flex: 1 }}></div>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 14, color: '#6b7280' }}>
+            {profile.email}
+          </span>
         <button
           onClick={() => {
             signOut()
@@ -1820,6 +1838,7 @@ export function Dashboard() {
         >
           ?
         </div>
+        </div>
       </div>
 
       {/* Centered Header */}
@@ -1865,6 +1884,7 @@ export function Dashboard() {
               <YTDDetailed
                 initialSettings={ytdSettings}
                 onSettingsChange={handleYtdSettingsChange}
+                onRefreshRequest={handleYtdRefreshRequest}
               />
             </div>
             {/* Only render MultiYearView after it's been visited once (lazy initialization) */}
