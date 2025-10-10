@@ -340,7 +340,10 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     selectedYears,
     visibleSites,
     colorScheme,
-    siteColorScheme
+    siteColorScheme,
+    store.currentScenarioId,
+    // Track changes to scenario data (physician panel, grid, etc.)
+    JSON.stringify(fy2025)
   ])
 
   // Reset dirty flag when scenario changes
@@ -505,7 +508,15 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
 
         {/* Load Button */}
         <button
-          onClick={() => setShowLoadModal(true)}
+          onClick={() => {
+            // Warn if there are unsaved changes
+            if (isScenarioDirty) {
+              if (!confirm('You have unsaved changes to the current scenario. Loading another scenario will discard these changes. Continue?')) {
+                return
+              }
+            }
+            setShowLoadModal(true)
+          }}
           style={{
             background: 'none',
             border: 'none',

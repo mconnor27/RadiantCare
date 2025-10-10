@@ -51,7 +51,17 @@ export default function ScenarioLoadModal({
       const { data: myData, error: myError } = await myQuery.order('updated_at', { ascending: false })
 
       if (myError) throw myError
-      setMyScenarios(myData || [])
+      
+      // Sort scenarios: "Default" always at the top, then by updated_at
+      const sortedMyData = (myData || []).sort((a, b) => {
+        const aIsDefault = a.name.toLowerCase() === 'default'
+        const bIsDefault = b.name.toLowerCase() === 'default'
+        if (aIsDefault && !bIsDefault) return -1
+        if (!aIsDefault && bIsDefault) return 1
+        return 0 // Keep original order for non-Default scenarios
+      })
+      
+      setMyScenarios(sortedMyData)
 
       // Load public scenarios
       let publicQuery = supabase
@@ -82,7 +92,16 @@ export default function ScenarioLoadModal({
           creator_email: emailMap.get(s.user_id),
         }))
 
-        setPublicScenarios(publicWithEmail)
+        // Sort scenarios: "Default" always at the top, then by updated_at
+        const sortedPublicData = publicWithEmail.sort((a, b) => {
+          const aIsDefault = a.name.toLowerCase() === 'default'
+          const bIsDefault = b.name.toLowerCase() === 'default'
+          if (aIsDefault && !bIsDefault) return -1
+          if (!aIsDefault && bIsDefault) return 1
+          return 0 // Keep original order for non-Default scenarios
+        })
+
+        setPublicScenarios(sortedPublicData)
       } else {
         setPublicScenarios([])
       }

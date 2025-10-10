@@ -15,8 +15,8 @@ const HISTORIC_DATA: YearRow[] = [
   { year: 2023, therapyIncome: 2963169, nonEmploymentCosts: 201243.57, employeePayroll: 790092.00 },
   // 2024+: therapyIncome represents total gross income (from yearly data grid)
   { year: 2024, therapyIncome: 2934700, nonEmploymentCosts: 260925, employeePayroll: 809747 },
-  // 2025 actuals per provided figures
-  { year: 2025, therapyIncome: 3164006.93, nonEmploymentCosts: 229713.57, employeePayroll:  752155.73  },
+  // 2025 actuals per provided figures (rounded to whole dollars to match grid display)
+  { year: 2025, therapyIncome: 3164007, nonEmploymentCosts: 229714, employeePayroll: 752156 },
 ]
 
 // Default employment costs
@@ -24,7 +24,7 @@ export const DEFAULT_MISC_EMPLOYMENT_COSTS = 29115.51
 
 // Default consulting services agreement values
 export const DEFAULT_CONSULTING_SERVICES_2024 = 15693.40
-export const DEFAULT_CONSULTING_SERVICES_2025 = 16200.00
+export const DEFAULT_CONSULTING_SERVICES_2025 = 16200
 export const DEFAULT_CONSULTING_SERVICES_PROJECTION = 17030
 
 // Actual consulting services agreement values (for baseline years)
@@ -74,8 +74,8 @@ export const ACTUAL_2024_MEDICAL_DIRECTOR_HOURS = 102870
 export const ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS = 25805
 export const ACTUAL_2024_PARTNER_POOL = 2008467
 
-// 2025 actual/projected values
-export const ACTUAL_2025_MEDICAL_DIRECTOR_HOURS = 119373.75
+// 2025 actual/projected values (rounded to whole dollars to match grid display)
+export const ACTUAL_2025_MEDICAL_DIRECTOR_HOURS = 119374
 export const ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS = 32321
 
 // Projection defaults for medical director hours
