@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faFolderOpen, faFloppyDisk, faCopy, faCircleXmark, faGear, faRotateLeft } from '@fortawesome/free-solid-svg-icons'
+import {
   parseTherapyIncome2025,
-  type YTDPoint 
+  type YTDPoint
 } from '../../../../historical_data/therapyIncomeParser'
 import { getCurrentDateInfo } from './utils/dataProcessing'
 import { authenticatedFetch } from '../../../../lib/api'
@@ -17,6 +19,8 @@ import PartnerCompensation from './components/PartnerCompensation'
 import { useDashboardStore } from '../../../Dashboard'
 import PhysiciansEditor from '../../shared/components/PhysiciansEditor'
 import { DEFAULT_LOCUM_COSTS_2025 } from '../../shared/defaults'
+import ScenarioLoadModal from '../../../scenarios/ScenarioLoadModal'
+import { useAuth } from '../../../auth/AuthProvider'
 
 interface YTDDetailedProps {
   initialSettings?: any
@@ -26,7 +30,10 @@ interface YTDDetailedProps {
 
 export default function YTDDetailed({ initialSettings, onSettingsChange, onRefreshRequest }: YTDDetailedProps) {
   const store = useDashboardStore()
+  const { profile } = useAuth()
   const [showLoadingModal, setShowLoadingModal] = useState(true)  // Start as true to show immediately
+  const [showLoadModal, setShowLoadModal] = useState(false)  // Scenario load modal
+  const [isScenarioDirty, setIsScenarioDirty] = useState(false)  // Track if scenario has been modified
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<YTDPoint[]>([])
   const [environment] = useState<'production' | 'sandbox'>('production')
@@ -311,8 +318,97 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
   ])
 
 
+  // Mark scenario as dirty when settings change (but only after initial load)
+  useEffect(() => {
+    // Skip if no scenario loaded or if this is the initial load
+    if (!store.currentScenarioId) return
+
+    // Set dirty flag (will be reset by the scenario change effect below)
+    setIsScenarioDirty(true)
+  }, [
+    isNormalized,
+    showCombined,
+    combineStatistic,
+    combineError,
+    chartMode,
+    timeframe,
+    currentPeriod,
+    is2025Visible,
+    showAllMonths,
+    incomeMode,
+    smoothingByMode,
+    selectedYears,
+    visibleSites,
+    colorScheme,
+    siteColorScheme
+  ])
+
+  // Reset dirty flag when scenario changes
+  useEffect(() => {
+    setIsScenarioDirty(false)
+  }, [store.currentScenarioId])
+
+  // Auto-load Default scenario on first load if no scenario is loaded
+  useEffect(() => {
+    if (!store.currentScenarioId) {
+      console.log('🔄 No scenario loaded, attempting to load Default scenario...')
+
+      const loadDefaultScenario = async () => {
+        try {
+          const { supabase } = await import('../../../../lib/supabase')
+
+          // Look for the Default scenario
+          const { data: defaultScenario, error } = await supabase
+            .from('scenarios')
+            .select('*')
+            .eq('name', 'Default')
+            .eq('view_mode', 'YTD Detailed')
+            .eq('is_public', true)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
+
+          if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+            console.error('Error fetching Default scenario:', error)
+            return
+          }
+
+          if (defaultScenario) {
+            console.log('✅ Found Default scenario, loading...', defaultScenario.id)
+            await store.loadScenarioFromDatabase(defaultScenario.id, 'A', true)
+          } else {
+            console.log('ℹ️ No Default scenario found in database')
+          }
+        } catch (error) {
+          console.error('Failed to auto-load Default scenario:', error)
+        }
+      }
+
+      loadDefaultScenario()
+    }
+  }, [store.currentScenarioId, store])
+
+  // Reset scenario to original state
+  const handleResetScenario = async () => {
+    if (!store.currentScenarioId) return
+
+    if (confirm('Reset scenario to original state? All unsaved changes will be lost.')) {
+      try {
+        await store.loadScenarioFromDatabase(store.currentScenarioId, 'A', true)
+        setIsScenarioDirty(false)
+        // Trigger a refresh
+        setRefreshTrigger(prev => prev + 1)
+      } catch (err) {
+        console.error('Error resetting scenario:', err)
+        alert('Failed to reset scenario')
+      }
+    }
+  }
+
   // Get current scenario info from store
   const currentScenarioName = store.currentScenarioName
+  const currentScenarioUserId = store.currentScenarioUserId
+  const isScenarioOwner = currentScenarioUserId && profile?.id === currentScenarioUserId
 
   return (
     <>
@@ -389,34 +485,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
       )}
 
       {/* Scenario Manager Section */}
-      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-        <button
-          onClick={() => {
-            // Trigger scenario manager to open - we'll need to pass this functionality down
-            const event = new CustomEvent('openScenarioManager')
-            window.dispatchEvent(event)
-          }}
-          style={{
-            padding: '8px 16px',
-            background: '#0ea5e9',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 6,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            fontSize: 14,
-            fontWeight: 500,
-            cursor: 'pointer',
-            transition: 'background 0.2s'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = '#0284c7'}
-          onMouseLeave={(e) => e.currentTarget.style.background = '#0ea5e9'}
-        >
-          <span>📊</span>
-          <span>Scenarios</span>
-        </button>
-        
+      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
         {currentScenarioName && (
           <div style={{
             padding: '8px 16px',
@@ -425,7 +494,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
             borderRadius: 6,
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 8,
+            marginRight: 8,
             fontSize: 14,
             fontWeight: 500,
             color: '#0369a1'
@@ -433,7 +502,182 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
             <span>Current: {currentScenarioName}</span>
           </div>
         )}
+
+        {/* Load Button */}
+        <button
+          onClick={() => setShowLoadModal(true)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#0ea5e9',
+            fontSize: 24,
+            cursor: 'pointer',
+            transition: 'opacity 0.2s',
+            padding: 2
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.opacity = '0.7'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.opacity = '1'
+          }}
+          title="Load scenario"
+        >
+          <FontAwesomeIcon icon={faFolderOpen} />
+        </button>
+
+        {/* Save Button - only show if scenario is loaded and user owns it */}
+        {currentScenarioName && isScenarioOwner && (
+          <button
+            onClick={() => {
+              const event = new CustomEvent('editCurrentScenario')
+              window.dispatchEvent(event)
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#059669',
+              fontSize: 24,
+              cursor: 'pointer',
+              transition: 'opacity 0.2s',
+              padding: 2
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.7'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1'
+            }}
+            title="Save scenario"
+          >
+            <FontAwesomeIcon icon={faFloppyDisk} />
+          </button>
+        )}
+
+        {/* Save As Button */}
+        <button
+          onClick={() => {
+            const event = new CustomEvent('saveScenarioAs')
+            window.dispatchEvent(event)
+          }}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#6b7280',
+            fontSize: 24,
+            cursor: 'pointer',
+            transition: 'opacity 0.2s',
+            padding: 2
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.opacity = '0.7'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.opacity = '1'
+          }}
+          title="Save as new scenario"
+        >
+          <FontAwesomeIcon icon={faCopy} />
+        </button>
+
+        {/* Unload Button - only show if scenario is loaded and not Default */}
+        {currentScenarioName && currentScenarioName !== 'Default' && (
+          <button
+            onClick={() => {
+              const event = new CustomEvent('unloadScenario')
+              window.dispatchEvent(event)
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#dc2626',
+              fontSize: 24,
+              cursor: 'pointer',
+              transition: 'opacity 0.2s',
+              padding: 2
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.7'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1'
+            }}
+            title="Unload scenario"
+          >
+            <FontAwesomeIcon icon={faCircleXmark} />
+          </button>
+        )}
+
+        {/* Vertical Separator */}
+        <div style={{
+          width: 1,
+          height: 24,
+          background: '#d1d5db',
+          margin: '0 4px'
+        }} />
+
+        {/* Gear Icon - Full Scenario Manager */}
+        <button
+          onClick={() => {
+            const event = new CustomEvent('openScenarioManager')
+            window.dispatchEvent(event)
+          }}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#6b7280',
+            fontSize: 24,
+            cursor: 'pointer',
+            transition: 'opacity 0.2s',
+            padding: 2
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.opacity = '0.7'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.opacity = '1'
+          }}
+          title="Scenario Manager"
+        >
+          <FontAwesomeIcon icon={faGear} />
+        </button>
+
+        {/* Reset Button - only show if scenario is loaded and has been modified */}
+        {currentScenarioName && isScenarioDirty && (
+          <button
+            onClick={handleResetScenario}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#f59e0b',
+              fontSize: 24,
+              cursor: 'pointer',
+              transition: 'opacity 0.2s',
+              padding: 2
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.7'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1'
+            }}
+            title="Reset to original"
+          >
+            <FontAwesomeIcon icon={faRotateLeft} />
+          </button>
+        )}
       </div>
+
+      {/* Scenario Load Modal */}
+      <ScenarioLoadModal
+        isOpen={showLoadModal}
+        onClose={() => setShowLoadModal(false)}
+        onLoad={async (id) => {
+          await store.loadScenarioFromDatabase(id, 'A', true)
+          setShowLoadModal(false)
+        }}
+        viewMode="YTD Detailed"
+      />
 
       <div style={{
         display: 'flex',

@@ -5,6 +5,7 @@
   padding: 2rem;
   text-align: center;
   width: 100%;
+  min-height: 100vh;
   /* Mobile optimizations */
 }
 

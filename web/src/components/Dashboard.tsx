@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import * as LZString from 'lz-string'
+import { supabase } from '../lib/supabase'
 import { useAuth } from './auth/AuthProvider'
 import LoginModal from './auth/LoginModal'
 import SignupModal from './auth/SignupModal'
@@ -79,6 +80,7 @@ export const useDashboardStore = create<Store>()(
         customProjectedValues: {},
         currentScenarioId: null,
         currentScenarioName: null,
+        currentScenarioUserId: null,
         setScenarioEnabled: (enabled) => {
           set((state) => {
             state.scenarioBEnabled = enabled
@@ -1057,10 +1059,11 @@ export const useDashboardStore = create<Store>()(
           }),
         
         // Scenario management
-        setCurrentScenario: (id: string | null, name: string | null) =>
+        setCurrentScenario: (id: string | null, name: string | null, userId?: string | null) =>
           set((state) => {
             state.currentScenarioId = id
             state.currentScenarioName = name
+            state.currentScenarioUserId = userId ?? null
           }),
 
         saveScenarioToDatabase: async (
@@ -1229,8 +1232,9 @@ export const useDashboardStore = create<Store>()(
               
               state.currentScenarioId = data.id
               state.currentScenarioName = data.name
+              state.currentScenarioUserId = data.user_id
             })
-            
+
             // Return the data so caller can access ytd_settings
             return data
           } else {
@@ -1248,6 +1252,7 @@ export const useDashboardStore = create<Store>()(
                 state.customProjectedValues = scenarioData.customProjectedValues || {}
                 state.currentScenarioId = data.id
                 state.currentScenarioName = data.name
+                state.currentScenarioUserId = data.user_id
               }
               
               if (target === 'B') {
@@ -1282,6 +1287,7 @@ export const useDashboardStore = create<Store>()(
         customProjectedValues: state.customProjectedValues,
         currentScenarioId: state.currentScenarioId,
         currentScenarioName: state.currentScenarioName,
+        currentScenarioUserId: state.currentScenarioUserId,
       }),
     }
   )
@@ -1579,6 +1585,8 @@ export function Dashboard() {
   const [showHelpModal, setShowHelpModal] = useState(false)
   const [showSignupModal, setShowSignupModal] = useState(false)
   const [showScenarioManager, setShowScenarioManager] = useState(false)
+  const [scenarioManagerView, setScenarioManagerView] = useState<'list' | 'form' | 'edit'>('list')
+  const [scenarioManagerInitialScenario, setScenarioManagerInitialScenario] = useState<any>(undefined)
   // Store refresh callback for YTD data after sync
   const ytdRefreshCallbackRef = useRef<(() => void) | null>(null)
   
@@ -1612,6 +1620,8 @@ export function Dashboard() {
   // Listen for openScenarioManager event from YTDDetailed
   useEffect(() => {
     const handleOpenScenarioManager = () => {
+      setScenarioManagerView('list')
+      setScenarioManagerInitialScenario(undefined)
       setShowScenarioManager(true)
     }
     window.addEventListener('openScenarioManager', handleOpenScenarioManager)
@@ -1619,6 +1629,81 @@ export function Dashboard() {
       window.removeEventListener('openScenarioManager', handleOpenScenarioManager)
     }
   }, [])
+
+  // Listen for editCurrentScenario event (Save button)
+  useEffect(() => {
+    const handleEditCurrentScenario = async () => {
+      if (!store.currentScenarioId) return
+
+      // Fetch the current scenario to pass to the form
+      try {
+        const { data, error } = await supabase
+          .from('scenarios')
+          .select('*')
+          .eq('id', store.currentScenarioId)
+          .single()
+
+        if (error || !data) {
+          alert('Failed to load scenario for editing')
+          return
+        }
+
+        // Open scenario manager in edit mode with scenario data
+        setScenarioManagerView('edit')
+        setScenarioManagerInitialScenario(data)
+        setShowScenarioManager(true)
+      } catch (err) {
+        console.error('Error loading scenario:', err)
+        alert('Failed to load scenario for editing')
+      }
+    }
+
+    window.addEventListener('editCurrentScenario', handleEditCurrentScenario)
+    return () => {
+      window.removeEventListener('editCurrentScenario', handleEditCurrentScenario)
+    }
+  }, [store.currentScenarioId])
+
+  // Listen for saveScenarioAs event
+  useEffect(() => {
+    const handleSaveScenarioAs = () => {
+      setScenarioManagerView('form')
+      setScenarioManagerInitialScenario(undefined)
+      setShowScenarioManager(true)
+    }
+
+    window.addEventListener('saveScenarioAs', handleSaveScenarioAs)
+    return () => {
+      window.removeEventListener('saveScenarioAs', handleSaveScenarioAs)
+    }
+  }, [])
+
+  // Listen for unloadScenario event
+  useEffect(() => {
+    const handleUnloadScenario = () => {
+      if (!store.currentScenarioName) return
+
+      const shouldUnload = confirm(
+        `Unload "${store.currentScenarioName}"?\n\nAny unsaved changes will be lost.`
+      )
+
+      if (shouldUnload) {
+        // Clear the current scenario
+        store.setCurrentScenario(null, null)
+
+        // Reset to defaults - for YTD view, reset to baseline 2025 data
+        if (viewMode === 'YTD Detailed') {
+          // Reset YTD settings to defaults
+          setYtdSettings(DEFAULT_YTD_SETTINGS)
+        }
+      }
+    }
+
+    window.addEventListener('unloadScenario', handleUnloadScenario)
+    return () => {
+      window.removeEventListener('unloadScenario', handleUnloadScenario)
+    }
+  }, [store.currentScenarioName, viewMode])
 
   // Load from shareable URL hash if present
   useEffect(() => {
@@ -1716,12 +1801,18 @@ export function Dashboard() {
   // Show login screen if not authenticated
   if (!profile) {
     return (
-      <div style={{ 
-        fontFamily: 'Inter, system-ui, Arial', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        minHeight: '100vh',
+      <div style={{
+        fontFamily: 'Inter, system-ui, Arial',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         padding: 20
       }}>
@@ -1770,7 +1861,7 @@ export function Dashboard() {
   return (
     <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16, position: 'relative' }}>
       {/* Top Bar with Auth and Help */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 12, paddingTop: 0 }}>
+      <div className="full-bleed" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 12, paddingTop: 0, paddingLeft: isMobile ? 8 : 16, paddingRight: isMobile ? 8 : 16 }}>
         {/* Sync Button - only show in YTD Detailed view */}
         {viewMode === 'YTD Detailed' && (
           <SyncButton 
@@ -1862,17 +1953,6 @@ export function Dashboard() {
               onClick={() => setViewMode('Multi-Year')}
               style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'Multi-Year' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
             >Multi-Year</button>
-          </div>
-          <div style={{ display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end', flexWrap: 'wrap', gap: 8 }}>
-            <button onClick={async () => {
-              if (viewMode === 'YTD Detailed') {
-                await store.resetOnly2025('A');
-              } else {
-                store.resetToDefaults(true); // skip2025 = true for Multi-Year
-              }
-              window.location.hash = '';
-            }} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Reset to defaults</button>
-            <button onClick={copyShareLink} style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>Copy shareable link</button>
           </div>
         </div>
         
@@ -2058,6 +2138,8 @@ export function Dashboard() {
         viewMode={viewMode}
         ytdSettings={ytdSettings}
         onYtdSettingsChange={handleYtdSettingsChange}
+        initialView={scenarioManagerView}
+        initialScenario={scenarioManagerInitialScenario}
       />
     </div>
   )

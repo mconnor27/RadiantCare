@@ -25,10 +25,13 @@ a:hover {
 
 body {
   margin: 0;
+  padding: 0;
   text-align: center;
   place-items: center;
   min-width: 320px;
+  width: 100%;
   min-height: 100vh;
+  height: 100%;
   /* Prevent horizontal overflow on mobile */
   overflow-x: hidden;
   /* Better touch scrolling on iOS */
@@ -237,6 +240,11 @@ input[type="range"].growth-slider:disabled::-moz-range-progress {
 html {
   color-scheme: light only;
   background-color: #ffffff;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
 }
 
 body {
@@ -577,5 +585,13 @@ input[type=number] {
 /* Ensure cursor stays consistent during dragging */
 body.dragging [data-drag-handle] {
   cursor: grabbing !important;
+}
+
+/* Full-bleed utility: allow a row to span entire viewport width
+   even when nested inside a centered/narrow container. */
+.full-bleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
 }
 

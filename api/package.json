@@ -5,15 +5,22 @@
   "type": "module",
   "scripts": {
     "dev": "vercel dev",
-    "build": "echo 'Building serverless functions...'"
+    "build": "echo 'Building serverless functions...'",
+    "lint": "eslint **/*.ts",
+    "lint:fix": "eslint **/*.ts --fix"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0"
   },
   "devDependencies": {
-    "@vercel/node": "^3.0.0",
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "@typescript-eslint/eslint-plugin": "^8.46.0",
+    "@typescript-eslint/parser": "^8.46.0",
+    "@vercel/node": "^3.0.0",
+    "eslint": "^9.37.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.4.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.46.0"
   }
 }
-

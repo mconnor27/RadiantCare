@@ -2,6 +2,20 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { requireAuth, handleCors } from '../_lib/auth.js'
 import { getSupabaseAdmin } from '../_lib/supabase.js'
 
+interface QboToken {
+  access_token: string
+  refresh_token: string
+  expires_at: number
+  environment: string
+  realm_id: string
+}
+
+interface QboRefreshTokenResponse {
+  access_token: string
+  refresh_token?: string
+  expires_in: number
+}
+
 const TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
 
 function getCredentials(env: string) {
@@ -81,7 +95,7 @@ function getPriorBusinessDayEnd(now: Date): string {
   return queryDate.toISOString().slice(0, 10)
 }
 
-async function refreshTokenIfNeeded(token: any): Promise<any> {
+async function refreshTokenIfNeeded(token: QboToken): Promise<QboToken> {
   const now = Math.floor(Date.now() / 1000)
   
   // Refresh 2 minutes before expiry
@@ -114,10 +128,10 @@ async function refreshTokenIfNeeded(token: any): Promise<any> {
     throw new Error('Failed to refresh QuickBooks token')
   }
 
-  const json = await res.json()
+  const json = await res.json() as QboRefreshTokenResponse
   const expiresAt = Math.floor(Date.now() / 1000) + Number(json.expires_in || 3600)
 
-  const refreshedToken = {
+  const refreshedToken: QboToken = {
     ...token,
     access_token: json.access_token,
     refresh_token: json.refresh_token || token.refresh_token,

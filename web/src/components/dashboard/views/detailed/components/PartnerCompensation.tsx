@@ -311,18 +311,7 @@ export default function PartnerCompensation({
   // Check if we're still waiting for fresh API data (showing stale localStorage data)
   const isRefreshing = environment === 'production' && !cachedSummary
   
-  // Don't calculate until 2025 data exists (prevents wrong calcs on first load without localStorage)
-  if (!fy2025) {
-    return (
-      <CollapsibleSection title="Partner Compensation" defaultOpen={false} tone="purple">
-        <div style={{ padding: 20, textAlign: 'center', color: '#666' }}>
-          Loading compensation data...
-        </div>
-      </CollapsibleSection>
-    )
-  }
-  
-  // Parse both projected and YTD data
+  // Parse both projected and YTD data (must be called before any early returns)
   const projectedData = useMemo(() => {
     return parseProjectedData(physicians, fy2025)
   }, [
@@ -339,6 +328,17 @@ export default function PartnerCompensation({
     store.scenarioA.projection?.benefitCostsGrowthPct,
   ])
   const ytdData = useMemo(() => parseYTDPhysicianData(physicians, equityData, summaryData), [physicians, equityData, summaryData])
+  
+  // Don't calculate until 2025 data exists (prevents wrong calcs on first load without localStorage)
+  if (!fy2025) {
+    return (
+      <CollapsibleSection title="Partner Compensation" defaultOpen={false} tone="purple">
+        <div style={{ padding: 20, textAlign: 'center', color: '#666' }}>
+          Loading compensation data...
+        </div>
+      </CollapsibleSection>
+    )
+  }
   const physicianNames = physicians.map(p => p.name)
   
   // Helper function to get value 

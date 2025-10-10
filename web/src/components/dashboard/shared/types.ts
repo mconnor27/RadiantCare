@@ -175,6 +175,7 @@ export type Store = {
   suppressNextGridSync?: boolean
   currentScenarioId: string | null
   currentScenarioName: string | null
+  currentScenarioUserId: string | null
   setScenarioEnabled: (enabled: boolean) => void
   setFutureValue: (
     scenario: ScenarioKey,
@@ -213,5 +214,5 @@ export type Store = {
     ytdSettings?: YTDSettings
   ) => Promise<SavedScenario>
   loadScenarioFromDatabase: (id: string, target?: 'A' | 'B', loadBaseline?: boolean) => Promise<any>
-  setCurrentScenario: (id: string | null, name: string | null) => void
+  setCurrentScenario: (id: string | null, name: string | null, userId?: string | null) => void
 }

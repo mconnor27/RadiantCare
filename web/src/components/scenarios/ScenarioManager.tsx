@@ -14,17 +14,21 @@ interface ScenarioManagerProps {
   viewMode: 'YTD Detailed' | 'Multi-Year'
   ytdSettings?: any
   onYtdSettingsChange?: (settings: any) => void
+  initialView?: 'list' | 'form' | 'edit'
+  initialScenario?: SavedScenario
 }
 
 type Tab = 'my-scenarios' | 'public-scenarios'
 type View = 'list' | 'form' | 'edit'
 
-export default function ScenarioManager({ 
-  isOpen, 
-  onClose, 
-  viewMode, 
+export default function ScenarioManager({
+  isOpen,
+  onClose,
+  viewMode,
   ytdSettings,
-  onYtdSettingsChange 
+  onYtdSettingsChange,
+  initialView = 'list',
+  initialScenario
 }: ScenarioManagerProps) {
   const { profile } = useAuth()
   const store = useDashboardStore()
@@ -45,8 +49,11 @@ export default function ScenarioManager({
   useEffect(() => {
     if (isOpen && profile) {
       loadScenarios()
+      // Set initial view and scenario when opening
+      setView(initialView)
+      setEditingScenario(initialScenario)
     }
-  }, [isOpen, profile, viewMode]) // Add viewMode as dependency
+  }, [isOpen, profile, viewMode, initialView, initialScenario])
 
   async function loadScenarios() {
     setLoading(true)
@@ -113,6 +120,22 @@ export default function ScenarioManager({
 
   async function handleSaveScenario(name: string, description: string, isPublic: boolean) {
     try {
+      // Check if name is "Default" - only allowed when editing the existing Default scenario
+      if (name.trim().toLowerCase() === 'default' && editingScenario?.name.toLowerCase() !== 'default') {
+        throw new Error('Cannot use "Default" as a scenario name. This name is reserved.')
+      }
+
+      // Check for duplicate names for YTD scenarios
+      if (viewMode === 'YTD Detailed') {
+        const existingScenario = myScenarios.find(s =>
+          s.name.toLowerCase() === name.trim().toLowerCase() &&
+          s.id !== editingScenario?.id // Allow same name when editing the same scenario
+        )
+        if (existingScenario) {
+          throw new Error(`A YTD scenario named "${name}" already exists. Please choose a different name.`)
+        }
+      }
+
       // If we're in 'form' view (not 'edit'), clear the current scenario ID to force a new save
       if (view === 'form') {
         store.setCurrentScenario(null, null) // Temporarily clear to force new scenario creation
@@ -125,6 +148,7 @@ export default function ScenarioManager({
       await loadScenarios()
       setView('list')
       setEditingScenario(undefined)
+      onClose() // Close the modal after saving
     } catch (err) {
       throw err
     }
