@@ -95,26 +95,99 @@ export default function MultiYearView() {
     window.dispatchEvent(new Event('resize'))
   }, [store.scenarioBEnabled])
 
-  // Mark scenario A as dirty when settings change
+  // Mark scenario A as dirty when settings change from loaded snapshot
   useEffect(() => {
-    if (!store.currentScenarioId) return
-    setIsScenarioDirty(true)
+    console.log('[DIRTY CHECK A] Running dirty check', {
+      hasScenarioId: !!store.currentScenarioId,
+      hasSnapshot: !!store.loadedScenarioSnapshot,
+      currentDataMode: store.scenarioA.dataMode,
+      snapshotDataMode: store.loadedScenarioSnapshot?.scenarioA?.dataMode
+    })
+
+    if (!store.currentScenarioId || !store.loadedScenarioSnapshot) {
+      setIsScenarioDirty(false)
+      return
+    }
+
+    // Compare current state to snapshot
+    const snapshot = store.loadedScenarioSnapshot.scenarioA
+    const current = store.scenarioA
+
+    // Check if projection settings differ
+    const projectionDirty = Object.keys(current.projection).some(key => {
+      const k = key as keyof typeof current.projection
+      return Math.abs(current.projection[k] - snapshot.projection[k]) > 0.001
+    })
+
+    // Check if other settings differ
+    const otherDirty = current.selectedYear !== snapshot.selectedYear ||
+                       current.dataMode !== snapshot.dataMode
+
+    console.log('[DIRTY CHECK A] Results:', {
+      projectionDirty,
+      otherDirty,
+      selectedYearMatch: current.selectedYear === snapshot.selectedYear,
+      dataModeMatch: current.dataMode === snapshot.dataMode,
+      isDirty: projectionDirty || otherDirty
+    })
+
+    setIsScenarioDirty(projectionDirty || otherDirty)
   }, [
     store.scenarioA.projection,
     store.scenarioA.selectedYear,
     store.scenarioA.dataMode,
-    store.currentScenarioId
+    store.currentScenarioId,
+    store.loadedScenarioSnapshot
   ])
 
-  // Mark scenario B as dirty when settings change
+  // Mark scenario B as dirty when settings change from loaded snapshot
   useEffect(() => {
-    if (!store.currentScenarioBId) return
-    setIsScenarioBDirty(true)
+    console.log('[DIRTY CHECK B] Running dirty check', {
+      hasScenarioBId: !!store.currentScenarioBId,
+      hasSnapshot: !!store.loadedScenarioBSnapshot,
+      hasScenarioB: !!store.scenarioB,
+      currentDataMode: store.scenarioB?.dataMode,
+      snapshotDataMode: store.loadedScenarioBSnapshot?.scenarioB?.dataMode,
+      currentScenarioBId: store.currentScenarioBId
+    })
+
+    if (!store.currentScenarioBId || !store.loadedScenarioBSnapshot || !store.scenarioB) {
+      console.log('[DIRTY CHECK B] Early return - missing required data')
+      setIsScenarioBDirty(false)
+      return
+    }
+
+    // Compare current state to snapshot
+    const snapshot = store.loadedScenarioBSnapshot.scenarioB
+    const current = store.scenarioB
+
+    // Check if projection settings differ
+    const projectionDirty = Object.keys(current.projection).some(key => {
+      const k = key as keyof typeof current.projection
+      return Math.abs(current.projection[k] - snapshot.projection[k]) > 0.001
+    })
+
+    // Check if other settings differ
+    const otherDirty = current.selectedYear !== snapshot.selectedYear ||
+                       current.dataMode !== snapshot.dataMode
+
+    console.log('[DIRTY CHECK B] Results:', {
+      projectionDirty,
+      otherDirty,
+      selectedYearMatch: current.selectedYear === snapshot.selectedYear,
+      dataModeMatch: current.dataMode === snapshot.dataMode,
+      currentDataMode: current.dataMode,
+      snapshotDataMode: snapshot.dataMode,
+      isDirty: projectionDirty || otherDirty
+    })
+
+    setIsScenarioBDirty(projectionDirty || otherDirty)
   }, [
     store.scenarioB?.projection,
     store.scenarioB?.selectedYear,
     store.scenarioB?.dataMode,
-    store.currentScenarioBId
+    store.currentScenarioBId,
+    store.loadedScenarioBSnapshot
   ])
 
   // Reset dirty flags when scenarios change

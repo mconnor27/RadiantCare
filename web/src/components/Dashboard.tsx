@@ -85,11 +85,13 @@ export const useDashboardStore = create<Store>()(
         currentScenarioBName: null,
         currentScenarioBUserId: null,
         loadedScenarioSnapshot: null,
+        loadedScenarioBSnapshot: null,
         setScenarioEnabled: (enabled) => {
           set((state) => {
             state.scenarioBEnabled = enabled
-            if (enabled) {
-              // Initialize scenario B with its own defaults instead of cloning A
+            // Don't clear snapshot when just toggling visibility - keep it for dirty detection
+            if (enabled && !state.scenarioB) {
+              // Only initialize with defaults if scenario B doesn't exist yet
               state.scenarioB = {
                 future: INITIAL_FUTURE_YEARS_B.map((f) => ({ ...f, physicians: [...f.physicians] })),
                 projection: {
@@ -106,9 +108,9 @@ export const useDashboardStore = create<Store>()(
                 selectedYear: state.scenarioA.selectedYear,
                 dataMode: '2024 Data',
               }
-            } else {
-              state.scenarioB = undefined
             }
+            // Don't clear scenarioB when disabling - just hide it
+            // This preserves loaded scenario data and snapshot for dirty detection
           })
           // Apply projections to scenario B if it was just enabled
           if (enabled) {
@@ -756,9 +758,13 @@ export const useDashboardStore = create<Store>()(
             const futureYear = scenarioState.future.find(f => f.year === year)
             if (!futureYear) return
 
+            // Use the correct snapshot based on scenario
+            const snapshot = scenario === 'A' ? state.loadedScenarioSnapshot : state.loadedScenarioBSnapshot
+
             // If we have a loaded scenario snapshot, reset to that instead of defaults
-            if (state.loadedScenarioSnapshot) {
-              const snapshotFy = state.loadedScenarioSnapshot.scenarioA.future.find(f => f.year === year)
+            if (snapshot) {
+              const snapshotScenario = scenario === 'A' ? snapshot.scenarioA : snapshot.scenarioB
+              const snapshotFy = snapshotScenario.future.find(f => f.year === year)
               if (snapshotFy) {
                 // Deep copy from snapshot
                 futureYear.physicians = JSON.parse(JSON.stringify(snapshotFy.physicians))
@@ -767,8 +773,10 @@ export const useDashboardStore = create<Store>()(
                 futureYear.prcsMedicalDirectorHours = snapshotFy.prcsMedicalDirectorHours
                 futureYear.prcsDirectorPhysicianId = snapshotFy.prcsDirectorPhysicianId
 
-                // Also reset grid overrides to snapshot
-                state.customProjectedValues = JSON.parse(JSON.stringify(state.loadedScenarioSnapshot.customProjectedValues))
+                // Also reset grid overrides to snapshot (only for A, B doesn't have separate grid overrides)
+                if (scenario === 'A' && state.loadedScenarioSnapshot) {
+                  state.customProjectedValues = JSON.parse(JSON.stringify(state.loadedScenarioSnapshot.customProjectedValues))
+                }
                 return
               }
             }
@@ -789,11 +797,15 @@ export const useDashboardStore = create<Store>()(
             const scenarioState = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!scenarioState) return
 
+            // Use the correct snapshot based on scenario
+            const snapshot = scenario === 'A' ? state.loadedScenarioSnapshot : state.loadedScenarioBSnapshot
+
             // If we have a loaded scenario snapshot, reset all years from that
-            if (state.loadedScenarioSnapshot) {
+            if (snapshot) {
+              const snapshotScenario = scenario === 'A' ? snapshot.scenarioA : snapshot.scenarioB
               scenarioState.future.forEach(fy => {
                 if (skip2025 && fy.year === 2025) return
-                const snapshotFy = state.loadedScenarioSnapshot!.scenarioA.future.find(f => f.year === fy.year)
+                const snapshotFy = snapshotScenario.future.find(f => f.year === fy.year)
                 if (snapshotFy) {
                   // Deep copy physicians from snapshot
                   fy.physicians = JSON.parse(JSON.stringify(snapshotFy.physicians))
@@ -823,9 +835,12 @@ export const useDashboardStore = create<Store>()(
             const scenarioState = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!scenarioState) return
 
-            // Use loaded scenario snapshot if available, otherwise fall back to defaults
-            const loadedProjection = state.loadedScenarioSnapshot?.scenarioA?.projection
-            const defaultProjection = loadedProjection || PROJECTION_DEFAULTS.A
+            // Use the correct snapshot based on scenario
+            const snapshot = scenario === 'A' ? state.loadedScenarioSnapshot : state.loadedScenarioBSnapshot
+            const loadedProjection = scenario === 'A'
+              ? snapshot?.scenarioA?.projection
+              : snapshot?.scenarioB?.projection
+            const defaultProjection = loadedProjection || (scenario === 'A' ? PROJECTION_DEFAULTS.A : PROJECTION_DEFAULTS.B)
 
             scenarioState.projection = {
               incomeGrowthPct: defaultProjection.incomeGrowthPct,
@@ -850,10 +865,14 @@ export const useDashboardStore = create<Store>()(
             const scenarioState = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!scenarioState) return
 
+            // Use the correct snapshot based on scenario
+            const snapshot = scenario === 'A' ? state.loadedScenarioSnapshot : state.loadedScenarioBSnapshot
+
             // If we have a loaded scenario snapshot, restore custom per-year overrides from snapshot
-            if (state.loadedScenarioSnapshot) {
+            if (snapshot) {
+              const snapshotScenario = scenario === 'A' ? snapshot.scenarioA : snapshot.scenarioB
               scenarioState.future.forEach(fy => {
-                const snapshotFy = state.loadedScenarioSnapshot!.scenarioA.future.find(f => f.year === fy.year)
+                const snapshotFy = snapshotScenario.future.find(f => f.year === fy.year)
                 if (snapshotFy) {
                   // Restore income/cost values that might have been customized per year
                   fy.therapyIncome = snapshotFy.therapyIncome
@@ -870,8 +889,10 @@ export const useDashboardStore = create<Store>()(
                   if (snapshotFy.therapyAberdeen !== undefined) fy.therapyAberdeen = snapshotFy.therapyAberdeen
                 }
               })
-              // Also restore custom projected values (grid overrides)
-              state.customProjectedValues = JSON.parse(JSON.stringify(state.loadedScenarioSnapshot.customProjectedValues))
+              // Also restore custom projected values (grid overrides) - only for A
+              if (scenario === 'A' && state.loadedScenarioSnapshot) {
+                state.customProjectedValues = JSON.parse(JSON.stringify(state.loadedScenarioSnapshot.customProjectedValues))
+              }
             } else {
               // Fall back to recalculating from projection formulas if no snapshot
               get().applyProjectionFromLastActual(scenario)
@@ -932,9 +953,11 @@ export const useDashboardStore = create<Store>()(
             }
 
             // Reset app-level state (not handled by section resets)
+            console.log('[SNAPSHOT B] Clearing B snapshot (resetToDefaults)')
             state.scenarioBEnabled = false
             state.scenarioB = undefined
             state.customProjectedValues = {}
+            state.loadedScenarioBSnapshot = null
           }, false)
 
           // Use the dedicated reset functions to ensure consistency
@@ -1312,15 +1335,12 @@ export const useDashboardStore = create<Store>()(
             console.warn('Could not fetch QBO sync timestamp:', err)
           }
 
-          // Save Scenario B's projection parameters + baseline data
-          // Use Scenario B's actual dataMode (which reflects which baseline it's using)
+          // Save Scenario B's complete data (all future years, physicians, projection settings)
+          // The database stores it as "scenarioA" but it's actually B's data
           const dataMode = state.scenarioB?.dataMode || '2025 Data'
 
           const scenarioData = {
-            scenarioA: {
-              ...state.scenarioA,
-              projection: state.scenarioB.projection // Use B's projection
-            },
+            scenarioA: state.scenarioB, // Save B's complete data, not A's!
             customProjectedValues: state.customProjectedValues,
           }
 
@@ -1451,9 +1471,30 @@ export const useDashboardStore = create<Store>()(
                   scenarioA: JSON.parse(JSON.stringify(state.scenarioA)),
                   customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
                 }
+                console.log('[SNAPSHOT A] ========== COMPLETE SCENARIO A DATA ==========')
+                console.log('[SNAPSHOT A] Scenario A Object:', JSON.parse(JSON.stringify(state.scenarioA)))
+                console.log('[SNAPSHOT A] Snapshot Object:', JSON.parse(JSON.stringify(state.loadedScenarioSnapshot)))
+                console.log('[SNAPSHOT A] Future Years Count:', state.scenarioA?.future?.length)
+                console.log('[SNAPSHOT A] Future Years Data:', state.scenarioA?.future?.map(f => ({
+                  year: f.year,
+                  therapyIncome: f.therapyIncome,
+                  physicianCount: f.physicians?.length,
+                  physicians: f.physicians,
+                  locumCosts: f.locumCosts,
+                  medicalDirectorHours: f.medicalDirectorHours,
+                  prcsMedicalDirectorHours: f.prcsMedicalDirectorHours
+                })))
+                console.log('[SNAPSHOT A] Projection Settings:', state.scenarioA?.projection)
+                console.log('[SNAPSHOT A] Custom Projected Values:', state.customProjectedValues)
+                console.log('[SNAPSHOT A] UI State:', {
+                  selectedYear: state.scenarioA?.selectedYear,
+                  dataMode: state.scenarioA?.dataMode
+                })
+                console.log('[SNAPSHOT A] ===============================================')
               }
 
               if (target === 'B') {
+                console.log('[LOAD B] Loading scenario into B slot:', { id, name: data.name, baseline_mode: data.baseline_mode })
                 // Loading into B for comparison
                 // Determine whether to use loaded scenario's baseline or A's baseline
                 // Use loaded scenario's baseline if it doesn't use 2025 data, otherwise use A's baseline
@@ -1492,12 +1533,33 @@ export const useDashboardStore = create<Store>()(
                 state.currentScenarioBId = data.id
                 state.currentScenarioBName = data.name
                 state.currentScenarioBUserId = data.user_id
-              } else {
-                // Loading into A - clear any previous B scenario
-                state.currentScenarioBId = null
-                state.currentScenarioBName = null
-                state.currentScenarioBUserId = null
+
+                // Create deep copy snapshot for B
+                state.loadedScenarioBSnapshot = {
+                  scenarioB: JSON.parse(JSON.stringify(state.scenarioB))
+                }
+                console.log('[SNAPSHOT B] ========== COMPLETE SCENARIO B DATA ==========')
+                console.log('[SNAPSHOT B] Scenario B Object:', JSON.parse(JSON.stringify(state.scenarioB)))
+                console.log('[SNAPSHOT B] Snapshot Object:', JSON.parse(JSON.stringify(state.loadedScenarioBSnapshot)))
+                console.log('[SNAPSHOT B] Future Years Count:', state.scenarioB?.future?.length)
+                console.log('[SNAPSHOT B] Future Years Data:', state.scenarioB?.future?.map(f => ({
+                  year: f.year,
+                  therapyIncome: f.therapyIncome,
+                  physicianCount: f.physicians?.length,
+                  physicians: f.physicians,
+                  locumCosts: f.locumCosts,
+                  medicalDirectorHours: f.medicalDirectorHours,
+                  prcsMedicalDirectorHours: f.prcsMedicalDirectorHours
+                })))
+                console.log('[SNAPSHOT B] Projection Settings:', state.scenarioB?.projection)
+                console.log('[SNAPSHOT B] UI State:', {
+                  selectedYear: state.scenarioB?.selectedYear,
+                  dataMode: state.scenarioB?.dataMode
+                })
+                console.log('[SNAPSHOT B] ===============================================')
               }
+              // Don't automatically clear B when loading A - they can coexist
+              // B should only be cleared when explicitly replaced or reset
             })
             
             return data
@@ -2161,8 +2223,53 @@ export function Dashboard() {
     const hash = window.location.hash
     if (hash && hash.startsWith('#s=')) return
 
-    // Skip if both scenarios are already loaded with the correct defaults
-    if (store.currentScenarioName === 'Default (A)' && store.currentScenarioBName === 'Default (B)') return
+    // Skip if both scenarios are already loaded with the correct defaults AND snapshots exist
+    // Snapshots are needed for dirty detection but aren't persisted, so may need recreation
+    if (store.currentScenarioName === 'Default (A)' &&
+        store.currentScenarioBName === 'Default (B)' &&
+        store.loadedScenarioSnapshot &&
+        store.loadedScenarioBSnapshot) {
+      console.log('[INIT] Skipping default load - scenarios and snapshots already present')
+      return
+    }
+
+    console.log('[INIT] Loading default scenarios', {
+      hasA: !!store.currentScenarioName,
+      hasB: !!store.currentScenarioBName,
+      hasSnapshotA: !!store.loadedScenarioSnapshot,
+      hasSnapshotB: !!store.loadedScenarioBSnapshot
+    })
+
+    // Full state report
+    console.log('[STATE REPORT] Current state:', {
+      scenarioA: {
+        exists: !!store.scenarioA,
+        dataMode: store.scenarioA?.dataMode,
+        selectedYear: store.scenarioA?.selectedYear,
+        projection: store.scenarioA?.projection,
+        currentScenarioId: store.currentScenarioId,
+        currentScenarioName: store.currentScenarioName
+      },
+      scenarioB: {
+        exists: !!store.scenarioB,
+        dataMode: store.scenarioB?.dataMode,
+        selectedYear: store.scenarioB?.selectedYear,
+        projection: store.scenarioB?.projection,
+        currentScenarioBId: store.currentScenarioBId,
+        currentScenarioBName: store.currentScenarioBName,
+        enabled: store.scenarioBEnabled
+      },
+      snapshotA: {
+        exists: !!store.loadedScenarioSnapshot,
+        dataMode: store.loadedScenarioSnapshot?.scenarioA?.dataMode,
+        projection: store.loadedScenarioSnapshot?.scenarioA?.projection
+      },
+      snapshotB: {
+        exists: !!store.loadedScenarioBSnapshot,
+        dataMode: store.loadedScenarioBSnapshot?.scenarioB?.dataMode,
+        projection: store.loadedScenarioBSnapshot?.scenarioB?.projection
+      }
+    })
 
     async function loadDefaultScenarios() {
       try {
@@ -2180,16 +2287,44 @@ export function Dashboard() {
 
         // Load Default (A) into scenario A
         if (defaultA) {
+          console.log('[INIT] Loading Default (A)...')
           await store.loadScenarioFromDatabase(defaultA.id, 'A', true)
         }
 
         // Load Default (B) into scenario B (but keep it disabled/not visible)
         // The loadScenarioFromDatabase function will determine baseline usage based on A's data mode
         if (defaultB) {
+          console.log('[INIT] Loading Default (B)...')
           await store.loadScenarioFromDatabase(defaultB.id, 'B', false)
           // Disable scenario B after loading to keep it hidden
           store.setScenarioEnabled(false)
+          console.log('[INIT] Disabled scenario B visibility')
         }
+
+        // Final state report after loading
+        console.log('[STATE REPORT] After loading defaults:', {
+          scenarioA: {
+            exists: !!store.scenarioA,
+            id: store.currentScenarioId,
+            name: store.currentScenarioName,
+            dataMode: store.scenarioA?.dataMode
+          },
+          scenarioB: {
+            exists: !!store.scenarioB,
+            id: store.currentScenarioBId,
+            name: store.currentScenarioBName,
+            dataMode: store.scenarioB?.dataMode,
+            enabled: store.scenarioBEnabled
+          },
+          snapshotA: {
+            exists: !!store.loadedScenarioSnapshot,
+            dataMode: store.loadedScenarioSnapshot?.scenarioA?.dataMode
+          },
+          snapshotB: {
+            exists: !!store.loadedScenarioBSnapshot,
+            dataMode: store.loadedScenarioBSnapshot?.scenarioB?.dataMode
+          }
+        })
       } catch (err) {
         console.error('Error loading default scenarios:', err)
       }

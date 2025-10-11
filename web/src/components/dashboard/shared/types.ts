@@ -187,6 +187,9 @@ export type Store = {
     scenarioA: ScenarioState
     customProjectedValues: Record<string, number>
   } | null
+  loadedScenarioBSnapshot: {
+    scenarioB: ScenarioState
+  } | null
   setScenarioEnabled: (enabled: boolean) => void
   setFutureValue: (
     scenario: ScenarioKey,

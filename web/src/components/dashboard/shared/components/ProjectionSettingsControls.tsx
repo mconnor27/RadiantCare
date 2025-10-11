@@ -24,8 +24,10 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
   }
 
   // Default values for reset functionality - use loaded scenario snapshot if available
-  const loadedSnapshot = store.loadedScenarioSnapshot
-  const loadedProjection = loadedSnapshot?.scenarioA?.projection
+  const loadedSnapshot = scenario === 'A' ? store.loadedScenarioSnapshot : store.loadedScenarioBSnapshot
+  const loadedProjection = scenario === 'A'
+    ? loadedSnapshot?.scenarioA?.projection
+    : loadedSnapshot?.scenarioB?.projection
   const defaultValues = loadedProjection || PROJECTION_DEFAULTS[scenario]
 
   // Helper function to create a slider with number input and reset button
@@ -617,9 +619,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
         <button
           onClick={() => {
             removeTooltip('reset-all-tooltip')
-            Object.keys(defaultValues).forEach((field) => {
-              store.setProjectionField(scenario, field as keyof Projection, defaultValues[field as keyof typeof defaultValues])
-            })
+            store.resetProjectionSettings(scenario)
           }}
           style={{
             background: '#ffffff',
