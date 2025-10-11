@@ -102,7 +102,8 @@ export default function MultiYearView() {
       hasScenarioId: !!store.currentScenarioId,
       hasSnapshot: !!store.loadedScenarioSnapshot,
       currentDataMode: store.scenarioA.dataMode,
-      snapshotDataMode: store.loadedScenarioSnapshot?.scenarioA?.dataMode
+      snapshotDataMode: store.loadedScenarioSnapshot?.scenarioA?.dataMode,
+      futureYearsCount: store.scenarioA.future.length
     })
 
     if (!store.currentScenarioId || !store.loadedScenarioSnapshot) {
@@ -114,60 +115,122 @@ export default function MultiYearView() {
     const snapshot = store.loadedScenarioSnapshot.scenarioA
     const current = store.scenarioA
 
+    console.log('[DIRTY CHECK A] Snapshot data:', {
+      snapshotFutureCount: snapshot.future?.length,
+      currentFutureCount: current.future.length,
+      snapshotHasFuture: !!snapshot.future,
+      snapshotProjection: snapshot.projection,
+      currentProjection: current.projection,
+      snapshotKeys: Object.keys(snapshot),
+      fullSnapshot: snapshot
+    })
+
     // Check if projection settings differ
     const projectionDirty = Object.keys(current.projection).some(key => {
       const k = key as keyof typeof current.projection
-      return Math.abs(current.projection[k] - snapshot.projection[k]) > 0.001
+      const diff = Math.abs(current.projection[k] - snapshot.projection[k])
+      if (diff > 0.001) {
+        console.log(`[DIRTY CHECK A] Projection diff for ${key}:`, { current: current.projection[k], snapshot: snapshot.projection[k], diff })
+      }
+      return diff > 0.001
     })
 
     // Check if other settings differ (excluding selectedYear - it's just UI state)
     const otherDirty = current.dataMode !== snapshot.dataMode
 
-    // Check if physician data differs in any future year
-    const physicianDirty = current.future.some((currentFy, idx) => {
+    // Check if per-year data differs in any future year
+    console.log('[DIRTY CHECK A] Starting per-year comparison, future count:', current.future.length)
+    const perYearDirty = current.future.some((currentFy, idx) => {
+      console.log(`[DIRTY CHECK A] Checking year ${currentFy.year} (index ${idx})`)
       const snapshotFy = snapshot.future[idx]
-      if (!snapshotFy) return true
+      if (!snapshotFy) {
+        console.log(`[DIRTY CHECK A] No snapshot for index ${idx}`)
+        return true
+      }
+
+      console.log(`[DIRTY CHECK A] Year ${currentFy.year} physician counts:`, {
+        current: currentFy.physicians?.length,
+        snapshot: snapshotFy.physicians?.length
+      })
+
+      // Compare all per-year override fields
+      const threshold = 0.01
+      if (Math.abs(currentFy.therapyIncome - snapshotFy.therapyIncome) > threshold) {
+        console.log(`[DIRTY CHECK A] therapyIncome differs`)
+        return true
+      }
+      if (Math.abs(currentFy.nonEmploymentCosts - snapshotFy.nonEmploymentCosts) > threshold) return true
+      if (Math.abs(currentFy.nonMdEmploymentCosts - snapshotFy.nonMdEmploymentCosts) > threshold) return true
+      if (Math.abs(currentFy.locumCosts - snapshotFy.locumCosts) > threshold) return true
+      if (Math.abs(currentFy.miscEmploymentCosts - snapshotFy.miscEmploymentCosts) > threshold) return true
+      if (Math.abs((currentFy.medicalDirectorHours ?? 0) - (snapshotFy.medicalDirectorHours ?? 0)) > threshold) return true
+      if (Math.abs((currentFy.prcsMedicalDirectorHours ?? 0) - (snapshotFy.prcsMedicalDirectorHours ?? 0)) > threshold) return true
+      if (Math.abs((currentFy.consultingServicesAgreement ?? 0) - (snapshotFy.consultingServicesAgreement ?? 0)) > threshold) return true
+      if ((currentFy.prcsDirectorPhysicianId ?? undefined) !== (snapshotFy.prcsDirectorPhysicianId ?? undefined)) return true
 
       // Compare physician arrays
-      if (currentFy.physicians.length !== snapshotFy.physicians.length) return true
+      if (currentFy.physicians.length !== snapshotFy.physicians.length) {
+        console.log(`[DIRTY CHECK A] Physician count differs`)
+        return true
+      }
 
-      return currentFy.physicians.some((currentPhys, physIdx) => {
+      const physiciansDiffer = currentFy.physicians.some((currentPhys, physIdx) => {
         const snapshotPhys = snapshotFy.physicians[physIdx]
         if (!snapshotPhys) return true
 
-        // Compare all physician properties
-        return currentPhys.id !== snapshotPhys.id ||
+        console.log(`[DIRTY CHECK A] Comparing physician ${currentPhys.name}:`, {
+          currentSalary: currentPhys.salary,
+          snapshotSalary: snapshotPhys.salary,
+          areSame: currentPhys.salary === snapshotPhys.salary,
+          currentRef: currentPhys,
+          snapshotRef: snapshotPhys,
+          areReferencesSame: currentPhys === snapshotPhys
+        })
+
+        const differs = currentPhys.id !== snapshotPhys.id ||
                currentPhys.name !== snapshotPhys.name ||
                currentPhys.type !== snapshotPhys.type ||
-               currentPhys.rvus !== snapshotPhys.rvus ||
-               currentPhys.percentOwnership !== snapshotPhys.percentOwnership ||
                currentPhys.salary !== snapshotPhys.salary ||
-               currentPhys.partnerStartYear !== snapshotPhys.partnerStartYear ||
+               currentPhys.weeksVacation !== snapshotPhys.weeksVacation ||
                currentPhys.employeePortionOfYear !== snapshotPhys.employeePortionOfYear ||
-               currentPhys.retirementYear !== snapshotPhys.retirementYear ||
+               currentPhys.partnerPortionOfYear !== snapshotPhys.partnerPortionOfYear ||
+               currentPhys.startPortionOfYear !== snapshotPhys.startPortionOfYear ||
+               currentPhys.terminatePortionOfYear !== snapshotPhys.terminatePortionOfYear ||
+               currentPhys.receivesBenefits !== snapshotPhys.receivesBenefits ||
+               currentPhys.receivesBonuses !== snapshotPhys.receivesBonuses ||
+               currentPhys.bonusAmount !== snapshotPhys.bonusAmount ||
+               currentPhys.hasMedicalDirectorHours !== snapshotPhys.hasMedicalDirectorHours ||
                currentPhys.medicalDirectorHoursPercentage !== snapshotPhys.medicalDirectorHoursPercentage ||
                currentPhys.buyoutCost !== snapshotPhys.buyoutCost ||
                currentPhys.trailingSharedMdAmount !== snapshotPhys.trailingSharedMdAmount ||
                currentPhys.additionalDaysWorked !== snapshotPhys.additionalDaysWorked
+
+        if (differs) {
+          console.log(`[DIRTY CHECK A] Physician ${currentPhys.name} differs!`)
+        }
+        return differs
       })
+
+      return physiciansDiffer
     })
 
     console.log('[DIRTY CHECK A] Results:', {
       projectionDirty,
       otherDirty,
-      physicianDirty,
+      perYearDirty,
       dataModeMatch: current.dataMode === snapshot.dataMode,
-      isDirty: projectionDirty || otherDirty || physicianDirty
+      isDirty: projectionDirty || otherDirty || perYearDirty
     })
 
-    setIsScenarioDirty(projectionDirty || otherDirty || physicianDirty)
+    setIsScenarioDirty(projectionDirty || otherDirty || perYearDirty)
   }, [
-    store.scenarioA,
-    store.scenarioA.projection,
+    // JSON.stringify creates a new string when nested data changes, ensuring effect runs
+    JSON.stringify(store.scenarioA.future),
+    JSON.stringify(store.scenarioA.projection),
     store.scenarioA.dataMode,
-    store.scenarioA.future,
     store.currentScenarioId,
-    store.loadedScenarioSnapshot
+    // Serialize snapshot to detect changes
+    store.loadedScenarioSnapshot ? JSON.stringify(store.loadedScenarioSnapshot) : null
   ])
 
   // Mark scenario B as dirty when settings change from loaded snapshot
@@ -200,10 +263,22 @@ export default function MultiYearView() {
     // Check if other settings differ (excluding selectedYear - it's just UI state)
     const otherDirty = current.dataMode !== snapshot.dataMode
 
-    // Check if physician data differs in any future year
-    const physicianDirty = current.future.some((currentFy, idx) => {
+    // Check if per-year data differs in any future year
+    const perYearDirty = current.future.some((currentFy, idx) => {
       const snapshotFy = snapshot.future[idx]
       if (!snapshotFy) return true
+
+      // Compare all per-year override fields
+      const threshold = 0.01 // Small threshold for floating point comparison
+      if (Math.abs(currentFy.therapyIncome - snapshotFy.therapyIncome) > threshold) return true
+      if (Math.abs(currentFy.nonEmploymentCosts - snapshotFy.nonEmploymentCosts) > threshold) return true
+      if (Math.abs(currentFy.nonMdEmploymentCosts - snapshotFy.nonMdEmploymentCosts) > threshold) return true
+      if (Math.abs(currentFy.locumCosts - snapshotFy.locumCosts) > threshold) return true
+      if (Math.abs(currentFy.miscEmploymentCosts - snapshotFy.miscEmploymentCosts) > threshold) return true
+      if (Math.abs((currentFy.medicalDirectorHours ?? 0) - (snapshotFy.medicalDirectorHours ?? 0)) > threshold) return true
+      if (Math.abs((currentFy.prcsMedicalDirectorHours ?? 0) - (snapshotFy.prcsMedicalDirectorHours ?? 0)) > threshold) return true
+      if (Math.abs((currentFy.consultingServicesAgreement ?? 0) - (snapshotFy.consultingServicesAgreement ?? 0)) > threshold) return true
+      if ((currentFy.prcsDirectorPhysicianId ?? undefined) !== (snapshotFy.prcsDirectorPhysicianId ?? undefined)) return true
 
       // Compare physician arrays
       if (currentFy.physicians.length !== snapshotFy.physicians.length) return true
@@ -216,12 +291,16 @@ export default function MultiYearView() {
         return currentPhys.id !== snapshotPhys.id ||
                currentPhys.name !== snapshotPhys.name ||
                currentPhys.type !== snapshotPhys.type ||
-               currentPhys.rvus !== snapshotPhys.rvus ||
-               currentPhys.percentOwnership !== snapshotPhys.percentOwnership ||
                currentPhys.salary !== snapshotPhys.salary ||
-               currentPhys.partnerStartYear !== snapshotPhys.partnerStartYear ||
+               currentPhys.weeksVacation !== snapshotPhys.weeksVacation ||
                currentPhys.employeePortionOfYear !== snapshotPhys.employeePortionOfYear ||
-               currentPhys.retirementYear !== snapshotPhys.retirementYear ||
+               currentPhys.partnerPortionOfYear !== snapshotPhys.partnerPortionOfYear ||
+               currentPhys.startPortionOfYear !== snapshotPhys.startPortionOfYear ||
+               currentPhys.terminatePortionOfYear !== snapshotPhys.terminatePortionOfYear ||
+               currentPhys.receivesBenefits !== snapshotPhys.receivesBenefits ||
+               currentPhys.receivesBonuses !== snapshotPhys.receivesBonuses ||
+               currentPhys.bonusAmount !== snapshotPhys.bonusAmount ||
+               currentPhys.hasMedicalDirectorHours !== snapshotPhys.hasMedicalDirectorHours ||
                currentPhys.medicalDirectorHoursPercentage !== snapshotPhys.medicalDirectorHoursPercentage ||
                currentPhys.buyoutCost !== snapshotPhys.buyoutCost ||
                currentPhys.trailingSharedMdAmount !== snapshotPhys.trailingSharedMdAmount ||
@@ -232,21 +311,22 @@ export default function MultiYearView() {
     console.log('[DIRTY CHECK B] Results:', {
       projectionDirty,
       otherDirty,
-      physicianDirty,
+      perYearDirty,
       dataModeMatch: current.dataMode === snapshot.dataMode,
       currentDataMode: current.dataMode,
       snapshotDataMode: snapshot.dataMode,
-      isDirty: projectionDirty || otherDirty || physicianDirty
+      isDirty: projectionDirty || otherDirty || perYearDirty
     })
 
-    setIsScenarioBDirty(projectionDirty || otherDirty || physicianDirty)
+    setIsScenarioBDirty(projectionDirty || otherDirty || perYearDirty)
   }, [
-    store.scenarioB,
-    store.scenarioB?.projection,
+    // JSON.stringify creates a new string when nested data changes, ensuring effect runs
+    store.scenarioB ? JSON.stringify(store.scenarioB.future) : null,
+    store.scenarioB ? JSON.stringify(store.scenarioB.projection) : null,
     store.scenarioB?.dataMode,
-    store.scenarioB?.future,
     store.currentScenarioBId,
-    store.loadedScenarioBSnapshot
+    // Serialize snapshot to detect changes
+    store.loadedScenarioBSnapshot ? JSON.stringify(store.loadedScenarioBSnapshot) : null
   ])
 
   // Reset dirty flags when scenarios change
