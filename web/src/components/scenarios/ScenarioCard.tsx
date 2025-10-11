@@ -1,5 +1,7 @@
 import type { SavedScenario } from '../dashboard/shared/types'
 import { isYTDScenario, isMultiYearScenario } from '../dashboard/shared/types'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faTrash, faPenToSquare, faClone, faFolderOpen, faRotate } from '@fortawesome/free-solid-svg-icons'
 
 interface ScenarioCardProps {
   scenario: SavedScenario
@@ -71,7 +73,7 @@ export default function ScenarioCard({
     <div
       style={{
         padding: '12px',
-        background: '#fff',
+        background: '#fafafa',
         border: '1px solid #e5e7eb',
         borderRadius: '6px',
         marginBottom: '12px',
@@ -95,31 +97,54 @@ export default function ScenarioCard({
           <span
             style={{
               fontSize: '11px',
-              padding: '2px 8px',
-              borderRadius: '3px',
+              padding: '3px 8px',
+              borderRadius: '4px',
               background: scenario.is_public ? '#dbeafe' : '#f3f4f6',
               color: scenario.is_public ? '#0369a1' : '#6b7280',
               fontWeight: 500,
+              border: scenario.is_public ? '1px solid #0369a1' : '1px solid #6b7280',
             }}
           >
             {scenario.is_public ? '🌐 Public' : '🔒 Private'}
           </span>
         </div>
         
-        {/* Scenario type badge on right */}
-        <span
-          style={{
-            fontSize: '11px',
-            padding: '3px 10px',
-            borderRadius: '4px',
-            background: viewModeInfo.bg,
-            color: viewModeInfo.color,
-            fontWeight: 500,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {viewModeInfo.label}
-        </span>
+        {/* Scenario type badges on right */}
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          {/* Baseline mode badge for Multi-Year scenarios */}
+          {isMultiYearScenario(scenario) && (
+            <span
+              style={{
+                fontSize: '10px',
+                padding: '3px 6px',
+                borderRadius: '4px',
+                background: '#f0f9ff',
+                color: '#0369a1',
+                fontWeight: 500,
+                whiteSpace: 'nowrap',
+                border: '1px solid #0369a1',
+              }}
+            >
+              Baseline: {scenario.baseline_mode}
+            </span>
+          )}
+
+          {/* Scenario type badge */}
+          <span
+            style={{
+              fontSize: '11px',
+              padding: '3px 10px',
+              borderRadius: '4px',
+              background: viewModeInfo.bg,
+              color: viewModeInfo.color,
+              fontWeight: 500,
+              whiteSpace: 'nowrap',
+              border: '1px solid ' + viewModeInfo.color,
+            }}
+          >
+            {viewModeInfo.label}
+          </span>
+        </div>
       </div>
 
       {/* Description */}
@@ -161,50 +186,67 @@ export default function ScenarioCard({
               <button
                 onClick={() => onDelete(scenario.id)}
                 style={{
-                  padding: '5px 10px',
-                  background: '#fff',
+                  background: 'none',
+                  border: 'none',
                   color: '#dc2626',
-                  border: '1px solid #dc2626',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  fontWeight: 500,
+                  fontSize: 20,
                   cursor: 'pointer',
+                  transition: 'opacity 0.2s',
+                  padding: 2
                 }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '0.7'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '1'
+                }}
+                title="Delete scenario"
               >
-                Delete
+                <FontAwesomeIcon icon={faTrash} />
               </button>
               <button
                 onClick={() => onEdit(scenario)}
                 style={{
-                  padding: '5px 10px',
-                  background: '#fff',
+                  background: 'none',
+                  border: 'none',
                   color: '#6b7280',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  fontWeight: 500,
+                  fontSize: 20,
                   cursor: 'pointer',
+                  transition: 'opacity 0.2s',
+                  padding: 2
                 }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '0.7'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '1'
+                }}
+                title="Edit scenario"
               >
-                Edit
+                <FontAwesomeIcon icon={faPenToSquare} />
               </button>
-              {/* Show Update Baseline button for Multi-Year scenarios with 2025 Data */}
-              {onUpdateBaseline && isMultiYearScenario(scenario) && scenario.baseline_mode === '2025 Data' && (
+              {/* Show Update Baseline button for stale Multi-Year scenarios with 2025 Data */}
+              {onUpdateBaseline && isMultiYearScenario(scenario) && scenario.baseline_mode === '2025 Data' && daysSinceBaseline > 7 && (
                 <button
                   onClick={() => onUpdateBaseline(scenario.id)}
                   style={{
-                    padding: '5px 10px',
-                    background: '#fff',
+                    background: 'none',
+                    border: 'none',
                     color: '#059669',
-                    border: '1px solid #059669',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    fontWeight: 500,
+                    fontSize: 20,
                     cursor: 'pointer',
+                    transition: 'opacity 0.2s',
+                    padding: 2
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.7'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1'
                   }}
                   title="Update this scenario with the latest 2025 data"
                 >
-                  🔄 Update
+                  <FontAwesomeIcon icon={faRotate} />
                 </button>
               )}
             </>
@@ -214,17 +256,23 @@ export default function ScenarioCard({
           <button
             onClick={() => onClone(scenario.id)}
             style={{
-              padding: '5px 10px',
-              background: '#fff',
+              background: 'none',
+              border: 'none',
               color: '#0ea5e9',
-              border: '1px solid #0ea5e9',
-              borderRadius: '4px',
-              fontSize: '12px',
-              fontWeight: 500,
+              fontSize: 20,
               cursor: 'pointer',
+              transition: 'opacity 0.2s',
+              padding: 2
             }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.7'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1'
+            }}
+            title="Clone scenario"
           >
-            Clone
+            <FontAwesomeIcon icon={faClone} />
           </button>
 
           {/* Load buttons */}
@@ -233,49 +281,75 @@ export default function ScenarioCard({
               <button
                 onClick={() => onLoad(scenario.id, 'B')}
                 style={{
-                  padding: '5px 10px',
-                  background: '#fff',
+                  background: 'none',
+                  border: 'none',
                   color: '#0ea5e9',
-                  border: '1px solid #0ea5e9',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  fontWeight: 500,
+                  fontSize: 20,
                   cursor: 'pointer',
+                  transition: 'opacity 0.2s',
+                  padding: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
                 }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '0.7'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '1'
+                }}
+                title="Load scenario into B"
               >
-                Load into B
+                <FontAwesomeIcon icon={faFolderOpen} style={{ transform: 'translateY(3px)' }} />
+                <span style={{ fontSize: '12px', fontWeight: 'bold' }}>B</span>
               </button>
               <button
                 onClick={() => onLoad(scenario.id, 'A')}
                 style={{
-                  padding: '5px 10px',
-                  background: '#0ea5e9',
-                  color: '#fff',
+                  background: 'none',
                   border: 'none',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  fontWeight: 500,
+                  color: '#0ea5e9',
+                  fontSize: 20,
                   cursor: 'pointer',
+                  transition: 'opacity 0.2s',
+                  padding: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
                 }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '0.7'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '1'
+                }}
+                title="Load scenario into A"
               >
-                Load into A
+                <FontAwesomeIcon icon={faFolderOpen} style={{ transform: 'translateY(3px)' }} />
+                <span style={{ fontSize: '12px', fontWeight: 'bold' }}>A</span>
               </button>
             </>
           ) : (
             <button
               onClick={() => onLoad(scenario.id)}
               style={{
-                padding: '5px 10px',
-                background: '#0ea5e9',
-                color: '#fff',
+                background: 'none',
                 border: 'none',
-                borderRadius: '4px',
-                fontSize: '12px',
-                fontWeight: 500,
+                color: '#0ea5e9',
+                fontSize: 20,
                 cursor: 'pointer',
+                transition: 'opacity 0.2s',
+                padding: 2
               }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '0.7'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1'
+              }}
+              title="Load scenario"
             >
-              Load
+              <FontAwesomeIcon icon={faFolderOpen} style={{ transform: 'translateY(3px)' }} />
             </button>
           )}
         </div>

@@ -326,7 +326,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
       return
     }
 
-    // Check if current state differs from snapshot
+    // Check if current state differs from snapshot (YTD scenarios don't use dataMode)
     const isDirty = hasChangesFromLoadedScenario(2025, store)
     setIsScenarioDirty(isDirty)
   }, [

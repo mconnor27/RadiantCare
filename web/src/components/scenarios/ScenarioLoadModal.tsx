@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase'
 import type { SavedScenario } from '../dashboard/shared/types'
 import { isYTDScenario, isMultiYearScenario } from '../dashboard/shared/types'
 import { useAuth } from '../auth/AuthProvider'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faFolderOpen } from '@fortawesome/free-solid-svg-icons'
 
 interface ScenarioLoadModalProps {
   isOpen: boolean
@@ -52,13 +54,27 @@ export default function ScenarioLoadModal({
 
       if (myError) throw myError
       
-      // Sort scenarios: "Default" always at the top, then by updated_at
+      // Sort scenarios: Default (A) and Default (B) always at the top, then by updated_at
       const sortedMyData = (myData || []).sort((a, b) => {
-        const aIsDefault = a.name.toLowerCase() === 'default'
-        const bIsDefault = b.name.toLowerCase() === 'default'
-        if (aIsDefault && !bIsDefault) return -1
-        if (!aIsDefault && bIsDefault) return 1
-        return 0 // Keep original order for non-Default scenarios
+        const aName = a.name.toLowerCase()
+        const bName = b.name.toLowerCase()
+
+        // Define priority order: Default (A) > Default (B) > others
+        const getPriority = (name: string) => {
+          if (name === 'default (a)') return 0
+          if (name === 'default (b)') return 1
+          return 2 // All others
+        }
+
+        const aPriority = getPriority(aName)
+        const bPriority = getPriority(bName)
+
+        if (aPriority !== bPriority) {
+          return aPriority - bPriority
+        }
+
+        // If same priority, sort by updated_at (newest first)
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       })
       
       setMyScenarios(sortedMyData)
@@ -92,13 +108,27 @@ export default function ScenarioLoadModal({
           creator_email: emailMap.get(s.user_id),
         }))
 
-        // Sort scenarios: "Default" always at the top, then by updated_at
+        // Sort scenarios: Default (A) and Default (B) always at the top, then by updated_at
         const sortedPublicData = publicWithEmail.sort((a, b) => {
-          const aIsDefault = a.name.toLowerCase() === 'default'
-          const bIsDefault = b.name.toLowerCase() === 'default'
-          if (aIsDefault && !bIsDefault) return -1
-          if (!aIsDefault && bIsDefault) return 1
-          return 0 // Keep original order for non-Default scenarios
+          const aName = a.name.toLowerCase()
+          const bName = b.name.toLowerCase()
+
+          // Define priority order: Default (A) > Default (B) > others
+          const getPriority = (name: string) => {
+            if (name === 'default (a)') return 0
+            if (name === 'default (b)') return 1
+            return 2 // All others
+          }
+
+          const aPriority = getPriority(aName)
+          const bPriority = getPriority(bName)
+
+          if (aPriority !== bPriority) {
+            return aPriority - bPriority
+          }
+
+          // If same priority, sort by updated_at (newest first)
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
         })
 
         setPublicScenarios(sortedPublicData)
@@ -222,13 +252,13 @@ export default function ScenarioLoadModal({
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', background: '#f8f9fa' }}>
           <button
             onClick={() => setActiveTab('my-scenarios')}
             style={{
               flex: 1,
               padding: '12px 24px',
-              background: 'none',
+              background: activeTab === 'my-scenarios' ? '#e3f2fd' : 'transparent',
               border: 'none',
               borderBottom: activeTab === 'my-scenarios' ? '2px solid #0ea5e9' : '2px solid transparent',
               color: activeTab === 'my-scenarios' ? '#0ea5e9' : '#6b7280',
@@ -245,7 +275,7 @@ export default function ScenarioLoadModal({
             style={{
               flex: 1,
               padding: '12px 24px',
-              background: 'none',
+              background: activeTab === 'public-scenarios' ? '#e3f2fd' : 'transparent',
               border: 'none',
               borderBottom: activeTab === 'public-scenarios' ? '2px solid #0ea5e9' : '2px solid transparent',
               color: activeTab === 'public-scenarios' ? '#0ea5e9' : '#6b7280',
@@ -332,7 +362,7 @@ export default function ScenarioLoadModal({
                     key={scenario.id}
                     style={{
                       padding: '12px',
-                      background: '#fff',
+                      background: '#fafafa',
                       border: '1px solid #e5e7eb',
                       borderRadius: '6px',
                       marginBottom: '12px',
@@ -418,17 +448,23 @@ export default function ScenarioLoadModal({
                           onClose()
                         }}
                         style={{
-                          padding: '5px 10px',
-                          background: '#0ea5e9',
-                          color: '#fff',
+                          background: 'none',
                           border: 'none',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: 500,
+                          color: '#0ea5e9',
+                          fontSize: 20,
                           cursor: 'pointer',
+                          transition: 'opacity 0.2s',
+                          padding: 2
                         }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.opacity = '0.7'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.opacity = '1'
+                        }}
+                        title="Load scenario"
                       >
-                        Load
+                        <FontAwesomeIcon icon={faFolderOpen} style={{ transform: 'translateY(3px)' }} />
                       </button>
                     </div>
                   </div>

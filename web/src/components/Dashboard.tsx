@@ -1257,8 +1257,10 @@ export const useDashboardStore = create<Store>()(
             console.warn('Could not fetch QBO sync timestamp:', err)
           }
 
-          // Save Scenario B's projection parameters + Scenario A's baseline data
-          const dataMode = state.scenarioA.dataMode
+          // Save Scenario B's projection parameters + baseline data
+          // Use Scenario B's actual dataMode (which reflects which baseline it's using)
+          const dataMode = state.scenarioB?.dataMode || '2025 Data'
+
           const scenarioData = {
             scenarioA: {
               ...state.scenarioA,
@@ -1267,7 +1269,7 @@ export const useDashboardStore = create<Store>()(
             customProjectedValues: state.customProjectedValues,
           }
 
-          // Determine baseline date from A
+          // Determine baseline date based on the data mode we're saving
           const baselineDate = dataMode === '2024 Data'
             ? '2024-12-31'
             : new Date().toISOString().split('T')[0]
@@ -1382,6 +1384,8 @@ export const useDashboardStore = create<Store>()(
               if (target === 'A' || loadBaseline) {
                 // Loading into A, or loading baseline (affects both A and B)
                 state.scenarioA = scenarioData.scenarioA
+                // Set the dataMode based on the scenario's stored baseline_mode
+                state.scenarioA.dataMode = data.baseline_mode || '2025 Data'
                 state.customProjectedValues = scenarioData.customProjectedValues || {}
                 state.currentScenarioId = data.id
                 state.currentScenarioName = data.name
@@ -1395,9 +1399,40 @@ export const useDashboardStore = create<Store>()(
               }
 
               if (target === 'B') {
-                // Loading into B for comparison (uses A's baseline, only B's projection)
-                // Always load the scenario's projection into B
-                state.scenarioB = scenarioData.scenarioA // Load the scenario into B
+                // Loading into B for comparison
+                // Determine whether to use loaded scenario's baseline or A's baseline
+                // Use loaded scenario's baseline if it doesn't use 2025 data, otherwise use A's baseline
+                const loadedScenarioBaselineMode = data.baseline_mode || '2025 Data'
+                const useLoadedBaseline = loadedScenarioBaselineMode !== '2025 Data'
+
+                if (useLoadedBaseline) {
+                  // Use the loaded scenario's baseline when it doesn't use 2025 data
+                  state.scenarioB = scenarioData.scenarioA
+                  // Set the dataMode to match the loaded scenario's original baseline mode
+                  if (state.scenarioB) {
+                    state.scenarioB.dataMode = loadedScenarioBaselineMode
+                  }
+                } else {
+                  // Use A's baseline, but load the scenario's projection settings into B
+                  state.scenarioB = {
+                    ...scenarioData.scenarioA,
+                    // Keep A's baseline data but use loaded scenario's projection settings
+                    future: scenarioData.scenarioA.future.map((yearData: any) => {
+                      if (yearData.year === 2025) {
+                        // For 2025, use A's data (the shared baseline)
+                        const a2025 = state.scenarioA.future.find((f: any) => f.year === 2025)
+                        return a2025 || yearData
+                      }
+                      // For other years, use the loaded scenario's data
+                      return yearData
+                    })
+                  }
+                  // Set dataMode to 2025 Data since we're using A's baseline
+                  if (state.scenarioB) {
+                    state.scenarioB.dataMode = '2025 Data'
+                  }
+                }
+
                 state.scenarioBEnabled = true
                 state.currentScenarioBId = data.id
                 state.currentScenarioBName = data.name
@@ -2094,7 +2129,7 @@ export function Dashboard() {
         }
 
         // Load Default (B) into scenario B (but keep it disabled/not visible)
-        // Use loadBaseline: false to prevent overwriting scenario A
+        // The loadScenarioFromDatabase function will determine baseline usage based on A's data mode
         if (defaultB) {
           await store.loadScenarioFromDatabase(defaultB.id, 'B', false)
           // Disable scenario B after loading to keep it hidden

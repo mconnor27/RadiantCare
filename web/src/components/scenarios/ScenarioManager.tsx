@@ -75,13 +75,27 @@ export default function ScenarioManager({
 
       if (myError) throw myError
       
-      // Sort scenarios: "Default" always at the top, then by updated_at
+      // Sort scenarios: Default (A) and Default (B) always at the top, then by updated_at
       const sortedMyData = (myData || []).sort((a, b) => {
-        const aIsDefault = a.name.toLowerCase() === 'default'
-        const bIsDefault = b.name.toLowerCase() === 'default'
-        if (aIsDefault && !bIsDefault) return -1
-        if (!aIsDefault && bIsDefault) return 1
-        return 0 // Keep original order for non-Default scenarios
+        const aName = a.name.toLowerCase()
+        const bName = b.name.toLowerCase()
+
+        // Define priority order: Default (A) > Default (B) > others
+        const getPriority = (name: string) => {
+          if (name === 'default (a)') return 0
+          if (name === 'default (b)') return 1
+          return 2 // All others
+        }
+
+        const aPriority = getPriority(aName)
+        const bPriority = getPriority(bName)
+
+        if (aPriority !== bPriority) {
+          return aPriority - bPriority
+        }
+
+        // If same priority, sort by updated_at (newest first)
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       })
       
       setMyScenarios(sortedMyData)
@@ -116,13 +130,27 @@ export default function ScenarioManager({
           creator_email: emailMap.get(s.user_id),
         }))
         
-        // Sort scenarios: "Default" always at the top, then by updated_at
+        // Sort scenarios: Default (A) and Default (B) always at the top, then by updated_at
         const sortedPublicData = publicWithEmail.sort((a, b) => {
-          const aIsDefault = a.name.toLowerCase() === 'default'
-          const bIsDefault = b.name.toLowerCase() === 'default'
-          if (aIsDefault && !bIsDefault) return -1
-          if (!aIsDefault && bIsDefault) return 1
-          return 0 // Keep original order for non-Default scenarios
+          const aName = a.name.toLowerCase()
+          const bName = b.name.toLowerCase()
+
+          // Define priority order: Default (A) > Default (B) > others
+          const getPriority = (name: string) => {
+            if (name === 'default (a)') return 0
+            if (name === 'default (b)') return 1
+            return 2 // All others
+          }
+
+          const aPriority = getPriority(aName)
+          const bPriority = getPriority(bName)
+
+          if (aPriority !== bPriority) {
+            return aPriority - bPriority
+          }
+
+          // If same priority, sort by updated_at (newest first)
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
         })
         
         setPublicScenarios(sortedPublicData)
@@ -423,13 +451,13 @@ export default function ScenarioManager({
 
         {view === 'list' && (
           <>
-            <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb' }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', background: '#f8f9fa' }}>
               <button
                 onClick={() => setActiveTab('my-scenarios')}
                 style={{
                   flex: 1,
                   padding: '12px 24px',
-                  background: 'none',
+                  background: activeTab === 'my-scenarios' ? '#e3f2fd' : 'transparent',
                   border: 'none',
                   borderBottom: activeTab === 'my-scenarios' ? '2px solid #0ea5e9' : '2px solid transparent',
                   color: activeTab === 'my-scenarios' ? '#0ea5e9' : '#6b7280',
@@ -446,7 +474,7 @@ export default function ScenarioManager({
                 style={{
                   flex: 1,
                   padding: '12px 24px',
-                  background: 'none',
+                  background: activeTab === 'public-scenarios' ? '#e3f2fd' : 'transparent',
                   border: 'none',
                   borderBottom: activeTab === 'public-scenarios' ? '2px solid #0ea5e9' : '2px solid transparent',
                   color: activeTab === 'public-scenarios' ? '#0ea5e9' : '#6b7280',

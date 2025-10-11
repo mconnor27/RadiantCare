@@ -102,6 +102,7 @@ export default function MultiYearView() {
   }, [
     store.scenarioA.projection,
     store.scenarioA.selectedYear,
+    store.scenarioA.dataMode,
     store.currentScenarioId
   ])
 
@@ -112,6 +113,7 @@ export default function MultiYearView() {
   }, [
     store.scenarioB?.projection,
     store.scenarioB?.selectedYear,
+    store.scenarioB?.dataMode,
     store.currentScenarioBId
   ])
 
@@ -193,6 +195,7 @@ export default function MultiYearView() {
 
     if (confirm('Reset Scenario B to original state? All unsaved changes will be lost.')) {
       try {
+        // Use the same logic as loading - determine baseline usage based on A's data mode
         await store.loadScenarioFromDatabase(store.currentScenarioBId, 'B', false)
         setIsScenarioBDirty(false)
       } catch (err) {
@@ -220,7 +223,23 @@ export default function MultiYearView() {
         isOpen={showLoadModalB}
         onClose={() => setShowLoadModalB(false)}
         onLoad={async (id) => {
-          if (confirm('Loading a scenario into B will use Scenario A\'s baseline data. The loaded scenario\'s baseline will be discarded. Continue?')) {
+          // Get the scenario's baseline mode before loading to determine if we need a warning
+          const { supabase } = await import('../../../../lib/supabase')
+          const { data: scenarioData } = await supabase
+            .from('scenarios')
+            .select('baseline_mode')
+            .eq('id', id)
+            .single()
+
+          const scenarioBaselineMode = scenarioData?.baseline_mode || '2025 Data'
+
+          // Show warning only if the loaded scenario uses 2025 data (meaning we'll use A's baseline)
+          if (scenarioBaselineMode === '2025 Data' &&
+              confirm('Loading a scenario into B will use Scenario A\'s baseline data. The loaded scenario\'s baseline will be discarded. Continue?')) {
+            await store.loadScenarioFromDatabase(id, 'B', false)
+            setShowLoadModalB(false)
+          } else {
+            // Load without warning - either scenario doesn't use 2025 data (so we'll use its baseline) or user cancelled
             await store.loadScenarioFromDatabase(id, 'B', false)
             setShowLoadModalB(false)
           }
@@ -280,8 +299,9 @@ export default function MultiYearView() {
           }}>
             {/* Scenario A column */}
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ position: 'relative', marginBottom: 4 }}>
+                {/* Centered label */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                   <div style={{ fontWeight: 700 }}>Scenario A</div>
                   {currentScenarioName && (
                     <div style={{
@@ -297,7 +317,8 @@ export default function MultiYearView() {
                     </div>
                   )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                {/* Icons positioned absolutely on the right */}
+                <div style={{ position: 'absolute', top: 0, right: 0, display: 'flex', alignItems: 'center', gap: 2 }}>
                   {/* Load Button */}
                   <button
                     onClick={() => {
@@ -469,8 +490,9 @@ export default function MultiYearView() {
             {/* Scenario B column */}
             {store.scenarioBEnabled && store.scenarioB && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ position: 'relative', marginBottom: 4 }}>
+                  {/* Centered label */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                     <div style={{ fontWeight: 700 }}>Scenario B</div>
                     {currentScenarioBName && (
                       <div style={{
@@ -485,13 +507,9 @@ export default function MultiYearView() {
                         {currentScenarioBName}
                       </div>
                     )}
-                    {store.scenarioB?.dataMode === '2025 Data' && (
-                      <div style={{ fontSize: 12, color: '#6b7280', fontStyle: 'italic' }}>
-                        (Uses Scenario A baseline)
-                      </div>
-                    )}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  {/* Icons positioned absolutely on the right */}
+                  <div style={{ position: 'absolute', top: 0, right: 0, display: 'flex', alignItems: 'center', gap: 2 }}>
                     {/* Load Button */}
                     <button
                       onClick={() => {
