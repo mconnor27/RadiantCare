@@ -126,6 +126,7 @@ export type YTDScenario = {
   // 2025 baseline customizations (physicians + grid overrides)
   year_2025_data: FutureYear // Physician panel settings for 2025
   custom_projected_values: Record<string, number> // User's grid overrides for 2025
+  is_favorite_a: boolean // Whether this is the favorite A scenario
   created_at: string
   updated_at: string
   creator_email?: string
@@ -148,6 +149,8 @@ export type MultiYearScenario = {
     scenarioB?: ScenarioState
     customProjectedValues: Record<string, number>
   }
+  is_favorite_a: boolean // Whether this is the favorite A scenario
+  is_favorite_b: boolean // Whether this is the favorite B scenario
   created_at: string
   updated_at: string
   creator_email?: string

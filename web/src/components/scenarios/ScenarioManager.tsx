@@ -75,20 +75,22 @@ export default function ScenarioManager({
 
       if (myError) throw myError
       
-      // Sort scenarios: Default (A) and Default (B) always at the top, then by updated_at
+      // Sort scenarios: Default (A) > Default (B) > Favorite A > Favorite B > others
       const sortedMyData = (myData || []).sort((a, b) => {
         const aName = a.name.toLowerCase()
         const bName = b.name.toLowerCase()
 
-        // Define priority order: Default (A) > Default (B) > others
-        const getPriority = (name: string) => {
+        // Define priority order: Default (A) > Default (B) > Favorite A > Favorite B > others
+        const getPriority = (item: any, name: string) => {
           if (name === 'default (a)') return 0
           if (name === 'default (b)') return 1
-          return 2 // All others
+          if (item.is_favorite_a) return 2
+          if (isMultiYearScenario(item) && item.is_favorite_b) return 3
+          return 4 // All others
         }
 
-        const aPriority = getPriority(aName)
-        const bPriority = getPriority(bName)
+        const aPriority = getPriority(a, aName)
+        const bPriority = getPriority(b, bName)
 
         if (aPriority !== bPriority) {
           return aPriority - bPriority
@@ -130,20 +132,22 @@ export default function ScenarioManager({
           creator_email: emailMap.get(s.user_id),
         }))
         
-        // Sort scenarios: Default (A) and Default (B) always at the top, then by updated_at
+        // Sort scenarios: Default (A) > Default (B) > Favorite A > Favorite B > others
         const sortedPublicData = publicWithEmail.sort((a, b) => {
           const aName = a.name.toLowerCase()
           const bName = b.name.toLowerCase()
 
-          // Define priority order: Default (A) > Default (B) > others
-          const getPriority = (name: string) => {
+          // Define priority order: Default (A) > Default (B) > Favorite A > Favorite B > others
+          const getPriority = (item: any, name: string) => {
             if (name === 'default (a)') return 0
             if (name === 'default (b)') return 1
-            return 2 // All others
+            if (item.is_favorite_a) return 2
+            if (isMultiYearScenario(item) && item.is_favorite_b) return 3
+            return 4 // All others
           }
 
-          const aPriority = getPriority(aName)
-          const bPriority = getPriority(bName)
+          const aPriority = getPriority(a, aName)
+          const bPriority = getPriority(b, bName)
 
           if (aPriority !== bPriority) {
             return aPriority - bPriority
@@ -351,10 +355,54 @@ export default function ScenarioManager({
       if (updateError) throw updateError
 
       await loadScenarios()
-      
+
       alert('✅ Scenario updated with latest 2025 data!')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update baseline')
+    }
+  }
+
+  async function handleToggleFavorite(id: string, favoriteType: 'A' | 'B') {
+    try {
+      // Get the scenario being favorited
+      const scenario = [...myScenarios, ...publicScenarios].find(s => s.id === id)
+      if (!scenario) return
+
+      const currentFavoriteValue = favoriteType === 'A' ? scenario.is_favorite_a : (isMultiYearScenario(scenario) ? scenario.is_favorite_b : false)
+      const newFavoriteValue = !currentFavoriteValue
+
+      // If setting as favorite, unset any other scenario with this favorite type
+      if (newFavoriteValue) {
+        const fieldToUpdate = favoriteType === 'A' ? 'is_favorite_a' : 'is_favorite_b'
+
+        // First, clear all other favorites of this type for this user
+        const { error: clearError } = await supabase
+          .from('scenarios')
+          .update({ [fieldToUpdate]: false })
+          .eq('user_id', profile?.id)
+          .eq(fieldToUpdate, true)
+
+        if (clearError) throw clearError
+      }
+
+      // Now toggle the favorite for this scenario
+      const updateData: any = {}
+      if (favoriteType === 'A') {
+        updateData.is_favorite_a = newFavoriteValue
+      } else if (isMultiYearScenario(scenario)) {
+        updateData.is_favorite_b = newFavoriteValue
+      }
+
+      const { error: updateError } = await supabase
+        .from('scenarios')
+        .update(updateData)
+        .eq('id', id)
+
+      if (updateError) throw updateError
+
+      await loadScenarios()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to toggle favorite')
     }
   }
 
@@ -535,6 +583,7 @@ export default function ScenarioManager({
                     onEdit={handleEditScenario}
                     onDelete={handleDeleteScenario}
                     onUpdateBaseline={handleUpdateBaseline}
+                    onToggleFavorite={handleToggleFavorite}
                     loading={loading}
                     viewMode={viewMode}
                   />
@@ -554,6 +603,7 @@ export default function ScenarioManager({
                     onEdit={handleEditScenario}
                     onDelete={handleDeleteScenario}
                     onUpdateBaseline={handleUpdateBaseline}
+                    onToggleFavorite={handleToggleFavorite}
                     loading={loading}
                     viewMode={viewMode}
                   />

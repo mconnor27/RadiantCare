@@ -10,6 +10,7 @@ interface ScenarioListProps {
   onEdit: (scenario: SavedScenario) => void
   onDelete: (id: string) => void
   onUpdateBaseline?: (id: string) => void
+  onToggleFavorite?: (id: string, favoriteType: 'A' | 'B') => void
   loading?: boolean
   viewMode?: 'YTD Detailed' | 'Multi-Year'
 }
@@ -22,6 +23,7 @@ export default function ScenarioList({
   onEdit,
   onDelete,
   onUpdateBaseline,
+  onToggleFavorite,
   loading = false,
   viewMode = 'Multi-Year',
 }: ScenarioListProps) {
@@ -97,6 +99,7 @@ export default function ScenarioList({
               onEdit={onEdit}
               onDelete={onDelete}
               onUpdateBaseline={onUpdateBaseline}
+              onToggleFavorite={onToggleFavorite}
               isOwner={scenario.user_id === currentUserId}
               viewMode={viewMode}
             />

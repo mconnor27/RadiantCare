@@ -1,7 +1,8 @@
 import type { SavedScenario } from '../dashboard/shared/types'
 import { isYTDScenario, isMultiYearScenario } from '../dashboard/shared/types'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faTrash, faPenToSquare, faClone, faFolderOpen, faRotate } from '@fortawesome/free-solid-svg-icons'
+import { faTrash, faPenToSquare, faClone, faFolderOpen, faRotate, faStar as faSolidStar } from '@fortawesome/free-solid-svg-icons'
+import { faStar as faRegularStar } from '@fortawesome/free-regular-svg-icons'
 
 interface ScenarioCardProps {
   scenario: SavedScenario
@@ -10,6 +11,7 @@ interface ScenarioCardProps {
   onEdit: (scenario: SavedScenario) => void
   onDelete: (id: string) => void
   onUpdateBaseline?: (id: string) => void
+  onToggleFavorite?: (id: string, favoriteType: 'A' | 'B') => void
   isOwner: boolean
   viewMode?: 'YTD Detailed' | 'Multi-Year'
 }
@@ -21,6 +23,7 @@ export default function ScenarioCard({
   onEdit,
   onDelete,
   onUpdateBaseline,
+  onToggleFavorite,
   isOwner,
   viewMode = 'Multi-Year',
 }: ScenarioCardProps) {
@@ -107,6 +110,81 @@ export default function ScenarioCard({
           >
             {scenario.is_public ? '🌐 Public' : '🔒 Private'}
           </span>
+
+          {/* Favorite stars */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {/* Star A */}
+            {(viewMode === 'Multi-Year' || viewMode === 'YTD Detailed') && onToggleFavorite && isOwner && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggleFavorite(scenario.id, 'A')
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  position: 'relative'
+                }}
+                title={scenario.is_favorite_a ? 'Remove from Favorite A' : 'Set as Favorite A'}
+              >
+                <FontAwesomeIcon
+                  icon={scenario.is_favorite_a ? faSolidStar : faRegularStar}
+                  style={{
+                    color: '#fbbf24',
+                    fontSize: '16px'
+                  }}
+                />
+                <sup style={{
+                  fontSize: '8px',
+                  fontWeight: 'bold',
+                  position: 'absolute',
+                  top: '-2px',
+                  right: '-6px',
+                  color: '#374151'
+                }}>A</sup>
+              </button>
+            )}
+
+            {/* Star B - Only show in Multi-Year view */}
+            {viewMode === 'Multi-Year' && isMultiYearScenario(scenario) && onToggleFavorite && isOwner && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggleFavorite(scenario.id, 'B')
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  position: 'relative'
+                }}
+                title={scenario.is_favorite_b ? 'Remove from Favorite B' : 'Set as Favorite B'}
+              >
+                <FontAwesomeIcon
+                  icon={scenario.is_favorite_b ? faSolidStar : faRegularStar}
+                  style={{
+                    color: '#fbbf24',
+                    fontSize: '16px'
+                  }}
+                />
+                <sup style={{
+                  fontSize: '8px',
+                  fontWeight: 'bold',
+                  position: 'absolute',
+                  top: '-2px',
+                  right: '-6px',
+                  color: '#374151'
+                }}>B</sup>
+              </button>
+            )}
+          </div>
         </div>
         
         {/* Scenario type badges on right */}

@@ -4,7 +4,8 @@ import type { SavedScenario } from '../dashboard/shared/types'
 import { isYTDScenario, isMultiYearScenario } from '../dashboard/shared/types'
 import { useAuth } from '../auth/AuthProvider'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faFolderOpen } from '@fortawesome/free-solid-svg-icons'
+import { faFolderOpen, faStar as faSolidStar } from '@fortawesome/free-solid-svg-icons'
+import { faStar as faRegularStar } from '@fortawesome/free-regular-svg-icons'
 
 interface ScenarioLoadModalProps {
   isOpen: boolean
@@ -54,20 +55,22 @@ export default function ScenarioLoadModal({
 
       if (myError) throw myError
       
-      // Sort scenarios: Default (A) and Default (B) always at the top, then by updated_at
+      // Sort scenarios: Default (A) > Default (B) > Favorite A > Favorite B > others
       const sortedMyData = (myData || []).sort((a, b) => {
         const aName = a.name.toLowerCase()
         const bName = b.name.toLowerCase()
 
-        // Define priority order: Default (A) > Default (B) > others
-        const getPriority = (name: string) => {
+        // Define priority order: Default (A) > Default (B) > Favorite A > Favorite B > others
+        const getPriority = (item: any, name: string) => {
           if (name === 'default (a)') return 0
           if (name === 'default (b)') return 1
-          return 2 // All others
+          if (item.is_favorite_a) return 2
+          if (isMultiYearScenario(item) && item.is_favorite_b) return 3
+          return 4 // All others
         }
 
-        const aPriority = getPriority(aName)
-        const bPriority = getPriority(bName)
+        const aPriority = getPriority(a, aName)
+        const bPriority = getPriority(b, bName)
 
         if (aPriority !== bPriority) {
           return aPriority - bPriority
@@ -108,20 +111,22 @@ export default function ScenarioLoadModal({
           creator_email: emailMap.get(s.user_id),
         }))
 
-        // Sort scenarios: Default (A) and Default (B) always at the top, then by updated_at
+        // Sort scenarios: Default (A) > Default (B) > Favorite A > Favorite B > others
         const sortedPublicData = publicWithEmail.sort((a, b) => {
           const aName = a.name.toLowerCase()
           const bName = b.name.toLowerCase()
 
-          // Define priority order: Default (A) > Default (B) > others
-          const getPriority = (name: string) => {
+          // Define priority order: Default (A) > Default (B) > Favorite A > Favorite B > others
+          const getPriority = (item: any, name: string) => {
             if (name === 'default (a)') return 0
             if (name === 'default (b)') return 1
-            return 2 // All others
+            if (item.is_favorite_a) return 2
+            if (isMultiYearScenario(item) && item.is_favorite_b) return 3
+            return 4 // All others
           }
 
-          const aPriority = getPriority(aName)
-          const bPriority = getPriority(bName)
+          const aPriority = getPriority(a, aName)
+          const bPriority = getPriority(b, bName)
 
           if (aPriority !== bPriority) {
             return aPriority - bPriority
@@ -395,6 +400,51 @@ export default function ScenarioLoadModal({
                         >
                           {scenario.is_public ? '🌐 Public' : '🔒 Private'}
                         </span>
+
+                        {/* Favorite stars (read-only) */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {/* Star A */}
+                          {(viewMode === 'Multi-Year' || viewMode === 'YTD Detailed') && (scenario.is_favorite_a) && (
+                            <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                              <FontAwesomeIcon
+                                icon={faSolidStar}
+                                style={{
+                                  color: '#fbbf24',
+                                  fontSize: '16px'
+                                }}
+                              />
+                              <sup style={{
+                                fontSize: '8px',
+                                fontWeight: 'bold',
+                                position: 'absolute',
+                                top: '-2px',
+                                right: '-6px',
+                                color: '#374151'
+                              }}>A</sup>
+                            </div>
+                          )}
+
+                          {/* Star B - Only show in Multi-Year view */}
+                          {viewMode === 'Multi-Year' && isMultiYearScenario(scenario) && scenario.is_favorite_b && (
+                            <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                              <FontAwesomeIcon
+                                icon={faSolidStar}
+                                style={{
+                                  color: '#fbbf24',
+                                  fontSize: '16px'
+                                }}
+                              />
+                              <sup style={{
+                                fontSize: '8px',
+                                fontWeight: 'bold',
+                                position: 'absolute',
+                                top: '-2px',
+                                right: '-6px',
+                                color: '#374151'
+                              }}>B</sup>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {/* Scenario type badge on right */}
