@@ -318,7 +318,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
   ])
 
 
-  // Mark scenario as dirty when settings change (but only after initial load)
+  // Mark scenario as dirty when scenario data changes (but only after initial load)
   useEffect(() => {
     // Skip if no scenario loaded or if this is the initial load
     if (!store.currentScenarioId) return
@@ -326,21 +326,6 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     // Set dirty flag (will be reset by the scenario change effect below)
     setIsScenarioDirty(true)
   }, [
-    isNormalized,
-    showCombined,
-    combineStatistic,
-    combineError,
-    chartMode,
-    timeframe,
-    currentPeriod,
-    is2025Visible,
-    showAllMonths,
-    incomeMode,
-    smoothingByMode,
-    selectedYears,
-    visibleSites,
-    colorScheme,
-    siteColorScheme,
     store.currentScenarioId,
     // Track changes to scenario data (physician panel, grid, etc.)
     JSON.stringify(fy2025)
@@ -592,7 +577,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         </button>
 
         {/* Unload Button - only show if scenario is loaded and not Default */}
-        {currentScenarioName && currentScenarioName !== 'Default' && (
+        {currentScenarioName && currentScenarioName !== 'Default (A)' && (
           <button
             onClick={() => {
               const event = new CustomEvent('unloadScenario')

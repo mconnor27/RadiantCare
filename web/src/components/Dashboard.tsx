@@ -81,6 +81,9 @@ export const useDashboardStore = create<Store>()(
         currentScenarioId: null,
         currentScenarioName: null,
         currentScenarioUserId: null,
+        currentScenarioBId: null,
+        currentScenarioBName: null,
+        currentScenarioBUserId: null,
         setScenarioEnabled: (enabled) => {
           set((state) => {
             state.scenarioBEnabled = enabled
@@ -1066,6 +1069,13 @@ export const useDashboardStore = create<Store>()(
             state.currentScenarioUserId = userId ?? null
           }),
 
+        setCurrentScenarioB: (id: string | null, name: string | null, userId?: string | null) =>
+          set((state) => {
+            state.currentScenarioBId = id
+            state.currentScenarioBName = name
+            state.currentScenarioBUserId = userId ?? null
+          }),
+
         saveScenarioToDatabase: async (
           name: string, 
           description: string, 
@@ -1129,12 +1139,10 @@ export const useDashboardStore = create<Store>()(
               baseline_mode: null,
             }
           } else {
-            // Multi-Year Save - complete with baseline + projections
+            // Multi-Year Save - only save Scenario A (not B)
             const dataMode = state.scenarioA.dataMode
             const scenarioData = {
               scenarioA: state.scenarioA,
-              scenarioBEnabled: state.scenarioBEnabled,
-              scenarioB: state.scenarioB,
               customProjectedValues: state.customProjectedValues,
             }
             
@@ -1191,6 +1199,103 @@ export const useDashboardStore = create<Store>()(
               state.currentScenarioName = name
             })
             
+            return data
+          }
+        },
+
+        saveScenarioBToDatabase: async (
+          name: string,
+          description: string,
+          isPublic: boolean
+        ) => {
+          const state = get()
+          const { supabase } = await import('../lib/supabase')
+
+          // Get current session
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session) throw new Error('Not authenticated')
+
+          if (!state.scenarioB) {
+            throw new Error('No Scenario B to save')
+          }
+
+          // Fetch QBO sync timestamp (optional)
+          let qboSyncTimestamp: string | null = null
+          try {
+            const { data: cacheData, error: cacheError } = await supabase
+              .from('qbo_cache')
+              .select('last_sync_timestamp')
+              .eq('id', 1)
+              .single()
+
+            if (!cacheError && cacheData) {
+              qboSyncTimestamp = cacheData.last_sync_timestamp
+            }
+          } catch (err) {
+            console.warn('Could not fetch QBO sync timestamp:', err)
+          }
+
+          // Save Scenario B's projection parameters + Scenario A's baseline data
+          const dataMode = state.scenarioA.dataMode
+          const scenarioData = {
+            scenarioA: {
+              ...state.scenarioA,
+              projection: state.scenarioB.projection // Use B's projection
+            },
+            customProjectedValues: state.customProjectedValues,
+          }
+
+          // Determine baseline date from A
+          const baselineDate = dataMode === '2024 Data'
+            ? '2024-12-31'
+            : new Date().toISOString().split('T')[0]
+
+          const saveData = {
+            name,
+            description,
+            is_public: isPublic,
+            view_mode: 'Multi-Year' as const,
+            baseline_mode: dataMode,
+            baseline_date: baselineDate,
+            qbo_sync_timestamp: qboSyncTimestamp,
+            scenario_data: scenarioData,
+            ytd_settings: null,
+          }
+
+          // If updating existing Scenario B
+          if (state.currentScenarioBId) {
+            const { data, error } = await supabase
+              .from('scenarios')
+              .update(saveData)
+              .eq('id', state.currentScenarioBId)
+              .select()
+              .single()
+
+            if (error) throw error
+
+            set((state) => {
+              state.currentScenarioBName = name
+            })
+
+            return data
+          } else {
+            // Creating new scenario from B
+            const { data, error } = await supabase
+              .from('scenarios')
+              .insert({
+                user_id: session.user.id,
+                ...saveData,
+              })
+              .select()
+              .single()
+
+            if (error) throw error
+
+            set((state) => {
+              state.currentScenarioBId = data.id
+              state.currentScenarioBName = name
+            })
+
             return data
           }
         },
@@ -1256,19 +1361,18 @@ export const useDashboardStore = create<Store>()(
               }
               
               if (target === 'B') {
-                // Loading into B
-                if (loadBaseline) {
-                  // Load baseline into A (shared)
-                  state.scenarioA = scenarioData.scenarioA
-                  state.customProjectedValues = scenarioData.customProjectedValues || {}
-                }
-                // Always load B's projection state
+                // Loading into B for comparison (uses A's baseline, only B's projection)
+                // Always load the scenario's projection into B
                 state.scenarioB = scenarioData.scenarioA // Load the scenario into B
                 state.scenarioBEnabled = true
+                state.currentScenarioBId = data.id
+                state.currentScenarioBName = data.name
+                state.currentScenarioBUserId = data.user_id
               } else {
-                // Loading into A, also handle B if it was included
-                state.scenarioBEnabled = scenarioData.scenarioBEnabled
-                state.scenarioB = scenarioData.scenarioB
+                // Loading into A - clear any previous B scenario
+                state.currentScenarioBId = null
+                state.currentScenarioBName = null
+                state.currentScenarioBUserId = null
               }
             })
             
@@ -1288,6 +1392,9 @@ export const useDashboardStore = create<Store>()(
         currentScenarioId: state.currentScenarioId,
         currentScenarioName: state.currentScenarioName,
         currentScenarioUserId: state.currentScenarioUserId,
+        currentScenarioBId: state.currentScenarioBId,
+        currentScenarioBName: state.currentScenarioBName,
+        currentScenarioBUserId: state.currentScenarioBUserId,
       }),
     }
   )
@@ -1678,6 +1785,54 @@ export function Dashboard() {
     }
   }, [])
 
+  // Listen for editCurrentScenarioB event (Save Scenario B button)
+  useEffect(() => {
+    const handleEditCurrentScenarioB = async () => {
+      if (!store.currentScenarioBId) return
+
+      // Fetch the current scenario B to pass to the form
+      try {
+        const { data, error } = await supabase
+          .from('scenarios')
+          .select('*')
+          .eq('id', store.currentScenarioBId)
+          .single()
+
+        if (error || !data) {
+          alert('Failed to load Scenario B for editing')
+          return
+        }
+
+        // Open scenario manager in editB mode with scenario data
+        setScenarioManagerView('editB')
+        setScenarioManagerInitialScenario(data)
+        setShowScenarioManager(true)
+      } catch (err) {
+        console.error('Error loading Scenario B:', err)
+        alert('Failed to load Scenario B for editing')
+      }
+    }
+
+    window.addEventListener('editCurrentScenarioB', handleEditCurrentScenarioB)
+    return () => {
+      window.removeEventListener('editCurrentScenarioB', handleEditCurrentScenarioB)
+    }
+  }, [store.currentScenarioBId])
+
+  // Listen for saveScenarioBAs event
+  useEffect(() => {
+    const handleSaveScenarioBAs = () => {
+      setScenarioManagerView('formB')
+      setScenarioManagerInitialScenario(undefined)
+      setShowScenarioManager(true)
+    }
+
+    window.addEventListener('saveScenarioBAs', handleSaveScenarioBAs)
+    return () => {
+      window.removeEventListener('saveScenarioBAs', handleSaveScenarioBAs)
+    }
+  }, [])
+
   // Listen for unloadScenario event
   useEffect(() => {
     const handleUnloadScenario = () => {
@@ -1704,6 +1859,28 @@ export function Dashboard() {
       window.removeEventListener('unloadScenario', handleUnloadScenario)
     }
   }, [store.currentScenarioName, viewMode])
+
+  // Listen for unloadScenarioB event
+  useEffect(() => {
+    const handleUnloadScenarioB = () => {
+      if (!store.currentScenarioBName) return
+
+      const shouldUnload = confirm(
+        `Unload "${store.currentScenarioBName}" from Scenario B?\n\nAny unsaved changes will be lost.`
+      )
+
+      if (shouldUnload) {
+        // Clear Scenario B
+        store.setCurrentScenarioB(null, null)
+        store.setScenarioEnabled(false)
+      }
+    }
+
+    window.addEventListener('unloadScenarioB', handleUnloadScenarioB)
+    return () => {
+      window.removeEventListener('unloadScenarioB', handleUnloadScenarioB)
+    }
+  }, [store.currentScenarioBName])
 
   // Load from shareable URL hash if present
   useEffect(() => {

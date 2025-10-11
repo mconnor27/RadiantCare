@@ -1,0 +1,28 @@
+# Ignore local development server (used with ngrok)
+server/
+
+# Ignore log files
+*.log
+
+# Ignore local environment files
+.env.local
+.env.*.local
+
+# Ignore excel files
+*.xlsx
+
+# Ignore PSD files
+*.psd
+
+# Ignore documentation (not needed for deployment)
+*.md
+!README.md
+
+# Ignore git files
+.git/
+.gitignore
+
+# Ignore various setup/config files
+ngrok-*.log
+*.out
+

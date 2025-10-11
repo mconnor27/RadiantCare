@@ -79,7 +79,7 @@ export const ACTUAL_2025_MEDICAL_DIRECTOR_HOURS = 119374
 export const ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS = 32321
 
 // Projection defaults for medical director hours
-export const DEFAULT_MD_SHARED_PROJECTION = 110000
+export const DEFAULT_MD_SHARED_PROJECTION = 97200
 export const DEFAULT_MD_PRCS_PROJECTION = 50000
 
 // Partner Compensation Configuration - can be modified for future years

@@ -1,4 +1,6 @@
 import { useMemo, useEffect, useState } from 'react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faFolderOpen, faFloppyDisk, faCopy, faCircleXmark, faGear, faRotateLeft } from '@fortawesome/free-solid-svg-icons'
 import { useDashboardStore } from '../../../Dashboard'
 import { useIsMobile } from '../../shared/hooks'
 import YearPanel from '../../shared/components/YearPanel'
@@ -7,6 +9,8 @@ import HistoricAndProjectionChart from './HistoricAndProjectionChart'
 import OverallCompensationSummary from '../../shared/components/OverallCompensationSummary'
 import ParametersSummary from './components/ParametersSummary'
 import CollapsibleSection from '../../shared/components/CollapsibleSection'
+import ScenarioLoadModal from '../../../scenarios/ScenarioLoadModal'
+import { useAuth } from '../../../auth/AuthProvider'
 
 // Helper function to get baseline year from data mode
 function getBaselineYear(dataMode: string): number {
@@ -45,11 +49,16 @@ function createProjectionSummary(scenario: 'A' | 'B', store: any): string {
 
 export default function MultiYearView() {
   const store = useDashboardStore()
+  const { profile } = useAuth()
   const isMobile = useIsMobile()
   const [projectionOpen, setProjectionOpen] = useState(true)
   const [yearPanelOpen, setYearPanelOpen] = useState(true)
   const [overallOpen, setOverallOpen] = useState(true)
   const [parametersOpen, setParametersOpen] = useState(true)
+  const [showLoadModal, setShowLoadModal] = useState(false)
+  const [showLoadModalB, setShowLoadModalB] = useState(false)
+  const [isScenarioDirty, setIsScenarioDirty] = useState(false)
+  const [isScenarioBDirty, setIsScenarioBDirty] = useState(false)
 
   // Log only on mount (not on every render)
   useEffect(() => {
@@ -86,10 +95,141 @@ export default function MultiYearView() {
     window.dispatchEvent(new Event('resize'))
   }, [store.scenarioBEnabled])
 
+  // Mark scenario A as dirty when settings change
+  useEffect(() => {
+    if (!store.currentScenarioId) return
+    setIsScenarioDirty(true)
+  }, [
+    store.scenarioA.projection,
+    store.scenarioA.selectedYear,
+    store.currentScenarioId
+  ])
+
+  // Mark scenario B as dirty when settings change
+  useEffect(() => {
+    if (!store.currentScenarioBId) return
+    setIsScenarioBDirty(true)
+  }, [
+    store.scenarioB?.projection,
+    store.scenarioB?.selectedYear,
+    store.currentScenarioBId
+  ])
+
+  // Reset dirty flags when scenarios change
+  useEffect(() => {
+    setIsScenarioDirty(false)
+  }, [store.currentScenarioId])
+
+  useEffect(() => {
+    setIsScenarioBDirty(false)
+  }, [store.currentScenarioBId])
+
+  // Auto-load Default scenario on first load if no scenario is loaded
+  useEffect(() => {
+    if (!store.currentScenarioId) {
+      console.log('🔄 No scenario loaded, attempting to load Default scenario...')
+
+      const loadDefaultScenario = async () => {
+        try {
+          const { supabase } = await import('../../../../lib/supabase')
+
+          const { data: defaultScenario, error } = await supabase
+            .from('scenarios')
+            .select('*')
+            .eq('name', 'Default')
+            .eq('view_mode', 'Multi-Year')
+            .eq('is_public', true)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
+
+          if (error && error.code !== 'PGRST116') {
+            console.error('Error fetching Default scenario:', error)
+            return
+          }
+
+          if (defaultScenario) {
+            console.log('✅ Found Default scenario, loading...', defaultScenario.id)
+            await store.loadScenarioFromDatabase(defaultScenario.id, 'A', true)
+          } else {
+            console.log('ℹ️ No Default scenario found in database')
+          }
+        } catch (error) {
+          console.error('Failed to auto-load Default scenario:', error)
+        }
+      }
+
+      loadDefaultScenario()
+    }
+  }, [store.currentScenarioId, store])
+
+  // Reset scenario to original state
+  const handleResetScenario = async () => {
+    if (!store.currentScenarioId) return
+
+    if (confirm('Reset scenario to original state? All unsaved changes will be lost.')) {
+      try {
+        await store.loadScenarioFromDatabase(store.currentScenarioId, 'A', true)
+        setIsScenarioDirty(false)
+      } catch (err) {
+        console.error('Error resetting scenario:', err)
+        alert('Failed to reset scenario')
+      }
+    }
+  }
+
+  // Get current scenario info from store
+  const currentScenarioName = store.currentScenarioName
+  const currentScenarioUserId = store.currentScenarioUserId
+  const isScenarioOwner = currentScenarioUserId && profile?.id === currentScenarioUserId
+
+  const currentScenarioBName = store.currentScenarioBName
+  const currentScenarioBUserId = store.currentScenarioBUserId
+  const isScenarioBOwner = currentScenarioBUserId && profile?.id === currentScenarioBUserId
+
+  // Reset Scenario B to original state
+  const handleResetScenarioB = async () => {
+    if (!store.currentScenarioBId) return
+
+    if (confirm('Reset Scenario B to original state? All unsaved changes will be lost.')) {
+      try {
+        await store.loadScenarioFromDatabase(store.currentScenarioBId, 'B', false)
+        setIsScenarioBDirty(false)
+      } catch (err) {
+        console.error('Error resetting Scenario B:', err)
+        alert('Failed to reset Scenario B')
+      }
+    }
+  }
+
   return (
     <>
-      <div style={{ 
-        maxWidth: 1200, 
+      {/* Scenario A Load Modal */}
+      <ScenarioLoadModal
+        isOpen={showLoadModal}
+        onClose={() => setShowLoadModal(false)}
+        onLoad={async (id) => {
+          await store.loadScenarioFromDatabase(id, 'A', true)
+          setShowLoadModal(false)
+        }}
+        viewMode="Multi-Year"
+      />
+
+      {/* Scenario B Load Modal */}
+      <ScenarioLoadModal
+        isOpen={showLoadModalB}
+        onClose={() => setShowLoadModalB(false)}
+        onLoad={async (id) => {
+          if (confirm('Loading a scenario into B will use Scenario A\'s baseline data. The loaded scenario\'s baseline will be discarded. Continue?')) {
+            await store.loadScenarioFromDatabase(id, 'B', false)
+            setShowLoadModalB(false)
+          }
+        }}
+        viewMode="Multi-Year"
+      />
+
+      <div style={{
+        maxWidth: 1200,
         margin: '0 auto',
         border: '1px solid #d1d5db',
         borderRadius: 6,
@@ -101,9 +241,9 @@ export default function MultiYearView() {
 
       {/* Scenario compare */}
       <div style={{ marginTop: 16 }}>
-        <div style={{ 
-          maxWidth: store.scenarioBEnabled ? 1660 : 1000, 
-          margin: '0 auto' 
+        <div style={{
+          maxWidth: store.scenarioBEnabled ? 1660 : 1000,
+          margin: '0 auto'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, justifyContent: 'space-between', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -140,8 +280,173 @@ export default function MultiYearView() {
           }}>
             {/* Scenario A column */}
             <div>
-              <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario A</div>
-              <CollapsibleSection 
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ fontWeight: 700 }}>Scenario A</div>
+                  {currentScenarioName && (
+                    <div style={{
+                      padding: '4px 10px',
+                      background: '#f0f9ff',
+                      border: '1px solid #bae6fd',
+                      borderRadius: 4,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color: '#0369a1'
+                    }}>
+                      {currentScenarioName}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  {/* Load Button */}
+                  <button
+                    onClick={() => {
+                      if (isScenarioDirty) {
+                        if (!confirm('You have unsaved changes to the current scenario. Loading another scenario will discard these changes. Continue?')) {
+                          return
+                        }
+                      }
+                      setShowLoadModal(true)
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#0ea5e9',
+                      fontSize: 18,
+                      cursor: 'pointer',
+                      transition: 'opacity 0.2s',
+                      padding: 2
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+                    title="Load scenario"
+                  >
+                    <FontAwesomeIcon icon={faFolderOpen} />
+                  </button>
+
+                  {/* Save Button - only show if scenario is loaded and user owns it */}
+                  {currentScenarioName && isScenarioOwner && (
+                    <button
+                      onClick={() => {
+                        const event = new CustomEvent('editCurrentScenario')
+                        window.dispatchEvent(event)
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#059669',
+                        fontSize: 18,
+                        cursor: 'pointer',
+                        transition: 'opacity 0.2s',
+                        padding: 2
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+                      title="Save scenario"
+                    >
+                      <FontAwesomeIcon icon={faFloppyDisk} />
+                    </button>
+                  )}
+
+                  {/* Save As Button */}
+                  <button
+                    onClick={() => {
+                      const event = new CustomEvent('saveScenarioAs')
+                      window.dispatchEvent(event)
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#6b7280',
+                      fontSize: 18,
+                      cursor: 'pointer',
+                      transition: 'opacity 0.2s',
+                      padding: 2
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+                    title="Save as new scenario"
+                  >
+                    <FontAwesomeIcon icon={faCopy} />
+                  </button>
+
+                  {/* Unload Button - only show if scenario is loaded and not Default (A) */}
+                  {currentScenarioName && currentScenarioName !== 'Default (A)' && (
+                    <button
+                      onClick={() => {
+                        const event = new CustomEvent('unloadScenario')
+                        window.dispatchEvent(event)
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#dc2626',
+                        fontSize: 18,
+                        cursor: 'pointer',
+                        transition: 'opacity 0.2s',
+                        padding: 2
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+                      title="Unload scenario"
+                    >
+                      <FontAwesomeIcon icon={faCircleXmark} />
+                    </button>
+                  )}
+
+                  {/* Vertical Separator */}
+                  <div style={{
+                    width: 1,
+                    height: 18,
+                    background: '#d1d5db',
+                    margin: '0 2px'
+                  }} />
+
+                  {/* Gear Icon - Full Scenario Manager */}
+                  <button
+                    onClick={() => {
+                      const event = new CustomEvent('openScenarioManager')
+                      window.dispatchEvent(event)
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#6b7280',
+                      fontSize: 18,
+                      cursor: 'pointer',
+                      transition: 'opacity 0.2s',
+                      padding: 2
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+                    title="Scenario Manager"
+                  >
+                    <FontAwesomeIcon icon={faGear} />
+                  </button>
+
+                  {/* Reset Button - only show if scenario is loaded and has been modified */}
+                  {currentScenarioName && isScenarioDirty && (
+                    <button
+                      onClick={handleResetScenario}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#f59e0b',
+                        fontSize: 18,
+                        cursor: 'pointer',
+                        transition: 'opacity 0.2s',
+                        padding: 2
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+                      title="Reset to original"
+                    >
+                      <FontAwesomeIcon icon={faRotateLeft} />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <CollapsibleSection
                 title={
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                     <span>Projection Settings</span>
@@ -149,9 +454,9 @@ export default function MultiYearView() {
                       {projectionSummaryA}
                     </span>
                   </div>
-                } 
-                open={projectionOpen} 
-                onOpenChange={setProjectionOpen} 
+                }
+                open={projectionOpen}
+                onOpenChange={setProjectionOpen}
                 tone="neutral"
               >
                 <ProjectionSettingsControls scenario={'A'} />
@@ -164,8 +469,146 @@ export default function MultiYearView() {
             {/* Scenario B column */}
             {store.scenarioBEnabled && store.scenarioB && (
               <div>
-                <div style={{ fontWeight: 700, marginBottom: 4 }}>Scenario B</div>
-                <CollapsibleSection 
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ fontWeight: 700 }}>Scenario B</div>
+                    {currentScenarioBName && (
+                      <div style={{
+                        padding: '4px 10px',
+                        background: '#f0fdf4',
+                        border: '1px solid #bbf7d0',
+                        borderRadius: 4,
+                        fontSize: 12,
+                        fontWeight: 500,
+                        color: '#15803d'
+                      }}>
+                        {currentScenarioBName}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 12, color: '#6b7280', fontStyle: 'italic' }}>
+                      (Uses Scenario A baseline)
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    {/* Load Button */}
+                    <button
+                      onClick={() => {
+                        if (isScenarioBDirty) {
+                          if (!confirm('You have unsaved changes to Scenario B. Loading another scenario will discard these changes. Continue?')) {
+                            return
+                          }
+                        }
+                        setShowLoadModalB(true)
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#0ea5e9',
+                        fontSize: 18,
+                        cursor: 'pointer',
+                        transition: 'opacity 0.2s',
+                        padding: 2
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+                      title="Load scenario into B"
+                    >
+                      <FontAwesomeIcon icon={faFolderOpen} />
+                    </button>
+
+                    {/* Save Button - only show if scenario is loaded and user owns it */}
+                    {currentScenarioBName && isScenarioBOwner && (
+                      <button
+                        onClick={() => {
+                          const event = new CustomEvent('editCurrentScenarioB')
+                          window.dispatchEvent(event)
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#059669',
+                          fontSize: 18,
+                          cursor: 'pointer',
+                          transition: 'opacity 0.2s',
+                          padding: 2
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+                        title="Save Scenario B"
+                      >
+                        <FontAwesomeIcon icon={faFloppyDisk} />
+                      </button>
+                    )}
+
+                    {/* Save As Button */}
+                    <button
+                      onClick={() => {
+                        const event = new CustomEvent('saveScenarioBAs')
+                        window.dispatchEvent(event)
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#6b7280',
+                        fontSize: 18,
+                        cursor: 'pointer',
+                        transition: 'opacity 0.2s',
+                        padding: 2
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+                      title="Save Scenario B as new scenario"
+                    >
+                      <FontAwesomeIcon icon={faCopy} />
+                    </button>
+
+                    {/* Unload Button - only show if scenario B is loaded */}
+                    {currentScenarioBName && (
+                      <button
+                        onClick={() => {
+                          const event = new CustomEvent('unloadScenarioB')
+                          window.dispatchEvent(event)
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#dc2626',
+                          fontSize: 18,
+                          cursor: 'pointer',
+                          transition: 'opacity 0.2s',
+                          padding: 2
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+                        title="Unload Scenario B"
+                      >
+                        <FontAwesomeIcon icon={faCircleXmark} />
+                      </button>
+                    )}
+
+                    {/* Reset Button - only show if scenario is loaded and has been modified */}
+                    {currentScenarioBName && isScenarioBDirty && (
+                      <button
+                        onClick={handleResetScenarioB}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#f59e0b',
+                          fontSize: 18,
+                          cursor: 'pointer',
+                          transition: 'opacity 0.2s',
+                          padding: 2
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+                        title="Reset to original"
+                      >
+                        <FontAwesomeIcon icon={faRotateLeft} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <CollapsibleSection
                   title={
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                       <span>Projection Settings</span>
@@ -173,9 +616,9 @@ export default function MultiYearView() {
                         {projectionSummaryB}
                       </span>
                     </div>
-                  } 
-                  open={projectionOpen} 
-                  onOpenChange={setProjectionOpen} 
+                  }
+                  open={projectionOpen}
+                  onOpenChange={setProjectionOpen}
                   tone="neutral"
                 >
                   <ProjectionSettingsControls scenario={'B'} />

@@ -123,17 +123,9 @@ export default function ScenarioCard({
 
       {/* Description */}
       {scenario.description && (
-        <p style={{ textAlign: 'left', margin: '0 0 8px 0', fontSize: '13px', color: '#6b7280', lineHeight: 1.4 }}>
+        <p style={{ textAlign: 'left', margin: '0 0 8px 0', fontSize: '13px', color: '#6b7280', lineHeight: 1.4, whiteSpace: 'pre-line' }}>
           {scenario.description}
         </p>
-      )}
-
-      {/* Baseline metadata (for Multi-Year) */}
-      {isMultiYearScenario(scenario) && scenario.baseline_mode && (
-        <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '8px' }}>
-          {scenario.baseline_mode}
-          {scenario.baseline_date && ` • ${formatBaselineDate(scenario.baseline_date)}`}
-        </div>
       )}
 
       {/* Staleness warning */}

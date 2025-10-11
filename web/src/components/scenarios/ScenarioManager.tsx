@@ -19,7 +19,7 @@ interface ScenarioManagerProps {
 }
 
 type Tab = 'my-scenarios' | 'public-scenarios'
-type View = 'list' | 'form' | 'edit'
+type View = 'list' | 'form' | 'edit' | 'formB' | 'editB'
 
 export default function ScenarioManager({
   isOpen,
@@ -155,14 +155,21 @@ export default function ScenarioManager({
         }
       }
 
-      // If we're in 'form' view (not 'edit'), clear the current scenario ID to force a new save
-      if (view === 'form') {
-        store.setCurrentScenario(null, null) // Temporarily clear to force new scenario creation
-        await store.saveScenarioToDatabase(name, description, isPublic, viewMode, ytdSettings)
-        // Don't restore the old ID - we want the new scenario to be the current one
+      // Handle Scenario B saves
+      if (view === 'formB' || view === 'editB') {
+        if (view === 'formB') {
+          store.setCurrentScenarioB(null, null) // Temporarily clear to force new scenario creation
+        }
+        await store.saveScenarioBToDatabase(name, description, isPublic)
       } else {
-        // In edit mode, keep the current scenario ID to update existing
-        await store.saveScenarioToDatabase(name, description, isPublic, viewMode, ytdSettings)
+        // Handle Scenario A saves
+        if (view === 'form') {
+          store.setCurrentScenario(null, null) // Temporarily clear to force new scenario creation
+          await store.saveScenarioToDatabase(name, description, isPublic, viewMode, ytdSettings)
+        } else {
+          // In edit mode, keep the current scenario ID to update existing
+          await store.saveScenarioToDatabase(name, description, isPublic, viewMode, ytdSettings)
+        }
       }
       await loadScenarios()
       setView('list')
@@ -391,7 +398,7 @@ export default function ScenarioManager({
         <div style={{ padding: '24px', borderBottom: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>
-              {view === 'form' ? 'Save Scenario' : view === 'edit' ? 'Edit Scenario' : 'Scenario Manager'}
+              {view === 'form' ? 'Save Scenario A' : view === 'formB' ? 'Save Scenario B' : view === 'edit' ? 'Edit Scenario A' : view === 'editB' ? 'Edit Scenario B' : 'Scenario Manager'}
             </h2>
             <button
               onClick={onClose}
@@ -528,7 +535,7 @@ export default function ScenarioManager({
           </>
         )}
 
-        {(view === 'form' || view === 'edit') && (
+        {(view === 'form' || view === 'edit' || view === 'formB' || view === 'editB') && (
           <div style={{ flex: 1, overflowY: 'auto' }}>
             <ScenarioForm
               existingScenario={editingScenario}

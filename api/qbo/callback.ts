@@ -3,6 +3,14 @@ import { getSupabaseAdmin } from '../_lib/supabase.js'
 
 const TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
 
+interface QBOTokenResponse {
+  access_token: string
+  refresh_token: string
+  expires_in: number
+  token_type?: string
+  x_refresh_token_expires_in?: number
+}
+
 function getCredentials(env: string) {
   if (env === 'sandbox') {
     return {
@@ -86,7 +94,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    const json = await response.json()
+    const json = await response.json() as QBOTokenResponse
     const expiresAt = Math.floor(Date.now() / 1000) + Number(json.expires_in || 3600)
 
     // Store tokens in Supabase (admin client to bypass RLS)
