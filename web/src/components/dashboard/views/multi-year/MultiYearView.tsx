@@ -692,24 +692,22 @@ export default function MultiYearView() {
                   }} />
 
                   {/* Share Link Button */}
-                  <div style={{ marginRight: 4 }}>
-                    <ShareLinkButton
-                      viewMode="Multi-Year"
-                      scenarioAId={store.currentScenarioId}
-                      scenarioAIsPublic={scenarioAIsPublic}
-                      scenarioBId={store.currentScenarioBId}
-                      scenarioBIsPublic={scenarioBIsPublic}
-                      scenarioBEnabled={store.scenarioBEnabled}
-                      isScenarioDirty={isScenarioDirty}
-                      isScenarioBDirty={isScenarioBDirty}
-                      uiSettings={{
-                        multiYear: {
-                          selectedYearA: store.scenarioA.selectedYear,
-                          selectedYearB: store.scenarioB?.selectedYear
-                        }
-                      }}
-                    />
-                  </div>
+                  <ShareLinkButton
+                    viewMode="Multi-Year"
+                    scenarioAId={store.currentScenarioId}
+                    scenarioAIsPublic={scenarioAIsPublic}
+                    scenarioBId={store.currentScenarioBId}
+                    scenarioBIsPublic={scenarioBIsPublic}
+                    scenarioBEnabled={store.scenarioBEnabled}
+                    isScenarioDirty={isScenarioDirty}
+                    isScenarioBDirty={isScenarioBDirty}
+                    uiSettings={{
+                      multiYear: {
+                        selectedYearA: store.scenarioA.selectedYear,
+                        selectedYearB: store.scenarioB?.selectedYear
+                      }
+                    }}
+                  />
 
                   {/* Gear Icon - Full Scenario Manager */}
                   <button

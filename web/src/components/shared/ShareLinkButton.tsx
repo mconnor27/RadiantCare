@@ -68,22 +68,19 @@ export default function ShareLinkButton({
       <button
         onClick={handleClick}
         style={{
-          padding: '8px 12px',
-          background: '#0ea5e9',
-          color: '#fff',
+          background: 'none',
           border: 'none',
-          borderRadius: '4px',
-          fontSize: '14px',
-          fontWeight: 500,
+          color: '#6b7280',
+          fontSize: 18,
           cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
+          transition: 'opacity 0.2s',
+          padding: 2
         }}
+        onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
         title="Create Shareable Link"
       >
         <FontAwesomeIcon icon={faShare} />
-        Share
       </button>
 
       {showModal && (

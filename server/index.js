@@ -4,8 +4,15 @@ import path from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
 import dotenv from 'dotenv'
+import { customAlphabet } from 'nanoid'
+import { createClient } from '@supabase/supabase-js'
 
+// Load environment variables from both root and server directories
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
+dotenv.config({ path: path.resolve(process.cwd(), '../.env') })
+
+// Initialize nanoid for generating short link IDs
+const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 10)
 
 const app = express()
 app.use(express.json())
@@ -504,6 +511,276 @@ app.get('/api/qbo/cached-2025', (req, res) => {
   } catch (e) {
     console.error('Error reading cache:', e)
     res.status(500).json({ error: 'server_error', message: e.message })
+  }
+})
+
+// ============================================================================
+// Shared Links API Routes
+// ============================================================================
+
+// Get Supabase credentials from environment
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('⚠️  Supabase credentials not found. Shared links API will not work.')
+  console.warn('    SUPABASE_URL:', supabaseUrl ? 'found' : 'missing')
+  console.warn('    SUPABASE_ANON_KEY:', supabaseAnonKey ? 'found' : 'missing')
+}
+
+// Create shared link
+app.post('/api/shared-links/create', async (req, res) => {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return res.status(500).json({ error: 'server_error', message: 'Supabase not configured' })
+  }
+
+  try {
+    const { view_mode, scenario_a_id, scenario_b_id, scenario_b_enabled, ui_settings } = req.body
+    const authHeader = req.headers.authorization
+
+    if (!authHeader) {
+      return res.status(401).json({ error: 'unauthorized', message: 'Authorization required' })
+    }
+
+    // Create Supabase client with user's token
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    })
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return res.status(401).json({ error: 'unauthorized', message: 'Invalid authorization' })
+    }
+
+    // Validate required fields
+    if (!view_mode || !scenario_a_id) {
+      return res.status(400).json({
+        error: 'bad_request',
+        message: 'view_mode and scenario_a_id are required'
+      })
+    }
+
+    // Validate view_mode
+    if (view_mode !== 'YTD Detailed' && view_mode !== 'Multi-Year') {
+      return res.status(400).json({
+        error: 'bad_request',
+        message: 'view_mode must be either "YTD Detailed" or "Multi-Year"'
+      })
+    }
+
+    // Verify scenario A exists and is public
+    const { data: scenarioA, error: scenarioAError } = await supabase
+      .from('scenarios')
+      .select('id, is_public, user_id')
+      .eq('id', scenario_a_id)
+      .single()
+
+    if (scenarioAError || !scenarioA) {
+      return res.status(404).json({
+        error: 'not_found',
+        message: 'Scenario A not found'
+      })
+    }
+
+    if (!scenarioA.is_public) {
+      return res.status(403).json({
+        error: 'forbidden',
+        message: 'Scenario A must be public to create a shareable link'
+      })
+    }
+
+    // If scenario B is enabled, verify it exists and is public
+    if (scenario_b_enabled && scenario_b_id) {
+      const { data: scenarioB, error: scenarioBError } = await supabase
+        .from('scenarios')
+        .select('id, is_public, user_id')
+        .eq('id', scenario_b_id)
+        .single()
+
+      if (scenarioBError || !scenarioB) {
+        return res.status(404).json({
+          error: 'not_found',
+          message: 'Scenario B not found'
+        })
+      }
+
+      if (!scenarioB.is_public) {
+        return res.status(403).json({
+          error: 'forbidden',
+          message: 'Scenario B must be public to create a shareable link'
+        })
+      }
+    }
+
+    // Generate unique link ID
+    let linkId = nanoid()
+    let attempts = 0
+    const maxAttempts = 5
+
+    // Ensure ID is unique (extremely unlikely to collide, but be safe)
+    while (attempts < maxAttempts) {
+      const { data: existing } = await supabase
+        .from('shared_links')
+        .select('id')
+        .eq('id', linkId)
+        .single()
+
+      if (!existing) break // ID is unique
+
+      linkId = nanoid()
+      attempts++
+    }
+
+    if (attempts >= maxAttempts) {
+      return res.status(500).json({
+        error: 'server_error',
+        message: 'Failed to generate unique link ID'
+      })
+    }
+
+    // Create shared link
+    const { data: sharedLink, error: createError } = await supabase
+      .from('shared_links')
+      .insert({
+        id: linkId,
+        user_id: user.id,
+        view_mode,
+        scenario_a_id,
+        scenario_b_id: scenario_b_enabled ? scenario_b_id : null,
+        scenario_b_enabled: scenario_b_enabled || false,
+        ui_settings: ui_settings || null
+      })
+      .select()
+      .single()
+
+    if (createError) {
+      console.error('Error creating shared link:', createError)
+      return res.status(500).json({
+        error: 'create_failed',
+        message: 'Failed to create shared link'
+      })
+    }
+
+    // Construct full URL
+    const baseUrl = process.env.VITE_APP_URL || 'http://localhost:5174'
+    const fullUrl = `${baseUrl}/share/${linkId}`
+
+    return res.status(201).json({
+      link_id: linkId,
+      url: fullUrl,
+      created_at: sharedLink.created_at
+    })
+  } catch (error) {
+    console.error('Error in shared link create:', error)
+    return res.status(500).json({
+      error: 'server_error',
+      message: 'An error occurred'
+    })
+  }
+})
+
+// Get shared link by ID
+app.get('/api/shared-links/:id', async (req, res) => {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return res.status(500).json({ error: 'server_error', message: 'Supabase not configured' })
+  }
+
+  try {
+    const { id } = req.params
+
+    if (!id) {
+      return res.status(400).json({
+        error: 'bad_request',
+        message: 'Link ID is required'
+      })
+    }
+
+    // Create Supabase client (no auth required for reading shared links)
+    const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+    // Fetch the shared link
+    const { data: sharedLink, error: fetchError } = await supabase
+      .from('shared_links')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !sharedLink) {
+      return res.status(404).json({
+        error: 'not_found',
+        message: 'Shared link not found'
+      })
+    }
+
+    // Check if link is expired (if expires_at is set)
+    if (sharedLink.expires_at) {
+      const expiresAt = new Date(sharedLink.expires_at)
+      if (expiresAt < new Date()) {
+        return res.status(410).json({
+          error: 'expired',
+          message: 'This shared link has expired'
+        })
+      }
+    }
+
+    // Fetch scenario A data
+    const { data: scenarioA, error: scenarioAError } = await supabase
+      .from('scenarios')
+      .select('*')
+      .eq('id', sharedLink.scenario_a_id)
+      .single()
+
+    if (scenarioAError || !scenarioA) {
+      return res.status(404).json({
+        error: 'not_found',
+        message: 'Scenario A no longer exists'
+      })
+    }
+
+    // Fetch scenario B data if enabled
+    let scenarioB = null
+    if (sharedLink.scenario_b_enabled && sharedLink.scenario_b_id) {
+      const { data: scenarioBData, error: scenarioBError } = await supabase
+        .from('scenarios')
+        .select('*')
+        .eq('id', sharedLink.scenario_b_id)
+        .single()
+
+      if (scenarioBError || !scenarioBData) {
+        return res.status(404).json({
+          error: 'not_found',
+          message: 'Scenario B no longer exists'
+        })
+      }
+
+      scenarioB = scenarioBData
+    }
+
+    // Increment view count asynchronously (don't wait for it)
+    supabase.rpc('increment_shared_link_view', { link_id: id }).then(() => {
+      // Ignore result
+    }).catch((err) => {
+      console.error('Failed to increment view count:', err)
+    })
+
+    // Return the shared link data with scenarios
+    return res.status(200).json({
+      link_id: sharedLink.id,
+      view_mode: sharedLink.view_mode,
+      scenario_a: scenarioA,
+      scenario_b: scenarioB,
+      scenario_b_enabled: sharedLink.scenario_b_enabled,
+      ui_settings: sharedLink.ui_settings,
+      created_at: sharedLink.created_at,
+      view_count: sharedLink.view_count
+    })
+  } catch (error) {
+    console.error('Error fetching shared link:', error)
+    return res.status(500).json({
+      error: 'server_error',
+      message: 'An error occurred'
+    })
   }
 })
 

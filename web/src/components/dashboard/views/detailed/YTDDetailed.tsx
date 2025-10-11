@@ -643,38 +643,36 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         }} />
 
         {/* Share Link Button */}
-        <div style={{ marginRight: 4 }}>
-          <ShareLinkButton
-            viewMode="YTD Detailed"
-            scenarioAId={store.currentScenarioId}
-            scenarioAIsPublic={scenarioAIsPublic}
-            scenarioBId={null}
-            scenarioBIsPublic={false}
-            scenarioBEnabled={false}
-            isScenarioDirty={isScenarioDirty}
-            isScenarioBDirty={false}
-            uiSettings={{
-              ytdDetailed: {
-                isNormalized,
-                chartMode,
-                smoothing: getCurrentSmoothing(),
-                incomeMode,
-                colorScheme,
-                siteColorScheme,
-                timeframe,
-                currentPeriod,
-                selectedYears,
-                visibleSites,
-                showCombined,
-                combineStatistic,
-                combineError,
-                smoothingByMode,
-                is2025Visible,
-                showAllMonths
-              }
-            }}
-          />
-        </div>
+        <ShareLinkButton
+          viewMode="YTD Detailed"
+          scenarioAId={store.currentScenarioId}
+          scenarioAIsPublic={scenarioAIsPublic}
+          scenarioBId={null}
+          scenarioBIsPublic={false}
+          scenarioBEnabled={false}
+          isScenarioDirty={isScenarioDirty}
+          isScenarioBDirty={false}
+          uiSettings={{
+            ytdDetailed: {
+              isNormalized,
+              chartMode,
+              smoothing: getCurrentSmoothing(),
+              incomeMode,
+              colorScheme,
+              siteColorScheme,
+              timeframe,
+              currentPeriod,
+              selectedYears,
+              visibleSites,
+              showCombined,
+              combineStatistic,
+              combineError,
+              smoothingByMode,
+              is2025Visible,
+              showAllMonths
+            }
+          }}
+        />
 
         {/* Gear Icon - Full Scenario Manager */}
         <button
