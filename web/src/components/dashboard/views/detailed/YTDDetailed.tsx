@@ -366,45 +366,6 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     fetchScenarioPublicStatus()
   }, [store.currentScenarioId])
 
-  // Auto-load Default scenario on first load if no scenario is loaded
-  useEffect(() => {
-    if (!store.currentScenarioId) {
-      console.log('🔄 No scenario loaded, attempting to load Default scenario...')
-
-      const loadDefaultScenario = async () => {
-        try {
-          const { supabase } = await import('../../../../lib/supabase')
-
-          // Look for the Default scenario
-          const { data: defaultScenario, error } = await supabase
-            .from('scenarios')
-            .select('*')
-            .eq('name', 'Default')
-            .eq('view_mode', 'YTD Detailed')
-            .eq('is_public', true)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single()
-
-          if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
-            console.error('Error fetching Default scenario:', error)
-            return
-          }
-
-          if (defaultScenario) {
-            console.log('✅ Found Default scenario, loading...', defaultScenario.id)
-            await store.loadScenarioFromDatabase(defaultScenario.id, 'A', true)
-          } else {
-            console.log('ℹ️ No Default scenario found in database')
-          }
-        } catch (error) {
-          console.error('Failed to auto-load Default scenario:', error)
-        }
-      }
-
-      loadDefaultScenario()
-    }
-  }, [store.currentScenarioId, store])
 
   // Reset scenario to original state
   const handleResetScenario = async () => {

@@ -1,12 +1,13 @@
 import { useMemo, useEffect, useState, useCallback, useRef } from 'react'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import { supabase } from '../lib/supabase'
 import { immer } from 'zustand/middleware/immer'
 import * as LZString from 'lz-string'
-import { supabase } from '../lib/supabase'
 import { useAuth } from './auth/AuthProvider'
 import LoginModal from './auth/LoginModal'
 import SignupModal from './auth/SignupModal'
+import PasswordResetModal from './auth/PasswordResetModal'
 import ScenarioManager from './scenarios/ScenarioManager'
 import YTDDetailed from './dashboard/views/detailed/YTDDetailed'
 import MultiYearView from './dashboard/views/multi-year/MultiYearView'
@@ -2068,6 +2069,7 @@ export function Dashboard() {
   // Track whether MultiYearView has been visited (for lazy initialization)
   const [multiYearInitialized, setMultiYearInitialized] = useState(false)
   const [showHelpModal, setShowHelpModal] = useState(false)
+  const [showPasswordReset, setShowPasswordReset] = useState(false)
   const [showSignupModal, setShowSignupModal] = useState(false)
   const [showScenarioManager, setShowScenarioManager] = useState(false)
   const [scenarioManagerView, setScenarioManagerView] = useState<'list' | 'form' | 'edit' | 'formB' | 'editB'>('list')
@@ -2332,6 +2334,32 @@ export function Dashboard() {
     }
   }, [pendingSharedLinkId])
 
+  // Detect password reset URLs and handle auth state changes
+  useEffect(() => {
+    const handleAuthStateChange = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      const accessToken = hashParams.get('access_token')
+      const type = hashParams.get('type')
+
+      if (type === 'recovery' && accessToken) {
+        setShowPasswordReset(true)
+        // Clean up URL
+        window.history.replaceState(null, '', window.location.pathname)
+      }
+    }
+
+    handleAuthStateChange()
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' && session) {
+        setShowPasswordReset(true)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
   // Load shared link after user confirmation
   const loadSharedLink = useCallback(async (linkId: string) => {
     try {
@@ -2410,10 +2438,13 @@ export function Dashboard() {
 
     // Skip if both scenarios are already loaded with the correct defaults AND snapshots exist
     // Snapshots are needed for dirty detection but aren't persisted, so may need recreation
+    // Also check that we have actual scenario data loaded, not just null names
     if (store.currentScenarioName === 'Default (A)' &&
         store.currentScenarioBName === 'Default (B)' &&
         store.loadedScenarioSnapshot &&
-        store.loadedScenarioBSnapshot) {
+        store.loadedScenarioBSnapshot &&
+        store.scenarioA &&
+        store.scenarioB) {
       console.log('[INIT] Skipping default load - scenarios and snapshots already present')
       return
     }
@@ -2459,30 +2490,23 @@ export function Dashboard() {
     async function loadDefaultScenarios() {
       try {
         // Load favorite or Default scenarios for A and B
+        // Include user's scenarios AND public scenarios (for Default (A) and Default (B))
         const { data: scenarios, error } = await supabase
           .from('scenarios')
           .select('*')
-          .eq('user_id', profile?.id)
+          .or(`user_id.eq.${profile?.id},is_public.eq.true`)
 
         if (error) throw error
 
-        // Filter scenarios based on view mode
-        const viewModeScenarios = scenarios?.filter(s => {
-          if (viewMode === 'Multi-Year') {
-            return s.view_mode === 'Multi-Year'
-          } else {
-            return s.view_mode === 'YTD Detailed'
-          }
-        })
-
+        // Don't filter by view mode - scenarios should work across both views
         // Find favorite A or fallback to Default (A)
-        const favoriteA = viewModeScenarios?.find(s => s.is_favorite_a)
-        const defaultA = viewModeScenarios?.find(s => s.name === 'Default (A)')
+        const favoriteA = scenarios?.find(s => s.is_favorite_a)
+        const defaultA = scenarios?.find(s => s.name === 'Default (A)')
         const scenarioA = favoriteA || defaultA
 
         // Find favorite B or fallback to Default (B)
-        const favoriteB = viewModeScenarios?.find(s => s.is_favorite_b)
-        const defaultB = viewModeScenarios?.find(s => s.name === 'Default (B)')
+        const favoriteB = scenarios?.find(s => s.is_favorite_b)
+        const defaultB = scenarios?.find(s => s.name === 'Default (B)')
         const scenarioB = favoriteB || defaultB
 
         // Load scenario A
@@ -2603,12 +2627,6 @@ export function Dashboard() {
             embedded={true}
           />
 
-      {/* Shared Link Warning Modal */}
-      <SharedLinkWarningModal
-        isOpen={showSharedLinkWarning}
-        onConfirm={handleSharedLinkConfirm}
-        onCancel={handleSharedLinkCancel}
-      />
         </div>
 
         {/* Signup Modal */}
@@ -2618,12 +2636,12 @@ export function Dashboard() {
           onSwitchToLogin={() => setShowSignupModal(false)}
         />
 
-      {/* Shared Link Warning Modal */}
-      <SharedLinkWarningModal
-        isOpen={showSharedLinkWarning}
-        onConfirm={handleSharedLinkConfirm}
-        onCancel={handleSharedLinkCancel}
-      />
+        {/* Shared Link Warning Modal */}
+        <SharedLinkWarningModal
+          isOpen={showSharedLinkWarning}
+          onConfirm={handleSharedLinkConfirm}
+          onCancel={handleSharedLinkCancel}
+        />
       </div>
     )
   }
@@ -2650,6 +2668,21 @@ export function Dashboard() {
           <span style={{ fontSize: 14, color: '#6b7280' }}>
             {profile.email}
           </span>
+        <button
+          onClick={() => setShowPasswordReset(true)}
+          style={{
+            padding: '8px 16px',
+            background: '#fff',
+            color: '#6b7280',
+            border: '1px solid #d1d5db',
+            borderRadius: '4px',
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: 'pointer',
+          }}
+        >
+          Change Password
+        </button>
         <button
           onClick={() => {
             signOut()
@@ -2738,12 +2771,6 @@ export function Dashboard() {
                 onRefreshRequest={handleYtdRefreshRequest}
               />
 
-      {/* Shared Link Warning Modal */}
-      <SharedLinkWarningModal
-        isOpen={showSharedLinkWarning}
-        onConfirm={handleSharedLinkConfirm}
-        onCancel={handleSharedLinkCancel}
-      />
             </div>
             {/* Only render MultiYearView after it's been visited once (lazy initialization) */}
             {multiYearInitialized && (
@@ -2918,6 +2945,13 @@ export function Dashboard() {
         onYtdSettingsChange={handleYtdSettingsChange}
         initialView={scenarioManagerView}
         initialScenario={scenarioManagerInitialScenario}
+      />
+
+      {/* Password Reset Modal */}
+      <PasswordResetModal
+        isOpen={showPasswordReset}
+        onClose={() => setShowPasswordReset(false)}
+        mode="change"
       />
 
       {/* Shared Link Warning Modal */}

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { signIn } from '../../lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faLock } from '@fortawesome/free-solid-svg-icons'
+import { faUser, faLock, faEnvelope } from '@fortawesome/free-solid-svg-icons'
 
 interface LoginModalProps {
   isOpen: boolean
@@ -15,6 +15,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup, embedded
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [mode, setMode] = useState<'login' | 'forgot'>('login')
 
   if (!isOpen) return null
 
@@ -24,13 +25,32 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup, embedded
     setLoading(true)
 
     try {
-      await signIn(email, password)
-      if (!embedded) onClose()
-      // Reset form
-      setEmail('')
-      setPassword('')
+      if (mode === 'login') {
+        await signIn(email, password)
+        if (!embedded) onClose()
+        // Reset form
+        setEmail('')
+        setPassword('')
+      } else if (mode === 'forgot') {
+        const response = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.message || 'Failed to send reset email')
+        }
+
+        setMode('login')
+        setError('Password reset email sent! Check your inbox.')
+        setEmail('')
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sign in')
+      setError(err instanceof Error ? err.message : `Failed to ${mode === 'login' ? 'sign in' : 'send reset email'}`)
     } finally {
       setLoading(false)
     }
@@ -40,6 +60,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup, embedded
     setEmail('')
     setPassword('')
     setError(null)
+    setMode('login')
     onClose()
   }
 
@@ -48,7 +69,9 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup, embedded
     <>
       {!embedded && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>Sign In</h2>
+          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>
+            {mode === 'login' ? 'Sign In' : 'Reset Password'}
+          </h2>
           <button
             onClick={handleClose}
             style={{
@@ -70,8 +93,29 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup, embedded
         </div>
       )}
 
+      {mode === 'forgot' && (
+        <div style={{ marginBottom: '16px', textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={() => setMode('login')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#0ea5e9',
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              fontSize: '14px',
+              padding: 0,
+            }}
+          >
+            ← Back to Sign In
+          </button>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '16px' }}>
+        {mode === 'forgot' ? (
+          <div style={{ marginBottom: '24px' }}>
             <label
               htmlFor="email"
               style={{
@@ -86,7 +130,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup, embedded
             </label>
             <div style={{ position: 'relative' }}>
               <FontAwesomeIcon
-                icon={faUser}
+                icon={faEnvelope}
                 style={{
                   position: 'absolute',
                   left: '12px',
@@ -104,6 +148,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup, embedded
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                placeholder="Enter your email address"
                 style={{
                   width: '100%',
                   padding: '8px 12px 8px 36px',
@@ -114,104 +159,194 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup, embedded
               />
             </div>
           </div>
-
-          <div style={{ marginBottom: '24px' }}>
-            <label
-              htmlFor="password"
-              style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: 500,
-                color: '#333',
-              }}
-            >
-              Password
-            </label>
-            <div style={{ position: 'relative' }}>
-              <FontAwesomeIcon
-                icon={faLock}
+        ) : (
+          <>
+            <div style={{ marginBottom: '16px' }}>
+              <label
+                htmlFor="email"
                 style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#999',
+                  display: 'block',
+                  marginBottom: '8px',
                   fontSize: '14px',
+                  fontWeight: 500,
+                  color: '#333',
                 }}
-              />
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
+              >
+                Email
+              </label>
+              <div style={{ position: 'relative' }}>
+                <FontAwesomeIcon
+                  icon={faUser}
+                  style={{
+                    position: 'absolute',
+                    left: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: '#999',
+                    fontSize: '14px',
+                  }}
+                />
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="username"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px 8px 36px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label
+                htmlFor="password"
                 style={{
-                  width: '100%',
-                  padding: '8px 12px 8px 36px',
-                  border: '1px solid #ccc',
-                  borderRadius: '4px',
+                  display: 'block',
+                  marginBottom: '8px',
                   fontSize: '14px',
+                  fontWeight: 500,
+                  color: '#333',
                 }}
-              />
+              >
+                Password
+              </label>
+              <div style={{ position: 'relative' }}>
+                <FontAwesomeIcon
+                  icon={faLock}
+                  style={{
+                    position: 'absolute',
+                    left: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: '#999',
+                    fontSize: '14px',
+                  }}
+                />
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px 8px 36px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                  }}
+                />
+              </div>
             </div>
-          </div>
+          </>
+        )}
 
-          {error && (
-            <div
-              style={{
-                padding: '12px',
-                background: '#fee2e2',
-                border: '1px solid #fecaca',
-                borderRadius: '4px',
-                color: '#dc2626',
-                fontSize: '14px',
-                marginBottom: '16px',
-              }}
-            >
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
+        {error && (
+          <div
             style={{
-              width: '100%',
-              padding: '10px',
-              background: loading ? '#94a3b8' : '#0ea5e9',
-              color: '#fff',
-              border: 'none',
+              padding: '12px',
+              background: error.includes('sent') ? '#d1fae5' : '#fee2e2',
+              border: error.includes('sent') ? '1px solid #a7f3d0' : '1px solid #fecaca',
               borderRadius: '4px',
-              fontSize: '16px',
-              fontWeight: 500,
-              cursor: loading ? 'not-allowed' : 'pointer',
+              color: error.includes('sent') ? '#065f46' : '#dc2626',
+              fontSize: '14px',
               marginBottom: '16px',
             }}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-
-          <div style={{ textAlign: 'center', fontSize: '14px', color: '#666' }}>
-            Have an invitation code?{' '}
-            <button
-              type="button"
-              onClick={onSwitchToSignup}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#0ea5e9',
-                textDecoration: 'underline',
-                cursor: 'pointer',
-                padding: 0,
-                fontSize: '14px',
-              }}
-            >
-              Create account
-            </button>
+            {error}
           </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '10px',
+            background: loading ? '#94a3b8' : '#0ea5e9',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            fontSize: '16px',
+            fontWeight: 500,
+            cursor: loading ? 'not-allowed' : 'pointer',
+            marginBottom: '16px',
+          }}
+        >
+          {loading
+            ? (mode === 'login' ? 'Signing in...' : 'Sending...')
+            : (mode === 'login' ? 'Sign In' : 'Send Reset Email')
+          }
+        </button>
+
+        <div style={{ textAlign: 'center', fontSize: '14px', color: '#666' }}>
+          {mode === 'login' ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setMode('forgot')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#0ea5e9',
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  padding: 0,
+                  marginRight: '8px',
+                }}
+              >
+                Forgot password?
+              </button>
+              {' | '}
+              Have an invitation code?{' '}
+              <button
+                type="button"
+                onClick={onSwitchToSignup}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#0ea5e9',
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  padding: 0,
+                  fontSize: '14px',
+                }}
+              >
+                Create account
+              </button>
+            </>
+          ) : (
+            <>
+              Remember your password?{' '}
+              <button
+                type="button"
+                onClick={() => setMode('login')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#0ea5e9',
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  padding: 0,
+                  fontSize: '14px',
+                }}
+              >
+                Sign in
+              </button>
+            </>
+          )}
+        </div>
       </form>
     </>
   )
