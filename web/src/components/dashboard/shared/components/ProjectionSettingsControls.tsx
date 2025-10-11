@@ -23,8 +23,10 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
     return `~$${dailyRate.toLocaleString()} per day, ${days} days, ${minWeeks}-${maxWeeks} weeks`
   }
 
-  // Default values for reset functionality
-  const defaultValues = PROJECTION_DEFAULTS[scenario]
+  // Default values for reset functionality - use loaded scenario snapshot if available
+  const loadedSnapshot = store.loadedScenarioSnapshot
+  const loadedProjection = loadedSnapshot?.scenarioA?.projection
+  const defaultValues = loadedProjection || PROJECTION_DEFAULTS[scenario]
 
   // Helper function to create a slider with number input and reset button
   const createSlider = (

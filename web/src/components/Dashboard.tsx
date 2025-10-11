@@ -789,13 +789,31 @@ export const useDashboardStore = create<Store>()(
             const scenarioState = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!scenarioState) return
 
-            scenarioState.future.forEach(fy => {
-              if (skip2025 && fy.year === 2025) return
-              const defaultPhysicians = scenario === 'A'
-                ? scenarioADefaultsByYear(fy.year)
-                : scenarioBDefaultsByYear(fy.year)
-              fy.physicians = defaultPhysicians.map(p => ({ ...p }))
-            })
+            // If we have a loaded scenario snapshot, reset all years from that
+            if (state.loadedScenarioSnapshot) {
+              scenarioState.future.forEach(fy => {
+                if (skip2025 && fy.year === 2025) return
+                const snapshotFy = state.loadedScenarioSnapshot!.scenarioA.future.find(f => f.year === fy.year)
+                if (snapshotFy) {
+                  // Deep copy physicians from snapshot
+                  fy.physicians = JSON.parse(JSON.stringify(snapshotFy.physicians))
+                  // Also restore other year-specific settings
+                  fy.locumCosts = snapshotFy.locumCosts
+                  fy.medicalDirectorHours = snapshotFy.medicalDirectorHours
+                  fy.prcsMedicalDirectorHours = snapshotFy.prcsMedicalDirectorHours
+                  fy.prcsDirectorPhysicianId = snapshotFy.prcsDirectorPhysicianId
+                }
+              })
+            } else {
+              // Fall back to hardcoded defaults if no snapshot
+              scenarioState.future.forEach(fy => {
+                if (skip2025 && fy.year === 2025) return
+                const defaultPhysicians = scenario === 'A'
+                  ? scenarioADefaultsByYear(fy.year)
+                  : scenarioBDefaultsByYear(fy.year)
+                fy.physicians = defaultPhysicians.map(p => ({ ...p }))
+              })
+            }
           })
         },
 
@@ -805,16 +823,20 @@ export const useDashboardStore = create<Store>()(
             const scenarioState = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!scenarioState) return
 
+            // Use loaded scenario snapshot if available, otherwise fall back to defaults
+            const loadedProjection = state.loadedScenarioSnapshot?.scenarioA?.projection
+            const defaultProjection = loadedProjection || PROJECTION_DEFAULTS.A
+
             scenarioState.projection = {
-              incomeGrowthPct: PROJECTION_DEFAULTS.A.incomeGrowthPct,
-              medicalDirectorHours: PROJECTION_DEFAULTS.A.medicalDirectorHours,
-              prcsMedicalDirectorHours: PROJECTION_DEFAULTS.A.prcsMedicalDirectorHours,
-              consultingServicesAgreement: PROJECTION_DEFAULTS.A.consultingServicesAgreement,
-              nonEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonEmploymentCostsPct,
-              nonMdEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonMdEmploymentCostsPct,
-              locumsCosts: PROJECTION_DEFAULTS.A.locumsCosts,
-              miscEmploymentCostsPct: PROJECTION_DEFAULTS.A.miscEmploymentCostsPct,
-              benefitCostsGrowthPct: PROJECTION_DEFAULTS.A.benefitCostsGrowthPct
+              incomeGrowthPct: defaultProjection.incomeGrowthPct,
+              medicalDirectorHours: defaultProjection.medicalDirectorHours,
+              prcsMedicalDirectorHours: defaultProjection.prcsMedicalDirectorHours,
+              consultingServicesAgreement: defaultProjection.consultingServicesAgreement,
+              nonEmploymentCostsPct: defaultProjection.nonEmploymentCostsPct,
+              nonMdEmploymentCostsPct: defaultProjection.nonMdEmploymentCostsPct,
+              locumsCosts: defaultProjection.locumsCosts,
+              miscEmploymentCostsPct: defaultProjection.miscEmploymentCostsPct,
+              benefitCostsGrowthPct: defaultProjection.benefitCostsGrowthPct
             }
           })
 
@@ -824,8 +846,37 @@ export const useDashboardStore = create<Store>()(
 
         // Reset year-by-year income/cost values to projected values for a scenario
         resetYearByYearValues: (scenario: ScenarioKey) => {
-          // This will reset all custom future values back to projected values (applyProjectionFromLastActual already skips 2025)
-          get().applyProjectionFromLastActual(scenario)
+          set((state) => {
+            const scenarioState = scenario === 'A' ? state.scenarioA : state.scenarioB
+            if (!scenarioState) return
+
+            // If we have a loaded scenario snapshot, restore custom per-year overrides from snapshot
+            if (state.loadedScenarioSnapshot) {
+              scenarioState.future.forEach(fy => {
+                const snapshotFy = state.loadedScenarioSnapshot!.scenarioA.future.find(f => f.year === fy.year)
+                if (snapshotFy) {
+                  // Restore income/cost values that might have been customized per year
+                  fy.therapyIncome = snapshotFy.therapyIncome
+                  fy.nonEmploymentCosts = snapshotFy.nonEmploymentCosts
+                  fy.nonMdEmploymentCosts = snapshotFy.nonMdEmploymentCosts
+                  fy.locumCosts = snapshotFy.locumCosts
+                  fy.miscEmploymentCosts = snapshotFy.miscEmploymentCosts
+                  fy.medicalDirectorHours = snapshotFy.medicalDirectorHours
+                  fy.prcsMedicalDirectorHours = snapshotFy.prcsMedicalDirectorHours
+                  fy.consultingServicesAgreement = snapshotFy.consultingServicesAgreement
+                  // Restore per-site values if they exist
+                  if (snapshotFy.therapyLacey !== undefined) fy.therapyLacey = snapshotFy.therapyLacey
+                  if (snapshotFy.therapyCentralia !== undefined) fy.therapyCentralia = snapshotFy.therapyCentralia
+                  if (snapshotFy.therapyAberdeen !== undefined) fy.therapyAberdeen = snapshotFy.therapyAberdeen
+                }
+              })
+              // Also restore custom projected values (grid overrides)
+              state.customProjectedValues = JSON.parse(JSON.stringify(state.loadedScenarioSnapshot.customProjectedValues))
+            } else {
+              // Fall back to recalculating from projection formulas if no snapshot
+              get().applyProjectionFromLastActual(scenario)
+            }
+          })
         },
 
         // Reset app-level view settings (which year selected, data mode, etc.)
@@ -849,6 +900,10 @@ export const useDashboardStore = create<Store>()(
             const existingSelectedYear = skip2025 ? state.scenarioA.selectedYear : 2025
             const existingDataMode = skip2025 ? state.scenarioA.dataMode : '2025 Data'
 
+            // Use loaded scenario snapshot if available, otherwise use hardcoded defaults
+            const loadedProjection = state.loadedScenarioSnapshot?.scenarioA?.projection
+            const defaultProjection = loadedProjection || PROJECTION_DEFAULTS.A
+
             // Initialize scenario A with basic structure
             state.scenarioA = {
               future: INITIAL_FUTURE_YEARS_A.map((f) => ({
@@ -856,15 +911,15 @@ export const useDashboardStore = create<Store>()(
                 physicians: [...f.physicians.map(p => ({ ...p }))]
               })),
               projection: {
-                incomeGrowthPct: PROJECTION_DEFAULTS.A.incomeGrowthPct,
-                medicalDirectorHours: PROJECTION_DEFAULTS.A.medicalDirectorHours,
-                prcsMedicalDirectorHours: PROJECTION_DEFAULTS.A.prcsMedicalDirectorHours,
-                consultingServicesAgreement: PROJECTION_DEFAULTS.A.consultingServicesAgreement,
-                nonEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonEmploymentCostsPct,
-                nonMdEmploymentCostsPct: PROJECTION_DEFAULTS.A.nonMdEmploymentCostsPct,
-                locumsCosts: PROJECTION_DEFAULTS.A.locumsCosts,
-                miscEmploymentCostsPct: PROJECTION_DEFAULTS.A.miscEmploymentCostsPct,
-                benefitCostsGrowthPct: PROJECTION_DEFAULTS.A.benefitCostsGrowthPct
+                incomeGrowthPct: defaultProjection.incomeGrowthPct,
+                medicalDirectorHours: defaultProjection.medicalDirectorHours,
+                prcsMedicalDirectorHours: defaultProjection.prcsMedicalDirectorHours,
+                consultingServicesAgreement: defaultProjection.consultingServicesAgreement,
+                nonEmploymentCostsPct: defaultProjection.nonEmploymentCostsPct,
+                nonMdEmploymentCostsPct: defaultProjection.nonMdEmploymentCostsPct,
+                locumsCosts: defaultProjection.locumsCosts,
+                miscEmploymentCostsPct: defaultProjection.miscEmploymentCostsPct,
+                benefitCostsGrowthPct: defaultProjection.benefitCostsGrowthPct
               },
               selectedYear: existingSelectedYear,
               dataMode: existingDataMode,
