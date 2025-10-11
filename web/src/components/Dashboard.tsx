@@ -2335,7 +2335,7 @@ export function Dashboard() {
   // Load shared link after user confirmation
   const loadSharedLink = useCallback(async (linkId: string) => {
     try {
-      const response = await authenticatedFetch(`/api/shared-links/${linkId}`)
+      const response = await authenticatedFetch(`/api/shared-links?id=${linkId}`)
 
       if (!response.ok) {
         const error = await response.json()

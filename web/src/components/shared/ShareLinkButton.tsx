@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faShare } from '@fortawesome/free-solid-svg-icons'
+import { faLink } from '@fortawesome/free-solid-svg-icons'
 import ShareLinkModal from './ShareLinkModal'
 
 interface ShareLinkButtonProps {
@@ -80,7 +80,7 @@ export default function ShareLinkButton({
         onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
         title="Create Shareable Link"
       >
-        <FontAwesomeIcon icon={faShare} />
+        <FontAwesomeIcon icon={faLink} />
       </button>
 
       {showModal && (

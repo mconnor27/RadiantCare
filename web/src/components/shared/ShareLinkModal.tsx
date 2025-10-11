@@ -50,7 +50,7 @@ export default function ShareLinkModal({
     setError(null)
 
     try {
-      const response = await authenticatedFetch('/api/shared-links/create', {
+      const response = await authenticatedFetch('/api/shared-links', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
