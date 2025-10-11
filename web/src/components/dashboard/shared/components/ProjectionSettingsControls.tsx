@@ -26,8 +26,8 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
   // Default values for reset functionality - use loaded scenario snapshot if available
   const loadedSnapshot = scenario === 'A' ? store.loadedScenarioSnapshot : store.loadedScenarioBSnapshot
   const loadedProjection = scenario === 'A'
-    ? loadedSnapshot?.scenarioA?.projection
-    : loadedSnapshot?.scenarioB?.projection
+    ? (loadedSnapshot && 'scenarioA' in loadedSnapshot ? loadedSnapshot.scenarioA.projection : undefined)
+    : (loadedSnapshot && 'scenarioB' in loadedSnapshot ? loadedSnapshot.scenarioB.projection : undefined)
   const defaultValues = loadedProjection || PROJECTION_DEFAULTS[scenario]
 
   // Helper function to create a slider with number input and reset button

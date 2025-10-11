@@ -13,7 +13,7 @@ import MultiYearView from './dashboard/views/multi-year/MultiYearView'
 import SyncButton from './dashboard/views/detailed/components/SyncButton'
 import { DEFAULT_YTD_SETTINGS } from './dashboard/views/detailed/config/chartConfig'
 // Import types from types.ts to avoid duplication and binding conflicts
-import type { YearRow, PhysicianType, Physician, FutureYear, ScenarioKey, Store } from './dashboard/shared/types'
+import type { YearRow, PhysicianType, Physician, FutureYear, ScenarioKey, Store, YTDSettings, SavedScenario, ScenarioState, BaselineMode } from './dashboard/shared/types'
 
 // Re-export types for backward compatibility with extracted components
 export type { YearRow, PhysicianType, Physician, FutureYear, ScenarioKey }
@@ -763,8 +763,8 @@ export const useDashboardStore = create<Store>()(
 
             // If we have a loaded scenario snapshot, reset to that instead of defaults
             if (snapshot) {
-              const snapshotScenario = scenario === 'A' ? snapshot.scenarioA : snapshot.scenarioB
-              const snapshotFy = snapshotScenario.future.find(f => f.year === year)
+              const snapshotScenario = scenario === 'A' ? ('scenarioA' in snapshot ? snapshot.scenarioA : null) : ('scenarioB' in snapshot ? snapshot.scenarioB : null)
+              const snapshotFy = snapshotScenario?.future.find((f: FutureYear) => f.year === year)
               if (snapshotFy) {
                 // Deep copy from snapshot
                 futureYear.physicians = JSON.parse(JSON.stringify(snapshotFy.physicians))
@@ -802,10 +802,10 @@ export const useDashboardStore = create<Store>()(
 
             // If we have a loaded scenario snapshot, reset all years from that
             if (snapshot) {
-              const snapshotScenario = scenario === 'A' ? snapshot.scenarioA : snapshot.scenarioB
+              const snapshotScenario = scenario === 'A' ? ('scenarioA' in snapshot ? snapshot.scenarioA : null) : ('scenarioB' in snapshot ? snapshot.scenarioB : null)
               scenarioState.future.forEach(fy => {
                 if (skip2025 && fy.year === 2025) return
-                const snapshotFy = snapshotScenario.future.find(f => f.year === fy.year)
+                const snapshotFy = snapshotScenario?.future.find((f: FutureYear) => f.year === fy.year)
                 if (snapshotFy) {
                   // Deep copy physicians from snapshot
                   fy.physicians = JSON.parse(JSON.stringify(snapshotFy.physicians))
@@ -838,8 +838,8 @@ export const useDashboardStore = create<Store>()(
             // Use the correct snapshot based on scenario
             const snapshot = scenario === 'A' ? state.loadedScenarioSnapshot : state.loadedScenarioBSnapshot
             const loadedProjection = scenario === 'A'
-              ? snapshot?.scenarioA?.projection
-              : snapshot?.scenarioB?.projection
+              ? (snapshot && 'scenarioA' in snapshot ? snapshot.scenarioA.projection : undefined)
+              : (snapshot && 'scenarioB' in snapshot ? snapshot.scenarioB.projection : undefined)
             const defaultProjection = loadedProjection || (scenario === 'A' ? PROJECTION_DEFAULTS.A : PROJECTION_DEFAULTS.B)
 
             scenarioState.projection = {
@@ -870,9 +870,9 @@ export const useDashboardStore = create<Store>()(
 
             // If we have a loaded scenario snapshot, restore custom per-year overrides from snapshot
             if (snapshot) {
-              const snapshotScenario = scenario === 'A' ? snapshot.scenarioA : snapshot.scenarioB
+              const snapshotScenario = scenario === 'A' ? ('scenarioA' in snapshot ? snapshot.scenarioA : null) : ('scenarioB' in snapshot ? snapshot.scenarioB : null)
               scenarioState.future.forEach(fy => {
-                const snapshotFy = snapshotScenario.future.find(f => f.year === fy.year)
+                const snapshotFy = snapshotScenario?.future.find((f: FutureYear) => f.year === fy.year)
                 if (snapshotFy) {
                   // Restore income/cost values that might have been customized per year
                   fy.therapyIncome = snapshotFy.therapyIncome
@@ -1415,8 +1415,7 @@ export const useDashboardStore = create<Store>()(
                 const { selectedYear: _selectedYear, ...scenarioBWithoutUI } = state.scenarioB
                 void _selectedYear // Mark as intentionally unused
                 state.loadedScenarioBSnapshot = {
-                  scenarioB: JSON.parse(JSON.stringify(scenarioBWithoutUI)),
-                  customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
+                  scenarioB: JSON.parse(JSON.stringify(scenarioBWithoutUI))
                 }
               }
             })
@@ -1444,8 +1443,7 @@ export const useDashboardStore = create<Store>()(
                 const { selectedYear: _selectedYear, ...scenarioBWithoutUI } = state.scenarioB
                 void _selectedYear // Mark as intentionally unused
                 state.loadedScenarioBSnapshot = {
-                  scenarioB: JSON.parse(JSON.stringify(scenarioBWithoutUI)),
-                  customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
+                  scenarioB: JSON.parse(JSON.stringify(scenarioBWithoutUI))
                 }
               }
             })
@@ -1843,7 +1841,9 @@ export function hasChangesFromLoadedScenario(
   }
 
   const currentScenario = scenario === 'A' ? _store.scenarioA : _store.scenarioB
-  const snapshotScenario = scenario === 'A' ? snapshot.scenarioA : snapshot.scenarioB
+  const snapshotScenario = scenario === 'A' ? ('scenarioA' in snapshot ? snapshot.scenarioA : null) : ('scenarioB' in snapshot ? snapshot.scenarioB : null)
+
+  if (!currentScenario || !snapshotScenario) return false
 
   const currentFy = currentScenario.future.find((f: FutureYear) => f.year === year)
   const snapshotFy = snapshotScenario.future.find((f: FutureYear) => f.year === year)
@@ -1900,9 +1900,9 @@ export function hasChangesFromLoadedScenario(
     return true
   }
 
-  // Compare customProjectedValues (grid overrides)
+  // Compare customProjectedValues (grid overrides) - only for scenario A
   const currentCustomValues = _store.customProjectedValues || {}
-  const snapshotCustomValues = snapshot.customProjectedValues || {}
+  const snapshotCustomValues = ('customProjectedValues' in snapshot ? snapshot.customProjectedValues : {}) || {}
 
   const allKeys = new Set([
     ...Object.keys(currentCustomValues),

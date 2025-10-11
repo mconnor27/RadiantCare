@@ -296,6 +296,10 @@ export const RADAR_CONFIG = {
 // Default YTD chart settings
 export const DEFAULT_YTD_SETTINGS = {
   isNormalized: false,
+  smoothing: 10,
+  chartType: 'line',
+  incomeMode: 'total',
+  showTarget: false,
   showCombined: false,
   combineStatistic: null as 'mean' | 'median' | null,
   combineError: null as 'std' | 'ci' | null,
@@ -304,7 +308,6 @@ export const DEFAULT_YTD_SETTINGS = {
   currentPeriod: { year: new Date().getFullYear() },
   is2025Visible: true,
   showAllMonths: true,
-  incomeMode: 'total' as 'total' | 'per-site',
   smoothingByMode: { line: 10, bar: 0, proportion: 12 },
   selectedYears: Array.from({ length: 9 }, (_, i) => 2016 + i),
   visibleSites: { lacey: true, centralia: true, aberdeen: true },
