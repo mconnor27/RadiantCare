@@ -11,7 +11,9 @@ import OverallCompensationSummary from '../../shared/components/OverallCompensat
 import ParametersSummary from './components/ParametersSummary'
 import CollapsibleSection from '../../shared/components/CollapsibleSection'
 import ScenarioLoadModal from '../../../scenarios/ScenarioLoadModal'
+import ShareLinkButton from '../../../shared/ShareLinkButton'
 import { useAuth } from '../../../auth/AuthProvider'
+import { supabase } from '../../../../lib/supabase'
 
 // Helper function to get baseline year from data mode
 function getBaselineYear(dataMode: string): number {
@@ -60,6 +62,8 @@ export default function MultiYearView() {
   const [showLoadModalB, setShowLoadModalB] = useState(false)
   const [isScenarioDirty, setIsScenarioDirty] = useState(false)
   const [isScenarioBDirty, setIsScenarioBDirty] = useState(false)
+  const [scenarioAIsPublic, setScenarioAIsPublic] = useState(false)
+  const [scenarioBIsPublic, setScenarioBIsPublic] = useState(false)
 
   // Log only on mount (not on every render)
   useEffect(() => {
@@ -336,6 +340,58 @@ export default function MultiYearView() {
 
   useEffect(() => {
     setIsScenarioBDirty(false)
+  }, [store.currentScenarioBId])
+
+  // Fetch scenario A public status when loaded
+  useEffect(() => {
+    async function fetchScenarioAPublicStatus() {
+      if (!store.currentScenarioId) {
+        setScenarioAIsPublic(false)
+        return
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('scenarios')
+          .select('is_public')
+          .eq('id', store.currentScenarioId)
+          .single()
+
+        if (!error && data) {
+          setScenarioAIsPublic(data.is_public)
+        }
+      } catch (err) {
+        console.error('Failed to fetch scenario A public status:', err)
+      }
+    }
+
+    fetchScenarioAPublicStatus()
+  }, [store.currentScenarioId])
+
+  // Fetch scenario B public status when loaded
+  useEffect(() => {
+    async function fetchScenarioBPublicStatus() {
+      if (!store.currentScenarioBId) {
+        setScenarioBIsPublic(false)
+        return
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('scenarios')
+          .select('is_public')
+          .eq('id', store.currentScenarioBId)
+          .single()
+
+        if (!error && data) {
+          setScenarioBIsPublic(data.is_public)
+        }
+      } catch (err) {
+        console.error('Failed to fetch scenario B public status:', err)
+      }
+    }
+
+    fetchScenarioBPublicStatus()
   }, [store.currentScenarioBId])
 
   // Auto-load Default scenario on first load if no scenario is loaded
@@ -634,6 +690,26 @@ export default function MultiYearView() {
                     background: '#d1d5db',
                     margin: '0 2px'
                   }} />
+
+                  {/* Share Link Button */}
+                  <div style={{ marginRight: 4 }}>
+                    <ShareLinkButton
+                      viewMode="Multi-Year"
+                      scenarioAId={store.currentScenarioId}
+                      scenarioAIsPublic={scenarioAIsPublic}
+                      scenarioBId={store.currentScenarioBId}
+                      scenarioBIsPublic={scenarioBIsPublic}
+                      scenarioBEnabled={store.scenarioBEnabled}
+                      isScenarioDirty={isScenarioDirty}
+                      isScenarioBDirty={isScenarioBDirty}
+                      uiSettings={{
+                        multiYear: {
+                          selectedYearA: store.scenarioA.selectedYear,
+                          selectedYearB: store.scenarioB?.selectedYear
+                        }
+                      }}
+                    />
+                  </div>
 
                   {/* Gear Icon - Full Scenario Manager */}
                   <button

@@ -20,7 +20,9 @@ import { useDashboardStore, hasChangesFromLoadedScenario } from '../../../Dashbo
 import PhysiciansEditor from '../../shared/components/PhysiciansEditor'
 import { DEFAULT_LOCUM_COSTS_2025 } from '../../shared/defaults'
 import ScenarioLoadModal from '../../../scenarios/ScenarioLoadModal'
+import ShareLinkButton from '../../../shared/ShareLinkButton'
 import { useAuth } from '../../../auth/AuthProvider'
+import { supabase } from '../../../../lib/supabase'
 
 interface YTDDetailedProps {
   initialSettings?: any
@@ -34,6 +36,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
   const [showLoadingModal, setShowLoadingModal] = useState(true)  // Start as true to show immediately
   const [showLoadModal, setShowLoadModal] = useState(false)  // Scenario load modal
   const [isScenarioDirty, setIsScenarioDirty] = useState(false)  // Track if scenario has been modified
+  const [scenarioAIsPublic, setScenarioAIsPublic] = useState(false)  // Track if scenario is public
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<YTDPoint[]>([])
   const [environment] = useState<'production' | 'sandbox'>('production')
@@ -337,6 +340,32 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     JSON.stringify(store.customProjectedValues)
   ])
 
+  // Fetch scenario A public status when loaded
+  useEffect(() => {
+    async function fetchScenarioPublicStatus() {
+      if (!store.currentScenarioId) {
+        setScenarioAIsPublic(false)
+        return
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('scenarios')
+          .select('is_public')
+          .eq('id', store.currentScenarioId)
+          .single()
+
+        if (!error && data) {
+          setScenarioAIsPublic(data.is_public)
+        }
+      } catch (err) {
+        console.error('Failed to fetch scenario public status:', err)
+      }
+    }
+
+    fetchScenarioPublicStatus()
+  }, [store.currentScenarioId])
+
   // Auto-load Default scenario on first load if no scenario is loaded
   useEffect(() => {
     if (!store.currentScenarioId) {
@@ -612,6 +641,40 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
           background: '#d1d5db',
           margin: '0 4px'
         }} />
+
+        {/* Share Link Button */}
+        <div style={{ marginRight: 4 }}>
+          <ShareLinkButton
+            viewMode="YTD Detailed"
+            scenarioAId={store.currentScenarioId}
+            scenarioAIsPublic={scenarioAIsPublic}
+            scenarioBId={null}
+            scenarioBIsPublic={false}
+            scenarioBEnabled={false}
+            isScenarioDirty={isScenarioDirty}
+            isScenarioBDirty={false}
+            uiSettings={{
+              ytdDetailed: {
+                isNormalized,
+                chartMode,
+                smoothing: getCurrentSmoothing(),
+                incomeMode,
+                colorScheme,
+                siteColorScheme,
+                timeframe,
+                currentPeriod,
+                selectedYears,
+                visibleSites,
+                showCombined,
+                combineStatistic,
+                combineError,
+                smoothingByMode,
+                is2025Visible,
+                showAllMonths
+              }
+            }}
+          />
+        </div>
 
         {/* Gear Icon - Full Scenario Manager */}
         <button

@@ -10,7 +10,8 @@
     "lint:fix": "eslint **/*.ts --fix"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0"
+    "@supabase/supabase-js": "^2.39.0",
+    "nanoid": "^5.1.6"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
