@@ -485,9 +485,11 @@ export default function MultiYearView() {
                         {currentScenarioBName}
                       </div>
                     )}
-                    <div style={{ fontSize: 12, color: '#6b7280', fontStyle: 'italic' }}>
-                      (Uses Scenario A baseline)
-                    </div>
+                    {store.scenarioB?.dataMode === '2025 Data' && (
+                      <div style={{ fontSize: 12, color: '#6b7280', fontStyle: 'italic' }}>
+                        (Uses Scenario A baseline)
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     {/* Load Button */}
@@ -562,8 +564,8 @@ export default function MultiYearView() {
                       <FontAwesomeIcon icon={faCopy} />
                     </button>
 
-                    {/* Unload Button - only show if scenario B is loaded */}
-                    {currentScenarioBName && (
+                    {/* Unload Button - only show if scenario B is loaded and not Default (B) */}
+                    {currentScenarioBName && currentScenarioBName !== 'Default (B)' && (
                       <button
                         onClick={() => {
                           const event = new CustomEvent('unloadScenarioB')

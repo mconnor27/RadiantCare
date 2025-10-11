@@ -1408,10 +1408,11 @@ setTimeout(() => {
 }, 0)
 
 
-export function usePartnerComp(year: number, scenario: ScenarioKey) {
+export function usePartnerComp(year: number, scenario: ScenarioKey, fyOverride?: FutureYear) {
   const store = useDashboardStore()
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
-  const fy = sc.future.find((f) => f.year === year)
+  const fyFromStore = sc.future.find((f) => f.year === year)
+  const fy = fyOverride ?? fyFromStore
 
   return useMemo(() => {
     if (!fy) return [] as { id: string; name: string; comp: number }[]
@@ -1838,13 +1839,19 @@ export function Dashboard() {
     const handleUnloadScenario = () => {
       if (!store.currentScenarioName) return
 
+      // Cannot unload Default (A)
+      if (store.currentScenarioName === 'Default (A)') {
+        alert('Cannot unload Default (A) scenario. It serves as the baseline for all projections.')
+        return
+      }
+
       const shouldUnload = confirm(
-        `Unload "${store.currentScenarioName}"?\n\nAny unsaved changes will be lost.`
+        `Unload "${store.currentScenarioName}"?\n\nAny unsaved changes will be lost. Default (A) will be loaded.`
       )
 
       if (shouldUnload) {
-        // Clear the current scenario
-        store.setCurrentScenario(null, null)
+        // Load Default (A) scenario
+        store.setCurrentScenario(null, 'Default (A)')
 
         // Reset to defaults - for YTD view, reset to baseline 2025 data
         if (viewMode === 'YTD Detailed') {
@@ -1865,14 +1872,19 @@ export function Dashboard() {
     const handleUnloadScenarioB = () => {
       if (!store.currentScenarioBName) return
 
+      // Cannot unload Default (B)
+      if (store.currentScenarioBName === 'Default (B)') {
+        alert('Cannot unload Default (B) scenario. It serves as the baseline for Scenario B.')
+        return
+      }
+
       const shouldUnload = confirm(
-        `Unload "${store.currentScenarioBName}" from Scenario B?\n\nAny unsaved changes will be lost.`
+        `Unload "${store.currentScenarioBName}" from Scenario B?\n\nAny unsaved changes will be lost. Default (B) will be loaded.`
       )
 
       if (shouldUnload) {
-        // Clear Scenario B
-        store.setCurrentScenarioB(null, null)
-        store.setScenarioEnabled(false)
+        // Load Default (B) scenario
+        store.setCurrentScenarioB(null, 'Default (B)')
       }
     }
 
