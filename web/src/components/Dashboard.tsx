@@ -2643,13 +2643,6 @@ export function Dashboard() {
               ytdRefreshCallbackRef.current?.()
             }}
           />
-
-      {/* Shared Link Warning Modal */}
-      <SharedLinkWarningModal
-        isOpen={showSharedLinkWarning}
-        onConfirm={handleSharedLinkConfirm}
-        onCancel={handleSharedLinkCancel}
-      />
         )}
         {/* Spacer to push right elements to the right when SyncButton is hidden */}
         {viewMode !== 'YTD Detailed' && <div style={{ flex: 1 }}></div>}
