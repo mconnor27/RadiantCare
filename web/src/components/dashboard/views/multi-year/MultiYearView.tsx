@@ -2,6 +2,7 @@ import { useMemo, useEffect, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faFolderOpen, faFloppyDisk, faCopy, faCircleXmark, faGear, faRotateLeft } from '@fortawesome/free-solid-svg-icons'
 import { useDashboardStore } from '../../../Dashboard'
+import type { Store } from '../../shared/types'
 import { useIsMobile } from '../../shared/hooks'
 import YearPanel from '../../shared/components/YearPanel'
 import ProjectionSettingsControls from '../../shared/components/ProjectionSettingsControls'
@@ -19,7 +20,7 @@ function getBaselineYear(dataMode: string): number {
 }
 
 // Helper function to create projection settings summary
-function createProjectionSummary(scenario: 'A' | 'B', store: any): string {
+function createProjectionSummary(scenario: 'A' | 'B', store: Store): string {
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB
   if (!sc) return ''
   
@@ -66,14 +67,14 @@ export default function MultiYearView() {
   }, [])
 
   // Memoized summaries that update when projection settings change
-  const projectionSummaryA = useMemo(() => 
-    createProjectionSummary('A', store), 
-    [store.scenarioA.projection]
+  const projectionSummaryA = useMemo(() =>
+    createProjectionSummary('A', store),
+    [store]
   )
   
-  const projectionSummaryB = useMemo(() => 
-    store.scenarioB ? createProjectionSummary('B', store) : '', 
-    [store.scenarioB?.projection]
+  const projectionSummaryB = useMemo(() =>
+    store.scenarioB ? createProjectionSummary('B', store) : '',
+    [store]
   )
 
   const expandAll = () => {
@@ -119,23 +120,52 @@ export default function MultiYearView() {
       return Math.abs(current.projection[k] - snapshot.projection[k]) > 0.001
     })
 
-    // Check if other settings differ
-    const otherDirty = current.selectedYear !== snapshot.selectedYear ||
-                       current.dataMode !== snapshot.dataMode
+    // Check if other settings differ (excluding selectedYear - it's just UI state)
+    const otherDirty = current.dataMode !== snapshot.dataMode
+
+    // Check if physician data differs in any future year
+    const physicianDirty = current.future.some((currentFy, idx) => {
+      const snapshotFy = snapshot.future[idx]
+      if (!snapshotFy) return true
+
+      // Compare physician arrays
+      if (currentFy.physicians.length !== snapshotFy.physicians.length) return true
+
+      return currentFy.physicians.some((currentPhys, physIdx) => {
+        const snapshotPhys = snapshotFy.physicians[physIdx]
+        if (!snapshotPhys) return true
+
+        // Compare all physician properties
+        return currentPhys.id !== snapshotPhys.id ||
+               currentPhys.name !== snapshotPhys.name ||
+               currentPhys.type !== snapshotPhys.type ||
+               currentPhys.rvus !== snapshotPhys.rvus ||
+               currentPhys.percentOwnership !== snapshotPhys.percentOwnership ||
+               currentPhys.salary !== snapshotPhys.salary ||
+               currentPhys.partnerStartYear !== snapshotPhys.partnerStartYear ||
+               currentPhys.employeePortionOfYear !== snapshotPhys.employeePortionOfYear ||
+               currentPhys.retirementYear !== snapshotPhys.retirementYear ||
+               currentPhys.medicalDirectorHoursPercentage !== snapshotPhys.medicalDirectorHoursPercentage ||
+               currentPhys.buyoutCost !== snapshotPhys.buyoutCost ||
+               currentPhys.trailingSharedMdAmount !== snapshotPhys.trailingSharedMdAmount ||
+               currentPhys.additionalDaysWorked !== snapshotPhys.additionalDaysWorked
+      })
+    })
 
     console.log('[DIRTY CHECK A] Results:', {
       projectionDirty,
       otherDirty,
-      selectedYearMatch: current.selectedYear === snapshot.selectedYear,
+      physicianDirty,
       dataModeMatch: current.dataMode === snapshot.dataMode,
-      isDirty: projectionDirty || otherDirty
+      isDirty: projectionDirty || otherDirty || physicianDirty
     })
 
-    setIsScenarioDirty(projectionDirty || otherDirty)
+    setIsScenarioDirty(projectionDirty || otherDirty || physicianDirty)
   }, [
+    store.scenarioA,
     store.scenarioA.projection,
-    store.scenarioA.selectedYear,
     store.scenarioA.dataMode,
+    store.scenarioA.future,
     store.currentScenarioId,
     store.loadedScenarioSnapshot
   ])
@@ -167,25 +197,54 @@ export default function MultiYearView() {
       return Math.abs(current.projection[k] - snapshot.projection[k]) > 0.001
     })
 
-    // Check if other settings differ
-    const otherDirty = current.selectedYear !== snapshot.selectedYear ||
-                       current.dataMode !== snapshot.dataMode
+    // Check if other settings differ (excluding selectedYear - it's just UI state)
+    const otherDirty = current.dataMode !== snapshot.dataMode
+
+    // Check if physician data differs in any future year
+    const physicianDirty = current.future.some((currentFy, idx) => {
+      const snapshotFy = snapshot.future[idx]
+      if (!snapshotFy) return true
+
+      // Compare physician arrays
+      if (currentFy.physicians.length !== snapshotFy.physicians.length) return true
+
+      return currentFy.physicians.some((currentPhys, physIdx) => {
+        const snapshotPhys = snapshotFy.physicians[physIdx]
+        if (!snapshotPhys) return true
+
+        // Compare all physician properties
+        return currentPhys.id !== snapshotPhys.id ||
+               currentPhys.name !== snapshotPhys.name ||
+               currentPhys.type !== snapshotPhys.type ||
+               currentPhys.rvus !== snapshotPhys.rvus ||
+               currentPhys.percentOwnership !== snapshotPhys.percentOwnership ||
+               currentPhys.salary !== snapshotPhys.salary ||
+               currentPhys.partnerStartYear !== snapshotPhys.partnerStartYear ||
+               currentPhys.employeePortionOfYear !== snapshotPhys.employeePortionOfYear ||
+               currentPhys.retirementYear !== snapshotPhys.retirementYear ||
+               currentPhys.medicalDirectorHoursPercentage !== snapshotPhys.medicalDirectorHoursPercentage ||
+               currentPhys.buyoutCost !== snapshotPhys.buyoutCost ||
+               currentPhys.trailingSharedMdAmount !== snapshotPhys.trailingSharedMdAmount ||
+               currentPhys.additionalDaysWorked !== snapshotPhys.additionalDaysWorked
+      })
+    })
 
     console.log('[DIRTY CHECK B] Results:', {
       projectionDirty,
       otherDirty,
-      selectedYearMatch: current.selectedYear === snapshot.selectedYear,
+      physicianDirty,
       dataModeMatch: current.dataMode === snapshot.dataMode,
       currentDataMode: current.dataMode,
       snapshotDataMode: snapshot.dataMode,
-      isDirty: projectionDirty || otherDirty
+      isDirty: projectionDirty || otherDirty || physicianDirty
     })
 
-    setIsScenarioBDirty(projectionDirty || otherDirty)
+    setIsScenarioBDirty(projectionDirty || otherDirty || physicianDirty)
   }, [
+    store.scenarioB,
     store.scenarioB?.projection,
-    store.scenarioB?.selectedYear,
     store.scenarioB?.dataMode,
+    store.scenarioB?.future,
     store.currentScenarioBId,
     store.loadedScenarioBSnapshot
   ])

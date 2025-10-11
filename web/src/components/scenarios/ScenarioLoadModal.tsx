@@ -412,14 +412,16 @@ export default function ScenarioLoadModal({
                                   fontSize: '16px'
                                 }}
                               />
-                              <sup style={{
-                                fontSize: '8px',
-                                fontWeight: 'bold',
-                                position: 'absolute',
-                                top: '-7px',
-                                right: '0px',
-                                color: '#374151'
-                              }}>A</sup>
+                              {viewMode === 'Multi-Year' && (
+                                <sup style={{
+                                  fontSize: '8px',
+                                  fontWeight: 'bold',
+                                  position: 'absolute',
+                                  top: '-7px',
+                                  right: '0px',
+                                  color: '#374151'
+                                }}>A</sup>
+                              )}
                             </div>
                           )}
 

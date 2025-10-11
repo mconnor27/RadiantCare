@@ -2441,8 +2441,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
         <div style={{ fontWeight: 600 }}>Physicians</div>
         {(() => {
           // Use snapshot comparison if a scenario is loaded, otherwise fall back to default comparison
-          const isChanged = store.loadedScenarioSnapshot
-            ? hasChangesFromLoadedScenario(year, store)
+          const hasSnapshot = scenario === 'A' ? store.loadedScenarioSnapshot : store.loadedScenarioBSnapshot
+          const isChanged = hasSnapshot
+            ? hasChangesFromLoadedScenario(year, store, scenario)
             : arePhysiciansChanged(scenario, year, physicians, store)
           return isChanged && !readOnly ? (
             <button
@@ -2469,7 +2470,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.opacity = '1'
-                const tooltipText = store.loadedScenarioSnapshot ? 'Reset to Loaded Scenario' : 'Reset to Default'
+                const tooltipText = hasSnapshot ? 'Reset to Loaded Scenario' : 'Reset to Default'
                 createTooltip('physicians-reset-tooltip', tooltipText, e)
               }}
               onMouseLeave={(e) => {

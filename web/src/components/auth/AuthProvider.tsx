@@ -66,6 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut()
     setSession(null)
     setProfile(null)
+    // Clear the persisted dashboard state on sign out
+    localStorage.removeItem('radiantcare-state-v1')
   }
 
   const value = {

@@ -121,14 +121,14 @@ export const useDashboardStore = create<Store>()(
         // One-time suppression control for grid->store synchronization
         setSuppressNextGridSync: (suppress: boolean) => {
           set((state) => {
-            ;(state as any).suppressNextGridSync = !!suppress
+            state.suppressNextGridSync = !!suppress
           })
         },
         consumeSuppressNextGridSync: () => {
-          const suppressed = !!(get() as any).suppressNextGridSync
+          const suppressed = !!get().suppressNextGridSync
           if (suppressed) {
             set((state) => {
-              ;(state as any).suppressNextGridSync = false
+              state.suppressNextGridSync = false
             })
           }
           return suppressed
@@ -165,16 +165,16 @@ export const useDashboardStore = create<Store>()(
             const fy = sc.future.find((f) => f.year === year)
             if (fy) {
               // Guard: Only update if value actually changed to prevent infinite loops
-              const currentValue = (fy as any)[field]
+              const currentValue = fy[field]
               const valueChanged = typeof currentValue === 'number' && typeof value === 'number'
                 ? Math.abs(currentValue - value) > 0.01  // Use small epsilon for floating point comparison
                 : currentValue !== value
-              
+
               if (!valueChanged) {
                 return  // Skip update if value hasn't changed
               }
 
-              ;(fy as any)[field] = value
+              fy[field] = value
 
               // If we're updating a 2025 baseline value, trigger projection recalculation
               // for future years without switching to Custom mode
@@ -472,7 +472,7 @@ export const useDashboardStore = create<Store>()(
             // the yearly sliders necessarily move with the projection override.
             if (field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours' || field === 'consultingServicesAgreement') {
               for (const fy of sc.future) {
-                ;(fy as any)[field] = sc.projection[field]
+                fy[field] = sc.projection[field]
               }
             }
             
@@ -994,7 +994,7 @@ export const useDashboardStore = create<Store>()(
 
           // Suppress the next grid->store sync to avoid transient flashes while resetting
           set((state) => {
-            ;(state as any).suppressNextGridSync = true
+            state.suppressNextGridSync = true
           })
 
           // Reset 2025 physicians to defaults first
@@ -1177,15 +1177,15 @@ export const useDashboardStore = create<Store>()(
           }),
 
         saveScenarioToDatabase: async (
-          name: string, 
-          description: string, 
-          isPublic: boolean, 
+          name: string,
+          description: string,
+          isPublic: boolean,
           viewMode: 'YTD Detailed' | 'Multi-Year',
-          ytdSettings?: any
+          ytdSettings?: YTDSettings
         ) => {
           const state = get()
           const { supabase } = await import('../lib/supabase')
-          
+
           // Get current session
           const { data: { session } } = await supabase.auth.getSession()
           if (!session) throw new Error('Not authenticated')
@@ -1198,7 +1198,7 @@ export const useDashboardStore = create<Store>()(
               .select('last_sync_timestamp')
               .eq('id', 1)
               .single()
-            
+
             if (!cacheError && cacheData) {
               qboSyncTimestamp = cacheData.last_sync_timestamp
             }
@@ -1208,7 +1208,20 @@ export const useDashboardStore = create<Store>()(
           }
 
           // Prepare data based on view mode
-          let saveData: any
+          type SaveData = {
+            name: string
+            description: string
+            is_public: boolean
+            view_mode: 'YTD Detailed' | 'Multi-Year'
+            baseline_date: string
+            qbo_sync_timestamp: string | null
+            ytd_settings?: YTDSettings | null
+            year_2025_data?: FutureYear
+            custom_projected_values?: Record<string, number>
+            scenario_data?: { scenarioA: Omit<ScenarioState, 'selectedYear'>; customProjectedValues: Record<string, number> } | null
+            baseline_mode?: BaselineMode | null
+          }
+          let saveData: SaveData
           
           if (viewMode === 'YTD Detailed') {
             // YTD Save - 2025 baseline customizations + chart settings
@@ -1241,8 +1254,11 @@ export const useDashboardStore = create<Store>()(
           } else {
             // Multi-Year Save - only save Scenario A (not B)
             const dataMode = state.scenarioA.dataMode
+            // Exclude selectedYear from saved data (it's just UI state)
+            const { selectedYear: _selectedYear, ...scenarioAWithoutUI } = state.scenarioA
+            void _selectedYear // Mark as intentionally unused
             const scenarioData = {
-              scenarioA: state.scenarioA,
+              scenarioA: scenarioAWithoutUI,
               customProjectedValues: state.customProjectedValues,
             }
             
@@ -1275,11 +1291,19 @@ export const useDashboardStore = create<Store>()(
               .single()
 
             if (error) throw error
-            
+
             set((state) => {
               state.currentScenarioName = name
+              // Update snapshot to match saved state (clears dirty flag)
+              // Exclude selectedYear from snapshot (it's just UI state)
+              const { selectedYear: _selectedYear, ...scenarioAWithoutUI } = state.scenarioA
+              void _selectedYear // Mark as intentionally unused
+              state.loadedScenarioSnapshot = {
+                scenarioA: JSON.parse(JSON.stringify(scenarioAWithoutUI)),
+                customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
+              }
             })
-            
+
             return data
           } else {
             // Creating new scenario
@@ -1293,12 +1317,20 @@ export const useDashboardStore = create<Store>()(
               .single()
 
             if (error) throw error
-            
+
             set((state) => {
               state.currentScenarioId = data.id
               state.currentScenarioName = name
+              // Update snapshot to match saved state (clears dirty flag)
+              // Exclude selectedYear from snapshot (it's just UI state)
+              const { selectedYear: _selectedYear, ...scenarioAWithoutUI } = state.scenarioA
+              void _selectedYear // Mark as intentionally unused
+              state.loadedScenarioSnapshot = {
+                scenarioA: JSON.parse(JSON.stringify(scenarioAWithoutUI)),
+                customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
+              }
             })
-            
+
             return data
           }
         },
@@ -1339,8 +1371,11 @@ export const useDashboardStore = create<Store>()(
           // The database stores it as "scenarioA" but it's actually B's data
           const dataMode = state.scenarioB?.dataMode || '2025 Data'
 
+          // Exclude selectedYear from saved data (it's just UI state)
+          const { selectedYear: _selectedYear, ...scenarioBWithoutUI } = state.scenarioB
+          void _selectedYear // Mark as intentionally unused
           const scenarioData = {
-            scenarioA: state.scenarioB, // Save B's complete data, not A's!
+            scenarioA: scenarioBWithoutUI, // Save B's complete data, not A's!
             customProjectedValues: state.customProjectedValues,
           }
 
@@ -1374,6 +1409,16 @@ export const useDashboardStore = create<Store>()(
 
             set((state) => {
               state.currentScenarioBName = name
+              // Update snapshot to match saved state (clears dirty flag)
+              if (state.scenarioB) {
+                // Exclude selectedYear from snapshot (it's just UI state)
+                const { selectedYear: _selectedYear, ...scenarioBWithoutUI } = state.scenarioB
+                void _selectedYear // Mark as intentionally unused
+                state.loadedScenarioBSnapshot = {
+                  scenarioB: JSON.parse(JSON.stringify(scenarioBWithoutUI)),
+                  customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
+                }
+              }
             })
 
             return data
@@ -1393,6 +1438,16 @@ export const useDashboardStore = create<Store>()(
             set((state) => {
               state.currentScenarioBId = data.id
               state.currentScenarioBName = name
+              // Update snapshot to match saved state (clears dirty flag)
+              if (state.scenarioB) {
+                // Exclude selectedYear from snapshot (it's just UI state)
+                const { selectedYear: _selectedYear, ...scenarioBWithoutUI } = state.scenarioB
+                void _selectedYear // Mark as intentionally unused
+                state.loadedScenarioBSnapshot = {
+                  scenarioB: JSON.parse(JSON.stringify(scenarioBWithoutUI)),
+                  customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
+                }
+              }
             })
 
             return data
@@ -1439,8 +1494,11 @@ export const useDashboardStore = create<Store>()(
               state.currentScenarioUserId = data.user_id
 
               // Create deep copy snapshot for change detection
+              // Exclude selectedYear from snapshot (it's just UI state)
+              const { selectedYear: _selectedYear, ...scenarioAWithoutUI } = state.scenarioA
+              void _selectedYear // Mark as intentionally unused
               state.loadedScenarioSnapshot = {
-                scenarioA: JSON.parse(JSON.stringify(state.scenarioA)),
+                scenarioA: JSON.parse(JSON.stringify(scenarioAWithoutUI)),
                 customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
               }
             })
@@ -1467,8 +1525,11 @@ export const useDashboardStore = create<Store>()(
                 state.currentScenarioUserId = data.user_id
 
                 // Create deep copy snapshot for change detection
+                // Exclude selectedYear from snapshot (it's just UI state)
+                const { selectedYear: _selectedYear, ...scenarioAWithoutUI } = state.scenarioA
+                void _selectedYear // Mark as intentionally unused
                 state.loadedScenarioSnapshot = {
-                  scenarioA: JSON.parse(JSON.stringify(state.scenarioA)),
+                  scenarioA: JSON.parse(JSON.stringify(scenarioAWithoutUI)),
                   customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
                 }
                 console.log('[SNAPSHOT A] ========== COMPLETE SCENARIO A DATA ==========')
@@ -1513,10 +1574,10 @@ export const useDashboardStore = create<Store>()(
                   state.scenarioB = {
                     ...scenarioData.scenarioA,
                     // Keep A's baseline data but use loaded scenario's projection settings
-                    future: scenarioData.scenarioA.future.map((yearData: any) => {
+                    future: scenarioData.scenarioA.future.map((yearData: FutureYear) => {
                       if (yearData.year === 2025) {
                         // For 2025, use A's data (the shared baseline)
-                        const a2025 = state.scenarioA.future.find((f: any) => f.year === 2025)
+                        const a2025 = state.scenarioA.future.find((f: FutureYear) => f.year === 2025)
                         return a2025 || yearData
                       }
                       // For other years, use the loaded scenario's data
@@ -1535,8 +1596,13 @@ export const useDashboardStore = create<Store>()(
                 state.currentScenarioBUserId = data.user_id
 
                 // Create deep copy snapshot for B
-                state.loadedScenarioBSnapshot = {
-                  scenarioB: JSON.parse(JSON.stringify(state.scenarioB))
+                // Exclude selectedYear from snapshot (it's just UI state)
+                if (state.scenarioB) {
+                  const { selectedYear: _selectedYear, ...scenarioBWithoutUI } = state.scenarioB
+                  void _selectedYear // Mark as intentionally unused
+                  state.loadedScenarioBSnapshot = {
+                    scenarioB: JSON.parse(JSON.stringify(scenarioBWithoutUI))
+                  }
                 }
                 console.log('[SNAPSHOT B] ========== COMPLETE SCENARIO B DATA ==========')
                 console.log('[SNAPSHOT B] Scenario B Object:', JSON.parse(JSON.stringify(state.scenarioB)))
@@ -1569,7 +1635,37 @@ export const useDashboardStore = create<Store>()(
     }),
     {
       name: 'radiantcare-state-v1',
-      storage: createJSONStorage((): Storage => localStorage),
+      storage: createJSONStorage(() => ({
+        getItem: (name) => {
+          const str = localStorage.getItem(name)
+          if (!str) return null
+
+          try {
+            const data = JSON.parse(str)
+            // Check if data has expired (7 days = 604800000ms)
+            const EXPIRY_MS = 7 * 24 * 60 * 60 * 1000
+            if (data.state?._timestamp && Date.now() - data.state._timestamp > EXPIRY_MS) {
+              console.log('[STORAGE] State expired, clearing...')
+              localStorage.removeItem(name)
+              return null
+            }
+            return str
+          } catch {
+            return str
+          }
+        },
+        setItem: (name, value) => {
+          try {
+            const data = JSON.parse(value)
+            // Add timestamp to track when state was saved
+            data.state._timestamp = Date.now()
+            localStorage.setItem(name, JSON.stringify(data))
+          } catch {
+            localStorage.setItem(name, value)
+          }
+        },
+        removeItem: (name) => localStorage.removeItem(name),
+      })),
       partialize: (state: Store) => ({
         scenarioA: state.scenarioA,
         scenarioBEnabled: state.scenarioBEnabled,
@@ -1623,7 +1719,7 @@ export function usePartnerComp(year: number, scenario: ScenarioKey, fyOverride?:
 }
 
 // Helper function to get default values for a specific year
-function getDefaultValuesForYear(scenario: ScenarioKey, year: number, store: any) {
+function getDefaultValuesForYear(scenario: ScenarioKey, year: number, store: Store) {
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB
   const defaultPhysicians = scenario === 'A' ? scenarioADefaultsByYear(year) : scenarioBDefaultsByYear(year)
 
@@ -1665,7 +1761,7 @@ export function arePhysiciansChanged(
   scenario: ScenarioKey,
   year: number,
   currentPhysicians: Physician[],
-  _store: any
+  _store: Store
 ): boolean {
   const defaults = getDefaultValuesForYear(scenario, year, _store)
   const defaultPhysicians = defaults.physicians
@@ -1693,8 +1789,8 @@ export function arePhysiciansChanged(
       current.receivesBenefits !== defaultPhysician.receivesBenefits ||
       current.receivesBonuses !== defaultPhysician.receivesBonuses ||
       current.bonusAmount !== defaultPhysician.bonusAmount ||
-      current.hasMedicalDirectorHours !== (defaultPhysician as any).hasMedicalDirectorHours ||
-      current.medicalDirectorHoursPercentage !== (defaultPhysician as any).medicalDirectorHoursPercentage ||
+      current.hasMedicalDirectorHours !== defaultPhysician.hasMedicalDirectorHours ||
+      current.medicalDirectorHoursPercentage !== defaultPhysician.medicalDirectorHoursPercentage ||
       current.buyoutCost !== defaultPhysician.buyoutCost ||
       current.trailingSharedMdAmount !== defaultPhysician.trailingSharedMdAmount ||
       current.additionalDaysWorked !== defaultPhysician.additionalDaysWorked
@@ -1706,7 +1802,7 @@ export function arePhysiciansChanged(
   // Include locumCosts, medical director hours, PRCS director selection and PRCS amount override in change detection
   try {
     const sc = scenario === 'A' ? _store.scenarioA : _store.scenarioB
-    const fy = sc?.future.find((f: any) => f.year === year)
+    const fy = sc?.future.find((f: FutureYear) => f.year === year)
 
     // Check locumCosts
     const fyLocumCosts = fy?.locumCosts ?? defaults.locumCosts
@@ -1736,17 +1832,21 @@ export function arePhysiciansChanged(
  */
 export function hasChangesFromLoadedScenario(
   year: number,
-  _store: any
+  _store: Store,
+  scenario: 'A' | 'B' = 'A'
 ): boolean {
-  const snapshot = _store.loadedScenarioSnapshot
+  const snapshot = scenario === 'A' ? _store.loadedScenarioSnapshot : _store.loadedScenarioBSnapshot
 
   // If no snapshot exists, no comparison possible
   if (!snapshot) {
     return false
   }
 
-  const currentFy = _store.scenarioA.future.find((f: any) => f.year === year)
-  const snapshotFy = snapshot.scenarioA.future.find((f: any) => f.year === year)
+  const currentScenario = scenario === 'A' ? _store.scenarioA : _store.scenarioB
+  const snapshotScenario = scenario === 'A' ? snapshot.scenarioA : snapshot.scenarioB
+
+  const currentFy = currentScenario.future.find((f: FutureYear) => f.year === year)
+  const snapshotFy = snapshotScenario.future.find((f: FutureYear) => f.year === year)
 
   // If year doesn't exist in snapshot, consider unchanged
   if (!snapshotFy) {
@@ -1873,7 +1973,7 @@ export function calculateProjectedValue(
   scenario: ScenarioKey,
   year: number,
   field: 'therapyIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'miscEmploymentCosts',
-  store: any
+  store: Store
 ): number {
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB
   if (!sc || year === 2025) return 0 // No projections for baseline year
@@ -1883,7 +1983,7 @@ export function calculateProjectedValue(
   let baselineData
   if (sc.dataMode === 'Custom') {
     // For Custom mode, use the existing baseline data from year 2025 in future array
-    const customBaseline = sc.future.find((f: any) => f.year === 2025)
+    const customBaseline = sc.future.find((f: FutureYear) => f.year === 2025)
     if (customBaseline) {
       baselineData = {
         therapyIncome: customBaseline.therapyIncome,
@@ -1893,7 +1993,7 @@ export function calculateProjectedValue(
       }
     } else {
       // Fallback if Custom baseline missing (shouldn't happen)
-      const last2025 = store.historic.find((h: any) => h.year === 2025)
+      const last2025 = store.historic.find((h: YearRow) => h.year === 2025)
       baselineData = {
         therapyIncome: last2025?.therapyIncome || 0,
         nonEmploymentCosts: last2025?.nonEmploymentCosts || 0,
@@ -1902,7 +2002,7 @@ export function calculateProjectedValue(
       }
     }
   } else if (sc.dataMode === '2024 Data') {
-    const last2024 = store.historic.find((h: any) => h.year === 2024)!
+    const last2024 = store.historic.find((h: YearRow) => h.year === 2024)!
     baselineData = {
       therapyIncome: last2024.therapyIncome,
       nonEmploymentCosts: last2024.nonEmploymentCosts,
@@ -1911,8 +2011,8 @@ export function calculateProjectedValue(
     }
   } else if (sc.dataMode === '2025 Data') {
     // Use updated 2025 values from future array if available (grid-synced values)
-    const updated2025 = sc.future.find((f: any) => f.year === 2025)
-    const last2025 = store.historic.find((h: any) => h.year === 2025)
+    const updated2025 = sc.future.find((f: FutureYear) => f.year === 2025)
+    const last2025 = store.historic.find((h: YearRow) => h.year === 2025)
     baselineData = {
       therapyIncome: updated2025?.therapyIncome ?? last2025?.therapyIncome ?? 0,
       nonEmploymentCosts: updated2025?.nonEmploymentCosts ?? last2025?.nonEmploymentCosts ?? 0,
@@ -1962,19 +2062,19 @@ export function Dashboard() {
   const [viewMode, setViewMode] = useState<'Multi-Year' | 'YTD Detailed'>('YTD Detailed')
   const [urlLoaded, setUrlLoaded] = useState(false)
   // Initialize ytdSettings with defaults from chartConfig
-  const [ytdSettings, setYtdSettings] = useState<any>(DEFAULT_YTD_SETTINGS)
+  const [ytdSettings, setYtdSettings] = useState<YTDSettings>(DEFAULT_YTD_SETTINGS)
   // Track whether MultiYearView has been visited (for lazy initialization)
   const [multiYearInitialized, setMultiYearInitialized] = useState(false)
   const [showHelpModal, setShowHelpModal] = useState(false)
   const [showSignupModal, setShowSignupModal] = useState(false)
   const [showScenarioManager, setShowScenarioManager] = useState(false)
   const [scenarioManagerView, setScenarioManagerView] = useState<'list' | 'form' | 'edit' | 'formB' | 'editB'>('list')
-  const [scenarioManagerInitialScenario, setScenarioManagerInitialScenario] = useState<any>(undefined)
+  const [scenarioManagerInitialScenario, setScenarioManagerInitialScenario] = useState<SavedScenario | undefined>(undefined)
   // Store refresh callback for YTD data after sync
   const ytdRefreshCallbackRef = useRef<(() => void) | null>(null)
-  
+
   // Wrap setYtdSettings in useCallback to prevent unnecessary re-renders in YTDDetailed
-  const handleYtdSettingsChange = useCallback((settings: any) => {
+  const handleYtdSettingsChange = useCallback((settings: YTDSettings) => {
     setYtdSettings(settings)
   }, [])
 
@@ -2140,7 +2240,7 @@ export function Dashboard() {
     return () => {
       window.removeEventListener('unloadScenario', handleUnloadScenario)
     }
-  }, [store.currentScenarioName, viewMode])
+  }, [store, viewMode, setYtdSettings])
 
   // Listen for unloadScenarioB event
   useEffect(() => {
@@ -2167,7 +2267,7 @@ export function Dashboard() {
     return () => {
       window.removeEventListener('unloadScenarioB', handleUnloadScenarioB)
     }
-  }, [store.currentScenarioBName])
+  }, [store])
 
   // Load from shareable URL hash if present
   useEffect(() => {
@@ -2273,32 +2373,51 @@ export function Dashboard() {
 
     async function loadDefaultScenarios() {
       try {
-        // Load Default (A) and Default (B) scenarios
+        // Load favorite or Default scenarios for A and B
         const { data: scenarios, error } = await supabase
           .from('scenarios')
           .select('*')
           .eq('user_id', profile?.id)
-          .in('name', ['Default (A)', 'Default (B)'])
 
         if (error) throw error
 
-        const defaultA = scenarios?.find(s => s.name === 'Default (A)')
-        const defaultB = scenarios?.find(s => s.name === 'Default (B)')
+        // Filter scenarios based on view mode
+        const viewModeScenarios = scenarios?.filter(s => {
+          if (viewMode === 'Multi-Year') {
+            return s.view_mode === 'Multi-Year'
+          } else {
+            return s.view_mode === 'YTD Detailed'
+          }
+        })
 
-        // Load Default (A) into scenario A
-        if (defaultA) {
-          console.log('[INIT] Loading Default (A)...')
-          await store.loadScenarioFromDatabase(defaultA.id, 'A', true)
+        // Find favorite A or fallback to Default (A)
+        const favoriteA = viewModeScenarios?.find(s => s.is_favorite_a)
+        const defaultA = viewModeScenarios?.find(s => s.name === 'Default (A)')
+        const scenarioA = favoriteA || defaultA
+
+        // Find favorite B or fallback to Default (B)
+        const favoriteB = viewModeScenarios?.find(s => s.is_favorite_b)
+        const defaultB = viewModeScenarios?.find(s => s.name === 'Default (B)')
+        const scenarioB = favoriteB || defaultB
+
+        // Load scenario A
+        if (scenarioA) {
+          console.log(`[INIT] Loading ${favoriteA ? 'favorite' : 'Default'} (A)...`, scenarioA.name)
+          await store.loadScenarioFromDatabase(scenarioA.id, 'A', true)
         }
 
-        // Load Default (B) into scenario B (but keep it disabled/not visible)
-        // The loadScenarioFromDatabase function will determine baseline usage based on A's data mode
-        if (defaultB) {
-          console.log('[INIT] Loading Default (B)...')
-          await store.loadScenarioFromDatabase(defaultB.id, 'B', false)
-          // Disable scenario B after loading to keep it hidden
-          store.setScenarioEnabled(false)
-          console.log('[INIT] Disabled scenario B visibility')
+        // Load scenario B and enable checkbox if favorite B exists
+        if (scenarioB) {
+          console.log(`[INIT] Loading ${favoriteB ? 'favorite' : 'Default'} (B)...`, scenarioB.name)
+          await store.loadScenarioFromDatabase(scenarioB.id, 'B', false)
+          // Enable scenario B if it's a favorite, otherwise keep it disabled
+          if (favoriteB) {
+            store.setScenarioEnabled(true)
+            console.log('[INIT] Enabled scenario B visibility (favorite)')
+          } else {
+            store.setScenarioEnabled(false)
+            console.log('[INIT] Disabled scenario B visibility')
+          }
         }
 
         // Final state report after loading
@@ -2331,37 +2450,7 @@ export function Dashboard() {
     }
 
     loadDefaultScenarios()
-  }, [profile, urlLoaded, store.currentScenarioName, store.currentScenarioBName])
-
-  // @ts-expect-error - Unused function kept for future use
-  const copyShareLink = async () => {
-    const snap: any = {
-      scenarioA: store.scenarioA,
-      scenarioBEnabled: store.scenarioBEnabled,
-      scenarioB: store.scenarioBEnabled ? store.scenarioB : undefined,
-      viewMode: viewMode,
-    }
-
-    // Always include YTD settings (chart configuration) for YTD Detailed view
-    if (viewMode === 'YTD Detailed') {
-      snap.ytdSettings = ytdSettings
-    }
-
-    const json = JSON.stringify(snap)
-
-    // Compress using LZ-String for shorter URLs
-    const compressed = LZString.compressToEncodedURIComponent(json)
-    const url = `${window.location.origin}${window.location.pathname}#s=${compressed}`
-
-    try {
-      await navigator.clipboard.writeText(url)
-      alert('Shareable link copied to clipboard!')
-    } catch {
-      // fallback: set location hash
-      window.location.hash = `s=${compressed}`
-      alert('Shareable link updated in URL')
-    }
-  }
+  }, [profile, urlLoaded, store, viewMode])
 
   // Show loading state while checking authentication
   if (loading) {
