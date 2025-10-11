@@ -520,3 +520,95 @@ export function createTrailingSharedMdAmountTooltip(
     setTimeout(() => removeTooltip(tooltipId), 8000)
   }
 }
+
+// Helper function for creating interactive vacation weeks slider tooltip
+export function createVacationWeeksTooltip(
+  physicianId: string,
+  currentWeeks: number,
+  e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>,
+  onUpdate: (physicianId: string, weeks: number) => void,
+  maxWeeks: number = 16
+) {
+  const tooltipId = `vacation-weeks-slider-${physicianId}`
+  const existing = document.getElementById(tooltipId)
+  if (existing) existing.remove()
+
+  const tooltip = document.createElement('div')
+  tooltip.id = tooltipId
+  const isMobileTooltip = window.innerWidth <= 768
+
+  if (isMobileTooltip) {
+    tooltip.className = 'tooltip-mobile'
+    tooltip.style.cssText = `position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 9999; max-width: calc(100vw - 40px); box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
+  } else {
+    tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
+  }
+
+  const minValue = 2
+  const displayWeeks = `${currentWeeks || 8} weeks off`
+  const title = 'Employee Vacation Weeks'
+
+  tooltip.innerHTML = `
+    <div style="margin-bottom: 6px; font-weight: 600; white-space: nowrap;">${title}</div>
+    <div style="padding: 2px 0;">
+      <input type="range" min="${minValue}" max="${maxWeeks}" step="1" value="${currentWeeks}"
+        style="width: 180px; margin-bottom: 8px; cursor: pointer;" class="growth-slider" id="${tooltipId}-slider" />
+      <div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+        <input type="text" value="${displayWeeks}"
+          style="width: 110px; padding: 2px 6px; border: 1px solid #555; border-radius: 3px; background: #444; color: white; font-size: 12px; text-align: center;"
+          id="${tooltipId}-weeks" />
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(tooltip)
+
+  if (!isMobileTooltip) {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const pos = calculateTooltipPosition(rect, 220, 120)
+    tooltip.style.left = `${pos.x}px`
+    tooltip.style.top = `${pos.y}px`
+  }
+
+  const slider = document.getElementById(`${tooltipId}-slider`) as HTMLInputElement
+  const weeksInput = document.getElementById(`${tooltipId}-weeks`) as HTMLInputElement
+
+  if (slider && weeksInput) {
+    slider.addEventListener('input', (event) => {
+      const target = event.target as HTMLInputElement
+      const numericValue = Number(target.value)
+      const clamped = Math.max(minValue, Math.min(maxWeeks, numericValue))
+      weeksInput.value = `${clamped} weeks off`
+      onUpdate(physicianId, clamped)
+    })
+
+    weeksInput.addEventListener('input', (event) => {
+      const target = event.target as HTMLInputElement
+      const numericValue = Number(target.value.replace(/[^0-9]/g, ''))
+      const clamped = Math.max(minValue, Math.min(maxWeeks, numericValue))
+      slider.value = String(clamped)
+      target.value = `${clamped} weeks off`
+      onUpdate(physicianId, clamped)
+    })
+  }
+
+  tooltip.addEventListener('mouseenter', () => {
+    clearTimeout((tooltip as any).hideTimeout)
+  })
+  tooltip.addEventListener('mouseleave', () => {
+    removeTooltip(tooltipId)
+  })
+
+  const clickOutsideHandler = (event: MouseEvent) => {
+    if (!tooltip.contains(event.target as Node) &&
+        !(document.querySelector(`[data-vacation-id="${physicianId}"]`) as HTMLElement)?.contains(event.target as Node)) {
+      removeTooltip(tooltipId)
+      document.removeEventListener('click', clickOutsideHandler)
+    }
+  }
+  setTimeout(() => document.addEventListener('click', clickOutsideHandler), 100)
+
+  if (isMobileTooltip) {
+    setTimeout(() => removeTooltip(tooltipId), 8000)
+  }
+}

@@ -1,5 +1,7 @@
 import { DragDropPhysicians } from './DragDropPhysicians'
 import type { PhysicianType, Physician, FutureYear, ScenarioKey } from '../types'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faCalendar } from '@fortawesome/free-regular-svg-icons'
 import {
   currency,
   daysInYear,
@@ -35,7 +37,8 @@ import {
   createHoursTooltip,
   createPrcsAmountTooltip,
   getDefaultTrailingSharedMdAmount,
-  createTrailingSharedMdAmountTooltip
+  createTrailingSharedMdAmountTooltip,
+  createVacationWeeksTooltip
 } from '../tooltips'
 import { useDashboardStore, arePhysiciansChanged, hasChangesFromLoadedScenario } from '../../../Dashboard'
 
@@ -248,7 +251,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
               startPortionOfYear: e.target.value === 'newEmployee' ? (p.startPortionOfYear ?? 0) : p.startPortionOfYear,
               terminatePortionOfYear: e.target.value === 'employeeToTerminate' ? (p.terminatePortionOfYear ?? 1) : p.terminatePortionOfYear,
               salary: e.target.value !== 'partner' && e.target.value !== 'partnerToRetire' ? (p.salary ?? 500000) : undefined,
-              weeksVacation: e.target.value !== 'employee' && e.target.value !== 'newEmployee' ? (p.weeksVacation ?? 8) : undefined,
+              weeksVacation: (e.target.value === 'employee' || e.target.value === 'newEmployee' || e.target.value === 'employeeToTerminate' || e.target.value === 'employeeToPartner') ? (p.weeksVacation ?? 8) : undefined,
               receivesBenefits: e.target.value !== 'partner' && e.target.value !== 'partnerToRetire' ? (p.receivesBenefits ?? true) : undefined,
               buyoutCost: e.target.value === 'partnerToRetire' ? (p.buyoutCost ?? 50000) : undefined,
             })
@@ -265,7 +268,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
         {p.type === 'newEmployee' ? (
           // newEmployee
           <>
-            <div className="control-panel" style={{ display: 'grid', gridTemplateRows: 'auto auto', gap: 8 }}>
+            <div className="control-panel" style={{ display: 'grid', gridTemplateRows: 'auto auto auto', gap: 8 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 20 }}>
                   <input
@@ -451,8 +454,54 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   disabled={readOnly}
                 />
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                <input
+                  type="range"
+                  min={2}
+                  max={(() => {
+                    const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+                    return (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
+                  })()}
+                  step={1}
+                  value={p.weeksVacation ?? 8}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      weeksVacation: Number(e.target.value),
+                    })
+                  }
+                  disabled={readOnly}
+                  style={{
+                    width: '100%',
+                    ['--fill-percent' as any]: `${(() => {
+                      const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+                      const maxWeeks = (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
+                      return ((p.weeksVacation ?? 8) - 2) / (maxWeeks - 2) * 100
+                    })()}%`
+                  }}
+                />
+                <input
+                  type="text"
+                  value={`${p.weeksVacation ?? 8} weeks off`}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      weeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
+                    })
+                  }
+                  style={{
+                    width: 100,
+                    height: 20,
+                    padding: '2px 8px',
+                    border: '1px solid #ccc',
+                    borderRadius: 3,
+                    fontSize: 12
+                  }}
+                  disabled={readOnly}
+                />
+              </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateRows: '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateRows: '20px 20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
               <img
                 src={p.receivesBonuses ? '/bonus_selected.png' : '/bonus_unselected.png'}
                 alt={`Bonus ${p.receivesBonuses ? 'enabled' : 'disabled'}`}
@@ -551,8 +600,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 }}
                 onTouchStart={(e) => createTooltip('benefits-tooltip-new', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)}
               />
+              <div style={{ width: '20px', height: '20px' }} />
             </div>
-            <div style={{ display: 'grid', gridTemplateRows: '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateRows: '20px 20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
               <div 
                 style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
                 onMouseEnter={(e) => {
@@ -593,6 +643,11 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 }}
                 onMouseLeave={() => { const t = document.getElementById('new-employee-cost-tooltip'); if (t) t.remove() }}
               ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+              <div
+                style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                onMouseEnter={(e) => createTooltip('vacation-tooltip-new', 'Vacation weeks are specified for workforce analysis, not used for compensation purposes', e)}
+                onMouseLeave={() => removeTooltip('vacation-tooltip-new')}
+              ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
             </div>
             <button
               onClick={() => store.removePhysician(scenario, year, p.id)}
@@ -616,7 +671,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
         ) : p.type === 'employeeToTerminate' ? (
           // employeeToTerminate
           <>
-            <div className="control-panel" style={{ display: 'grid', gridTemplateRows: 'auto auto', gap: 8 }}>
+            <div className="control-panel" style={{ display: 'grid', gridTemplateRows: 'auto auto auto', gap: 8 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 20 }}>
                   <input
@@ -802,8 +857,54 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   disabled={readOnly}
                 />
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                <input
+                  type="range"
+                  min={2}
+                  max={(() => {
+                    const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+                    return (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
+                  })()}
+                  step={1}
+                  value={p.weeksVacation ?? 8}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      weeksVacation: Number(e.target.value),
+                    })
+                  }
+                  disabled={readOnly}
+                  style={{
+                    width: '100%',
+                    ['--fill-percent' as any]: `${(() => {
+                      const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+                      const maxWeeks = (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
+                      return ((p.weeksVacation ?? 8) - 2) / (maxWeeks - 2) * 100
+                    })()}%`
+                  }}
+                />
+                <input
+                  type="text"
+                  value={`${p.weeksVacation ?? 8} weeks off`}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      weeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
+                    })
+                  }
+                  style={{
+                    width: 100,
+                    height: 20,
+                    padding: '2px 8px',
+                    border: '1px solid #ccc',
+                    borderRadius: 3,
+                    fontSize: 12
+                  }}
+                  disabled={readOnly}
+                />
+              </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateRows: '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateRows: '20px 20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
               <div
                 style={{
                   width: '20px',
@@ -848,8 +949,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 }}
                 onTouchStart={(e) => createTooltip('benefits-tooltip-terminate', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)}
               />
+              <div style={{ width: '20px', height: '20px' }} />
             </div>
-            <div style={{ display: 'grid', gridTemplateRows: '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateRows: '20px 20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
               <div 
                 style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
                 onMouseEnter={(e) => {
@@ -890,6 +992,11 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 }}
                 onMouseLeave={() => { const t = document.getElementById('terminate-employee-cost-tooltip'); if (t) t.remove() }}
               ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
+              <div
+                style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                onMouseEnter={(e) => createTooltip('vacation-tooltip-terminate', 'Vacation weeks are specified for workforce analysis, not used for compensation purposes', e)}
+                onMouseLeave={() => removeTooltip('vacation-tooltip-terminate')}
+              ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
             </div>
             <button
               onClick={() => store.removePhysician(scenario, year, p.id)}
@@ -912,128 +1019,172 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
           </>
         ) : p.type === 'employee' ? (
           <>
-            <div className="control-panel" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-              <input
-                type="range"
-                min={350000}
-                max={650000}
-                step={100}
-                value={p.salary ?? 0}
-                onChange={(e) =>
-                  store.upsertPhysician(scenario, year, {
-                    ...p,
-                    salary: Number(e.target.value),
-                  })
-                }
-                disabled={readOnly}
-                style={{ 
-                  width: '100%',
-                  ['--fill-percent' as any]: `${((p.salary ?? 0) - 350000) / (650000 - 350000) * 100}%`
-                }}
-              />
-              <input
-                type="text"
-                value={currency(Math.round(p.salary ?? 0))}
-                onChange={(e) =>
-                  store.upsertPhysician(scenario, year, {
-                    ...p,
-                    salary: Number(e.target.value.replace(/[^0-9]/g, '')),
-                  })
-                }
-                style={{ 
-                  width: 100, 
-                  height: 20, 
-                  padding: '2px 8px', 
-                  border: '1px solid #ccc',
-                  borderRadius: 3,
-                  fontSize: 12
-                }}
-                disabled={readOnly}
-              />
-            </div>
-            <img
-              src={p.receivesBenefits ? '/benefit_selected.png?v=2' : '/benefit_unselected.png'}
-              alt={`Benefits ${p.receivesBenefits ? 'enabled' : 'disabled'}`}
-              style={{
-                width: '20px',
-                height: '20px',
-                cursor: readOnly ? 'default' : 'pointer',
-                opacity: readOnly ? 0.6 : 1
-              }}
-              onClick={() => {
-                if (!readOnly) {
-                  const newBenefitsState = !p.receivesBenefits
-                  store.upsertPhysician(scenario, year, {
-                    ...p, 
-                    receivesBenefits: newBenefitsState
-                  })
-                  // Update tooltip in real-time if it's currently visible
-                  const tooltip = document.getElementById('benefits-tooltip')
-                  if (tooltip) {
-                    tooltip.innerHTML = `Benefits: ${newBenefitsState ? 'Enabled' : 'Disabled'}`
+            <div className="control-panel" style={{ display: 'grid', gridTemplateRows: 'auto auto', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                <input
+                  type="range"
+                  min={350000}
+                  max={650000}
+                  step={100}
+                  value={p.salary ?? 0}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      salary: Number(e.target.value),
+                    })
                   }
-                }
-              }}
-              onMouseEnter={(e) => {
-                createTooltip('benefits-tooltip', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)
-                if (!readOnly) {
-                  e.currentTarget.style.opacity = '0.8'
-                }
-              }}
-              onMouseLeave={(e) => {
-                removeTooltip('benefits-tooltip')
-                if (!readOnly) {
-                  e.currentTarget.style.opacity = '1'
-                }
-              }}
-              onTouchStart={(e) => createTooltip('benefits-tooltip', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)}
-            />
-            <div 
-              style={{ 
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'help',
-                fontSize: '11px',
-                fontFamily: 'Arial, sans-serif',
-                color: '#666',
-                width: '20px',
-                height: '20px',
-                border: '1px solid #ccc',
-                borderRadius: '50%',
-                backgroundColor: '#f8f9fa'
-              }}
-              onMouseEnter={(e) => {
-                const tooltip = document.createElement('div')
-                tooltip.id = 'employee-tooltip'
-                tooltip.style.cssText = `
-                  position: absolute;
-                  background: #333;
-                  color: white;
-                  padding: 8px 12px;
-                  border-radius: 4px;
-                  font-size: 12px;
-                  white-space: pre-line;
-                  text-align: left;
-                  z-index: 1000;
-                  max-width: 300px;
-                  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-                  pointer-events: none;
-                `
-                tooltip.textContent = getEmployeeCostTooltip(p, year, sc.projection.benefitCostsGrowthPct, 0, 0, '')
-                document.body.appendChild(tooltip)
-                
-                const rect = e.currentTarget.getBoundingClientRect()
-                tooltip.style.left = `${rect.right + 10}px`
-                tooltip.style.top = `${rect.top + window.scrollY}px`
-              }}
-              onMouseLeave={() => {
-                const tooltip = document.getElementById('employee-tooltip')
-                if (tooltip) tooltip.remove()
-              }}
-            >
-              <span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span>
+                  disabled={readOnly}
+                  style={{
+                    width: '100%',
+                    ['--fill-percent' as any]: `${((p.salary ?? 0) - 350000) / (650000 - 350000) * 100}%`
+                  }}
+                />
+                <input
+                  type="text"
+                  value={currency(Math.round(p.salary ?? 0))}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      salary: Number(e.target.value.replace(/[^0-9]/g, '')),
+                    })
+                  }
+                  style={{
+                    width: 100,
+                    height: 20,
+                    padding: '2px 8px',
+                    border: '1px solid #ccc',
+                    borderRadius: 3,
+                    fontSize: 12
+                  }}
+                  disabled={readOnly}
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                <input
+                  type="range"
+                  min={2}
+                  max={(() => {
+                    const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+                    return (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
+                  })()}
+                  step={1}
+                  value={p.weeksVacation ?? 8}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      weeksVacation: Number(e.target.value),
+                    })
+                  }
+                  disabled={readOnly}
+                  style={{
+                    width: '100%',
+                    ['--fill-percent' as any]: `${(() => {
+                      const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+                      const maxWeeks = (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
+                      return ((p.weeksVacation ?? 8) - 2) / (maxWeeks - 2) * 100
+                    })()}%`
+                  }}
+                />
+                <input
+                  type="text"
+                  value={`${p.weeksVacation ?? 8} weeks off`}
+                  onChange={(e) =>
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      weeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
+                    })
+                  }
+                  style={{
+                    width: 100,
+                    height: 20,
+                    padding: '2px 8px',
+                    border: '1px solid #ccc',
+                    borderRadius: 3,
+                    fontSize: 12
+                  }}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateRows: '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+              <img
+                src={p.receivesBenefits ? '/benefit_selected.png?v=2' : '/benefit_unselected.png'}
+                alt={`Benefits ${p.receivesBenefits ? 'enabled' : 'disabled'}`}
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  cursor: readOnly ? 'default' : 'pointer',
+                  opacity: readOnly ? 0.6 : 1
+                }}
+                onClick={() => {
+                  if (!readOnly) {
+                    const newBenefitsState = !p.receivesBenefits
+                    store.upsertPhysician(scenario, year, {
+                      ...p,
+                      receivesBenefits: newBenefitsState
+                    })
+                    // Update tooltip in real-time if it's currently visible
+                    const tooltip = document.getElementById('benefits-tooltip')
+                    if (tooltip) {
+                      tooltip.innerHTML = `Benefits: ${newBenefitsState ? 'Enabled' : 'Disabled'}`
+                    }
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  createTooltip('benefits-tooltip', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)
+                  if (!readOnly) {
+                    e.currentTarget.style.opacity = '0.8'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  removeTooltip('benefits-tooltip')
+                  if (!readOnly) {
+                    e.currentTarget.style.opacity = '1'
+                  }
+                }}
+                onTouchStart={(e) => createTooltip('benefits-tooltip', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)}
+              />
+              <div style={{ width: '20px', height: '20px' }} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateRows: '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
+              <div
+                style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                onMouseEnter={(e) => {
+                  const tooltip = document.createElement('div')
+                  tooltip.id = 'employee-tooltip'
+                  tooltip.style.cssText = `
+                    position: absolute;
+                    background: #333;
+                    color: white;
+                    padding: 8px 12px;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    white-space: pre-line;
+                    text-align: left;
+                    z-index: 1000;
+                    max-width: 300px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                    pointer-events: none;
+                  `
+                  tooltip.textContent = getEmployeeCostTooltip(p, year, sc.projection.benefitCostsGrowthPct, 0, 0, '')
+                  document.body.appendChild(tooltip)
+
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  tooltip.style.left = `${rect.right + 10}px`
+                  tooltip.style.top = `${rect.top + window.scrollY}px`
+                }}
+                onMouseLeave={() => {
+                  const tooltip = document.getElementById('employee-tooltip')
+                  if (tooltip) tooltip.remove()
+                }}
+              >
+                <span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span>
+              </div>
+              <div
+                style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
+                onMouseEnter={(e) => createTooltip('vacation-tooltip-employee', 'Vacation weeks are specified for workforce analysis, not used for compensation purposes', e)}
+                onMouseLeave={() => removeTooltip('vacation-tooltip-employee')}
+              ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
             </div>
             <button
               onClick={() => store.removePhysician(scenario, year, p.id)}
@@ -1920,7 +2071,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                       })
                     }}
                     disabled={readOnly}
-                    style={{ 
+                    style={{
                       width: '100%', margin: 0,
                       ['--fill-percent' as any]: `${((employeePortionToTransitionDay(p.employeePortionOfYear ?? 0.5, year) - 1) / (daysInYear(year) - 1)) * 100}%`
                     }}
@@ -1965,9 +2116,9 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     onChange={() => {
                       // Read-only display
                     }}
-                    style={{ 
-                      width: '100%', 
-                      height: 20, 
+                    style={{
+                      width: '100%',
+                      height: 20,
                       padding: readOnly ? '2px 8px' : '2px 18px 2px 8px', // Left padding matches other inputs
                       border: '1px solid #ccc',
                       borderRadius: 3,
@@ -1977,11 +2128,11 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     readOnly={true}
                   />
                   {!readOnly && (
-                    <div style={{ 
-                      position: 'absolute', 
-                      right: 1, 
-                      top: 1, 
-                      display: 'flex', 
+                    <div style={{
+                      position: 'absolute',
+                      right: 1,
+                      top: 1,
+                      display: 'flex',
                       flexDirection: 'column',
                       height: 18
                     }}>
@@ -2176,9 +2327,55 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 />
               </div>
             </div>
-            {/* First icon column: blank (aligns with date), then Benefits (salary), then Hours (vacation), then blank (additional days) */}
+            {/* First icon column: Calendar (aligns with date), then Benefits (salary), then Hours (vacation), then blank (additional days) */}
             <div style={{ display: 'grid', gridTemplateRows: '20px 20px 20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
-              <div style={{ width: '20px', height: '20px' }} />
+              <FontAwesomeIcon
+                icon={faCalendar}
+                data-vacation-id={p.id}
+                style={{
+                  fontSize: '20px',
+                  color: '#666',
+                  cursor: readOnly ? 'default' : 'pointer',
+                  opacity: readOnly ? 0.6 : 1
+                }}
+                onClick={(e) => {
+                  if (!readOnly) {
+                    const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+                    const maxWeeks = (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
+                    createVacationWeeksTooltip(p.id, p.weeksVacation ?? 8, e as any, (_pid, weeks) => {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        weeksVacation: weeks
+                      })
+                    }, maxWeeks)
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  if (!readOnly) {
+                    const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+                    const maxWeeks = (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
+                    createVacationWeeksTooltip(p.id, p.weeksVacation ?? 8, e as any, (_pid, weeks) => {
+                      store.upsertPhysician(scenario, year, {
+                        ...p,
+                        weeksVacation: weeks
+                      })
+                    }, maxWeeks)
+                  }
+                }}
+                onMouseLeave={() => {
+                  if (!readOnly) {
+                    const tooltip = document.getElementById(`vacation-weeks-slider-${p.id}`)
+                    if (tooltip) {
+                      (tooltip as any).hideTimeout = setTimeout(() => {
+                        const t = document.getElementById(`vacation-weeks-slider-${p.id}`)
+                        if (t && !t.matches(':hover')) {
+                          removeTooltip(`vacation-weeks-slider-${p.id}`)
+                        }
+                      }, 150)
+                    }
+                  }
+                }}
+              />
               <img 
                 src={p.receivesBenefits ? '/benefit_selected.png?v=2' : '/benefit_unselected.png'}
                 alt={`Benefits ${p.receivesBenefits ? 'enabled' : 'disabled'}`}
