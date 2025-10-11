@@ -84,6 +84,7 @@ export const useDashboardStore = create<Store>()(
         currentScenarioBId: null,
         currentScenarioBName: null,
         currentScenarioBUserId: null,
+        loadedScenarioSnapshot: null,
         setScenarioEnabled: (enabled) => {
           set((state) => {
             state.scenarioBEnabled = enabled
@@ -746,17 +747,34 @@ export const useDashboardStore = create<Store>()(
             state.scenarioBEnabled = !!snapshot.scenarioBEnabled
             state.scenarioB = snapshot.scenarioBEnabled && snapshot.scenarioB ? snapshot.scenarioB : undefined
           }),
-        // Reset physicians for a specific scenario and year to defaults
+        // Reset physicians for a specific scenario and year to defaults or loaded snapshot
         resetPhysicians: (scenario: ScenarioKey, year: number) => {
           set((state) => {
-            const defaults = getDefaultValuesForYear(scenario, year, state)
             const scenarioState = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!scenarioState) return
 
             const futureYear = scenarioState.future.find(f => f.year === year)
             if (!futureYear) return
 
-            // Reset to default values
+            // If we have a loaded scenario snapshot, reset to that instead of defaults
+            if (state.loadedScenarioSnapshot) {
+              const snapshotFy = state.loadedScenarioSnapshot.scenarioA.future.find(f => f.year === year)
+              if (snapshotFy) {
+                // Deep copy from snapshot
+                futureYear.physicians = JSON.parse(JSON.stringify(snapshotFy.physicians))
+                futureYear.locumCosts = snapshotFy.locumCosts
+                futureYear.medicalDirectorHours = snapshotFy.medicalDirectorHours
+                futureYear.prcsMedicalDirectorHours = snapshotFy.prcsMedicalDirectorHours
+                futureYear.prcsDirectorPhysicianId = snapshotFy.prcsDirectorPhysicianId
+
+                // Also reset grid overrides to snapshot
+                state.customProjectedValues = JSON.parse(JSON.stringify(state.loadedScenarioSnapshot.customProjectedValues))
+                return
+              }
+            }
+
+            // Fall back to defaults if no snapshot
+            const defaults = getDefaultValuesForYear(scenario, year, state)
             futureYear.physicians = defaults.physicians.map(p => ({ ...p }))
             futureYear.locumCosts = defaults.locumCosts
             futureYear.medicalDirectorHours = defaults.medicalDirectorHours
@@ -1067,6 +1085,10 @@ export const useDashboardStore = create<Store>()(
             state.currentScenarioId = id
             state.currentScenarioName = name
             state.currentScenarioUserId = userId ?? null
+            // Clear snapshot when unloading a scenario (id is null)
+            if (id === null) {
+              state.loadedScenarioSnapshot = null
+            }
           }),
 
         setCurrentScenarioB: (id: string | null, name: string | null, userId?: string | null) =>
@@ -1329,15 +1351,21 @@ export const useDashboardStore = create<Store>()(
                   state.scenarioA.future.push(data.year_2025_data)
                 }
               }
-              
+
               // Restore custom projected values (grid overrides)
               if (data.custom_projected_values) {
                 state.customProjectedValues = data.custom_projected_values
               }
-              
+
               state.currentScenarioId = data.id
               state.currentScenarioName = data.name
               state.currentScenarioUserId = data.user_id
+
+              // Create deep copy snapshot for change detection
+              state.loadedScenarioSnapshot = {
+                scenarioA: JSON.parse(JSON.stringify(state.scenarioA)),
+                customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
+              }
             })
 
             // Return the data so caller can access ytd_settings
@@ -1358,8 +1386,14 @@ export const useDashboardStore = create<Store>()(
                 state.currentScenarioId = data.id
                 state.currentScenarioName = data.name
                 state.currentScenarioUserId = data.user_id
+
+                // Create deep copy snapshot for change detection
+                state.loadedScenarioSnapshot = {
+                  scenarioA: JSON.parse(JSON.stringify(state.scenarioA)),
+                  customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
+                }
               }
-              
+
               if (target === 'B') {
                 // Loading into B for comparison (uses A's baseline, only B's projection)
                 // Always load the scenario's projection into B
@@ -1395,6 +1429,7 @@ export const useDashboardStore = create<Store>()(
         currentScenarioBId: state.currentScenarioBId,
         currentScenarioBName: state.currentScenarioBName,
         currentScenarioBUserId: state.currentScenarioBUserId,
+        loadedScenarioSnapshot: state.loadedScenarioSnapshot,
       }),
     }
   )
@@ -1538,6 +1573,94 @@ export function arePhysiciansChanged(
     if (selectionChanged) return true
   } catch {
     // Silently handle errors when accessing data
+  }
+
+  return false
+}
+
+/**
+ * Compare current scenario state against the loaded scenario snapshot
+ * Returns true if any changes detected compared to the loaded state
+ */
+export function hasChangesFromLoadedScenario(
+  year: number,
+  _store: any
+): boolean {
+  const snapshot = _store.loadedScenarioSnapshot
+
+  // If no snapshot exists, no comparison possible
+  if (!snapshot) {
+    return false
+  }
+
+  const currentFy = _store.scenarioA.future.find((f: any) => f.year === year)
+  const snapshotFy = snapshot.scenarioA.future.find((f: any) => f.year === year)
+
+  // If year doesn't exist in snapshot, consider unchanged
+  if (!snapshotFy) {
+    return false
+  }
+
+  // If year doesn't exist in current but exists in snapshot, it's changed
+  if (!currentFy) {
+    return true
+  }
+
+  // Compare physicians
+  if (currentFy.physicians.length !== snapshotFy.physicians.length) {
+    return true
+  }
+
+  for (let i = 0; i < currentFy.physicians.length; i++) {
+    const current = currentFy.physicians[i]
+    const snapshot = snapshotFy.physicians[i]
+
+    if (
+      current.id !== snapshot.id ||
+      current.name !== snapshot.name ||
+      current.type !== snapshot.type ||
+      current.salary !== snapshot.salary ||
+      current.weeksVacation !== snapshot.weeksVacation ||
+      current.employeePortionOfYear !== snapshot.employeePortionOfYear ||
+      current.partnerPortionOfYear !== snapshot.partnerPortionOfYear ||
+      current.startPortionOfYear !== snapshot.startPortionOfYear ||
+      current.terminatePortionOfYear !== snapshot.terminatePortionOfYear ||
+      current.receivesBenefits !== snapshot.receivesBenefits ||
+      current.receivesBonuses !== snapshot.receivesBonuses ||
+      current.bonusAmount !== snapshot.bonusAmount ||
+      current.hasMedicalDirectorHours !== snapshot.hasMedicalDirectorHours ||
+      current.medicalDirectorHoursPercentage !== snapshot.medicalDirectorHoursPercentage ||
+      current.buyoutCost !== snapshot.buyoutCost ||
+      current.trailingSharedMdAmount !== snapshot.trailingSharedMdAmount ||
+      current.additionalDaysWorked !== snapshot.additionalDaysWorked
+    ) {
+      return true
+    }
+  }
+
+  // Compare FutureYear fields
+  if (
+    Math.abs((currentFy.locumCosts ?? 0) - (snapshotFy.locumCosts ?? 0)) > 100 ||
+    Math.abs((currentFy.medicalDirectorHours ?? 0) - (snapshotFy.medicalDirectorHours ?? 0)) > 100 ||
+    Math.abs((currentFy.prcsMedicalDirectorHours ?? 0) - (snapshotFy.prcsMedicalDirectorHours ?? 0)) > 100 ||
+    (currentFy.prcsDirectorPhysicianId ?? undefined) !== (snapshotFy.prcsDirectorPhysicianId ?? undefined)
+  ) {
+    return true
+  }
+
+  // Compare customProjectedValues (grid overrides)
+  const currentCustomValues = _store.customProjectedValues || {}
+  const snapshotCustomValues = snapshot.customProjectedValues || {}
+
+  const allKeys = new Set([
+    ...Object.keys(currentCustomValues),
+    ...Object.keys(snapshotCustomValues)
+  ])
+
+  for (const key of allKeys) {
+    if (currentCustomValues[key] !== snapshotCustomValues[key]) {
+      return true
+    }
   }
 
   return false
@@ -1693,7 +1816,7 @@ export function Dashboard() {
   const [showHelpModal, setShowHelpModal] = useState(false)
   const [showSignupModal, setShowSignupModal] = useState(false)
   const [showScenarioManager, setShowScenarioManager] = useState(false)
-  const [scenarioManagerView, setScenarioManagerView] = useState<'list' | 'form' | 'edit'>('list')
+  const [scenarioManagerView, setScenarioManagerView] = useState<'list' | 'form' | 'edit' | 'formB' | 'editB'>('list')
   const [scenarioManagerInitialScenario, setScenarioManagerInitialScenario] = useState<any>(undefined)
   // Store refresh callback for YTD data after sync
   const ytdRefreshCallbackRef = useRef<(() => void) | null>(null)
@@ -1940,6 +2063,52 @@ export function Dashboard() {
     setUrlLoaded(true)
   }, [])
 
+  // Load Default (A) and Default (B) scenarios on app load
+  useEffect(() => {
+    if (!profile || !urlLoaded) return
+
+    // Only load if scenarios aren't already set (avoid overwriting URL-loaded state)
+    const hash = window.location.hash
+    if (hash && hash.startsWith('#s=')) return
+
+    // Skip if both scenarios are already loaded with the correct defaults
+    if (store.currentScenarioName === 'Default (A)' && store.currentScenarioBName === 'Default (B)') return
+
+    async function loadDefaultScenarios() {
+      try {
+        // Load Default (A) and Default (B) scenarios
+        const { data: scenarios, error } = await supabase
+          .from('scenarios')
+          .select('*')
+          .eq('user_id', profile?.id)
+          .in('name', ['Default (A)', 'Default (B)'])
+
+        if (error) throw error
+
+        const defaultA = scenarios?.find(s => s.name === 'Default (A)')
+        const defaultB = scenarios?.find(s => s.name === 'Default (B)')
+
+        // Load Default (A) into scenario A
+        if (defaultA) {
+          await store.loadScenarioFromDatabase(defaultA.id, 'A', true)
+        }
+
+        // Load Default (B) into scenario B (but keep it disabled/not visible)
+        // Use loadBaseline: false to prevent overwriting scenario A
+        if (defaultB) {
+          await store.loadScenarioFromDatabase(defaultB.id, 'B', false)
+          // Disable scenario B after loading to keep it hidden
+          store.setScenarioEnabled(false)
+        }
+      } catch (err) {
+        console.error('Error loading default scenarios:', err)
+      }
+    }
+
+    loadDefaultScenarios()
+  }, [profile, urlLoaded, store.currentScenarioName, store.currentScenarioBName])
+
+  // @ts-expect-error - Unused function kept for future use
   const copyShareLink = async () => {
     const snap: any = {
       scenarioA: store.scenarioA,

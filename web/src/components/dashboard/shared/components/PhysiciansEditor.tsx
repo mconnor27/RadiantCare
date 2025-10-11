@@ -37,7 +37,7 @@ import {
   getDefaultTrailingSharedMdAmount,
   createTrailingSharedMdAmountTooltip
 } from '../tooltips'
-import { useDashboardStore, arePhysiciansChanged } from '../../../Dashboard'
+import { useDashboardStore, arePhysiciansChanged, hasChangesFromLoadedScenario } from '../../../Dashboard'
 
 export default function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride, locumCosts, onLocumCostsChange, ytdLocumsMin }: { year: number; scenario: ScenarioKey; readOnly?: boolean; physiciansOverride?: Physician[]; locumCosts: number; onLocumCostsChange: (value: number) => void; ytdLocumsMin?: number }) {
   const store = useDashboardStore()
@@ -2440,7 +2440,10 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
       <div style={{ position: 'relative', textAlign: 'center', marginBottom: 6 }}>
         <div style={{ fontWeight: 600 }}>Physicians</div>
         {(() => {
-          const isChanged = arePhysiciansChanged(scenario, year, physicians, store)
+          // Use snapshot comparison if a scenario is loaded, otherwise fall back to default comparison
+          const isChanged = store.loadedScenarioSnapshot
+            ? hasChangesFromLoadedScenario(year, store)
+            : arePhysiciansChanged(scenario, year, physicians, store)
           return isChanged && !readOnly ? (
             <button
               onClick={() => {
@@ -2464,11 +2467,12 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 opacity: 0.7,
                 transition: 'opacity 0.2s'
               }}
-              onMouseEnter={(e) => { 
+              onMouseEnter={(e) => {
                 e.currentTarget.style.opacity = '1'
-                createTooltip('physicians-reset-tooltip', 'Reset to Default', e)
+                const tooltipText = store.loadedScenarioSnapshot ? 'Reset to Loaded Scenario' : 'Reset to Default'
+                createTooltip('physicians-reset-tooltip', tooltipText, e)
               }}
-              onMouseLeave={(e) => { 
+              onMouseLeave={(e) => {
                 e.currentTarget.style.opacity = '0.7'
                 removeTooltip('physicians-reset-tooltip')
               }}

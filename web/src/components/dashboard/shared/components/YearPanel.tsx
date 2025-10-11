@@ -81,21 +81,22 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
             physicians,
           } as FutureYear
         } else if (dataMode === '2025 Data' && last2025) {
-          // Use 2025 baseline values directly (read-only mode)
+          // Use 2025 baseline values, but allow YTD sync overrides from store
+          const storeFy2025 = sc.future.find((f) => f.year === 2025)
           const defaultPhysicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
           const suszko = defaultPhysicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
           return {
             year: 2025,
-            therapyIncome: last2025.therapyIncome,
-            nonEmploymentCosts: last2025.nonEmploymentCosts,
-            nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
-            locumCosts: DEFAULT_LOCUM_COSTS_2025,
-            miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-            medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
-            prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
-            consultingServicesAgreement: ACTUAL_2025_CONSULTING_SERVICES,
-            prcsDirectorPhysicianId: suszko?.id,
-            physicians: defaultPhysicians,
+            therapyIncome: storeFy2025?.therapyIncome ?? last2025.therapyIncome,
+            nonEmploymentCosts: storeFy2025?.nonEmploymentCosts ?? last2025.nonEmploymentCosts,
+            nonMdEmploymentCosts: storeFy2025?.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
+            locumCosts: storeFy2025?.locumCosts ?? DEFAULT_LOCUM_COSTS_2025,
+            miscEmploymentCosts: storeFy2025?.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
+            medicalDirectorHours: storeFy2025?.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
+            prcsMedicalDirectorHours: storeFy2025?.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
+            consultingServicesAgreement: storeFy2025?.consultingServicesAgreement ?? ACTUAL_2025_CONSULTING_SERVICES,
+            prcsDirectorPhysicianId: storeFy2025?.prcsDirectorPhysicianId ?? suszko?.id,
+            physicians: storeFy2025?.physicians ?? defaultPhysicians,
           } as FutureYear
         } else {
           // Fallback

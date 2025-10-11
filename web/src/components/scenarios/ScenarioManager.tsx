@@ -14,7 +14,7 @@ interface ScenarioManagerProps {
   viewMode: 'YTD Detailed' | 'Multi-Year'
   ytdSettings?: any
   onYtdSettingsChange?: (settings: any) => void
-  initialView?: 'list' | 'form' | 'edit'
+  initialView?: 'list' | 'form' | 'edit' | 'formB' | 'editB'
   initialScenario?: SavedScenario
 }
 

@@ -16,7 +16,7 @@ import DetailedChart from './components/DetailedChart'
 import PartnerCompensation from './components/PartnerCompensation'
 
 // Import dashboard store and physicians editor
-import { useDashboardStore } from '../../../Dashboard'
+import { useDashboardStore, hasChangesFromLoadedScenario } from '../../../Dashboard'
 import PhysiciansEditor from '../../shared/components/PhysiciansEditor'
 import { DEFAULT_LOCUM_COSTS_2025 } from '../../shared/defaults'
 import ScenarioLoadModal from '../../../scenarios/ScenarioLoadModal'
@@ -318,23 +318,24 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
   ])
 
 
-  // Mark scenario as dirty when scenario data changes (but only after initial load)
+  // Mark scenario as dirty when scenario data changes compared to loaded snapshot
   useEffect(() => {
-    // Skip if no scenario loaded or if this is the initial load
-    if (!store.currentScenarioId) return
+    // Skip if no scenario loaded
+    if (!store.currentScenarioId || !store.loadedScenarioSnapshot) {
+      setIsScenarioDirty(false)
+      return
+    }
 
-    // Set dirty flag (will be reset by the scenario change effect below)
-    setIsScenarioDirty(true)
+    // Check if current state differs from snapshot
+    const isDirty = hasChangesFromLoadedScenario(2025, store)
+    setIsScenarioDirty(isDirty)
   }, [
     store.currentScenarioId,
+    store.loadedScenarioSnapshot,
     // Track changes to scenario data (physician panel, grid, etc.)
-    JSON.stringify(fy2025)
+    JSON.stringify(fy2025),
+    JSON.stringify(store.customProjectedValues)
   ])
-
-  // Reset dirty flag when scenario changes
-  useEffect(() => {
-    setIsScenarioDirty(false)
-  }, [store.currentScenarioId])
 
   // Auto-load Default scenario on first load if no scenario is loaded
   useEffect(() => {

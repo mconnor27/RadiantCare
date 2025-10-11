@@ -176,6 +176,14 @@ export type Store = {
   currentScenarioId: string | null
   currentScenarioName: string | null
   currentScenarioUserId: string | null
+  currentScenarioBId: string | null
+  currentScenarioBName: string | null
+  currentScenarioBUserId: string | null
+  // Snapshot of loaded scenario state for change detection
+  loadedScenarioSnapshot: {
+    scenarioA: ScenarioState
+    customProjectedValues: Record<string, number>
+  } | null
   setScenarioEnabled: (enabled: boolean) => void
   setFutureValue: (
     scenario: ScenarioKey,
@@ -215,4 +223,10 @@ export type Store = {
   ) => Promise<SavedScenario>
   loadScenarioFromDatabase: (id: string, target?: 'A' | 'B', loadBaseline?: boolean) => Promise<any>
   setCurrentScenario: (id: string | null, name: string | null, userId?: string | null) => void
+  setCurrentScenarioB: (id: string | null, name: string | null, userId?: string | null) => void
+  saveScenarioBToDatabase: (
+    name: string,
+    description: string,
+    isPublic: boolean
+  ) => Promise<SavedScenario>
 }
