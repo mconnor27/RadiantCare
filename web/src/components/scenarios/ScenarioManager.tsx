@@ -371,6 +371,23 @@ export default function ScenarioManager({
       const currentFavoriteValue = favoriteType === 'A' ? scenario.is_favorite_a : (isMultiYearScenario(scenario) ? scenario.is_favorite_b : false)
       const newFavoriteValue = !currentFavoriteValue
 
+      // Validate favorite rules
+      const allScenarios = [...myScenarios, ...publicScenarios]
+      const currentFavoriteA = allScenarios.find(s => s.is_favorite_a)
+      const currentFavoriteB = allScenarios.find(s => isMultiYearScenario(s) && s.is_favorite_b)
+
+      // Rule 1: Cannot set B favorite if no A favorite exists
+      if (favoriteType === 'B' && newFavoriteValue && !currentFavoriteA) {
+        setError('Cannot set Favorite B without a Favorite A. Please set a Favorite A first.')
+        return
+      }
+
+      // Rule 2: Cannot remove A favorite if B favorite exists (unless we're changing A to a different scenario)
+      if (favoriteType === 'A' && !newFavoriteValue && currentFavoriteB && currentFavoriteA?.id === id) {
+        setError('Cannot remove Favorite A while Favorite B is set. Remove Favorite B first, or change Favorite A to a different scenario.')
+        return
+      }
+
       // Optimistically update the local state immediately
       const fieldToUpdate = favoriteType === 'A' ? 'is_favorite_a' : 'is_favorite_b'
 
