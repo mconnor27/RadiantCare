@@ -3,7 +3,7 @@ import {
   calculateEmployeeTotalCost,
   calculateDelayedW2Payment,
   getEmployeePortionOfYear,
-  getPartnerFTEWeight
+  getPartnerFTEWeightProper
 } from './calculations'
 import { getDefaultTrailingSharedMdAmount } from './tooltips'
 import {
@@ -87,7 +87,7 @@ export function calculateAllCompensations(params: CompensationParams): Compensat
   // === STEP 2: Calculate buyout costs ===
   const totalBuyoutCosts = partners.reduce((sum, p) => {
     if (p.type === 'partnerToRetire') {
-      const weight = getPartnerFTEWeight(p)
+      const weight = getPartnerFTEWeightProper(p)
       // Only subtract buyout if the partner worked part of the year
       return sum + (weight > 0 ? (p.buyoutCost ?? 0) : 0)
     }
@@ -210,7 +210,7 @@ export function calculateAllCompensations(params: CompensationParams): Compensat
   }
 
   // === STEP 8: Distribute pool by FTE weight ===
-  const partnerFTEs = partners.map((p) => ({ p, weight: getPartnerFTEWeight(p) }))
+  const partnerFTEs = partners.map((p) => ({ p, weight: getPartnerFTEWeightProper(p) }))
   const totalWeight = partnerFTEs.reduce((s, x) => s + x.weight, 0) || 1
 
   const results: CompensationResult[] = []
