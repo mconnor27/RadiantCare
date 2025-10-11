@@ -388,11 +388,11 @@ export default function HistoricAndProjectionChart() {
             netHistoric,
             [
               baselineA.netIncome,
-              ...store.scenarioA.future.filter(f => f.year !== 2025).map((_, idx) => scANet[idx])
+              ...scANet.slice(1)
             ],
             store.scenarioBEnabled && store.scenarioB ? [
               baselineB!.netIncome,
-              ...store.scenarioB.future.filter(f => f.year !== 2025).map((_, idx) => scBNet[idx])
+              ...scBNet.slice(1)
             ] : null,
             baselineA.netIncome,
             baselineB ? baselineB.netIncome : null,
@@ -403,8 +403,8 @@ export default function HistoricAndProjectionChart() {
             'Employment Costs',
             '#6b7280',
             employmentHistoric,
-            [baselineA.employmentCosts, ...store.scenarioA.future.filter(f => f.year !== 2025).map((_, idx) => scAEmployment[idx])],
-            store.scenarioBEnabled && store.scenarioB ? [baselineB!.employmentCosts, ...store.scenarioB.future.filter(f => f.year !== 2025).map((_, idx) => scBEmployment[idx])] : null,
+            [baselineA.employmentCosts, ...scAEmployment.slice(1)],
+            store.scenarioBEnabled && store.scenarioB ? [baselineB!.employmentCosts, ...scBEmployment.slice(1)] : null,
             baselineA.employmentCosts,
             baselineB ? baselineB.employmentCosts : null,
             'employment'
