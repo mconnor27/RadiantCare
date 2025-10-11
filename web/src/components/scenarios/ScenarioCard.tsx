@@ -115,16 +115,13 @@ export default function ScenarioCard({
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             {/* Star A */}
             {(viewMode === 'Multi-Year' || viewMode === 'YTD Detailed') && onToggleFavorite && isOwner && (
-              <button
+              <div
                 onClick={(e) => {
                   e.stopPropagation()
                   onToggleFavorite(scenario.id, 'A')
                 }}
                 style={{
-                  background: 'none',
-                  border: 'none',
                   cursor: 'pointer',
-                  padding: 0,
                   display: 'flex',
                   alignItems: 'center',
                   position: 'relative'
@@ -142,25 +139,23 @@ export default function ScenarioCard({
                   fontSize: '8px',
                   fontWeight: 'bold',
                   position: 'absolute',
-                  top: '-2px',
-                  right: '-6px',
-                  color: '#374151'
+                  top: '-7px',
+                  right: '0px',
+                  color: '#374151',
+                  pointerEvents: 'none'
                 }}>A</sup>
-              </button>
+              </div>
             )}
 
             {/* Star B - Only show in Multi-Year view */}
             {viewMode === 'Multi-Year' && isMultiYearScenario(scenario) && onToggleFavorite && isOwner && (
-              <button
+              <div
                 onClick={(e) => {
                   e.stopPropagation()
                   onToggleFavorite(scenario.id, 'B')
                 }}
                 style={{
-                  background: 'none',
-                  border: 'none',
                   cursor: 'pointer',
-                  padding: 0,
                   display: 'flex',
                   alignItems: 'center',
                   position: 'relative'
@@ -178,11 +173,12 @@ export default function ScenarioCard({
                   fontSize: '8px',
                   fontWeight: 'bold',
                   position: 'absolute',
-                  top: '-2px',
-                  right: '-6px',
-                  color: '#374151'
+                  top: '-7px',
+                  right: '0px',
+                  color: '#374151',
+                  pointerEvents: 'none'
                 }}>B</sup>
-              </button>
+              </div>
             )}
           </div>
         </div>

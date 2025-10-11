@@ -371,18 +371,41 @@ export default function ScenarioManager({
       const currentFavoriteValue = favoriteType === 'A' ? scenario.is_favorite_a : (isMultiYearScenario(scenario) ? scenario.is_favorite_b : false)
       const newFavoriteValue = !currentFavoriteValue
 
-      // If setting as favorite, unset any other scenario with this favorite type
-      if (newFavoriteValue) {
-        const fieldToUpdate = favoriteType === 'A' ? 'is_favorite_a' : 'is_favorite_b'
+      // Optimistically update the local state immediately
+      const fieldToUpdate = favoriteType === 'A' ? 'is_favorite_a' : 'is_favorite_b'
 
+      // Update myScenarios state
+      setMyScenarios(prev => prev.map(s => {
+        if (s.id === id) {
+          return { ...s, [fieldToUpdate]: newFavoriteValue }
+        }
+        // If setting as favorite, clear other scenarios with this favorite type
+        if (newFavoriteValue && s[fieldToUpdate as keyof typeof s]) {
+          return { ...s, [fieldToUpdate]: false }
+        }
+        return s
+      }))
+
+      // Update publicScenarios state
+      setPublicScenarios(prev => prev.map(s => {
+        if (s.id === id) {
+          return { ...s, [fieldToUpdate]: newFavoriteValue }
+        }
+        // If setting as favorite, clear other scenarios with this favorite type
+        if (newFavoriteValue && s[fieldToUpdate as keyof typeof s]) {
+          return { ...s, [fieldToUpdate]: false }
+        }
+        return s
+      }))
+
+      // Then update the database in the background
+      if (newFavoriteValue) {
         // First, clear all other favorites of this type for this user
-        const { error: clearError } = await supabase
+        await supabase
           .from('scenarios')
           .update({ [fieldToUpdate]: false })
           .eq('user_id', profile?.id)
           .eq(fieldToUpdate, true)
-
-        if (clearError) throw clearError
       }
 
       // Now toggle the favorite for this scenario
@@ -398,9 +421,11 @@ export default function ScenarioManager({
         .update(updateData)
         .eq('id', id)
 
-      if (updateError) throw updateError
-
-      await loadScenarios()
+      if (updateError) {
+        // If database update fails, reload to get correct state
+        await loadScenarios()
+        throw updateError
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to toggle favorite')
     }

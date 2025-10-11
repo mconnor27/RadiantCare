@@ -5,7 +5,6 @@ import { isYTDScenario, isMultiYearScenario } from '../dashboard/shared/types'
 import { useAuth } from '../auth/AuthProvider'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faFolderOpen, faStar as faSolidStar } from '@fortawesome/free-solid-svg-icons'
-import { faStar as faRegularStar } from '@fortawesome/free-regular-svg-icons'
 
 interface ScenarioLoadModalProps {
   isOpen: boolean
@@ -417,8 +416,8 @@ export default function ScenarioLoadModal({
                                 fontSize: '8px',
                                 fontWeight: 'bold',
                                 position: 'absolute',
-                                top: '-2px',
-                                right: '-6px',
+                                top: '-7px',
+                                right: '0px',
                                 color: '#374151'
                               }}>A</sup>
                             </div>
@@ -438,8 +437,8 @@ export default function ScenarioLoadModal({
                                 fontSize: '8px',
                                 fontWeight: 'bold',
                                 position: 'absolute',
-                                top: '-2px',
-                                right: '-6px',
+                                top: '-7px',
+                                right: '0px',
                                 color: '#374151'
                               }}>B</sup>
                             </div>
