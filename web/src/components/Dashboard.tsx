@@ -14,6 +14,7 @@ import YTDDetailedMobile from './dashboard/views/detailed/YTDDetailedMobile'
 import MultiYearView from './dashboard/views/multi-year/MultiYearView'
 import SyncButton from './dashboard/views/detailed/components/SyncButton'
 import SharedLinkWarningModal from './shared/SharedLinkWarningModal'
+import MobileWarningModal from './shared/MobileWarningModal'
 import { DEFAULT_YTD_SETTINGS } from './dashboard/views/detailed/config/chartConfig'
 import { authenticatedFetch } from '../lib/api'
 // Import types from types.ts to avoid duplication and binding conflicts
@@ -2065,6 +2066,7 @@ export function Dashboard() {
   const { profile, loading, signOut } = useAuth()
   const [viewMode, setViewMode] = useState<'Multi-Year' | 'YTD Detailed' | 'YTD Mobile'>('YTD Detailed')
   const [urlLoaded, setUrlLoaded] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   // Initialize ytdSettings with defaults from chartConfig
   const [ytdSettings, setYtdSettings] = useState<YTDSettings>(DEFAULT_YTD_SETTINGS)
   // Track whether MultiYearView has been visited (for lazy initialization)
@@ -2080,6 +2082,8 @@ export function Dashboard() {
   // Shared link warning modal
   const [showSharedLinkWarning, setShowSharedLinkWarning] = useState(false)
   const [pendingSharedLinkId, setPendingSharedLinkId] = useState<string | null>(null)
+  // Mobile warning modal
+  const [showMobileWarning, setShowMobileWarning] = useState(false)
 
   // Wrap setYtdSettings in useCallback to prevent unnecessary re-renders in YTDDetailed
   const handleYtdSettingsChange = useCallback((settings: YTDSettings) => {
@@ -2090,6 +2094,27 @@ export function Dashboard() {
   const handleYtdRefreshRequest = useCallback((callback: () => void) => {
     ytdRefreshCallbackRef.current = callback
   }, [])
+
+  // Detect mobile and show warning on initial load
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768
+      setIsMobile(mobile)
+      return mobile
+    }
+
+    const mobile = checkMobile()
+    const hasSeenWarning = sessionStorage.getItem('mobileWarningShown')
+
+    if (mobile && !hasSeenWarning && profile) {
+      setShowMobileWarning(true)
+      sessionStorage.setItem('mobileWarningShown', 'true')
+    }
+
+    // Listen for window resize to detect orientation changes
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [profile])
 
   // Initialize MultiYearView when first visited
   useEffect(() => {
@@ -2649,9 +2674,9 @@ export function Dashboard() {
 
   // User is authenticated - show the full dashboard
   return (
-    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: viewMode === 'YTD Mobile' ? 0 : 16, position: 'relative' }}>
+    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 0 : 16, position: 'relative' }}>
       {/* Top Bar with Auth and Help - hide in mobile mode */}
-      {viewMode !== 'YTD Mobile' && (
+      {!isMobile && (
         <div className="full-bleed" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 12, paddingTop: 0, paddingLeft: 16, paddingRight: 16 }}>
           {/* Sync Button - only show in YTD Detailed view */}
           {viewMode === 'YTD Detailed' && (
@@ -2740,7 +2765,7 @@ export function Dashboard() {
       )}
 
       {/* Centered Header - hide in mobile mode */}
-      {viewMode !== 'YTD Mobile' && (
+      {!isMobile && (
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
           <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 60, width: 'auto', display: 'block' }} />
           <h2 style={{ margin: 0, fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif', color: '#7c2a83', fontWeight: 900, fontSize: 36, lineHeight: 1.05 }}>Compensation Dashboard</h2>
@@ -2748,51 +2773,52 @@ export function Dashboard() {
       )}
 
       <div style={{
-        marginTop: viewMode === 'YTD Mobile' ? 0 : 20,
-        maxWidth: viewMode === 'YTD Mobile' ? '100%' : 1600,
-        margin: viewMode === 'YTD Mobile' ? 0 : '20px auto 0 auto'
+        marginTop: isMobile ? 0 : 20,
+        maxWidth: isMobile ? '100%' : 1600,
+        margin: isMobile ? 0 : '20px auto 0 auto'
       }}>
-        {/* View Mode Buttons */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              onClick={() => setViewMode('YTD Detailed')}
-              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Detailed' ? '#e5e7eb' : '#fff', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-            >YTD Detailed</button>
-            <button
-              onClick={() => setViewMode('Multi-Year')}
-              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'Multi-Year' ? '#e5e7eb' : '#fff', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-            >Multi-Year</button>
-            <button
-              onClick={() => setViewMode('YTD Mobile')}
-              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Mobile' ? '#e5e7eb' : '#fff', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-            >YTD Mobile</button>
+        {/* View Mode Buttons - hide on mobile */}
+        {!isMobile && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                onClick={() => setViewMode('YTD Detailed')}
+                style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Detailed' ? '#e5e7eb' : '#fff', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+              >YTD Detailed</button>
+              <button
+                onClick={() => setViewMode('Multi-Year')}
+                style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'Multi-Year' ? '#e5e7eb' : '#fff', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+              >Multi-Year</button>
+            </div>
           </div>
-        </div>
+        )}
         
         {!urlLoaded ? (
           <div style={{ padding: 20, textAlign: 'center' }}>Loading...</div>
         ) : (
           <>
-            <div style={{ display: viewMode === 'YTD Detailed' ? 'block' : 'none' }}>
-              <YTDDetailed
-                initialSettings={ytdSettings}
-                onSettingsChange={handleYtdSettingsChange}
-                onRefreshRequest={handleYtdRefreshRequest}
-              />
-
-            </div>
-            <div style={{ display: viewMode === 'YTD Mobile' ? 'block' : 'none' }}>
+            {/* Show YTD Mobile view on mobile devices */}
+            {isMobile ? (
               <YTDDetailedMobile
                 onRefreshRequest={handleYtdRefreshRequest}
                 onPasswordChange={() => setShowPasswordReset(true)}
               />
-            </div>
-            {/* Only render MultiYearView after it's been visited once (lazy initialization) */}
-            {multiYearInitialized && (
-              <div style={{ display: viewMode === 'Multi-Year' ? 'block' : 'none' }}>
-                <MultiYearView />
-              </div>
+            ) : (
+              <>
+                <div style={{ display: viewMode === 'YTD Detailed' ? 'block' : 'none' }}>
+                  <YTDDetailed
+                    initialSettings={ytdSettings}
+                    onSettingsChange={handleYtdSettingsChange}
+                    onRefreshRequest={handleYtdRefreshRequest}
+                  />
+                </div>
+                {/* Only render MultiYearView after it's been visited once (lazy initialization) */}
+                {multiYearInitialized && (
+                  <div style={{ display: viewMode === 'Multi-Year' ? 'block' : 'none' }}>
+                    <MultiYearView />
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
@@ -2975,6 +3001,11 @@ export function Dashboard() {
         isOpen={showSharedLinkWarning}
         onConfirm={handleSharedLinkConfirm}
         onCancel={handleSharedLinkCancel}
+      />
+
+      <MobileWarningModal
+        isOpen={showMobileWarning}
+        onClose={() => setShowMobileWarning(false)}
       />
     </div>
   )

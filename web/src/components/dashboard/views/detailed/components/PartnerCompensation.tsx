@@ -187,7 +187,7 @@ function parseYTDPhysicianData(physicians: Physician[], equityData: any, summary
             }
             
             data[cleanName][partnerName] = adjustedValue
-            // Only add to totals if it's not Beginning Equity (since that's shown separately)
+            // Only add to totals if it's not Beginning Equity (since that's shown separately in main table)
             if (cleanName !== 'Beginning Equity') {
               totals[partnerName] += adjustedValue
             }
@@ -497,7 +497,9 @@ export default function PartnerCompensation({
               const projected = projectedData.totals[physician] || 0
               const paidToDate = ytdData.totals[physician] || 0
               const beginningEquity = getValue('Beginning Equity', physician, ytdData.data)
-              const remaining = projected + paidToDate + beginningEquity
+              // For mobile: include beginning equity in paid total
+              const paidWithEquity = paidToDate + beginningEquity
+              const remaining = projected + paidWithEquity
               const warnings = getPhysicianWarnings(physician)
               const hasWarnings = warnings.length > 0
 
@@ -541,7 +543,7 @@ export default function PartnerCompensation({
                   <div
                     style={{
                       textAlign: 'right',
-                      color: paidToDate < 0 ? '#dc3545' : paidToDate > 0 ? '#28a745' : '#6c757d',
+                      color: paidWithEquity < 0 ? '#dc3545' : paidWithEquity > 0 ? '#28a745' : '#6c757d',
                       fontWeight: 600,
                       cursor: 'pointer',
                       textDecoration: 'underline',
@@ -551,7 +553,7 @@ export default function PartnerCompensation({
                     }}
                     onClick={() => setSelectedPhysician(physician)}
                   >
-                    {formatCurrency(paidToDate)}
+                    {formatCurrency(paidWithEquity)}
                   </div>
                   <div style={{
                     textAlign: 'right',
@@ -636,53 +638,82 @@ export default function PartnerCompensation({
               <div style={{ fontSize: 13 }}>
                 {nonZeroRowNames.filter(rowName =>
                   getValue(rowName, selectedPhysician, ytdData.data) !== 0
-                ).length === 0 ? (
+                ).length === 0 && getValue('Beginning Equity', selectedPhysician, ytdData.data) === 0 ? (
                   <div style={{ textAlign: 'center', padding: 20, color: '#666' }}>
                     No detailed data available
                   </div>
                 ) : (
-                  nonZeroRowNames
-                    .filter(rowName => getValue(rowName, selectedPhysician, ytdData.data) !== 0)
-                    .map((rowName) => {
-                      const value = getValue(rowName, selectedPhysician, ytdData.data)
-                      return (
-                        <div
-                          key={rowName}
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            padding: '8px 0',
-                            borderBottom: '1px solid #f0f0f0',
-                            gap: 12
-                          }}
-                        >
-                          <div style={{ flex: 1, color: '#333', minWidth: '130px', textAlign: 'left', fontSize: 15 }}>
-                            {(() => {
-                              // Shorten row names for mobile
-                              const shortNames: { [key: string]: string } = {
-                                'Member Draw': 'Draw',
-                                'Retirement Contributions': 'Retirement',
-                                'Draws - Additional Days Worked': 'Internal Locums'
-                              }
-                              
-                              // Special handling for Buy In/Buy Out - show "Buy In" for positive, "Buy Out" for negative
-                              if (rowName === 'Buy In/Buy Out') {
-                                return value > 0 ? 'Buy In' : 'Buy Out'
-                              }
-                              
-                              return shortNames[rowName] || rowName
-                            })()}
-                          </div>
-                          <div style={{
-                            fontWeight: 600,
-                            color: value < 0 ? '#dc3545' : value > 0 ? '#28a745' : '#6c757d',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {formatCurrency(value)}
-                          </div>
+                  <>
+                    {/* Show Beginning Equity at the top if it exists */}
+                    {getValue('Beginning Equity', selectedPhysician, ytdData.data) !== 0 && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          padding: '8px 0',
+                          borderBottom: '1px solid #f0f0f0',
+                          gap: 12
+                        }}
+                      >
+                        <div style={{ flex: 1, color: '#333', minWidth: '130px', textAlign: 'left', fontSize: 15 }}>
+                          Prior Equity
                         </div>
-                      )
-                    })
+                        <div style={{
+                          fontWeight: 600,
+                          fontSize: 15,
+                          color: getValue('Beginning Equity', selectedPhysician, ytdData.data) < 0 ? '#dc3545' :
+                                 getValue('Beginning Equity', selectedPhysician, ytdData.data) > 0 ? '#28a745' : '#6c757d',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {formatCurrency(getValue('Beginning Equity', selectedPhysician, ytdData.data))}
+                        </div>
+                      </div>
+                    )}
+
+                    {nonZeroRowNames
+                      .filter(rowName => getValue(rowName, selectedPhysician, ytdData.data) !== 0)
+                      .map((rowName) => {
+                        const value = getValue(rowName, selectedPhysician, ytdData.data)
+                        return (
+                          <div
+                            key={rowName}
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              padding: '8px 0',
+                              borderBottom: '1px solid #f0f0f0',
+                              gap: 12
+                            }}
+                          >
+                            <div style={{ flex: 1, color: '#333', minWidth: '130px', textAlign: 'left', fontSize: 15 }}>
+                              {(() => {
+                                // Shorten row names for mobile
+                                const shortNames: { [key: string]: string } = {
+                                  'Member Draw': 'Draw',
+                                  'Retirement Contributions': 'Retirement',
+                                  'Draws - Additional Days Worked': 'Internal Locums'
+                                }
+
+                                // Special handling for Buy In/Buy Out - show "Buy In" for positive, "Buy Out" for negative
+                                if (rowName === 'Buy In/Buy Out') {
+                                  return value > 0 ? 'Buy In' : 'Buy Out'
+                                }
+
+                                return shortNames[rowName] || rowName
+                              })()}
+                            </div>
+                            <div style={{
+                              fontWeight: 600,
+                              fontSize: 15,
+                              color: value < 0 ? '#dc3545' : value > 0 ? '#28a745' : '#6c757d',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {formatCurrency(value)}
+                            </div>
+                          </div>
+                        )
+                      })}
+                  </>
                 )}
 
                 {/* Total */}
@@ -697,10 +728,10 @@ export default function PartnerCompensation({
                 }}>
                   <div>Total Paid</div>
                   <div style={{
-                    color: ytdData.totals[selectedPhysician] < 0 ? '#dc3545' :
-                           ytdData.totals[selectedPhysician] > 0 ? '#28a745' : '#6c757d'
+                    color: (ytdData.totals[selectedPhysician] + getValue('Beginning Equity', selectedPhysician, ytdData.data)) < 0 ? '#dc3545' :
+                           (ytdData.totals[selectedPhysician] + getValue('Beginning Equity', selectedPhysician, ytdData.data)) > 0 ? '#28a745' : '#6c757d'
                   }}>
-                    {formatCurrency(ytdData.totals[selectedPhysician] || 0)}
+                    {formatCurrency((ytdData.totals[selectedPhysician] || 0) + getValue('Beginning Equity', selectedPhysician, ytdData.data))}
                   </div>
                 </div>
               </div>
