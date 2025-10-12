@@ -520,7 +520,7 @@ export default function DetailedChart({
       })
     } else {
       // Use total income line traces
-      return buildStaticLineTraces({
+      const result = buildStaticLineTraces({
         showCombined,
         combinedStats,
         processedHistoricalData,
@@ -535,6 +535,7 @@ export default function DetailedChart({
         selectedYears,
         colorScheme
       })
+      return result.traces
     }
   }, [
     chartMode, incomeMode, showCombined, combinedStats, processedHistoricalData,
@@ -572,14 +573,40 @@ export default function DetailedChart({
     }
   }, [chartMode, incomeMode, processedCurrentData, is2025Visible, chartMode === 'line' ? pulsePhase : 0, isNormalized, timeframe, currentPeriod, fy2025, visibleSites, colorScheme, siteColorScheme])
 
+  // Extract annotations from line traces
+  const chartAnnotations = useMemo(() => {
+    if (chartMode !== 'line' || incomeMode !== 'total') return []
+
+    const result = buildStaticLineTraces({
+      showCombined,
+      combinedStats,
+      processedHistoricalData,
+      processedCurrentData,
+      projectedIncomeData,
+      isNormalized,
+      is2025Visible,
+      timeframe,
+      smoothing,
+      combineStatistic,
+      combineError,
+      selectedYears,
+      colorScheme
+    })
+    return result.annotations || []
+  }, [
+    chartMode, incomeMode, showCombined, combinedStats, processedHistoricalData,
+    processedCurrentData, projectedIncomeData, isNormalized, is2025Visible, timeframe, smoothing,
+    combineStatistic, combineError, selectedYears, colorScheme
+  ])
+
   // Build chart layout
   const chartLayout = useMemo(() => {
     if (chartMode === 'proportion') {
       // Proportion charts use their own layout
       return null // Will be handled separately in render
     }
-    
-    return buildChartLayout({
+
+    const baseLayout = buildChartLayout({
       chartMode: chartMode as 'line' | 'bar',
       timeframe,
       showCombined,
@@ -598,10 +625,20 @@ export default function DetailedChart({
       unfilteredCurrentData: currentYearData,
       showAllMonths
     })
+
+    // Add annotations to layout
+    if (baseLayout && chartAnnotations.length > 0) {
+      return {
+        ...baseLayout,
+        annotations: [...(baseLayout.annotations || []), ...chartAnnotations]
+      }
+    }
+
+    return baseLayout
   }, [
     chartMode, timeframe, showCombined, isNormalized, processedCurrentData,
     is2025Visible, staticLineTraces, currentX, currentY, currentPeriod, incomeMode, selectedYears,
-    combineStatistic, combineError, visibleSites, currentYearData, showAllMonths
+    combineStatistic, combineError, visibleSites, currentYearData, showAllMonths, chartAnnotations
   ])
 
   // Navigation handlers

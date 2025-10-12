@@ -49,6 +49,7 @@ export const buildStaticLineTraces = ({
   const HISTORICAL_COLORS = colors.historical
   const CURRENT_YEAR_COLOR = colors.current
   const traces = []
+  const annotations: any[] = []
   
   // Combined statistics (when enabled)
   if (showCombined && combinedStats.mean.length > 0) {
@@ -194,6 +195,31 @@ export const buildStaticLineTraces = ({
         ? '2025 %{text}: %{y:.1f}%<extra></extra>'
         : '2025 %{text}: $%{y:,.0f}<extra></extra>'
     })
+
+    // Add annotation for current YTD value (last point)
+    if (is2025Visible && smoothedCurrentData.length > 0) {
+      const lastPoint = smoothedCurrentData[smoothedCurrentData.length - 1]
+      annotations.push({
+        x: lastPoint.monthDay,
+        y: lastPoint.cumulativeIncome,
+        xref: 'x',
+        yref: 'y',
+        text: isNormalized
+          ? `${lastPoint.cumulativeIncome.toFixed(1)}%`
+          : `$${(lastPoint.cumulativeIncome / 1000000).toFixed(2)}M`,
+        showarrow: false,
+        xanchor: 'right',
+        xshift: -8,
+        yshift: 12,
+        font: {
+          size: 12,
+          color: CURRENT_YEAR_COLOR,
+          family: 'Arial, sans-serif'
+        },
+        bgcolor: 'rgba(255, 255, 255, 0)',
+        borderpad: 3
+      })
+    }
   }
 
   // Projected Total Income (2025) - dotted green line from last actual data to Dec 31
@@ -226,9 +252,34 @@ export const buildStaticLineTraces = ({
         ? '2025 Projected %{text}: %{y:.1f}%<extra></extra>'
         : '2025 Projected %{text}: $%{y:,.0f}<extra></extra>'
     })
+
+    // Add annotation for projected 12-31 value (last point of projection)
+    if (is2025Visible && projectedIncomeData.length > 0) {
+      const lastPoint = projectedIncomeData[projectedIncomeData.length - 1]
+      annotations.push({
+        x: lastPoint.monthDay,
+        y: lastPoint.cumulativeIncome,
+        xref: 'x',
+        yref: 'y',
+        text: isNormalized
+          ? `${lastPoint.cumulativeIncome.toFixed(1)}%`
+          : `$${(lastPoint.cumulativeIncome / 1000000).toFixed(2)}M`,
+        showarrow: false,
+        xanchor: 'right',
+        xshift: -8,
+        yshift: 12,
+        font: {
+          size: 12,
+          color: CURRENT_YEAR_COLOR,
+          family: 'Arial, sans-serif'
+        },
+        bgcolor: 'rgba(255, 255, 255, 0)',
+        borderpad: 3
+      })
+    }
   }
-  
-  return traces
+
+  return { traces, annotations }
 }
 
 export const buildPulsingTraces = (

@@ -11,6 +11,7 @@ import { useAuth } from '../../../auth/AuthProvider'
 import { supabase } from '../../../../lib/supabase'
 import DetailedChart from './components/DetailedChart'
 import YearlyDataGrid from './components/YearlyDataGrid'
+import PartnerCompensation from './components/PartnerCompensation'
 
 interface YTDDetailedMobileProps {
   onRefreshRequest?: (callback: () => void) => void
@@ -78,7 +79,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
                 const points = parseTherapyIncome2025(cache.daily)
                 return {
                   data: points,
-                  cache: { daily: cache.daily, summary: cache.summary }
+                  cache: { daily: cache.daily, summary: cache.summary, equity: cache.equity }
                 }
               } else {
                 return { data: historical2025Data, cache: null }
@@ -477,6 +478,16 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
           environment="production"
           cachedSummary={cachedData?.summary}
           isLoadingCache={showLoadingModal}
+        />
+      </div>
+
+      {/* Partner Compensation */}
+      <div style={{ padding: '0 16px 16px' }}>
+        <PartnerCompensation
+          environment="production"
+          cachedSummary={cachedData?.summary}
+          cachedEquity={cachedData?.equity}
+          isMobile={true}
         />
       </div>
     </>

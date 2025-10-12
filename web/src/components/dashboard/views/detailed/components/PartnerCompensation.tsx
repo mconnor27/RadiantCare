@@ -289,12 +289,14 @@ interface PartnerCompensationProps {
   environment?: 'production' | 'sandbox'
   cachedSummary?: any
   cachedEquity?: any
+  isMobile?: boolean
 }
 
 export default function PartnerCompensation({
   environment = 'sandbox',
   cachedSummary,
-  cachedEquity
+  cachedEquity,
+  isMobile = false
 }: PartnerCompensationProps = {}) {
   // Use cached data in production mode, otherwise use static files
   const equityData = (environment === 'production' && cachedEquity) ? cachedEquity : equityDataStatic
@@ -374,7 +376,8 @@ export default function PartnerCompensation({
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 2
+      minimumFractionDigits: isMobile ? 0 : 2,
+      maximumFractionDigits: isMobile ? 0 : 2
     }).format(value)
   }
 
@@ -429,12 +432,12 @@ export default function PartnerCompensation({
   return (
     <div style={{
       marginTop: 16,
-      maxWidth: 900,
-      margin: '16px auto 16px auto',
+      maxWidth: isMobile ? '100%' : 900,
+      margin: isMobile ? '0' : '16px auto 16px auto',
       overflowX: 'auto',
       border: '1px solid #e5e7eb',
       borderRadius: 6,
-      padding: 8,
+      padding: isMobile ? 6 : 8,
       background: '#ffffff',
       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
       position: 'relative'
@@ -466,9 +469,15 @@ export default function PartnerCompensation({
         </div>
       )}
 
-      <div style={{ fontWeight: 600, marginBottom: 8 }}>Physician Compensation</div>
+      <div style={{ fontWeight: 600, marginBottom: 8, fontSize: isMobile ? 14 : 16 }}>Physician Compensation</div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: `2.2fr repeat(${physicianNames.length}, 1fr)`, gap: 2, fontWeight: 600 }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? `1.5fr repeat(${physicianNames.length}, 1fr)` : `2.2fr repeat(${physicianNames.length}, 1fr)`,
+        gap: 2,
+        fontWeight: 600,
+        fontSize: isMobile ? 11 : 14
+      }}>
         <div style={{ textAlign: 'right' }}>Account</div>
         {physicianNames.map(physician => {
           const warnings = getPhysicianWarnings(physician)
@@ -539,15 +548,16 @@ export default function PartnerCompensation({
       </div>
       
       {/* 2025 Projected row */}
-      <div 
-        style={{ 
-          display: 'grid', 
-          gridTemplateColumns: `2.2fr repeat(${physicianNames.length}, 1fr)`, 
-          gap: 4, 
-          padding: '4px 0', 
-          borderTop: '1px solid #f0f0f0', 
-          background: '#f8f9fa', 
-          fontWeight: 600
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? `1.5fr repeat(${physicianNames.length}, 1fr)` : `2.2fr repeat(${physicianNames.length}, 1fr)`,
+          gap: 4,
+          padding: '4px 0',
+          borderTop: '1px solid #f0f0f0',
+          background: '#f8f9fa',
+          fontWeight: 600,
+          fontSize: isMobile ? 11 : 14
         }}
       >
         <div style={{ textAlign: 'right' }}>2025 Projected</div>
@@ -562,18 +572,19 @@ export default function PartnerCompensation({
       </div>
       
       {/* Paid To Date row - clickable to expand/collapse */}
-      <div 
-        className="table-row-total-hover" 
-        style={{ 
-          display: 'grid', 
-          gridTemplateColumns: `2.2fr repeat(${physicianNames.length}, 1fr)`, 
-          gap: 4, 
-          padding: '4px 0', 
-          borderTop: '1px solid #f0f0f0', 
-          background: '#eef7ff', 
+      <div
+        className="table-row-total-hover"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? `1.5fr repeat(${physicianNames.length}, 1fr)` : `2.2fr repeat(${physicianNames.length}, 1fr)`,
+          gap: 4,
+          padding: '4px 0',
+          borderTop: '1px solid #f0f0f0',
+          background: '#eef7ff',
           fontWeight: 700,
           cursor: 'pointer',
-          transition: 'background-color 0.2s ease'
+          transition: 'background-color 0.2s ease',
+          fontSize: isMobile ? 11 : 14
         }}
         onClick={() => setIsExpanded(!isExpanded)}
         onMouseEnter={(e) => (e.currentTarget.style.background = '#dbeafe')}
@@ -615,17 +626,18 @@ export default function PartnerCompensation({
           <div
             key={rowName}
             className="table-row-hover"
-            style={{ 
-              display: 'grid', 
-              gridTemplateColumns: `2.2fr repeat(${physicianNames.length}, 1fr)`, 
-              gap: 4, 
-              padding: '1px 0', 
-              borderTop: '1px solid #f0f0f0', 
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? `1.5fr repeat(${physicianNames.length}, 1fr)` : `2.2fr repeat(${physicianNames.length}, 1fr)`,
+              gap: 4,
+              padding: '1px 0',
+              borderTop: '1px solid #f0f0f0',
               background: idx % 2 === 0 ? '#f9fafb' : 'transparent',
               transform: isExpanded ? 'translateY(0)' : 'translateY(-10px)',
               transition: 'transform 0.2s ease-in-out, opacity 0.2s ease-in-out',
               transitionDelay: isExpanded ? `${idx * 0.03}s` : '0s',
-              opacity: isExpanded ? 1 : 0
+              opacity: isExpanded ? 1 : 0,
+              fontSize: isMobile ? 10 : 14
             }}
           >
             <div style={{ textAlign: 'right', paddingLeft: '16px' }}>{rowName}</div>
@@ -646,15 +658,16 @@ export default function PartnerCompensation({
       
       {/* Beginning Equity row - separate from Paid to Date */}
       {allRowNames.has('Beginning Equity') && physicianNames.some(physician => getValue('Beginning Equity', physician, ytdData.data) !== 0) && (
-        <div 
-          style={{ 
-            display: 'grid', 
-            gridTemplateColumns: `2.2fr repeat(${physicianNames.length}, 1fr)`, 
-            gap: 4, 
-            padding: '4px 0', 
-            borderTop: '1px solid #f0f0f0', 
-            background: '#f8f9fa', 
-            fontWeight: 400
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? `1.5fr repeat(${physicianNames.length}, 1fr)` : `2.2fr repeat(${physicianNames.length}, 1fr)`,
+            gap: 4,
+            padding: '4px 0',
+            borderTop: '1px solid #f0f0f0',
+            background: '#f8f9fa',
+            fontWeight: 400,
+            fontSize: isMobile ? 11 : 14
           }}
         >
           <div style={{ textAlign: 'right' }}>Beginning Equity</div>
@@ -673,16 +686,17 @@ export default function PartnerCompensation({
       )}
       
       {/* Remaining row - sum of 2025 Projected + Paid to Date + Beginning Equity */}
-      <div 
-        style={{ 
-          display: 'grid', 
-          gridTemplateColumns: `2.2fr repeat(${physicianNames.length}, 1fr)`, 
-          gap: 4, 
-          padding: '4px 0', 
-          borderTop: '1px solid #f0f0f0', 
-          background: '#eef7ff', 
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? `1.5fr repeat(${physicianNames.length}, 1fr)` : `2.2fr repeat(${physicianNames.length}, 1fr)`,
+          gap: 4,
+          padding: '4px 0',
+          borderTop: '1px solid #f0f0f0',
+          background: '#eef7ff',
           fontWeight: 700,
-          marginTop: '4px'
+          marginTop: '4px',
+          fontSize: isMobile ? 11 : 14
         }}
       >
         <div style={{ textAlign: 'right' }}>Remaining</div>
