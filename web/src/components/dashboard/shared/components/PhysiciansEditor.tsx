@@ -241,22 +241,49 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
         </div>
         <select
           value={p.type}
-          onChange={(e) =>
+          onChange={(e) => {
+            const newType = e.target.value as PhysicianType
+            const employeePortion = newType === 'employeeToPartner' ? (p.employeePortionOfYear ?? 0.5) : p.employeePortionOfYear
+            const totalVacationWeeks = 8
+
+            // For employeeToPartner, apportion vacation weeks based on employee/partner proportions
+            let employeeVacation: number | undefined
+            let partnerVacation: number | undefined
+
+            if (newType === 'employeeToPartner') {
+              const empPortion = employeePortion ?? 0.5
+              const partnerPortion = 1 - empPortion
+
+              // Apportion 8 weeks based on time spent in each role, rounded to whole numbers
+              employeeVacation = Math.round(totalVacationWeeks * empPortion)
+              partnerVacation = Math.round(totalVacationWeeks * partnerPortion)
+
+              // If employee portion is 0 (Jan 1 transition), set employee vacation to 0
+              if (empPortion === 0) {
+                employeeVacation = 0
+                partnerVacation = totalVacationWeeks
+              }
+            } else if (newType === 'employee' || newType === 'newEmployee' || newType === 'employeeToTerminate') {
+              employeeVacation = p.employeeWeeksVacation ?? p.weeksVacation ?? 8
+            } else if (newType === 'partner' || newType === 'partnerToRetire') {
+              partnerVacation = p.weeksVacation ?? 8
+            }
+
             store.upsertPhysician(scenario, year, {
               ...p,
-              type: e.target.value as PhysicianType,
+              type: newType,
               // Initialize sensible defaults when switching types
-              employeePortionOfYear: e.target.value === 'employeeToPartner' ? (p.employeePortionOfYear ?? 0.5) : p.employeePortionOfYear,
-              partnerPortionOfYear: e.target.value === 'partnerToRetire' ? (p.partnerPortionOfYear ?? 0.5) : p.partnerPortionOfYear,
-              startPortionOfYear: e.target.value === 'newEmployee' ? (p.startPortionOfYear ?? 0) : p.startPortionOfYear,
-              terminatePortionOfYear: e.target.value === 'employeeToTerminate' ? (p.terminatePortionOfYear ?? 1) : p.terminatePortionOfYear,
-              salary: e.target.value !== 'partner' && e.target.value !== 'partnerToRetire' ? (p.salary ?? 500000) : undefined,
-              employeeWeeksVacation: (e.target.value === 'employee' || e.target.value === 'newEmployee' || e.target.value === 'employeeToTerminate' || e.target.value === 'employeeToPartner') ? (p.employeeWeeksVacation ?? p.weeksVacation ?? 8) : undefined,
-              weeksVacation: (e.target.value === 'partner' || e.target.value === 'partnerToRetire' || e.target.value === 'employeeToPartner') ? (p.weeksVacation ?? 8) : undefined,
-              receivesBenefits: e.target.value !== 'partner' && e.target.value !== 'partnerToRetire' ? (p.receivesBenefits ?? true) : undefined,
-              buyoutCost: e.target.value === 'partnerToRetire' ? (p.buyoutCost ?? 50000) : undefined,
+              employeePortionOfYear: employeePortion,
+              partnerPortionOfYear: newType === 'partnerToRetire' ? (p.partnerPortionOfYear ?? 0.5) : p.partnerPortionOfYear,
+              startPortionOfYear: newType === 'newEmployee' ? (p.startPortionOfYear ?? 0) : p.startPortionOfYear,
+              terminatePortionOfYear: newType === 'employeeToTerminate' ? (p.terminatePortionOfYear ?? 1) : p.terminatePortionOfYear,
+              salary: newType !== 'partner' && newType !== 'partnerToRetire' ? (p.salary ?? 500000) : undefined,
+              employeeWeeksVacation: employeeVacation,
+              weeksVacation: partnerVacation,
+              receivesBenefits: newType !== 'partner' && newType !== 'partnerToRetire' ? (p.receivesBenefits ?? true) : undefined,
+              buyoutCost: newType === 'partnerToRetire' ? (p.buyoutCost ?? 50000) : undefined,
             })
-          }
+          }}
           disabled={readOnly}
         >
           <option value="newEmployee">New Employee</option>
@@ -2066,10 +2093,23 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     onChange={(e) => {
                       const transitionDay = Number(e.target.value)
                       const employeePortion = transitionDayToEmployeePortion(transitionDay, year)
+                      const partnerPortion = 1 - employeePortion
+                      const totalVacationWeeks = 8
+
+                      // Re-apportion vacation weeks based on new proportions
+                      let employeeVacation = Math.round(totalVacationWeeks * employeePortion)
+                      let partnerVacation = Math.round(totalVacationWeeks * partnerPortion)
+
+                      if (employeePortion === 0) {
+                        employeeVacation = 0
+                        partnerVacation = totalVacationWeeks
+                      }
+
                       store.upsertPhysician(scenario, year, {
                         ...p,
                         employeePortionOfYear: employeePortion,
-                        employeeWeeksVacation: employeePortion === 0 ? 0 : p.employeeWeeksVacation,
+                        employeeWeeksVacation: employeeVacation,
+                        weeksVacation: partnerVacation,
                       })
                     }}
                     disabled={readOnly}
@@ -2143,10 +2183,23 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                           const currentDay = employeePortionToTransitionDay(p.employeePortionOfYear ?? 0.5, year)
                           const newDay = Math.min(daysInYear(year), currentDay + 1)
                           const employeePortion = transitionDayToEmployeePortion(newDay, year)
+                          const partnerPortion = 1 - employeePortion
+                          const totalVacationWeeks = 8
+
+                          // Re-apportion vacation weeks based on new proportions
+                          let employeeVacation = Math.round(totalVacationWeeks * employeePortion)
+                          let partnerVacation = Math.round(totalVacationWeeks * partnerPortion)
+
+                          if (employeePortion === 0) {
+                            employeeVacation = 0
+                            partnerVacation = totalVacationWeeks
+                          }
+
                           store.upsertPhysician(scenario, year, {
                             ...p,
                             employeePortionOfYear: employeePortion,
-                            employeeWeeksVacation: employeePortion === 0 ? 0 : p.employeeWeeksVacation,
+                            employeeWeeksVacation: employeeVacation,
+                            weeksVacation: partnerVacation,
                           })
                         }}
                         style={{
@@ -2174,10 +2227,23 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                           const currentDay = employeePortionToTransitionDay(p.employeePortionOfYear ?? 0.5, year)
                           const newDay = Math.max(1, currentDay - 1)
                           const employeePortion = transitionDayToEmployeePortion(newDay, year)
+                          const partnerPortion = 1 - employeePortion
+                          const totalVacationWeeks = 8
+
+                          // Re-apportion vacation weeks based on new proportions
+                          let employeeVacation = Math.round(totalVacationWeeks * employeePortion)
+                          let partnerVacation = Math.round(totalVacationWeeks * partnerPortion)
+
+                          if (employeePortion === 0) {
+                            employeeVacation = 0
+                            partnerVacation = totalVacationWeeks
+                          }
+
                           store.upsertPhysician(scenario, year, {
                             ...p,
                             employeePortionOfYear: employeePortion,
-                            employeeWeeksVacation: employeePortion === 0 ? 0 : p.employeeWeeksVacation,
+                            employeeWeeksVacation: employeeVacation,
+                            weeksVacation: partnerVacation,
                           })
                         }}
                         style={{
@@ -2830,7 +2896,11 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
 
                     return sum + workingWeeks
                   }, 0)
-                  return totalWorkingWeeks.toFixed(1)
+
+                  // Add locums weeks: locumCosts / 2000 / 5
+                  const locumsWeeks = locumCosts / 2000 / 5
+
+                  return (totalWorkingWeeks + locumsWeeks).toFixed(1)
                 })()}
               </span>
             </div>
