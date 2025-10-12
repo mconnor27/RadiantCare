@@ -472,7 +472,7 @@ export default function PartnerCompensation({
             </div>
           )}
 
-          <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 20 }}>Physician Compensation</div>
+          <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 17 }}>Physician Compensation</div>
 
           {/* Transposed table - physicians as rows */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -482,13 +482,13 @@ export default function PartnerCompensation({
               gridTemplateColumns: '1fr 1fr 1fr 1fr',
               gap: 4,
               fontWeight: 600,
-              fontSize: 18,
+              fontSize: 15,
               padding: '4px 0',
               borderBottom: '1px solid #e5e7eb'
             }}>
               <div style={{ textAlign: 'left' }}>Physician</div>
               <div style={{ textAlign: 'right' }}>Projected</div>
-              <div style={{ textAlign: 'right' }}>Paid To Date</div>
+              <div style={{ textAlign: 'right' }}>Paid</div>
               <div style={{ textAlign: 'right' }}>Remaining</div>
             </div>
 
@@ -511,7 +511,7 @@ export default function PartnerCompensation({
                     padding: '6px 0',
                     borderBottom: idx < physicianNames.length - 1 ? '1px solid #f0f0f0' : 'none',
                     background: idx % 2 === 0 ? '#f9fafb' : 'transparent',
-                    fontSize: 16
+                    fontSize: 14
                   }}
                 >
                   <div style={{
@@ -545,7 +545,9 @@ export default function PartnerCompensation({
                       fontWeight: 600,
                       cursor: 'pointer',
                       textDecoration: 'underline',
-                      textDecorationStyle: 'dotted'
+                      textDecorationStyle: 'dotted',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent'
                     }}
                     onClick={() => setSelectedPhysician(physician)}
                   >
@@ -620,9 +622,11 @@ export default function PartnerCompensation({
                     padding: 0,
                     width: 32,
                     height: 32,
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
+                    alignItems: 'right',
+                    justifyContent: 'right'
                   }}
                 >
                   ×
@@ -647,12 +651,28 @@ export default function PartnerCompensation({
                           style={{
                             display: 'flex',
                             justifyContent: 'space-between',
-                            padding: '10px 0',
+                            padding: '8px 0',
                             borderBottom: '1px solid #f0f0f0',
                             gap: 12
                           }}
                         >
-                          <div style={{ flex: 1, color: '#333' }}>{rowName}</div>
+                          <div style={{ flex: 1, color: '#333', minWidth: '130px', textAlign: 'left', fontSize: 15 }}>
+                            {(() => {
+                              // Shorten row names for mobile
+                              const shortNames: { [key: string]: string } = {
+                                'Member Draw': 'Draw',
+                                'Retirement Contributions': 'Retirement',
+                                'Draws - Additional Days Worked': 'Internal Locums'
+                              }
+                              
+                              // Special handling for Buy In/Buy Out - show "Buy In" for positive, "Buy Out" for negative
+                              if (rowName === 'Buy In/Buy Out') {
+                                return value > 0 ? 'Buy In' : 'Buy Out'
+                              }
+                              
+                              return shortNames[rowName] || rowName
+                            })()}
+                          </div>
                           <div style={{
                             fontWeight: 600,
                             color: value < 0 ? '#dc3545' : value > 0 ? '#28a745' : '#6c757d',

@@ -270,6 +270,30 @@ export function buildProportionLayout(
     ? `Monthly Income Proportions by Site (${startYear}–Present)`
     : 'Monthly Income Proportions by Site (YTD)'
 
+  // Calculate dynamic font size for mobile to prevent title overflow
+  const calculateMobileFontSize = (text: string): number => {
+    if (!_isMobile) return 16
+    
+    // Estimate character width at 14px font size (roughly 8px per character for bold font)
+    const baseCharWidth = 8
+    const baseFontSize = 14
+    const estimatedWidth = text.length * baseCharWidth
+    
+    // Assume available width is roughly 280px (minimum mobile width) minus some padding
+    const availableWidth = 260
+    
+    if (estimatedWidth <= availableWidth) {
+      return baseFontSize
+    }
+    
+    // Calculate scaled font size to fit
+    const scaleFactor = availableWidth / estimatedWidth
+    const scaledSize = Math.floor(baseFontSize * scaleFactor)
+    
+    // Constrain between 9px (minimum readable) and 14px (maximum)
+    return Math.max(9, Math.min(14, scaledSize))
+  }
+
   // Calculate overall percentages and ranges for each site across the whole period
   const annotations: any[] = []
 
@@ -370,7 +394,7 @@ export function buildProportionLayout(
     title: {
       text: titleText,
       x: 0.5,
-      font: { size: 16, weight: 700 }
+      font: { size: calculateMobileFontSize(titleText), weight: 700 }
     },
     xaxis: {
       title: { text: 'Month' },

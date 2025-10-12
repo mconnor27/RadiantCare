@@ -248,6 +248,8 @@ export default function ScenarioLoadModal({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
               }}
             >
               ×
@@ -270,6 +272,8 @@ export default function ScenarioLoadModal({
               fontWeight: 500,
               cursor: 'pointer',
               transition: 'all 0.2s',
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent'
             }}
           >
             My Scenarios
@@ -287,6 +291,8 @@ export default function ScenarioLoadModal({
               fontWeight: 500,
               cursor: 'pointer',
               transition: 'all 0.2s',
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent'
             }}
           >
             Public Scenarios
@@ -505,7 +511,9 @@ export default function ScenarioLoadModal({
                           fontSize: 20,
                           cursor: 'pointer',
                           transition: 'opacity 0.2s',
-                          padding: 2
+                          padding: 2,
+                          touchAction: 'manipulation',
+                          WebkitTapHighlightColor: 'transparent'
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.opacity = '0.7'

@@ -21,6 +21,7 @@ interface LayoutBuilderProps {
   visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean }
   unfilteredCurrentData?: YTDPoint[]
   showAllMonths?: boolean
+  isMobile?: boolean
 }
 
 // Helper function to calculate required right margin based on radar position
@@ -105,16 +106,56 @@ export const buildChartLayout = ({
   combineError = null,
   visibleSites,
   unfilteredCurrentData,
-  showAllMonths = false
+  showAllMonths = false,
+  isMobile = false
 }: LayoutBuilderProps) => {
   const getYAxisConfig = () => {
+    // In mobile LINE mode, display dollar values in millions (e.g., "$1.5M")
+    // For bar charts, use compact notation instead
+    const useMillionsFormat = isMobile && chartMode === 'line' && !isNormalized
+    
     const baseConfig = {
-      tickprefix: isNormalized ? '' : '$',
-      ticksuffix: isNormalized ? '%' : '',
-      separatethousands: !isNormalized,
-      tickformat: isNormalized ? '.1f' : ',.0f',
+      tickprefix: isNormalized ? '' : (useMillionsFormat ? '$' : '$'),
+      ticksuffix: isNormalized ? '%' : (useMillionsFormat ? 'M' : ''),
+      separatethousands: !isNormalized && !isMobile,
+      tickformat: isNormalized ? '.1f' : (useMillionsFormat ? '.1f' : (isMobile ? '~s' : ',.0f')),
       rangemode: 'tozero' as const,
       automargin: true,
+    }
+
+    // Helper function to generate custom tick values and labels for mobile LINE mode
+    const generateMobileTicks = (minVal: number, maxVal: number) => {
+      if (!isMobile || isNormalized || chartMode !== 'line') return {}
+      
+      // Convert to millions
+      const minM = minVal / 1000000
+      const maxM = maxVal / 1000000
+      const rangeM = maxM - minM
+      
+      // Determine appropriate tick interval
+      let tickInterval: number
+      if (rangeM <= 2) tickInterval = 0.2
+      else if (rangeM <= 5) tickInterval = 0.5
+      else if (rangeM <= 10) tickInterval = 1
+      else if (rangeM <= 20) tickInterval = 2
+      else tickInterval = 5
+      
+      // Generate tick positions in millions
+      const firstTick = Math.floor(minM / tickInterval) * tickInterval
+      const ticks: number[] = []
+      for (let tick = firstTick; tick <= maxM + tickInterval; tick += tickInterval) {
+        ticks.push(tick * 1000000) // Convert back to actual values
+      }
+      
+      // Generate tick labels in millions format with $ prefix and M suffix
+      // Skip labeling 0 to avoid crowding
+      const tickLabels = ticks.map(val => val === 0 ? '' : `$${(val / 1000000).toFixed(1)}M`)
+      
+      return {
+        tickmode: 'array' as const,
+        tickvals: ticks,
+        ticktext: tickLabels
+      }
     }
 
     if (chartMode === 'line') {
@@ -149,14 +190,20 @@ export const buildChartLayout = ({
         // Add buffer only when radar is active
         const buffer = needsRadarBuffer ? dataRange * 0.05 : dataRange * 0.05
 
+        const rangeMin = Math.max(0, minY - buffer * 0.1)
+        const rangeMax = maxY + buffer
+
         return {
           ...baseConfig,
+          ...generateMobileTicks(rangeMin, rangeMax),
           autorange: false,
-          range: [Math.max(0, minY - buffer * 0.1), maxY + buffer]
+          range: [rangeMin, rangeMax]
         }
       }
     }
 
+    // For bar charts, use autorange with base config
+    // The baseConfig already has the mobile formatting ($XM) applied
     return {
       ...baseConfig,
       autorange: true
@@ -195,7 +242,7 @@ export const buildChartLayout = ({
       // For single month bar mode, show full month names
       tickvals: isSingleMonthBarMode ? Object.keys(monthMapping) : undefined,
       ticktext: isSingleMonthBarMode ? Object.values(monthMapping) : undefined,
-      ...(chartMode === 'line' ? getTickConfiguration(timeframe, currentPeriod) : {})
+      ...(chartMode === 'line' ? getTickConfiguration(timeframe, currentPeriod, isMobile) : {})
     }
 
     // Set x-axis range based on timeframe and mode
@@ -341,26 +388,52 @@ export const buildChartLayout = ({
     return `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Comparison`
   }
 
+  // Calculate dynamic font size for mobile to prevent title overflow
+  const calculateMobileFontSize = (titleText: string): number => {
+    if (!isMobile) return 24
+    
+    // Estimate character width at 15px font size (roughly 8.5px per character for bold Inter)
+    const baseCharWidth = 8.5
+    const baseFontSize = 15
+    const estimatedWidth = titleText.length * baseCharWidth
+    
+    // Assume available width is roughly 280px (minimum mobile width) minus some padding
+    const availableWidth = 260
+    
+    if (estimatedWidth <= availableWidth) {
+      return baseFontSize
+    }
+    
+    // Calculate scaled font size to fit
+    const scaleFactor = availableWidth / estimatedWidth
+    const scaledSize = Math.floor(baseFontSize * scaleFactor)
+    
+    // Constrain between 10px (minimum readable) and 15px (maximum)
+    return Math.max(10, Math.min(15, scaledSize))
+  }
+
+  const titleText = chartMode === 'line'
+    ? (showLineParenthetical
+      ? (isNormalized
+        ? `Daily Accumulated Income (${getTimeframeLabel()} - Normalized)`
+        : `Daily Accumulated Income (${getTimeframeLabel()})`)
+      : 'Daily Accumulated Income (YTD)')
+    : (incomeMode === 'per-site'
+      ? (isNormalized
+        ? `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income by Site${getHistoricalDescription()} (Normalized)`
+        : `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income by Site${getHistoricalDescription()}`)
+      : (isNormalized
+        ? `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income Amounts${getHistoricalDescription()} (Normalized)`
+        : `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income Amounts${getHistoricalDescription()}`))
+
   return {
     title: {
-      text: chartMode === 'line'
-        ? (showLineParenthetical
-          ? (isNormalized
-            ? `Daily Accumulated Income (${getTimeframeLabel()} - Normalized)`
-            : `Daily Accumulated Income (${getTimeframeLabel()})`)
-          : 'Daily Accumulated Income (YTD)')
-        : (incomeMode === 'per-site'
-          ? (isNormalized
-            ? `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income by Site${getHistoricalDescription()} (Normalized)`
-            : `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income by Site${getHistoricalDescription()}`)
-          : (isNormalized
-            ? `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income Amounts${getHistoricalDescription()} (Normalized)`
-            : `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income Amounts${getHistoricalDescription()}`)),
-      font: { size: 24, weight: 700, family: 'Inter, system-ui, Arial' }
+      text: titleText,
+      font: { size: calculateMobileFontSize(titleText), weight: 700, family: 'Inter, system-ui, Arial' }
     },
     dragmode: false as any,
     margin: {
-      l: CHART_CONFIG.margins.left,
+      l: isMobile ? 50 : CHART_CONFIG.margins.left,
       r: chartMode === 'bar'
         ? CHART_CONFIG.margins.rightBarMode
         : (chartMode === 'line' && is2025Visible

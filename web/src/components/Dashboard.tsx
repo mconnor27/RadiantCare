@@ -2757,15 +2757,15 @@ export function Dashboard() {
           <div style={{ display: 'flex', gap: 6 }}>
             <button
               onClick={() => setViewMode('YTD Detailed')}
-              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Detailed' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
+              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Detailed' ? '#e5e7eb' : '#fff', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             >YTD Detailed</button>
             <button
               onClick={() => setViewMode('Multi-Year')}
-              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'Multi-Year' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
+              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'Multi-Year' ? '#e5e7eb' : '#fff', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             >Multi-Year</button>
             <button
               onClick={() => setViewMode('YTD Mobile')}
-              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Mobile' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
+              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Mobile' ? '#e5e7eb' : '#fff', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             >YTD Mobile</button>
           </div>
         </div>

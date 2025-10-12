@@ -627,7 +627,8 @@ export default function DetailedChart({
       combineError,
       visibleSites,
       unfilteredCurrentData: currentYearData,
-      showAllMonths
+      showAllMonths,
+      isMobile
     })
 
     // Add annotations to layout
@@ -769,15 +770,17 @@ export default function DetailedChart({
               position: 'absolute',
               top: 8,
               left: 8,
-              padding: 8,
+              padding: 4,
               border: '1px solid #ccc',
               borderRadius: 4,
               background: 'rgba(255, 255, 255, 0.95)',
               cursor: 'pointer',
-              fontSize: 16,
+              fontSize: 14,
               zIndex: 1001,
               boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-              transition: 'background 0.2s'
+              transition: 'background 0.2s',
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent'
             }}
             onMouseEnter={(e) => e.currentTarget.style.background = '#fff'}
             onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)'}
@@ -793,43 +796,49 @@ export default function DetailedChart({
               onClick={handlePrevious}
               style={{
                 position: 'absolute',
-                top: 8,
-                left: isMobile ? 44 : 8,
-                padding: '6px 10px',
+                ...(isMobile ? { bottom: 8 } : { top: 8 }),
+                left: isMobile ? 8 : 8,
+                padding: isMobile ? '8px 12px' : '6px 10px',
                 border: '1px solid #ccc',
                 borderRadius: 4,
                 background: 'rgba(255, 255, 255, 0.95)',
                 cursor: 'pointer',
-                fontSize: 13,
+                fontSize: isMobile ? 16 : 13,
                 zIndex: 1000,
                 boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                transition: 'background 0.2s'
+                transition: 'background 0.2s',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
               }}
               onMouseEnter={(e) => e.currentTarget.style.background = '#fff'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)'}
+              aria-label="Previous period"
             >
-              ← Previous
+              {isMobile ? '←' : '← Previous'}
             </button>
             <button
               onClick={handleNext}
               style={{
                 position: 'absolute',
-                top: 8,
+                ...(isMobile ? { bottom: 8 } : { top: 8 }),
                 right: 8,
-                padding: '6px 10px',
+                padding: isMobile ? '8px 12px' : '6px 10px',
                 border: '1px solid #ccc',
                 borderRadius: 4,
                 background: 'rgba(255, 255, 255, 0.95)',
                 cursor: 'pointer',
-                fontSize: 13,
+                fontSize: isMobile ? 16 : 13,
                 zIndex: 1000,
                 boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                transition: 'background 0.2s'
+                transition: 'background 0.2s',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
               }}
               onMouseEnter={(e) => e.currentTarget.style.background = '#fff'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)'}
+              aria-label="Next period"
             >
-              Next →
+              {isMobile ? '→' : 'Next →'}
             </button>
           </>
         )}
@@ -866,7 +875,7 @@ export default function DetailedChart({
                 combineError,
                 colorScheme
               )) as any}
-        layout={chartMode === 'proportion' ? buildProportionLayout(false, selectedYears, proportionData, visibleSites, smoothing, siteColorScheme) : (chartLayout || {}) as any}
+        layout={chartMode === 'proportion' ? buildProportionLayout(isMobile, selectedYears, proportionData, visibleSites, smoothing, siteColorScheme) : (chartLayout || {}) as any}
         config={{
           responsive: true,
           displayModeBar: false,

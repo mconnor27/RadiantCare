@@ -124,7 +124,9 @@ export default function ScenarioCard({
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  position: 'relative'
+                  position: 'relative',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
                 }}
                 title={scenario.is_favorite_a ? 'Remove from Favorite A' : 'Set as Favorite A'}
               >
@@ -158,7 +160,9 @@ export default function ScenarioCard({
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  position: 'relative'
+                  position: 'relative',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
                 }}
                 title={scenario.is_favorite_b ? 'Remove from Favorite B' : 'Set as Favorite B'}
               >
@@ -266,7 +270,9 @@ export default function ScenarioCard({
                   fontSize: 20,
                   cursor: 'pointer',
                   transition: 'opacity 0.2s',
-                  padding: 2
+                  padding: 2,
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.opacity = '0.7'
@@ -287,7 +293,9 @@ export default function ScenarioCard({
                   fontSize: 20,
                   cursor: 'pointer',
                   transition: 'opacity 0.2s',
-                  padding: 2
+                  padding: 2,
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.opacity = '0.7'
@@ -310,7 +318,9 @@ export default function ScenarioCard({
                     fontSize: 20,
                     cursor: 'pointer',
                     transition: 'opacity 0.2s',
-                    padding: 2
+                    padding: 2,
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.opacity = '0.7'
@@ -336,7 +346,9 @@ export default function ScenarioCard({
               fontSize: 20,
               cursor: 'pointer',
               transition: 'opacity 0.2s',
-              padding: 2
+              padding: 2,
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.opacity = '0.7'
@@ -364,7 +376,9 @@ export default function ScenarioCard({
                   padding: 2,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px'
+                  gap: '4px',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.opacity = '0.7'
@@ -389,7 +403,9 @@ export default function ScenarioCard({
                   padding: 2,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px'
+                  gap: '4px',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.opacity = '0.7'
@@ -413,7 +429,9 @@ export default function ScenarioCard({
                 fontSize: 20,
                 cursor: 'pointer',
                 transition: 'opacity 0.2s',
-                padding: 2
+                padding: 2,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.opacity = '0.7'

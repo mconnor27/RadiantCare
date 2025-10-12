@@ -1,9 +1,17 @@
 // Helper function to generate tick configuration based on timeframe
 export const getTickConfiguration = (
   timeframe: 'year' | 'quarter' | 'month',
-  currentPeriod?: { year: number, quarter?: number, month?: number }
+  currentPeriod?: { year: number, quarter?: number, month?: number },
+  isMobile?: boolean
 ) => {
   if (timeframe === 'year') {
+    // In mobile mode, show fewer labels to avoid crowding: Jan, Apr, Jul, Oct, Dec 31
+    if (isMobile) {
+      return {
+        tickvals: ['01-01', '04-01', '07-01', '10-01', '12-31'],
+        ticktext: ['Jan', 'Apr', 'Jul', 'Oct', 'Dec 31']
+      }
+    }
     return {
       tickvals: ['01-01', '02-01', '03-01', '04-01', '05-01', '06-01', '07-01', '08-01', '09-01', '10-01', '11-01', '12-01', '12-31'],
       ticktext: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Dec 31']

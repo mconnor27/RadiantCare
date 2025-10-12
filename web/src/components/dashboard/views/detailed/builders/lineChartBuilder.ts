@@ -266,7 +266,7 @@ export const buildStaticLineTraces = ({
           : `$${(lastPoint.cumulativeIncome / 1000000).toFixed(2)}M`,
         showarrow: false,
         xanchor: 'right',
-        xshift: -8,
+        xshift: 0,
         yshift: 14,
         font: {
           size: 14,

@@ -97,12 +97,12 @@ export default function ChartControls({
   const isMobile = variant === 'mobile'
   
   // Mobile-friendly sizing
-  const labelFontSize = isMobile ? 18 : 14
-  const buttonFontSize = isMobile ? 18 : 14
-  const buttonPadding = isMobile ? '12px 20px' : '4px 12px'
-  const checkboxFontSize = isMobile ? 18 : 13
-  const smallTextSize = isMobile ? 16 : 11
-  const containerPadding = isMobile ? 16 : 10
+  const labelFontSize = isMobile ? 16 : 14
+  const buttonFontSize = isMobile ? 16 : 14
+  const buttonPadding = isMobile ? '8px 14px' : '4px 12px'
+  const checkboxFontSize = isMobile ? 15 : 13
+  const smallTextSize = isMobile ? 13 : 11
+  const containerPadding = isMobile ? 12 : 10
   
   // Get colors based on selected color scheme
   const colors = getColorScheme(colorScheme)
@@ -212,34 +212,25 @@ export default function ChartControls({
         position: 'relative',
         transition: 'width 0.3s ease-in-out, min-width 0.3s ease-in-out, max-width 0.3s ease-in-out'
       }}>
-      <h3 style={{
-        margin: '0 0 16px 0',
-        fontSize: isMobile ? 18 : 16,
-        fontWeight: 700
-      }}>Chart Controls</h3>
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'minmax(105px, auto) 1fr',
-        gap: '0 16px',
-        alignItems: 'start',
-        justifyItems: 'start'
+        display: 'flex',
+        flexDirection: 'column',
+        gap: isMobile ? 12 : 16
       }}>
         {/* Group 1: Color Scheme */}
-        <>
+        <div>
           <label style={{
+            display: 'block',
             fontSize: labelFontSize,
             fontWeight: 500,
-            paddingTop: 6,
-            padding: '8px 0'
+            marginBottom: 8
           }}>Color Scheme:</label>
           <div style={{
             padding: '12px',
             background: '#f9fafb',
-            justifySelf: 'stretch',
             border: '1px solid #d1d5db',
             borderRadius: 6,
             boxShadow: '0 3px 6px rgba(0, 0, 0, 0.15)',
-            margin: '4px 0',
             transition: 'all 0.3s ease-in-out'
           }}>
             <ColorSchemeSelector
@@ -250,26 +241,23 @@ export default function ChartControls({
               isMobile={isMobile}
             />
           </div>
-        </>
+        </div>
 
         {/* Group 2: Income Mode + Site Visibility */}
-        <>
+        <div>
           <label style={{
+            display: 'block',
             fontSize: labelFontSize,
             fontWeight: 500,
-            whiteSpace: 'nowrap',
-            paddingTop: 6,
-            opacity: chartMode === 'proportion' ? 0.5 : 1,
-            padding: '8px 0'
+            marginBottom: 8,
+            opacity: chartMode === 'proportion' ? 0.5 : 1
           }}>Income Mode:</label>
           <div style={{
             padding: '12px',
             background: '#f9fafb',
-            justifySelf: 'stretch',
             border: '1px solid #d1d5db',
             borderRadius: 6,
             boxShadow: '0 3px 6px rgba(0, 0, 0, 0.15)',
-            margin: '4px 0',
             transition: 'all 0.3s ease-in-out'
           }}>
           <div style={{ 
@@ -488,15 +476,15 @@ export default function ChartControls({
               </div>
           </div>
         </div>
-        </>
+        </div>
 
         {/* Group 3: Historical Data + Mean/Median */}
-        <>
+        <div>
           <label style={{
+            display: 'block',
             fontSize: labelFontSize,
             fontWeight: 500,
-            paddingTop: 6,
-            padding: '8px 0'
+            marginBottom: 8
           }}>Historical Data:</label>
           <div style={{
             position: 'relative',
@@ -505,11 +493,9 @@ export default function ChartControls({
             display: 'flex',
             flexDirection: 'column',
             gap: 12,
-            justifySelf: 'stretch',
             border: '1px solid #d1d5db',
             borderRadius: 6,
             boxShadow: '0 3px 6px rgba(0, 0, 0, 0.15)',
-            margin: '4px 0',
             transition: 'all 0.3s ease-in-out'
           }}>
           <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
@@ -524,7 +510,7 @@ export default function ChartControls({
               fontSize: buttonFontSize,
               cursor: 'pointer',
               transition: 'all 0.2s',
-              minWidth: isMobile ? '200px' : '120px',
+              minWidth: isMobile ? '180px' : '120px',
               textAlign: 'left'
             }}
           >
@@ -561,8 +547,8 @@ export default function ChartControls({
                 boxShadow: '0 6px 10px rgba(0, 0, 0, 0.15)',
                 padding: '6px',
                 zIndex: 1000,
-                minWidth: chartMode === 'proportion' ? '220px' : '120px',
-                width: chartMode === 'proportion' ? '220px' : '120px'
+                minWidth: chartMode === 'proportion' ? '200px' : '110px',
+                width: chartMode === 'proportion' ? '200px' : '110px'
               }}
             >
               {chartMode === 'proportion' ? (
@@ -996,15 +982,15 @@ export default function ChartControls({
             </div>
               </div>
           </div>
-        </>
+        </div>
 
         {/* Group 4: Chart Type + Smoothing */}
-        <>
+        <div>
           <label style={{
+            display: 'block',
             fontSize: labelFontSize,
             fontWeight: 500,
-            paddingTop: 6,
-            padding: '8px 0'
+            marginBottom: 8
           }}>Chart Type:</label>
           <div style={{
             padding: '12px',
@@ -1013,11 +999,9 @@ export default function ChartControls({
             flexDirection: 'column',
             gap: 12,
             alignItems: 'flex-start',
-            justifySelf: 'stretch',
             border: '1px solid #d1d5db',
             borderRadius: 6,
             boxShadow: '0 3px 6px rgba(0, 0, 0, 0.15)',
-            margin: '4px 0',
             transition: 'all 0.3s ease-in-out'
           }}>
             <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
@@ -1082,7 +1066,7 @@ export default function ChartControls({
             }}
             disabled={chartMode === 'bar'}
             style={{
-              width: isMobile ? '150px' : '80px',
+              width: isMobile ? '120px' : '80px',
               height: isMobile ? '36px' : '20px',
               cursor: chartMode === 'bar' ? 'not-allowed' : 'pointer'
             }}
@@ -1092,16 +1076,16 @@ export default function ChartControls({
           </span>
         </div>
           </div>
-        </>
+        </div>
 
         {/* Group 5: Timeframe + Monthly Toggle */}
-        <>
+        <div>
           <label style={{
+            display: 'block',
             fontSize: labelFontSize,
             fontWeight: 500,
-            paddingTop: 6,
-            opacity: chartMode === 'proportion' ? 0.5 : 1,
-            padding: '8px 0'
+            marginBottom: 8,
+            opacity: chartMode === 'proportion' ? 0.5 : 1
           }}>Timeframe:</label>
           <div style={{
             padding: '12px',
@@ -1110,11 +1094,9 @@ export default function ChartControls({
             flexDirection: 'column',
             gap: 12,
             alignItems: 'flex-start',
-            justifySelf: 'stretch',
             border: '1px solid #d1d5db',
             borderRadius: 6,
             boxShadow: '0 3px 6px rgba(0, 0, 0, 0.15)',
-            margin: '4px 0',
             transition: 'all 0.3s ease-in-out'
           }}>
             <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
@@ -1168,8 +1150,8 @@ export default function ChartControls({
             </button>
             </div>
 
-            {/* Monthly view mode toggle - shown below buttons when conditions are met */}
-            {timeframe === 'month' && chartMode === 'bar' && !showCombined && (
+            {/* Monthly view mode toggle - shown below buttons when conditions are met (desktop only) */}
+            {timeframe === 'month' && chartMode === 'bar' && !showCombined && !isMobile && (
                <label style={{ fontSize: checkboxFontSize, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <input
                   type="checkbox"
@@ -1181,7 +1163,7 @@ export default function ChartControls({
               </label>
             )}
           </div>
-        </>
+        </div>
       </div>
       </div>
     </>
