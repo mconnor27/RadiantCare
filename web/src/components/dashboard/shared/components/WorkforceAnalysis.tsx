@@ -3,7 +3,6 @@ import createPlotlyComponent from 'react-plotly.js/factory'
 import Plotly from 'plotly.js-dist-min'
 const Plot = createPlotlyComponent(Plotly)
 import { useDashboardStore } from '../../../Dashboard'
-import { useIsMobile } from '../hooks'
 import { getEmployeePortionOfYear, getPartnerPortionOfYear } from '../calculations'
 import { scenario2024Defaults } from '../defaults'
 import type { FutureYear, Physician } from '../types'
@@ -79,7 +78,6 @@ function calculateTotalWeeksVacation(futureYear: FutureYear): number {
 
 export default function WorkforceAnalysis() {
   const store = useDashboardStore()
-  const isMobile = useIsMobile()
 
   // Include 2024 + future years (2025-2030)
   const years = [2024, ...store.scenarioA.future.map((f) => f.year)]
@@ -267,7 +265,7 @@ export default function WorkforceAnalysis() {
           }}
           config={{ responsive: true, displayModeBar: false }}
           useResizeHandler={true}
-          style={{ width: '100%', height: isMobile ? 360 : 420 }}
+          style={{ width: '100%', height: 420 }}
         />
         {/* Reset button for clearing isolation */}
         {isolated && (
@@ -300,7 +298,7 @@ export default function WorkforceAnalysis() {
       </div>
 
       {/* Table */}
-      <div style={{ marginTop: 8, overflowX: isMobile ? 'auto' : 'visible', border: '1px solid #e5e7eb', borderRadius: 6, padding: 8, background: '#ffffff' }}>
+      <div style={{ marginTop: 8, overflowX: 'visible', border: '1px solid #e5e7eb', borderRadius: 6, padding: 8, background: '#ffffff' }}>
         <div style={{ fontWeight: 600, marginBottom: 8 }}>Workforce Metrics By Year</div>
         <div style={{ display: 'grid', gridTemplateColumns: `2.2fr repeat(${years.length}, 1fr) 1fr`, gap: 2, fontWeight: 600 }}>
           <div>Metric</div>

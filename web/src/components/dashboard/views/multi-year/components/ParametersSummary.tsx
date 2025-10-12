@@ -1,6 +1,5 @@
 import type { FutureYear } from '../../../shared/types'
 import { useDashboardStore } from '../../../../Dashboard'
-import { useIsMobile } from '../../../shared/hooks'
 import {
   computeDefaultNonMdEmploymentCosts,
   getTotalIncome
@@ -18,7 +17,6 @@ import {
 
 export default function ParametersSummary() {
   const store = useDashboardStore()
-  const isMobile = useIsMobile()
 
   // Helper function to detect if values have been manually overridden
   const detectCustomOverrides = (scenario: 'A' | 'B') => {
@@ -176,7 +174,7 @@ export default function ParametersSummary() {
           </div>
         </div>
 
-        <div style={{ marginTop: 6, marginBottom: 12, overflowX: isMobile ? 'auto' : 'visible', border: '1px solid #e5e7eb', borderRadius: 6, padding: 8, background: '#ffffff' }}>
+        <div style={{ marginTop: 6, marginBottom: 12, overflowX: 'visible', border: '1px solid #e5e7eb', borderRadius: 6, padding: 8, background: '#ffffff' }}>
           <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>Per Year Core Values</div>
           <div style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' as any }}>
             {/* Header row */}
@@ -206,7 +204,7 @@ export default function ParametersSummary() {
           </div>
         </div>
 
-        <div style={{ marginTop: 8, overflowX: isMobile ? 'auto' : 'visible', border: '1px solid #e5e7eb', borderRadius: 6, padding: 8, background: '#ffffff' }}>
+        <div style={{ marginTop: 8, overflowX: 'visible', border: '1px solid #e5e7eb', borderRadius: 6, padding: 8, background: '#ffffff' }}>
           <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>Physicians Per Year</div>
           <div style={{ fontSize: 13, alignItems: 'center', fontVariantNumeric: 'tabular-nums' as any }}>
             {/* Header row */}

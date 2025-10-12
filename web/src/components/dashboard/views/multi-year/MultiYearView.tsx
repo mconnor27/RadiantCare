@@ -3,7 +3,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faFolderOpen, faFloppyDisk, faCopy, faCircleXmark, faGear, faRotateLeft } from '@fortawesome/free-solid-svg-icons'
 import { useDashboardStore } from '../../../Dashboard'
 import type { Store } from '../../shared/types'
-import { useIsMobile } from '../../shared/hooks'
 import YearPanel from '../../shared/components/YearPanel'
 import ProjectionSettingsControls from '../../shared/components/ProjectionSettingsControls'
 import HistoricAndProjectionChart from './HistoricAndProjectionChart'
@@ -54,7 +53,6 @@ function createProjectionSummary(scenario: 'A' | 'B', store: Store): string {
 export default function MultiYearView() {
   const store = useDashboardStore()
   const { profile } = useAuth()
-  const isMobile = useIsMobile()
   const [projectionOpen, setProjectionOpen] = useState(true)
   const [yearPanelOpen, setYearPanelOpen] = useState(true)
   const [overallOpen, setOverallOpen] = useState(true)
@@ -523,10 +521,10 @@ export default function MultiYearView() {
           <div className="scenario-grid" style={{
             border: '1px solid #e5e7eb',
             borderRadius: 8,
-            padding: isMobile ? 8 : 12,
+            padding: 12,
             marginTop: 0,
             display: 'grid',
-            gridTemplateColumns: store.scenarioBEnabled && !isMobile ? '1fr 1fr' : '1fr',
+            gridTemplateColumns: store.scenarioBEnabled ? '1fr 1fr' : '1fr',
             alignItems: 'start',
             gap: 12,
             background: '#f9fafb',

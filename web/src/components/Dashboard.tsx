@@ -20,7 +20,6 @@ import type { YearRow, PhysicianType, Physician, FutureYear, ScenarioKey, Store,
 
 // Re-export types for backward compatibility with extracted components
 export type { YearRow, PhysicianType, Physician, FutureYear, ScenarioKey }
-import { useIsMobile } from './dashboard/shared/hooks'
 import {
   computeDefaultNonMdEmploymentCosts,
   calculateMedicalDirectorHourPercentages,
@@ -2062,7 +2061,6 @@ export function calculateProjectedValue(
 
 export function Dashboard() {
   const store = useDashboardStore()
-  const isMobile = useIsMobile()
   const { profile, loading, signOut } = useAuth()
   const [viewMode, setViewMode] = useState<'Multi-Year' | 'YTD Detailed'>('YTD Detailed')
   const [urlLoaded, setUrlLoaded] = useState(false)
@@ -2602,7 +2600,7 @@ export function Dashboard() {
         <div style={{
           background: '#fff',
           borderRadius: 12,
-          padding: isMobile ? 32 : 48,
+          padding: 48,
           boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
         }}>
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
@@ -2650,9 +2648,9 @@ export function Dashboard() {
 
   // User is authenticated - show the full dashboard
   return (
-    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 8 : 16, position: 'relative' }}>
+    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: 16, position: 'relative' }}>
       {/* Top Bar with Auth and Help */}
-      <div className="full-bleed" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 12, paddingTop: 0, paddingLeft: isMobile ? 8 : 16, paddingRight: isMobile ? 8 : 16 }}>
+      <div className="full-bleed" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 12, paddingTop: 0, paddingLeft: 16, paddingRight: 16 }}>
         {/* Sync Button - only show in YTD Detailed view */}
         {viewMode === 'YTD Detailed' && (
           <SyncButton 
@@ -2809,8 +2807,8 @@ export function Dashboard() {
               style={{
                 backgroundColor: '#fff',
                 borderRadius: 12,
-                padding: isMobile ? 20 : 40,
-                maxWidth: isMobile ? '90%' : 800,
+                padding: 40,
+                maxWidth: 800,
                 maxHeight: '80vh',
                 overflowY: 'auto',
                 boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1), 0 10px 20px rgba(0, 0, 0, 0.2)',

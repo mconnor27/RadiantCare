@@ -6,21 +6,6 @@
   text-align: center;
   width: 100%;
   min-height: 100vh;
-  /* Mobile optimizations */
-}
-
-@media (max-width: 768px) {
-  #root {
-    padding: 0.5rem;
-    max-width: 100%;
-    text-align: left;
-  }
-}
-
-@media (max-width: 480px) {
-  #root {
-    padding: 0.25rem;
-  }
 }
 
 .logo {

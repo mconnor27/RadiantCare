@@ -247,7 +247,7 @@ export function buildProportionTraces(
 
 // Layout for stacked area proportions
 export function buildProportionLayout(
-  isMobile: boolean = false,
+  _isMobile: boolean = false,
   selectedYears: number[] = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024],
   data: MonthlyProportionData[] = [],
   visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean },
@@ -370,7 +370,7 @@ export function buildProportionLayout(
     title: {
       text: titleText,
       x: 0.5,
-      font: { size: isMobile ? 14 : 16, weight: 700 }
+      font: { size: 16, weight: 700 }
     },
     xaxis: {
       title: { text: 'Month' },
@@ -405,7 +405,7 @@ export function buildProportionLayout(
       bordercolor: '#ccc',
       font: { color: 'black' }
     },
-    margin: { l: 60, r: 30, t: 60, b: isMobile ? 80 : 60 },
+    margin: { l: 60, r: 30, t: 60, b: 60 },
     plot_bgcolor: 'rgba(0,0,0,0)',
     paper_bgcolor: 'rgba(0,0,0,0)',
     showlegend: false,

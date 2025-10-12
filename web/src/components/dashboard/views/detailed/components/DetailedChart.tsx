@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import createPlotlyComponent from 'react-plotly.js/factory'
 import Plotly from 'plotly.js-dist-min'
 const Plot = createPlotlyComponent(Plotly)
-import { useIsMobile } from '../../../shared/hooks'
 import { 
   parseTherapyIncome2024, 
   parseTherapyIncome2023, 
@@ -81,7 +80,6 @@ export default function DetailedChart({
   colorScheme,
   siteColorScheme
 }: DetailedChartProps) {
-  const isMobile = useIsMobile()
   const [pulsePhase, setPulsePhase] = useState(0)
   const [containerWidth, setContainerWidth] = useState<number | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -658,7 +656,7 @@ export default function DetailedChart({
     )
   }
 
-    const config = isMobile ? CHART_CONFIG.mobile : CHART_CONFIG.desktop
+    const config = CHART_CONFIG.desktop
     const maxWidth = config.maxWidth
 
     // Calculate height based on aspect ratio and current container width
@@ -796,7 +794,7 @@ export default function DetailedChart({
                 combineError,
                 colorScheme
               )) as any}
-        layout={chartMode === 'proportion' ? buildProportionLayout(isMobile, selectedYears, proportionData, visibleSites, smoothing, siteColorScheme) : (chartLayout || {}) as any}
+        layout={chartMode === 'proportion' ? buildProportionLayout(false, selectedYears, proportionData, visibleSites, smoothing, siteColorScheme) : (chartLayout || {}) as any}
         config={{
           responsive: true,
           displayModeBar: false,

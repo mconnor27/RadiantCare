@@ -1,5 +1,4 @@
 import { useDashboardStore } from '../../../Dashboard'
-import { useIsMobile } from '../hooks'
 import { createTooltip, removeTooltip } from '../tooltips'
 import { currency } from '../utils'
 import type { ScenarioKey, Projection } from '../types'
@@ -8,7 +7,6 @@ import { PROJECTION_DEFAULTS, SLIDER_CONFIGS, UI_DEFAULTS, SHARED_MD_TOOLTIP, PR
 export default function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
   const store = useDashboardStore()
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB
-  const isMobile = useIsMobile()
 
   if (!sc) return null
 
@@ -71,7 +69,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
     if (bare) {
       return (
         <div style={wrapperStyle}>
-          <div style={{ display: 'grid', gridTemplateColumns: `${isMobile ? '96px' : '50px'} 19px 1fr auto ${(field === 'nonMdEmploymentCostsPct' || field === 'benefitCostsGrowthPct') ? '12px' : '24px'} ${tooltipText ? '24px' : ''}`, alignItems: 'center', gap: (field === 'nonMdEmploymentCostsPct' || field === 'benefitCostsGrowthPct') ? 0 : 2, columnGap: (field === 'nonMdEmploymentCostsPct' || field === 'benefitCostsGrowthPct') ? 4 : undefined }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `50px 19px 1fr auto ${(field === 'nonMdEmploymentCostsPct' || field === 'benefitCostsGrowthPct') ? '12px' : '24px'} ${tooltipText ? '24px' : ''}`, alignItems: 'center', gap: (field === 'nonMdEmploymentCostsPct' || field === 'benefitCostsGrowthPct') ? 0 : 2, columnGap: (field === 'nonMdEmploymentCostsPct' || field === 'benefitCostsGrowthPct') ? 4 : undefined }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', justifyContent: 'flex-end' }}>
               <label style={{ fontSize: 13, fontWeight: 500 }}>{label}</label>
             </div>
@@ -141,7 +139,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
             </div>
 
             {isDollar ? (
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: isMobile ? 88 : 100, height: 21 }}>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 100, height: 21 }}>
                 <input
                   type="text"
                   value={currency(value)}
@@ -234,7 +232,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
               (field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours') ? (
                 <span style={{ fontSize: 14, color: '#666' }}>{suffix}</span>
               ) : (
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: isMobile ? 60 : 70, height: 21 }}>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 70, height: 21 }}>
                   <input
                     type="number"
                     min={min}
@@ -425,7 +423,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
           )}
         </div>
         {isDollar ? (
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: isMobile ? 100 : 120, height: bare ? 21 : 23 }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 120, height: bare ? 21 : 23 }}>
             <input
               type="text"
               value={currency(value)}
@@ -517,7 +515,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
             </div>
           </div>
         ) : (
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: isMobile ? 60 : 70, height: 23 }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 70, height: 23 }}>
             <input
               type="number"
               min={min}
@@ -649,7 +647,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
           ↺ Reset All
         </button>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 16, padding: '0 8px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, padding: '0 8px' }}>
         {/* First Column - Income Panels */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {createSlider('Therapy Income Growth', 'incomeGrowthPct', sc.projection.incomeGrowthPct ?? 3.7, -10, 20, 0.1, '%', false, 'income', 'Reset to 2016-2024 Trend', false, THERAPY_INCOME_GROWTH_TOOLTIP)}

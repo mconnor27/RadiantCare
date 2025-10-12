@@ -3,14 +3,12 @@ import createPlotlyComponent from 'react-plotly.js/factory'
 import Plotly from 'plotly.js-dist-min'
 const Plot = createPlotlyComponent(Plotly)
 import { useDashboardStore } from '../../../Dashboard'
-import { useIsMobile } from '../hooks'
 import { computeAllCompensationsForYear, computeAllCompensationsForYearWithRetired } from '../../../Dashboard'
 import { currency, currencyOrDash } from '../utils'
 import { DEFAULT_LOCUM_COSTS_2025 } from '../defaults'
 
 export default function OverallCompensationSummary() {
   const store = useDashboardStore()
-  const isMobile = useIsMobile()
   const years = Array.from(new Set([2025, ...store.scenarioA.future.map((f) => f.year)]))
   const perYearA = years.map((y) => ({ year: y, comps: computeAllCompensationsForYear(y, 'A') }))
   
@@ -269,7 +267,7 @@ export default function OverallCompensationSummary() {
           }}
           config={{ responsive: true, displayModeBar: false }}
           useResizeHandler={true}
-          style={{ width: '100%', height: isMobile ? 360 : 420 }}
+          style={{ width: '100%', height: 420 }}
         />
         {/* Reset button for clearing isolation */}
         {(isolated || scenarioIsolated) && (
@@ -301,7 +299,7 @@ export default function OverallCompensationSummary() {
         )}
         </div>
 
-      <div style={{ marginTop: 8, overflowX: isMobile ? 'auto' : 'visible', border: '1px solid #e5e7eb', borderRadius: 6, padding: 8, background: '#ffffff' }}>
+      <div style={{ marginTop: 8, overflowX: 'visible', border: '1px solid #e5e7eb', borderRadius: 6, padding: 8, background: '#ffffff' }}>
           <div style={{ fontWeight: 600, marginBottom: 8 }}>Per Physician By Year</div>
         <div style={{ display: 'grid', gridTemplateColumns: `2.2fr repeat(${years.length}, 1fr) 1fr`, gap: 2, fontWeight: 600 }}>
           <div>Name</div>
@@ -452,7 +450,7 @@ export default function OverallCompensationSummary() {
 
       {/* Per Scenario by Year table - only show when Scenario B is enabled */}
       {store.scenarioBEnabled && (
-        <div style={{ marginTop: 16, overflowX: isMobile ? 'auto' : 'visible' }}>
+        <div style={{ marginTop: 16, overflowX: 'visible' }}>
             <div style={{ fontWeight: 600, marginBottom: 8 }}>Per Scenario by Year</div>
         <div style={{ display: 'grid', gridTemplateColumns: `2.2fr repeat(${years.length}, 1fr) 1fr`, gap: 2, fontWeight: 600 }}>
           <div>Scenario</div>

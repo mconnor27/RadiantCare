@@ -1,6 +1,5 @@
 import { Fragment } from 'react'
 import { useDashboardStore, usePartnerComp, calculateProjectedValue } from '../../../Dashboard'
-import { useIsMobile } from '../hooks'
 import { calculateDelayedW2Payment, computeDefaultNonMdEmploymentCosts, getTotalIncome, getEmployeePortionOfYear } from '../calculations'
 import { createTooltip, removeTooltip } from '../tooltips'
 import { currency } from '../utils'
@@ -35,7 +34,6 @@ import PhysiciansEditor from './PhysiciansEditor'
 
 export default function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) {
   const store = useDashboardStore()
-  const isMobile = useIsMobile()
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
   const dataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
   const isReadOnly = year === 2025 && dataMode !== 'Custom'
@@ -129,13 +127,13 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {/* Year Navigation Buttons */}
-      <div className="year-buttons" style={{ display: 'flex', gap: 8, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal', marginBottom: 8, paddingLeft: 8 }}>
+      <div className="year-buttons" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', overflowX: 'visible', whiteSpace: 'normal', marginBottom: 8, paddingLeft: 8 }}>
         {availableYears.map((yr) => (
           <button
             key={`${scenario}-${yr}`}
             onClick={() => store.setSelectedYear(scenario, yr)}
             style={{
-              padding: isMobile ? '6px 10px' : '8px 12px',
+              padding: '8px 12px',
               borderRadius: 6,
               border: '1px solid #ccc',
               background: sc.selectedYear === yr ? '#f0f4ff' : 'white',
@@ -189,7 +187,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
       ) : (
         <div style={{ fontWeight: 700, fontSize: 18 }}>{year}</div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16, rowGap: 16, alignItems: 'start', padding: '0 8px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, rowGap: 16, alignItems: 'start', padding: '0 8px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="panel-green" style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, marginBottom: 0, border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
@@ -232,7 +230,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           ) : null
         })()}
       </div>
-      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={UI_DEFAULTS.therapyIncomeMin}
@@ -256,13 +254,13 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           }
           disabled={isReadOnly}
           style={{
-            width: isMobile ? 100 : 100,
+            width: 100,
             height: 20,
             padding: '2px 8px',
             border: '1px solid #ccc',
             borderRadius: 3,
             fontSize: 12,
-            justifySelf: isMobile ? 'end' : undefined
+            justifySelf: undefined
           }}
         />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
@@ -278,7 +276,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
         <div style={{ fontSize: 14, fontWeight: 600 }}>Medical Director Hours</div>
       </div>
-      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '60px 1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1, marginBottom: 2 }}>
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '60px 1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1, marginBottom: 2 }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: '#374151', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
           Shared
           <div style={{ width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -346,13 +344,13 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           }
           disabled={isReadOnly}
           style={{
-            width: isMobile ? 100 : 100,
+            width: 100,
             height: 20,
             padding: '2px 8px',
             border: '1px solid #ccc',
             borderRadius: 3,
             fontSize: 12,
-            justifySelf: isMobile ? 'end' : undefined
+            justifySelf: undefined
           }}
         />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
@@ -364,7 +362,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
       </div>
 
       {/* PRCS Row */}
-      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '60px 1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1, marginTop: 4 }}>
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '60px 1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1, marginTop: 4 }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: '#374151', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
           PRCS
           <div style={{ width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -432,13 +430,13 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           }
           disabled={isReadOnly}
           style={{
-            width: isMobile ? 100 : 100,
+            width: 100,
             height: 20,
             padding: '2px 8px',
             border: '1px solid #ccc',
             borderRadius: 3,
             fontSize: 12,
-            justifySelf: isMobile ? 'end' : undefined
+            justifySelf: undefined
           }}
         />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
@@ -492,7 +490,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           ) : null
         })()}
       </div>
-      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={0}
@@ -516,13 +514,13 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           }
           disabled={isReadOnly}
           style={{
-            width: isMobile ? 100 : 100,
+            width: 100,
             height: 20,
             padding: '2px 8px',
             border: '1px solid #ccc',
             borderRadius: 3,
             fontSize: 12,
-            justifySelf: isMobile ? 'end' : undefined
+            justifySelf: undefined
           }}
         />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
@@ -591,7 +589,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           ) : null
         })()}
       </div>
-      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={UI_DEFAULTS.nonEmploymentCostsMin}
@@ -625,13 +623,13 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           }
           disabled={isReadOnly}
           style={{
-            width: isMobile ? 100 : 100,
+            width: 100,
             height: 20,
             padding: '2px 8px',
             border: '1px solid #ccc',
             borderRadius: 3,
             fontSize: 12,
-            justifySelf: isMobile ? 'end' : undefined
+            justifySelf: undefined
           }}
         />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: 11, fontFamily: 'Arial, sans-serif', color: '#666', width: 20, height: 20, border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
@@ -685,7 +683,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           ) : null
         })()}
       </div>
-      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={UI_DEFAULTS.nonMdEmploymentCostsMin}
@@ -719,13 +717,13 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           }
           disabled={isReadOnly}
           style={{
-            width: isMobile ? 100 : 100,
+            width: 100,
             height: 20,
             padding: '2px 8px',
             border: '1px solid #ccc',
             borderRadius: 3,
             fontSize: 12,
-            justifySelf: isMobile ? 'end' : undefined
+            justifySelf: undefined
           }}
         />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: 11, fontFamily: 'Arial, sans-serif', color: '#666', width: 20, height: 20, border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
@@ -781,7 +779,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           ) : null
         })()}
       </div>
-      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={0}
@@ -815,13 +813,13 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           }
           disabled={isReadOnly}
           style={{
-            width: isMobile ? 100 : 100,
+            width: 100,
             height: 20,
             padding: '2px 8px',
             border: '1px solid #ccc',
             borderRadius: 3,
             fontSize: 12,
-            justifySelf: isMobile ? 'end' : undefined
+            justifySelf: undefined
           }}
         />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: 11, fontFamily: 'Arial, sans-serif', color: '#666', width: 20, height: 20, border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}

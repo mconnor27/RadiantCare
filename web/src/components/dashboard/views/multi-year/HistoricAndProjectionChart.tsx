@@ -4,13 +4,11 @@ import Plotly from 'plotly.js-dist-min'
 const Plot = createPlotlyComponent(Plotly)
 import { useDashboardStore } from '../../../Dashboard'
 import { getTotalIncome } from '../../shared/calculations'
-import { useIsMobile } from '../../shared/hooks'
 import { getEmployeePortionOfYear, calculateDelayedW2Payment, computeDefaultNonMdEmploymentCosts } from '../../shared/calculations'
 import { calculateNetIncomeForMDs } from '../../../Dashboard'
 
 export default function HistoricAndProjectionChart() {
   const store = useDashboardStore()
-  const isMobile = useIsMobile()
   const historicYears = store.historic.map((h) => h.year)
   
   // Log only on mount (not on every render)
@@ -273,7 +271,7 @@ export default function HistoricAndProjectionChart() {
     <div
       style={{
         flex: 1,
-        minWidth: isMobile ? undefined : 600,
+        minWidth: 600,
         maxWidth: 1200,
         margin: '0 auto',
         //border: '2px solid #d1d5db',
@@ -542,7 +540,7 @@ export default function HistoricAndProjectionChart() {
           return false // Prevent default behavior
         }}
         useResizeHandler={true}
-        style={{ width: '100%', height: isMobile ? 360 : 600 }}
+        style={{ width: '100%', height: 600 }}
       />
       </div>
     </div>
