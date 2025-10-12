@@ -2869,13 +2869,13 @@ export function Dashboard() {
               <div style={{ lineHeight: 1.6, color: '#333', textAlign: 'left' }}>
                 <h3 style={{ color: '#7c2a83', marginTop: 0 }}>Overview</h3>
                 <p>
-                  The RadiantCare Compensation Dashboard is a financial planning tool designed to project 
-                  and analyze physician compensation across multiple years. It allows you to model different 
+                  The RadiantCare Compensation Dashboard is a financial planning tool designed to project
+                  and analyze physician compensation across multiple years. It allows you to model different
                   scenarios, adjust key financial parameters, and visualize the impact on compensation.
                 </p>
 
                 <h3 style={{ color: '#7c2a83', marginTop: 24 }}>Two Main Views</h3>
-                
+
                 <h4 style={{ marginTop: 16, marginBottom: 8 }}>YTD Detailed View</h4>
                 <p>
                   This view focuses on the current year with detailed day-to-day tracking. It includes:
@@ -2897,16 +2897,32 @@ export function Dashboard() {
                   <li>Year-by-year financial projections</li>
                   <li>Adjustable growth rates for income, costs, and employment expenses</li>
                   <li>Physician roster planning (hires, retirements, promotions)</li>
-                  <li>Scenario comparison (Scenario A vs Scenario B)</li>
+                  <li>Side-by-side scenario comparison (Scenario A vs Scenario B)</li>
                   <li>Medical director hours and consulting services allocation</li>
                 </ul>
 
-                <h3 style={{ color: '#7c2a83', marginTop: 24 }}>Key Features</h3>
+                <h3 style={{ color: '#7c2a83', marginTop: 24 }}>Saved Scenarios</h3>
+                <p>
+                  Save and manage different planning scenarios to explore various financial outcomes:
+                </p>
                 <ul style={{ marginTop: 8, paddingLeft: 20 }}>
-                  <li><strong>Reset to Defaults:</strong> Return all settings on the view to their original values</li>
-                  <li><strong>Copy Shareable Link:</strong> Generate a URL preserving the current configuration for easy sharing</li>
-                  <li><strong>Interactive Charts:</strong> Hover over data points for detailed information</li>
-                  <li><strong>Real-time Calculations:</strong> All compensation values update automatically as you make changes</li>
+                  <li><strong>Scenario Types:</strong> "YTD Detailed" scenarios save current year parameters. "Multi-Year" scenarios additionally save 5-year projections, physician rosters, and growth assumptions</li>
+                  <li><strong>Save Scenarios:</strong> Save your current configuration with a custom name and description</li>
+                  <li><strong>Load Scenarios:</strong> Access your saved scenarios or browse public scenarios shared by others</li>
+                  <li><strong>Public vs Private:</strong> Mark scenarios as public to share with other users, or keep them private</li>
+                  <li><strong>Favorites:</strong> Favorite your most-used scenarios for quick access</li>
+                  <li><strong>Multi-Year Comparisons:</strong> Load two scenarios side-by-side to compare different planning approaches</li>
+                </ul>
+
+                <h3 style={{ color: '#7c2a83', marginTop: 24 }}>Sharing Links</h3>
+                <p>
+                  Generate shareable URLs that preserve your exact configuration:
+                </p>
+                <ul style={{ marginTop: 8, paddingLeft: 20 }}>
+                  <li><strong>Share Button:</strong> Click the link icon to create a shareable URL</li>
+                  <li><strong>What's Included:</strong> Links preserve loaded scenarios, chart settings, and all view configurations</li>
+                  <li><strong>Requirements:</strong> Scenarios must be saved and marked as public before sharing</li>
+                  <li><strong>Recipient Access:</strong> Anyone with the link can view the configuration (login required)</li>
                 </ul>
 
                 <h3 style={{ color: '#7c2a83', marginTop: 24 }}>Getting Started</h3>
@@ -2914,8 +2930,8 @@ export function Dashboard() {
                   <li>Choose between "YTD Detailed" and "Multi-Year" views using the tabs</li>
                   <li>Review the default projections and adjust parameters as needed</li>
                   <li>Modify physician details, growth rates, and other financial assumptions</li>
-                  <li>Use the charts and tables to analyze the impact of your changes</li>
-                  <li>Share your scenarios with colleagues using the "Copy shareable link" button</li>
+                  <li>Save your configuration as a scenario for future reference</li>
+                  <li>Share your scenarios with colleagues using shareable links</li>
                 </ol>
               </div>
 

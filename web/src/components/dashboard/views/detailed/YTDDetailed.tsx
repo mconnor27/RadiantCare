@@ -517,8 +517,10 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         {currentScenarioName && isScenarioOwner && (
           <button
             onClick={() => {
-              const event = new CustomEvent('editCurrentScenario')
-              window.dispatchEvent(event)
+              if (confirm('Note: Only 2025 data will be saved from this view.\n\nIf you want to save multiple years, please use the MultiYear view instead.\n\nContinue saving?')) {
+                const event = new CustomEvent('editCurrentScenario')
+                window.dispatchEvent(event)
+              }
             }}
             style={{
               background: 'none',
@@ -544,8 +546,10 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         {/* Save As Button */}
         <button
           onClick={() => {
-            const event = new CustomEvent('saveScenarioAs')
-            window.dispatchEvent(event)
+            if (confirm('Note: Only 2025 data will be saved from this view.\n\nIf you want to save multiple years, please use the MultiYear view instead.\n\nContinue saving?')) {
+              const event = new CustomEvent('saveScenarioAs')
+              window.dispatchEvent(event)
+            }
           }}
           style={{
             background: 'none',
