@@ -31,6 +31,10 @@ export type Physician = {
   type: PhysicianType
   salary?: number
   weeksVacation?: number
+  // For employee types (employee, newEmployee, employeeToTerminate, employeeToPartner): vacation weeks during employee portion
+  employeeWeeksVacation?: number
+  // For employeeToPartner: vacation weeks during partner portion of year
+  partnerWeeksVacation?: number
   // For mixed type: portion of the year as an employee (0..1). Remainder is partner.
   employeePortionOfYear?: number
   // For partnerToRetire: portion of the year working as partner (0..1). Remainder is retired.

@@ -251,7 +251,8 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
               startPortionOfYear: e.target.value === 'newEmployee' ? (p.startPortionOfYear ?? 0) : p.startPortionOfYear,
               terminatePortionOfYear: e.target.value === 'employeeToTerminate' ? (p.terminatePortionOfYear ?? 1) : p.terminatePortionOfYear,
               salary: e.target.value !== 'partner' && e.target.value !== 'partnerToRetire' ? (p.salary ?? 500000) : undefined,
-              weeksVacation: (e.target.value === 'employee' || e.target.value === 'newEmployee' || e.target.value === 'employeeToTerminate' || e.target.value === 'employeeToPartner') ? (p.weeksVacation ?? 8) : undefined,
+              employeeWeeksVacation: (e.target.value === 'employee' || e.target.value === 'newEmployee' || e.target.value === 'employeeToTerminate' || e.target.value === 'employeeToPartner') ? (p.employeeWeeksVacation ?? p.weeksVacation ?? 8) : undefined,
+              weeksVacation: (e.target.value === 'partner' || e.target.value === 'partnerToRetire' || e.target.value === 'employeeToPartner') ? (p.weeksVacation ?? 8) : undefined,
               receivesBenefits: e.target.value !== 'partner' && e.target.value !== 'partnerToRetire' ? (p.receivesBenefits ?? true) : undefined,
               buyoutCost: e.target.value === 'partnerToRetire' ? (p.buyoutCost ?? 50000) : undefined,
             })
@@ -457,17 +458,17 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
                 <input
                   type="range"
-                  min={2}
+                  min={0}
                   max={(() => {
                     const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
                     return (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
                   })()}
                   step={1}
-                  value={p.weeksVacation ?? 8}
+                  value={p.employeeWeeksVacation ?? 8}
                   onChange={(e) =>
                     store.upsertPhysician(scenario, year, {
                       ...p,
-                      weeksVacation: Number(e.target.value),
+                      employeeWeeksVacation: Number(e.target.value),
                     })
                   }
                   disabled={readOnly}
@@ -476,17 +477,17 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     ['--fill-percent' as any]: `${(() => {
                       const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
                       const maxWeeks = (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
-                      return ((p.weeksVacation ?? 8) - 2) / (maxWeeks - 2) * 100
+                      return ((p.employeeWeeksVacation ?? 8) - 0) / (maxWeeks - 0) * 100
                     })()}%`
                   }}
                 />
                 <input
                   type="text"
-                  value={`${p.weeksVacation ?? 8} weeks off`}
+                  value={`${p.employeeWeeksVacation ?? 8} weeks off`}
                   onChange={(e) =>
                     store.upsertPhysician(scenario, year, {
                       ...p,
-                      weeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
+                      employeeWeeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
                     })
                   }
                   style={{
@@ -860,17 +861,17 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
                 <input
                   type="range"
-                  min={2}
+                  min={0}
                   max={(() => {
                     const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
                     return (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
                   })()}
                   step={1}
-                  value={p.weeksVacation ?? 8}
+                  value={p.employeeWeeksVacation ?? 8}
                   onChange={(e) =>
                     store.upsertPhysician(scenario, year, {
                       ...p,
-                      weeksVacation: Number(e.target.value),
+                      employeeWeeksVacation: Number(e.target.value),
                     })
                   }
                   disabled={readOnly}
@@ -879,17 +880,17 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     ['--fill-percent' as any]: `${(() => {
                       const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
                       const maxWeeks = (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
-                      return ((p.weeksVacation ?? 8) - 2) / (maxWeeks - 2) * 100
+                      return ((p.employeeWeeksVacation ?? 8) - 0) / (maxWeeks - 0) * 100
                     })()}%`
                   }}
                 />
                 <input
                   type="text"
-                  value={`${p.weeksVacation ?? 8} weeks off`}
+                  value={`${p.employeeWeeksVacation ?? 8} weeks off`}
                   onChange={(e) =>
                     store.upsertPhysician(scenario, year, {
                       ...p,
-                      weeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
+                      employeeWeeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
                     })
                   }
                   style={{
@@ -1062,17 +1063,17 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
                 <input
                   type="range"
-                  min={2}
+                  min={0}
                   max={(() => {
                     const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
                     return (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
                   })()}
                   step={1}
-                  value={p.weeksVacation ?? 8}
+                  value={p.employeeWeeksVacation ?? 8}
                   onChange={(e) =>
                     store.upsertPhysician(scenario, year, {
                       ...p,
-                      weeksVacation: Number(e.target.value),
+                      employeeWeeksVacation: Number(e.target.value),
                     })
                   }
                   disabled={readOnly}
@@ -1081,17 +1082,17 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     ['--fill-percent' as any]: `${(() => {
                       const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
                       const maxWeeks = (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
-                      return ((p.weeksVacation ?? 8) - 2) / (maxWeeks - 2) * 100
+                      return ((p.employeeWeeksVacation ?? 8) - 0) / (maxWeeks - 0) * 100
                     })()}%`
                   }}
                 />
                 <input
                   type="text"
-                  value={`${p.weeksVacation ?? 8} weeks off`}
+                  value={`${p.employeeWeeksVacation ?? 8} weeks off`}
                   onChange={(e) =>
                     store.upsertPhysician(scenario, year, {
                       ...p,
-                      weeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
+                      employeeWeeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
                     })
                   }
                   style={{
@@ -2068,6 +2069,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                       store.upsertPhysician(scenario, year, {
                         ...p,
                         employeePortionOfYear: employeePortion,
+                        employeeWeeksVacation: employeePortion === 0 ? 0 : p.employeeWeeksVacation,
                       })
                     }}
                     disabled={readOnly}
@@ -2144,6 +2146,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                           store.upsertPhysician(scenario, year, {
                             ...p,
                             employeePortionOfYear: employeePortion,
+                            employeeWeeksVacation: employeePortion === 0 ? 0 : p.employeeWeeksVacation,
                           })
                         }}
                         style={{
@@ -2174,6 +2177,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                           store.upsertPhysician(scenario, year, {
                             ...p,
                             employeePortionOfYear: employeePortion,
+                            employeeWeeksVacation: employeePortion === 0 ? 0 : p.employeeWeeksVacation,
                           })
                         }}
                         style={{
@@ -2329,53 +2333,57 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
             </div>
             {/* First icon column: Calendar (aligns with date), then Benefits (salary), then Hours (vacation), then blank (additional days) */}
             <div style={{ display: 'grid', gridTemplateRows: '20px 20px 20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
-              <FontAwesomeIcon
-                icon={faCalendar}
-                data-vacation-id={p.id}
-                style={{
-                  fontSize: '20px',
-                  color: '#666',
-                  cursor: readOnly ? 'default' : 'pointer',
-                  opacity: readOnly ? 0.6 : 1
-                }}
-                onClick={(e) => {
-                  if (!readOnly) {
-                    const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
-                    const maxWeeks = (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
-                    createVacationWeeksTooltip(p.id, p.weeksVacation ?? 8, e as any, (_pid, weeks) => {
-                      store.upsertPhysician(scenario, year, {
-                        ...p,
-                        weeksVacation: weeks
-                      })
-                    }, maxWeeks)
-                  }
-                }}
-                onMouseEnter={(e) => {
-                  if (!readOnly) {
-                    const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
-                    const maxWeeks = (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
-                    createVacationWeeksTooltip(p.id, p.weeksVacation ?? 8, e as any, (_pid, weeks) => {
-                      store.upsertPhysician(scenario, year, {
-                        ...p,
-                        weeksVacation: weeks
-                      })
-                    }, maxWeeks)
-                  }
-                }}
-                onMouseLeave={() => {
-                  if (!readOnly) {
-                    const tooltip = document.getElementById(`vacation-weeks-slider-${p.id}`)
-                    if (tooltip) {
-                      (tooltip as any).hideTimeout = setTimeout(() => {
-                        const t = document.getElementById(`vacation-weeks-slider-${p.id}`)
-                        if (t && !t.matches(':hover')) {
-                          removeTooltip(`vacation-weeks-slider-${p.id}`)
-                        }
-                      }, 150)
+              {(p.employeePortionOfYear ?? 0.5) > 0 ? (
+                <FontAwesomeIcon
+                  icon={faCalendar}
+                  data-vacation-id={p.id}
+                  style={{
+                    fontSize: '20px',
+                    color: '#666',
+                    cursor: readOnly ? 'default' : 'pointer',
+                    opacity: readOnly ? 0.6 : 1
+                  }}
+                  onClick={(e) => {
+                    if (!readOnly) {
+                      const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+                      const maxWeeks = (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
+                      createVacationWeeksTooltip(p.id, p.employeeWeeksVacation ?? 8, e as any, (_pid, weeks) => {
+                        store.upsertPhysician(scenario, year, {
+                          ...p,
+                          employeeWeeksVacation: weeks
+                        })
+                      }, maxWeeks)
                     }
-                  }
-                }}
-              />
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!readOnly) {
+                      const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
+                      const maxWeeks = (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
+                      createVacationWeeksTooltip(p.id, p.employeeWeeksVacation ?? 8, e as any, (_pid, weeks) => {
+                        store.upsertPhysician(scenario, year, {
+                          ...p,
+                          employeeWeeksVacation: weeks
+                        })
+                      }, maxWeeks)
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    if (!readOnly) {
+                      const tooltip = document.getElementById(`vacation-weeks-slider-${p.id}`)
+                      if (tooltip) {
+                        (tooltip as any).hideTimeout = setTimeout(() => {
+                          const t = document.getElementById(`vacation-weeks-slider-${p.id}`)
+                          if (t && !t.matches(':hover')) {
+                            removeTooltip(`vacation-weeks-slider-${p.id}`)
+                          }
+                        }, 150)
+                      }
+                    }
+                  }}
+                />
+              ) : (
+                <div style={{ width: '20px', height: '20px' }} />
+              )}
               <img 
                 src={p.receivesBenefits ? '/benefit_selected.png?v=2' : '/benefit_unselected.png'}
                 alt={`Benefits ${p.receivesBenefits ? 'enabled' : 'disabled'}`}
@@ -2714,7 +2722,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
         >
           <div></div> {/* Empty space for drag handle column alignment */}
           <div style={{ fontWeight: 500, color: '#6b7280' }}></div>
-          <div style={{ 
+          <div style={{
             fontFamily: 'system-ui, Avenir, Helvetica, Arial, sans-serif',
             fontWeight: 400,
             color: '#213547',
@@ -2740,10 +2748,10 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
               type="text"
               value={currency(Math.round(locumCosts))}
               readOnly
-              style={{ 
-                width: 100, 
-                height: 20, 
-                padding: '2px 8px', 
+              style={{
+                width: 100,
+                height: 20,
+                padding: '2px 8px',
                 border: '1px solid #ccc',
                 borderRadius: 3,
                 fontSize: 12
@@ -2751,7 +2759,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
             />
           </div>
           <div></div> {/* Empty benefits column */}
-          <div 
+          <div
             style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#666', width: '20px', height: '20px', border: '1px solid #ccc', borderRadius: '50%', backgroundColor: '#f8f9fa' }}
             onMouseEnter={(e) => {
               const dailyRate = 2000
@@ -2761,7 +2769,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
               const minWeeks = Math.min(weeks4Day, weeks5Day)
               const maxWeeks = Math.max(weeks4Day, weeks5Day)
               const tooltipText = `~$${dailyRate.toLocaleString()} per day, ${days} days, ${minWeeks}-${maxWeeks} weeks`
-              
+
               const existing = document.getElementById('locums-tooltip')
               if (existing) existing.remove()
               const tooltip = document.createElement('div')
@@ -2778,6 +2786,79 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
             <span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span>
           </div>
           <div></div> {/* Empty delete column */}
+        </div>
+
+        {/* Vacation and Working Weeks Footer */}
+        <div
+          style={{
+            borderTop: '1px solid #d1d5db',
+            paddingTop: 10,
+            marginTop: 10,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'default',
+            background: 'transparent'
+          }}
+        >
+          <div style={{ display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 500 }}>Working Weeks:</span>
+              <span style={{ fontSize: '13px', color: '#213547', fontWeight: 600 }}>
+                {(() => {
+                  // Calculate total working weeks for all physicians
+                  const totalWorkingWeeks = physicians.reduce((sum, p) => {
+                    let workingWeeks = 0
+
+                    // Get the portion of year the physician is working
+                    const employeePortion = getEmployeePortionOfYear(p)
+                    const partnerPortion = getPartnerPortionOfYear(p)
+
+                    // Calculate employee working weeks
+                    if (employeePortion > 0) {
+                      const employeeAvailableWeeks = 52 * employeePortion
+                      const employeeVacation = p.employeeWeeksVacation ?? 0
+                      workingWeeks += Math.max(0, employeeAvailableWeeks - employeeVacation)
+                    }
+
+                    // Calculate partner working weeks
+                    if (partnerPortion > 0) {
+                      const partnerAvailableWeeks = 52 * partnerPortion
+                      const partnerVacation = p.weeksVacation ?? 0
+                      workingWeeks += Math.max(0, partnerAvailableWeeks - partnerVacation)
+                    }
+
+                    return sum + workingWeeks
+                  }, 0)
+                  return totalWorkingWeeks.toFixed(1)
+                })()}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 500 }}>Vacation Weeks:</span>
+              <span style={{ fontSize: '13px', color: '#213547', fontWeight: 600 }}>
+                {(() => {
+                  // Calculate total vacation weeks for all physicians who have vacation
+                  const totalVacation = physicians.reduce((sum, p) => {
+                    let vacation = 0
+
+                    // Add employee vacation weeks if defined
+                    if (p.employeeWeeksVacation !== undefined) {
+                      vacation += p.employeeWeeksVacation
+                    }
+
+                    // Add partner vacation weeks if defined
+                    if (p.weeksVacation !== undefined) {
+                      vacation += p.weeksVacation
+                    }
+
+                    return sum + vacation
+                  }, 0)
+                  return totalVacation.toFixed(1)
+                })()}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 

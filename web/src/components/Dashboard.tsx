@@ -1783,6 +1783,7 @@ export function arePhysiciansChanged(
       current.type !== defaultPhysician.type ||
       current.salary !== defaultPhysician.salary ||
       current.weeksVacation !== defaultPhysician.weeksVacation ||
+      current.employeeWeeksVacation !== defaultPhysician.employeeWeeksVacation ||
       current.employeePortionOfYear !== defaultPhysician.employeePortionOfYear ||
       current.partnerPortionOfYear !== defaultPhysician.partnerPortionOfYear ||
       current.startPortionOfYear !== defaultPhysician.startPortionOfYear ||
@@ -1876,6 +1877,7 @@ export function hasChangesFromLoadedScenario(
       current.type !== snapshot.type ||
       current.salary !== snapshot.salary ||
       current.weeksVacation !== snapshot.weeksVacation ||
+      current.employeeWeeksVacation !== snapshot.employeeWeeksVacation ||
       current.employeePortionOfYear !== snapshot.employeePortionOfYear ||
       current.partnerPortionOfYear !== snapshot.partnerPortionOfYear ||
       current.startPortionOfYear !== snapshot.startPortionOfYear ||
