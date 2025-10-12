@@ -24,7 +24,7 @@ export interface ChartControlsProps {
   setIncomeMode: (mode: IncomeMode) => void
   smoothing: number
   setSmoothing: (smoothing: number) => void
-  variant?: 'inline' | 'sidebar'
+  variant?: 'inline' | 'sidebar' | 'mobile'
   selectedYears: number[]
   setSelectedYears: (years: number[]) => void
   visibleSites: { lacey: boolean, centralia: boolean, aberdeen: boolean }
@@ -33,6 +33,7 @@ export interface ChartControlsProps {
   setColorScheme: (scheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare') => void
   siteColorScheme: 'rgb' | 'radiantCare' | 'jama'
   setSiteColorScheme: (scheme: 'rgb' | 'radiantCare' | 'jama') => void
+  fullWidth?: boolean
 }
 
 export default function ChartControls({
@@ -62,7 +63,8 @@ export default function ChartControls({
   colorScheme,
   setColorScheme,
   siteColorScheme,
-  setSiteColorScheme
+  setSiteColorScheme,
+  fullWidth = false
 }: ChartControlsProps) {
   
   // Calculate available months for projection mode based on selected years
@@ -92,6 +94,15 @@ export default function ChartControls({
   const maxSmoothing = calculateAvailableMonths()
   const clampedSmoothing = Math.min(smoothing, maxSmoothing)
   const isSidebar = variant === 'sidebar'
+  const isMobile = variant === 'mobile'
+  
+  // Mobile-friendly sizing
+  const labelFontSize = isMobile ? 18 : 14
+  const buttonFontSize = isMobile ? 18 : 14
+  const buttonPadding = isMobile ? '12px 20px' : '4px 12px'
+  const checkboxFontSize = isMobile ? 18 : 13
+  const smallTextSize = isMobile ? 16 : 11
+  const containerPadding = isMobile ? 16 : 10
   
   // Get colors based on selected color scheme
   const colors = getColorScheme(colorScheme)
@@ -192,18 +203,18 @@ export default function ChartControls({
         marginBottom: isSidebar ? 0 : 16,
         border: '1px solid #ccc',
         borderRadius: 4,
-        padding: 10,
+        padding: containerPadding,
         background: '#fff',
         boxShadow: '0 6px 10px rgba(0, 0, 0, 0.15)',
-        minWidth: 360,
-        maxWidth: 'fit-content',
-        width: 'fit-content',
+        minWidth: fullWidth ? 'auto' : 360,
+        maxWidth: fullWidth ? 'none' : 'fit-content',
+        width: fullWidth ? '100%' : 'fit-content',
         position: 'relative',
         transition: 'width 0.3s ease-in-out, min-width 0.3s ease-in-out, max-width 0.3s ease-in-out'
       }}>
       <h3 style={{
         margin: '0 0 16px 0',
-        fontSize: 16,
+        fontSize: isMobile ? 18 : 16,
         fontWeight: 700
       }}>Chart Controls</h3>
       <div style={{
@@ -216,7 +227,7 @@ export default function ChartControls({
         {/* Group 1: Color Scheme */}
         <>
           <label style={{
-            fontSize: 14,
+            fontSize: labelFontSize,
             fontWeight: 500,
             paddingTop: 6,
             padding: '8px 0'
@@ -236,6 +247,7 @@ export default function ChartControls({
               setTotalColorScheme={setColorScheme}
               siteColorScheme={siteColorScheme}
               setSiteColorScheme={setSiteColorScheme}
+              isMobile={isMobile}
             />
           </div>
         </>
@@ -243,7 +255,7 @@ export default function ChartControls({
         {/* Group 2: Income Mode + Site Visibility */}
         <>
           <label style={{
-            fontSize: 14,
+            fontSize: labelFontSize,
             fontWeight: 500,
             whiteSpace: 'nowrap',
             paddingTop: 6,
@@ -273,11 +285,11 @@ export default function ChartControls({
                   onClick={() => chartMode !== 'proportion' && setIncomeMode('total')}
                   disabled={chartMode === 'proportion'}
                   style={{
-                    padding: '4px 12px',
+                    padding: buttonPadding,
                     border: 'none',
                     background: incomeMode === 'total' ? '#1e40af' : '#fff',
                     color: incomeMode === 'total' ? '#fff' : '#333',
-                    fontSize: 14,
+                    fontSize: buttonFontSize,
                     cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
                     transition: 'all 0.2s',
                     whiteSpace: 'nowrap',
@@ -290,11 +302,11 @@ export default function ChartControls({
                   onClick={() => chartMode !== 'proportion' && setIncomeMode('per-site')}
                   disabled={chartMode === 'proportion'}
                   style={{
-                    padding: '4px 12px',
+                    padding: buttonPadding,
                     border: 'none',
                     background: incomeMode === 'per-site' ? '#1e40af' : '#fff',
                     color: incomeMode === 'per-site' ? '#fff' : '#333',
-                    fontSize: 14,
+                    fontSize: buttonFontSize,
                     cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
                     transition: 'all 0.2s',
                     whiteSpace: 'nowrap',
@@ -326,7 +338,7 @@ export default function ChartControls({
                 onMouseLeave={() => removeTooltip('income-mode-info')}
               >
                   <span style={{
-                    fontSize: 12,
+                    fontSize: checkboxFontSize,
                     fontWeight: 'bold',
                     color: '#6b7280',
                     userSelect: 'none'
@@ -342,7 +354,7 @@ export default function ChartControls({
                 display: 'flex',
                 alignItems: 'center',
                 gap: 4,
-                fontSize: 13,
+                fontSize: checkboxFontSize,
                 cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
                 opacity: chartMode === 'proportion' ? 0.5 : 1
               }}>
@@ -360,7 +372,7 @@ export default function ChartControls({
                   display: 'flex',
                   alignItems: 'center',
                   gap: 4,
-                  fontSize: 13,
+                  fontSize: checkboxFontSize,
                   cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
                   opacity: chartMode === 'proportion' ? 0.5 : 1,
                   position: 'relative'
@@ -469,7 +481,7 @@ export default function ChartControls({
                         border: '1px solid #ccc',
                         borderRadius: 2
                       }} />
-                      <span style={{ fontSize: 11, color: '#333' }}>{site.label}</span>
+                      <span style={{ fontSize: checkboxFontSize, color: '#333' }}>{site.label}</span>
                     </button>
                   )
                 })}
@@ -481,7 +493,7 @@ export default function ChartControls({
         {/* Group 3: Historical Data + Mean/Median */}
         <>
           <label style={{
-            fontSize: 14,
+            fontSize: labelFontSize,
             fontWeight: 500,
             paddingTop: 6,
             padding: '8px 0'
@@ -504,15 +516,15 @@ export default function ChartControls({
           <button
             onClick={() => setIsHistoricalPopupOpen(!isHistoricalPopupOpen)}
             style={{
-              padding: '4px 12px',
+              padding: buttonPadding,
               border: '1px solid #ccc',
               borderRadius: 4,
               background: '#fff',
               color: '#333',
-              fontSize: 13,
+              fontSize: buttonFontSize,
               cursor: 'pointer',
               transition: 'all 0.2s',
-              minWidth: '120px',
+              minWidth: isMobile ? '200px' : '120px',
               textAlign: 'left'
             }}
           >
@@ -556,7 +568,7 @@ export default function ChartControls({
               {chartMode === 'proportion' ? (
                 /* Range slider mode for projection */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 500, color: '#666' }}>
+                  <div style={{ fontSize: smallTextSize, fontWeight: 500, color: '#666' }}>
                     {selectedYears.length === 0 ? 'No historical data' : `Year Range: ${rangeStart}–2024`}
                   </div>
 
@@ -674,7 +686,7 @@ export default function ChartControls({
                       display: 'flex',
                       justifyContent: 'space-between',
                       marginTop: 12,
-                      fontSize: 9,
+                        fontSize: smallTextSize,
                       color: '#999'
                     }}>
                       <span>2016</span>
@@ -690,12 +702,12 @@ export default function ChartControls({
                       onClick={() => handleRangeChange(2016)}
                       style={{
                         flex: 1,
-                        padding: '3px 6px',
+                        padding: isMobile ? '6px 10px' : '3px 6px',
                         border: '1px solid #ccc',
                         borderRadius: 2,
                         background: '#f0f9ff',
                         color: '#333',
-                        fontSize: 10,
+                        fontSize: smallTextSize,
                         cursor: 'pointer',
                         transition: 'all 0.2s',
                         fontWeight: 500
@@ -707,12 +719,12 @@ export default function ChartControls({
                       onClick={() => handleRangeChange(2019)}
                       style={{
                         flex: 1,
-                        padding: '3px 6px',
+                        padding: isMobile ? '6px 10px' : '3px 6px',
                         border: '1px solid #ccc',
                         borderRadius: 2,
                         background: '#fff',
                         color: '#333',
-                        fontSize: 10,
+                        fontSize: smallTextSize,
                         cursor: 'pointer',
                         transition: 'all 0.2s',
                         fontWeight: 500
@@ -724,12 +736,12 @@ export default function ChartControls({
                       onClick={() => handleRangeChange(2025)}
                       style={{
                         flex: 1,
-                        padding: '3px 6px',
+                        padding: isMobile ? '6px 10px' : '3px 6px',
                         border: '1px solid #ccc',
                         borderRadius: 2,
                         background: '#fef2f2',
                         color: '#333',
-                        fontSize: 10,
+                        fontSize: smallTextSize,
                         cursor: 'pointer',
                         transition: 'all 0.2s',
                         fontWeight: 500
@@ -745,12 +757,12 @@ export default function ChartControls({
                       onClick={() => setIsHistoricalPopupOpen(false)}
                       style={{
                         width: '100%',
-                        padding: '4px 8px',
+                        padding: isMobile ? '8px 12px' : '4px 8px',
                         border: '1px solid #ccc',
                         borderRadius: 2,
                         background: '#1e40af',
                         color: '#fff',
-                        fontSize: 11,
+                        fontSize: smallTextSize,
                         cursor: 'pointer',
                         transition: 'all 0.2s',
                         fontWeight: 500
@@ -767,12 +779,12 @@ export default function ChartControls({
                     <button
                       onClick={handleSelectAll}
                       style={{
-                        padding: '3px 6px',
+                        padding: isMobile ? '6px 10px' : '3px 6px',
                         border: '1px solid #ccc',
                         borderRadius: 2,
                         background: '#f0f9ff',
                         color: '#333',
-                        fontSize: 11,
+                        fontSize: smallTextSize,
                         cursor: 'pointer',
                         transition: 'all 0.2s',
                         fontWeight: 500,
@@ -784,12 +796,12 @@ export default function ChartControls({
                     <button
                       onClick={handleSelectNone}
                       style={{
-                        padding: '3px 6px',
+                        padding: isMobile ? '6px 10px' : '3px 6px',
                         border: '1px solid #ccc',
                         borderRadius: 2,
                         background: '#fef2f2',
                         color: '#333',
-                        fontSize: 11,
+                        fontSize: smallTextSize,
                         cursor: 'pointer',
                         transition: 'all 0.2s',
                         fontWeight: 500,
@@ -809,9 +821,9 @@ export default function ChartControls({
                             display: 'flex',
                             alignItems: 'center',
                             gap: 6,
-                            fontSize: 12,
+                            fontSize: checkboxFontSize,
                             cursor: 'pointer',
-                            padding: '3px 4px',
+                            padding: isMobile ? '6px 8px' : '3px 4px',
                             borderRadius: 2,
                             transition: 'background 0.2s',
                             background: selectedYears.includes(year) ? '#f0f9ff' : 'transparent'
@@ -845,12 +857,12 @@ export default function ChartControls({
                       onClick={() => setIsHistoricalPopupOpen(false)}
                       style={{
                         width: '100%',
-                        padding: '4px 8px',
+                        padding: isMobile ? '8px 12px' : '4px 8px',
                         border: '1px solid #ccc',
                         borderRadius: 2,
                         background: '#1e40af',
                         color: '#fff',
-                        fontSize: 11,
+                        fontSize: smallTextSize,
                         cursor: 'pointer',
                         transition: 'all 0.2s',
                         fontWeight: 500
@@ -873,7 +885,7 @@ export default function ChartControls({
                 display: 'flex',
                 alignItems: 'center',
                 gap: 4,
-                fontSize: 13,
+                fontSize: checkboxFontSize,
                 cursor: (chartMode === 'proportion' || selectedYears.length <= 1) ? 'not-allowed' : 'pointer',
                 opacity: (chartMode === 'proportion' || selectedYears.length <= 1) ? 0.5 : 1
               }}>
@@ -904,7 +916,7 @@ export default function ChartControls({
                 display: 'flex',
                 alignItems: 'center',
                 gap: 4,
-                fontSize: 13,
+                fontSize: checkboxFontSize,
                 cursor: (chartMode === 'proportion' || selectedYears.length <= 1) ? 'not-allowed' : 'pointer',
                 opacity: (chartMode === 'proportion' || selectedYears.length <= 1) ? 0.5 : 1
               }}>
@@ -939,7 +951,7 @@ export default function ChartControls({
                 display: 'flex',
                 alignItems: 'center',
                 gap: 4,
-                fontSize: 13,
+                fontSize: checkboxFontSize,
                 cursor: (combineStatistic && chartMode !== 'proportion' && selectedYears.length > 1) ? 'pointer' : 'not-allowed',
                 opacity: (combineStatistic && chartMode !== 'proportion' && selectedYears.length > 1) ? 1 : 0.5
               }}>
@@ -962,7 +974,7 @@ export default function ChartControls({
                 display: 'flex',
                 alignItems: 'center',
                 gap: 4,
-                fontSize: 13,
+                fontSize: checkboxFontSize,
                 cursor: (combineStatistic && chartMode !== 'proportion' && selectedYears.length > 1) ? 'pointer' : 'not-allowed',
                 opacity: (combineStatistic && chartMode !== 'proportion' && selectedYears.length > 1) ? 1 : 0.5
               }}>
@@ -989,7 +1001,7 @@ export default function ChartControls({
         {/* Group 4: Chart Type + Smoothing */}
         <>
           <label style={{
-            fontSize: 14,
+            fontSize: labelFontSize,
             fontWeight: 500,
             paddingTop: 6,
             padding: '8px 0'
@@ -1012,11 +1024,11 @@ export default function ChartControls({
             <button
               onClick={() => setChartMode('line')}
               style={{
-                padding: '4px 12px',
+                padding: buttonPadding,
                 border: 'none',
                 background: chartMode === 'line' ? '#1e40af' : '#fff',
                 color: chartMode === 'line' ? '#fff' : '#333',
-                fontSize: 14,
+                fontSize: buttonFontSize,
                 cursor: 'pointer',
                 transition: 'all 0.2s'
               }}
@@ -1026,11 +1038,11 @@ export default function ChartControls({
             <button
               onClick={() => setChartMode('bar')}
               style={{
-                padding: '4px 12px',
+                padding: buttonPadding,
                 border: 'none',
                 background: chartMode === 'bar' ? '#1e40af' : '#fff',
                 color: chartMode === 'bar' ? '#fff' : '#333',
-                fontSize: 14,
+                fontSize: buttonFontSize,
                 cursor: 'pointer',
                 transition: 'all 0.2s'
               }}
@@ -1041,11 +1053,11 @@ export default function ChartControls({
               onClick={() => incomeMode !== 'total' && setChartMode('proportion')}
               disabled={incomeMode === 'total'}
               style={{
-                padding: '4px 12px',
+                padding: buttonPadding,
                 border: 'none',
                 background: chartMode === 'proportion' ? '#1e40af' : '#fff',
                 color: chartMode === 'proportion' ? '#fff' : '#333',
-                fontSize: 14,
+                fontSize: buttonFontSize,
                 cursor: incomeMode === 'total' ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s',
                 opacity: incomeMode === 'total' ? 0.5 : 1
@@ -1057,7 +1069,7 @@ export default function ChartControls({
 
             {/* Smoothing */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: chartMode === 'bar' ? 0.5 : 1, width: '100%' }}>
-          <label style={{ fontSize: 14, fontWeight: 500 }}>Smoothing:</label>
+           <label style={{ fontSize: labelFontSize, fontWeight: 500 }}>Smoothing:</label>
           <input
             type="range"
             min="0"
@@ -1070,12 +1082,12 @@ export default function ChartControls({
             }}
             disabled={chartMode === 'bar'}
             style={{
-              width: '80px',
-              height: '20px',
+              width: isMobile ? '150px' : '80px',
+              height: isMobile ? '36px' : '20px',
               cursor: chartMode === 'bar' ? 'not-allowed' : 'pointer'
             }}
           />
-          <span style={{ fontSize: 11, color: '#666', minWidth: '20px' }}>
+          <span style={{ fontSize: smallTextSize, color: '#666', minWidth: '20px' }}>
             {chartMode === 'proportion' ? `${clampedSmoothing} month window` : `${clampedSmoothing}`}
           </span>
         </div>
@@ -1085,7 +1097,7 @@ export default function ChartControls({
         {/* Group 5: Timeframe + Monthly Toggle */}
         <>
           <label style={{
-            fontSize: 14,
+            fontSize: labelFontSize,
             fontWeight: 500,
             paddingTop: 6,
             opacity: chartMode === 'proportion' ? 0.5 : 1,
@@ -1110,11 +1122,11 @@ export default function ChartControls({
               onClick={() => chartMode !== 'proportion' && setTimeframe('year')}
               disabled={chartMode === 'proportion'}
               style={{
-                padding: '4px 12px',
+                padding: buttonPadding,
                 border: 'none',
                 background: timeframe === 'year' ? '#1e40af' : '#fff',
                 color: timeframe === 'year' ? '#fff' : '#333',
-                fontSize: 14,
+                fontSize: buttonFontSize,
                 cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s',
                 opacity: chartMode === 'proportion' ? 0.5 : 1
@@ -1126,11 +1138,11 @@ export default function ChartControls({
               onClick={() => chartMode !== 'proportion' && setTimeframe('quarter')}
               disabled={chartMode === 'proportion'}
               style={{
-                padding: '4px 12px',
+                padding: buttonPadding,
                 border: 'none',
                 background: timeframe === 'quarter' ? '#1e40af' : '#fff',
                 color: timeframe === 'quarter' ? '#fff' : '#333',
-                fontSize: 14,
+                fontSize: buttonFontSize,
                 cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s',
                 opacity: chartMode === 'proportion' ? 0.5 : 1
@@ -1142,11 +1154,11 @@ export default function ChartControls({
               onClick={() => chartMode !== 'proportion' && setTimeframe('month')}
               disabled={chartMode === 'proportion'}
               style={{
-                padding: '4px 12px',
+                padding: buttonPadding,
                 border: 'none',
                 background: timeframe === 'month' ? '#1e40af' : '#fff',
                 color: timeframe === 'month' ? '#fff' : '#333',
-                fontSize: 14,
+                fontSize: buttonFontSize,
                 cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s',
                 opacity: chartMode === 'proportion' ? 0.5 : 1
@@ -1158,7 +1170,7 @@ export default function ChartControls({
 
             {/* Monthly view mode toggle - shown below buttons when conditions are met */}
             {timeframe === 'month' && chartMode === 'bar' && !showCombined && (
-              <label style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+               <label style={{ fontSize: checkboxFontSize, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <input
                   type="checkbox"
                   checked={showAllMonths}

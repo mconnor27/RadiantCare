@@ -9,6 +9,7 @@ import { authenticatedFetch } from '../../../../lib/api'
 import { useDashboardStore } from '../../../Dashboard'
 import { useAuth } from '../../../auth/AuthProvider'
 import DetailedChart from './components/DetailedChart'
+import ChartControls from './components/ChartControls'
 import PartnerCompensation from './components/PartnerCompensation'
 
 interface YTDDetailedMobileProps {
@@ -28,6 +29,24 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
   const [data, setData] = useState<YTDPoint[]>([])
   const [cachedData, setCachedData] = useState<{ daily?: any, summary?: any, equity?: any } | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [showControls, setShowControls] = useState(false)
+
+  // Mobile chart settings state
+  const [isNormalized, setIsNormalized] = useState(false)
+  const [showCombined, setShowCombined] = useState(false)
+  const [combineStatistic, setCombineStatistic] = useState<'mean' | 'median' | null>(null)
+  const [combineError, setCombineError] = useState<'std' | 'ci' | null>(null)
+  const [chartMode, setChartMode] = useState<'line' | 'bar' | 'proportion'>('line')
+  const [timeframe, setTimeframe] = useState<'year' | 'quarter' | 'month'>('year')
+  const [currentPeriod, setCurrentPeriod] = useState<{ year: number, quarter?: number, month?: number }>({ year: new Date().getFullYear() })
+  const [is2025Visible, setIs2025Visible] = useState(true)
+  const [showAllMonths, setShowAllMonths] = useState(true)
+  const [incomeMode, setIncomeMode] = useState<'total' | 'per-site'>('total')
+  const [smoothing, setSmoothing] = useState(10)
+  const [selectedYears, setSelectedYears] = useState<number[]>(Array.from({ length: 9 }, (_, i) => 2016 + i))
+  const [visibleSites, setVisibleSites] = useState<{ lacey: boolean, centralia: boolean, aberdeen: boolean }>({ lacey: true, centralia: true, aberdeen: true })
+  const [colorScheme, setColorScheme] = useState<'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'>('gray')
+  const [siteColorScheme, setSiteColorScheme] = useState<'rgb' | 'radiantCare' | 'jama'>('rgb')
 
   const isAdmin = profile?.is_admin === true
 
@@ -180,6 +199,21 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
       setSyncing(false)
     }
   }
+
+  // Keep current period in sync with timeframe on mobile
+  useEffect(() => {
+    const now = new Date()
+    const year = 2025
+    const month = now.getMonth() + 1
+    const quarter = Math.floor((month - 1) / 3) + 1
+    if (timeframe === 'year') {
+      setCurrentPeriod({ year })
+    } else if (timeframe === 'quarter') {
+      setCurrentPeriod({ year, quarter })
+    } else if (timeframe === 'month') {
+      setCurrentPeriod({ year, month })
+    }
+  }, [timeframe])
 
   return (
     <>
@@ -446,25 +480,26 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
           <div style={{ width: '100%'}}>
             <DetailedChart
               data={data}
-              isNormalized={false}
-              showCombined={false}
-              combineStatistic={null}
-              combineError={null}
-              chartMode="line"
-              timeframe="year"
-              currentPeriod={{ year: new Date().getFullYear() }}
-              setCurrentPeriod={() => {}}
-              is2025Visible={true}
-              setIs2025Visible={() => {}}
-              showAllMonths={true}
-              incomeMode="total"
-              smoothing={10}
+              isNormalized={isNormalized}
+              showCombined={showCombined}
+              combineStatistic={combineStatistic}
+              combineError={combineError}
+              chartMode={chartMode}
+              timeframe={timeframe}
+              currentPeriod={currentPeriod}
+              setCurrentPeriod={setCurrentPeriod}
+              is2025Visible={is2025Visible}
+              setIs2025Visible={setIs2025Visible}
+              showAllMonths={showAllMonths}
+              incomeMode={incomeMode}
+              smoothing={smoothing}
               fy2025={fy2025}
-              selectedYears={Array.from({ length: 10 }, (_, i) => 2016 + i)}
-              visibleSites={{ lacey: true, centralia: true, aberdeen: true }}
-              colorScheme="gray"
-              siteColorScheme="rgb"
+              selectedYears={selectedYears}
+              visibleSites={visibleSites}
+              colorScheme={colorScheme}
+              siteColorScheme={siteColorScheme}
               isMobile={true}
+              onOpenControls={() => setShowControls(true)}
             />
           </div>
         )}
@@ -479,6 +514,86 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
           isMobile={true}
         />
       </div>
+
+      {/* Mobile Controls Overlay */}
+      {showControls && (
+        <>
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0,0,0,0.45)',
+              zIndex: 10000
+            }}
+            onClick={() => setShowControls(false)}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              top: 0,
+              background: '#fff',
+              zIndex: 10001,
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <div style={{ padding: 12, borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>Chart Controls</div>
+              <button
+                onClick={() => setShowControls(false)}
+                style={{
+                  padding: '6px 10px',
+                  border: '1px solid #ccc',
+                  borderRadius: 4,
+                  background: '#fff',
+                  cursor: 'pointer',
+                  fontSize: 13
+                }}
+              >
+                Done
+              </button>
+            </div>
+            <div style={{ padding: 12, overflowY: 'auto' }}>
+              <ChartControls
+                isNormalized={isNormalized}
+                setIsNormalized={setIsNormalized}
+                showCombined={showCombined}
+                setShowCombined={setShowCombined}
+                combineStatistic={combineStatistic}
+                setCombineStatistic={setCombineStatistic}
+                combineError={combineError}
+                setCombineError={setCombineError}
+                chartMode={chartMode}
+                setChartMode={setChartMode}
+                timeframe={timeframe}
+                setTimeframe={setTimeframe}
+                showAllMonths={showAllMonths}
+                setShowAllMonths={setShowAllMonths}
+                incomeMode={incomeMode}
+                setIncomeMode={setIncomeMode}
+                smoothing={smoothing}
+                setSmoothing={setSmoothing}
+                variant="mobile"
+                selectedYears={selectedYears}
+                setSelectedYears={setSelectedYears}
+                visibleSites={visibleSites}
+                setVisibleSites={setVisibleSites}
+                colorScheme={colorScheme}
+                setColorScheme={setColorScheme}
+                siteColorScheme={siteColorScheme}
+                setSiteColorScheme={setSiteColorScheme}
+                fullWidth={true}
+              />
+            </div>
+          </div>
+        </>
+      )}
     </>
   )
 }

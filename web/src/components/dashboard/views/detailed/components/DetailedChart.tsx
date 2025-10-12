@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faGear } from '@fortawesome/free-solid-svg-icons'
 import createPlotlyComponent from 'react-plotly.js/factory'
 import Plotly from 'plotly.js-dist-min'
 const Plot = createPlotlyComponent(Plotly)
@@ -58,6 +60,7 @@ interface DetailedChartProps {
   colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'
   siteColorScheme: 'rgb' | 'radiantCare' | 'jama'
   isMobile?: boolean
+  onOpenControls?: () => void
 }
 
 export default function DetailedChart({
@@ -80,7 +83,8 @@ export default function DetailedChart({
   visibleSites,
   colorScheme,
   siteColorScheme,
-  isMobile = false
+  isMobile = false,
+  onOpenControls
 }: DetailedChartProps) {
   const [pulsePhase, setPulsePhase] = useState(0)
   const [containerWidth, setContainerWidth] = useState<number | null>(null)
@@ -628,9 +632,10 @@ export default function DetailedChart({
 
     // Add annotations to layout
     if (baseLayout && chartAnnotations.length > 0) {
+      const baseLayoutAny = baseLayout as any
       return {
-        ...baseLayout,
-        annotations: [...(baseLayout.annotations || []), ...chartAnnotations]
+        ...baseLayoutAny,
+        annotations: [...(baseLayoutAny.annotations || []), ...chartAnnotations]
       }
     }
 
@@ -756,6 +761,32 @@ export default function DetailedChart({
           ...(maxWidth > 0 ? { maxWidth } : { flex: 1 }),
           transition: 'width 0.3s ease-in-out, min-width 0.3s ease-in-out, max-width 0.3s ease-in-out, flex 0.3s ease-in-out'
         }}>
+        {/* Mobile gear for opening controls */}
+        {isMobile && (
+          <button
+            onClick={() => onOpenControls && onOpenControls()}
+            style={{
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              padding: 8,
+              border: '1px solid #ccc',
+              borderRadius: 4,
+              background: 'rgba(255, 255, 255, 0.95)',
+              cursor: 'pointer',
+              fontSize: 16,
+              zIndex: 1001,
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+              transition: 'background 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#fff'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)'}
+            aria-label="Open chart controls"
+          >
+            <FontAwesomeIcon icon={faGear} />
+          </button>
+        )}
+
         {shouldShowControls && (
           <>
             <button
@@ -763,7 +794,7 @@ export default function DetailedChart({
               style={{
                 position: 'absolute',
                 top: 8,
-                left: 8,
+                left: isMobile ? 44 : 8,
                 padding: '6px 10px',
                 border: '1px solid #ccc',
                 borderRadius: 4,

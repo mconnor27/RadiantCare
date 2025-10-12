@@ -6,13 +6,15 @@ interface ColorSchemeSelectorProps {
   setTotalColorScheme: (scheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare') => void
   siteColorScheme: 'rgb' | 'radiantCare' | 'jama'
   setSiteColorScheme: (scheme: 'rgb' | 'radiantCare' | 'jama') => void
+  isMobile?: boolean
 }
 
 export default function ColorSchemeSelector({
   totalColorScheme,
   setTotalColorScheme,
   siteColorScheme,
-  setSiteColorScheme
+  setSiteColorScheme,
+  isMobile = false
 }: ColorSchemeSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
@@ -39,13 +41,16 @@ export default function ColorSchemeSelector({
     // Check if historical is a single color (Array.fill) or a spectrum
     const isSingleColor = historical.length > 1 && historical.every(c => c === historical[0])
 
+    const swatchSize = isMobile ? 24 : 16
+    const spectrumWidth = isMobile ? 48 : 32
+
     return (
       <div style={{ display: 'flex', gap: 2 }}>
         {/* Current color swatch */}
         <div
           style={{
-            width: 16,
-            height: 16,
+            width: swatchSize,
+            height: swatchSize,
             backgroundColor: current,
             border: '1px solid #ccc',
             borderRadius: 2
@@ -56,8 +61,8 @@ export default function ColorSchemeSelector({
           // Single color - render as square
           <div
             style={{
-              width: 16,
-              height: 16,
+              width: swatchSize,
+              height: swatchSize,
               backgroundColor: historical[0],
               border: '1px solid #ccc',
               borderRadius: 2
@@ -67,8 +72,8 @@ export default function ColorSchemeSelector({
           // Spectrum - render as rectangle with gradient
           <div
             style={{
-              width: 32,
-              height: 16,
+              width: spectrumWidth,
+              height: swatchSize,
               background: `linear-gradient(to right, ${historical[0]}, ${historical[historical.length - 1]})`,
               border: '1px solid #ccc',
               borderRadius: 2
@@ -82,12 +87,13 @@ export default function ColorSchemeSelector({
   // Helper to render color swatches for site schemes
   const renderSiteSwatch = (scheme: keyof typeof SITE_COLOR_SCHEMES) => {
     const colors = SITE_COLOR_SCHEMES[scheme]
+    const swatchSize = isMobile ? 24 : 16
     return (
       <div style={{ display: 'flex', gap: 2 }}>
         <div
           style={{
-            width: 16,
-            height: 16,
+            width: swatchSize,
+            height: swatchSize,
             backgroundColor: colors.lacey.current,
             border: '1px solid #ccc',
             borderRadius: 2
@@ -95,8 +101,8 @@ export default function ColorSchemeSelector({
         />
         <div
           style={{
-            width: 16,
-            height: 16,
+            width: swatchSize,
+            height: swatchSize,
             backgroundColor: colors.centralia.current,
             border: '1px solid #ccc',
             borderRadius: 2
@@ -104,8 +110,8 @@ export default function ColorSchemeSelector({
         />
         <div
           style={{
-            width: 16,
-            height: 16,
+            width: swatchSize,
+            height: swatchSize,
             backgroundColor: colors.aberdeen.current,
             border: '1px solid #ccc',
             borderRadius: 2
@@ -121,12 +127,12 @@ export default function ColorSchemeSelector({
       <button
         onClick={() => setIsOpen(!isOpen)}
         style={{
-          padding: '4px 8px',
+          padding: isMobile ? '12px 20px' : '4px 8px',
           border: '1px solid #ccc',
           borderRadius: 4,
           background: '#fff',
           color: '#333',
-          fontSize: 13,
+          fontSize: isMobile ? 18 : 13,
           cursor: 'pointer',
           transition: 'all 0.2s',
           display: 'flex',
