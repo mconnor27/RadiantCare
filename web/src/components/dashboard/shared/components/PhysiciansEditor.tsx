@@ -2873,6 +2873,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
               <span style={{ fontSize: '13px', color: '#213547', fontWeight: 600 }}>
                 {(() => {
                   // Calculate total working weeks for all physicians
+                  // Accounts for mid-year retirement, termination, and vacation
                   const totalWorkingWeeks = physicians.reduce((sum, p) => {
                     let workingWeeks = 0
 
@@ -2880,18 +2881,22 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     const employeePortion = getEmployeePortionOfYear(p)
                     const partnerPortion = getPartnerPortionOfYear(p)
 
-                    // Calculate employee working weeks
+                    // Calculate employee working weeks (for employees and employee portion of mixed types)
                     if (employeePortion > 0) {
                       const employeeAvailableWeeks = 52 * employeePortion
                       const employeeVacation = p.employeeWeeksVacation ?? 0
-                      workingWeeks += Math.max(0, employeeAvailableWeeks - employeeVacation)
+                      // Vacation can only be taken during available weeks
+                      const effectiveVacation = Math.min(employeeVacation, employeeAvailableWeeks)
+                      workingWeeks += Math.max(0, employeeAvailableWeeks - effectiveVacation)
                     }
 
-                    // Calculate partner working weeks
+                    // Calculate partner working weeks (for partners and partner portion of mixed types)
                     if (partnerPortion > 0) {
                       const partnerAvailableWeeks = 52 * partnerPortion
                       const partnerVacation = p.weeksVacation ?? 0
-                      workingWeeks += Math.max(0, partnerAvailableWeeks - partnerVacation)
+                      // Vacation can only be taken during available weeks
+                      const effectiveVacation = Math.min(partnerVacation, partnerAvailableWeeks)
+                      workingWeeks += Math.max(0, partnerAvailableWeeks - effectiveVacation)
                     }
 
                     return sum + workingWeeks

@@ -5,10 +5,11 @@ const Plot = createPlotlyComponent(Plotly)
 import { useDashboardStore } from '../../../Dashboard'
 import { useIsMobile } from '../hooks'
 import { getEmployeePortionOfYear, getPartnerPortionOfYear } from '../calculations'
+import { scenario2024Defaults } from '../defaults'
 import type { FutureYear, Physician } from '../types'
 
 // Helper function to calculate weeks worked for a physician in a given year
-// This matches the calculation in PhysiciansEditor.tsx lines 2876-2898
+// Accounts for mid-year retirement, termination, and vacation
 function calculateWeeksWorked(physician: Physician): number {
   let workingWeeks = 0
 
@@ -16,18 +17,22 @@ function calculateWeeksWorked(physician: Physician): number {
   const employeePortion = getEmployeePortionOfYear(physician)
   const partnerPortion = getPartnerPortionOfYear(physician)
 
-  // Calculate employee working weeks
+  // Calculate employee working weeks (for employees and employee portion of mixed types)
   if (employeePortion > 0) {
     const employeeAvailableWeeks = 52 * employeePortion
     const employeeVacation = physician.employeeWeeksVacation ?? 0
-    workingWeeks += Math.max(0, employeeAvailableWeeks - employeeVacation)
+    // Vacation can only be taken during available weeks
+    const effectiveVacation = Math.min(employeeVacation, employeeAvailableWeeks)
+    workingWeeks += Math.max(0, employeeAvailableWeeks - effectiveVacation)
   }
 
-  // Calculate partner working weeks
+  // Calculate partner working weeks (for partners and partner portion of mixed types)
   if (partnerPortion > 0) {
     const partnerAvailableWeeks = 52 * partnerPortion
     const partnerVacation = physician.weeksVacation ?? 0
-    workingWeeks += Math.max(0, partnerAvailableWeeks - partnerVacation)
+    // Vacation can only be taken during available weeks
+    const effectiveVacation = Math.min(partnerVacation, partnerAvailableWeeks)
+    workingWeeks += Math.max(0, partnerAvailableWeeks - effectiveVacation)
   }
 
   return workingWeeks
@@ -75,16 +80,36 @@ function calculateTotalWeeksVacation(futureYear: FutureYear): number {
 export default function WorkforceAnalysis() {
   const store = useDashboardStore()
   const isMobile = useIsMobile()
-  const years = store.scenarioA.future.map((f) => f.year)
+
+  // Include 2024 + future years (2025-2030)
+  const years = [2024, ...store.scenarioA.future.map((f) => f.year)]
+
+  // Get 2024 physician data
+  const physicians2024 = scenario2024Defaults()
+  const year2024Data: FutureYear = {
+    year: 2024,
+    therapyIncome: 0,
+    nonEmploymentCosts: 0,
+    nonMdEmploymentCosts: 0,
+    locumCosts: 0, // No locums in 2024
+    miscEmploymentCosts: 0,
+    physicians: physicians2024
+  }
 
   // Calculate weeks worked for Scenario A
   const weeksWorkedA = years.map((y) => {
+    if (y === 2024) {
+      return calculateTotalWeeksWorked(year2024Data)
+    }
     const fy = store.scenarioA.future.find(f => f.year === y)
     return fy ? calculateTotalWeeksWorked(fy) : 0
   })
 
   // Calculate weeks of vacation for Scenario A
   const weeksVacationA = years.map((y) => {
+    if (y === 2024) {
+      return calculateTotalWeeksVacation(year2024Data)
+    }
     const fy = store.scenarioA.future.find(f => f.year === y)
     return fy ? calculateTotalWeeksVacation(fy) : 0
   })
@@ -92,6 +117,9 @@ export default function WorkforceAnalysis() {
   // Calculate weeks worked for Scenario B
   const weeksWorkedB = store.scenarioBEnabled && store.scenarioB
     ? years.map((y) => {
+        if (y === 2024) {
+          return calculateTotalWeeksWorked(year2024Data)
+        }
         const fy = store.scenarioB!.future.find(f => f.year === y)
         return fy ? calculateTotalWeeksWorked(fy) : 0
       })
@@ -100,6 +128,9 @@ export default function WorkforceAnalysis() {
   // Calculate weeks of vacation for Scenario B
   const weeksVacationB = store.scenarioBEnabled && store.scenarioB
     ? years.map((y) => {
+        if (y === 2024) {
+          return calculateTotalWeeksVacation(year2024Data)
+        }
         const fy = store.scenarioB!.future.find(f => f.year === y)
         return fy ? calculateTotalWeeksVacation(fy) : 0
       })
@@ -228,9 +259,9 @@ export default function WorkforceAnalysis() {
             return traces
           })() as any}
           layout={{
-            title: { text: 'Workforce Analysis (2025-2030)', font: { size: 18, weight: 600 } },
+            title: { text: 'Workforce Analysis (2024-2030)', font: { size: 18, weight: 600 } },
             margin: { l: 60, r: 8, t: 45, b: 60 },
-            yaxis: { title: 'Weeks', separatethousands: true },
+            yaxis: { title: 'Weeks', separatethousands: true, rangemode: 'tozero' },
             xaxis: { dtick: 1 },
             legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.05, yanchor: 'top', traceorder: 'grouped' },
           }}

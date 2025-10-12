@@ -117,6 +117,7 @@ export function calculateEmployeeTotalCost(employee: Physician, year: number = 2
 export function getEmployeePortionOfYear(physician: Physician): number {
   if (physician.type === 'employee') return 1
   if (physician.type === 'partner') return 0
+  if (physician.type === 'partnerToRetire') return 0
   if (physician.type === 'newEmployee') {
     // New employees work from their start date to end of year
     const startPortion = physician.startPortionOfYear ?? 0
