@@ -118,6 +118,12 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
         }
       })()
     : (sc.future.find((f) => f.year === year) as FutureYear)
+
+  if (!fy) {
+    console.error(`YearPanel: No data found for year ${year} in scenario ${scenario}`)
+    return null
+  }
+
   const partnerComp = usePartnerComp(year, scenario, fy)
 
   return (

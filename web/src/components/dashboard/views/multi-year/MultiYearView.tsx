@@ -8,6 +8,7 @@ import YearPanel from '../../shared/components/YearPanel'
 import ProjectionSettingsControls from '../../shared/components/ProjectionSettingsControls'
 import HistoricAndProjectionChart from './HistoricAndProjectionChart'
 import OverallCompensationSummary from '../../shared/components/OverallCompensationSummary'
+import WorkforceAnalysis from '../../shared/components/WorkforceAnalysis'
 import ParametersSummary from './components/ParametersSummary'
 import CollapsibleSection from '../../shared/components/CollapsibleSection'
 import ScenarioLoadModal from '../../../scenarios/ScenarioLoadModal'
@@ -57,6 +58,7 @@ export default function MultiYearView() {
   const [projectionOpen, setProjectionOpen] = useState(true)
   const [yearPanelOpen, setYearPanelOpen] = useState(true)
   const [overallOpen, setOverallOpen] = useState(true)
+  const [workforceOpen, setWorkforceOpen] = useState(true)
   const [parametersOpen, setParametersOpen] = useState(true)
   const [showLoadModal, setShowLoadModal] = useState(false)
   const [showLoadModalB, setShowLoadModalB] = useState(false)
@@ -85,13 +87,15 @@ export default function MultiYearView() {
     setProjectionOpen(true)
     setYearPanelOpen(true)
     setOverallOpen(true)
+    setWorkforceOpen(true)
     setParametersOpen(true)
   }
-  
+
   const collapseAll = () => {
     setProjectionOpen(false)
     setYearPanelOpen(false)
     setOverallOpen(false)
+    setWorkforceOpen(false)
     setParametersOpen(false)
   }
 
@@ -731,7 +735,7 @@ export default function MultiYearView() {
                 <ProjectionSettingsControls scenario={'A'} />
               </CollapsibleSection>
               <CollapsibleSection title={`Per Year Settings (Baseline: ${getBaselineYear(store.scenarioA.dataMode)})`} open={yearPanelOpen} onOpenChange={setYearPanelOpen} tone="neutral">
-                <YearPanel year={store.scenarioA.selectedYear} scenario={'A'} />
+                <YearPanel year={store.scenarioA.selectedYear ?? store.scenarioA.future[0]?.year ?? 2025} scenario={'A'} />
               </CollapsibleSection>
             </div>
 
@@ -892,7 +896,7 @@ export default function MultiYearView() {
                   <ProjectionSettingsControls scenario={'B'} />
                 </CollapsibleSection>
                 <CollapsibleSection title={`Per Year Settings (Baseline: ${getBaselineYear(store.scenarioB?.dataMode || '2025 Data')})`} open={yearPanelOpen} onOpenChange={setYearPanelOpen} tone="neutral">
-                  <YearPanel year={store.scenarioB.selectedYear} scenario={'B'} />
+                  <YearPanel year={store.scenarioB.selectedYear ?? store.scenarioB.future[0]?.year ?? 2025} scenario={'B'} />
                 </CollapsibleSection>
               </div>
             )}
@@ -905,7 +909,13 @@ export default function MultiYearView() {
           <OverallCompensationSummary />
         </CollapsibleSection>
       </div>
-      
+
+      <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '0 auto' }}>
+        <CollapsibleSection title="Workforce Analysis" open={workforceOpen} onOpenChange={setWorkforceOpen} tone="neutral">
+          <WorkforceAnalysis />
+        </CollapsibleSection>
+      </div>
+
       <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '0 auto' }}>
         <CollapsibleSection title="Parameters Summary" open={parametersOpen} onOpenChange={setParametersOpen} tone="neutral">
           <ParametersSummary />
