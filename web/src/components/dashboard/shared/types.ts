@@ -101,7 +101,7 @@ export type ScenarioState = {
 export type ScenarioKey = 'A' | 'B'
 
 // View mode for scenarios
-export type ViewMode = 'YTD Detailed' | 'Multi-Year'
+export type ViewMode = 'YTD Detailed' | 'Multi-Year' | 'YTD Mobile'
 
 // Baseline mode for Multi-Year scenarios
 export type BaselineMode = '2024 Data' | '2025 Data' | 'Custom'
