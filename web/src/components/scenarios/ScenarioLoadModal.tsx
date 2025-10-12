@@ -10,7 +10,7 @@ interface ScenarioLoadModalProps {
   isOpen: boolean
   onClose: () => void
   onLoad: (id: string) => void
-  viewMode: 'YTD Detailed' | 'Multi-Year'
+  viewMode: 'YTD Detailed' | 'Multi-Year' | 'YTD Mobile'
 }
 
 type Tab = 'my-scenarios' | 'public-scenarios'

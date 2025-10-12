@@ -13,7 +13,7 @@ interface ScenarioCardProps {
   onUpdateBaseline?: (id: string) => void
   onToggleFavorite?: (id: string, favoriteType: 'A' | 'B') => void
   isOwner: boolean
-  viewMode?: 'YTD Detailed' | 'Multi-Year'
+  viewMode?: 'YTD Detailed' | 'Multi-Year' | 'YTD Mobile'
 }
 
 export default function ScenarioCard({

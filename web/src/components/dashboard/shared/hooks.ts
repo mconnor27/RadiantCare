@@ -1,1 +1,1 @@
-import { useState, useEffect } from 'react'
+// Empty hooks file - placeholder for future custom hooks

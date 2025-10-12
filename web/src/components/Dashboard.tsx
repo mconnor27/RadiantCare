@@ -1183,7 +1183,7 @@ export const useDashboardStore = create<Store>()(
           name: string,
           description: string,
           isPublic: boolean,
-          viewMode: 'YTD Detailed' | 'Multi-Year',
+          viewMode: 'YTD Detailed' | 'Multi-Year' | 'YTD Mobile',
           ytdSettings?: YTDSettings
         ) => {
           const state = get()

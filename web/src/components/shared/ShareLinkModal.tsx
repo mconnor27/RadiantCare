@@ -4,7 +4,7 @@ import { authenticatedFetch } from '../../lib/api'
 interface ShareLinkModalProps {
   isOpen: boolean
   onClose: () => void
-  viewMode: 'YTD Detailed' | 'Multi-Year'
+  viewMode: 'YTD Detailed' | 'Multi-Year' | 'YTD Mobile'
   scenarioAId: string | null
   scenarioAIsPublic: boolean
   scenarioBId: string | null

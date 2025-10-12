@@ -11,7 +11,7 @@ import BaselineWarningModal from './BaselineWarningModal'
 interface ScenarioManagerProps {
   isOpen: boolean
   onClose: () => void
-  viewMode: 'YTD Detailed' | 'Multi-Year'
+  viewMode: 'YTD Detailed' | 'Multi-Year' | 'YTD Mobile'
   ytdSettings?: any
   onYtdSettingsChange?: (settings: any) => void
   initialView?: 'list' | 'form' | 'edit' | 'formB' | 'editB'

@@ -259,7 +259,7 @@ export default function WorkforceAnalysis() {
           layout={{
             title: { text: 'Workforce Analysis (2024-2030)', font: { size: 18, weight: 600 } },
             margin: { l: 60, r: 8, t: 45, b: 60 },
-            yaxis: { title: 'Weeks', separatethousands: true, rangemode: 'tozero' },
+            yaxis: { title: { text: 'Weeks' }, separatethousands: true, rangemode: 'tozero' },
             xaxis: { dtick: 1 },
             legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.05, yanchor: 'top', traceorder: 'grouped' },
           }}

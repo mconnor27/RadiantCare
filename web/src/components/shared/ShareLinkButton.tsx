@@ -4,7 +4,7 @@ import { faLink } from '@fortawesome/free-solid-svg-icons'
 import ShareLinkModal from './ShareLinkModal'
 
 interface ShareLinkButtonProps {
-  viewMode: 'YTD Detailed' | 'Multi-Year'
+  viewMode: 'YTD Detailed' | 'Multi-Year' | 'YTD Mobile'
   scenarioAId: string | null
   scenarioAIsPublic: boolean
   scenarioBId: string | null

@@ -12,7 +12,7 @@ interface ScenarioListProps {
   onUpdateBaseline?: (id: string) => void
   onToggleFavorite?: (id: string, favoriteType: 'A' | 'B') => void
   loading?: boolean
-  viewMode?: 'YTD Detailed' | 'Multi-Year'
+  viewMode?: 'YTD Detailed' | 'Multi-Year' | 'YTD Mobile'
 }
 
 export default function ScenarioList({
