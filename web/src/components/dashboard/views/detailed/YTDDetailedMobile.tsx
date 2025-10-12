@@ -625,7 +625,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
         top: 0,
         background: '#fff',
         borderBottom: '1px solid #e5e7eb',
-        padding: '12px 16px',
+        padding: '8px 16px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -690,7 +690,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
           minWidth: 0
         }}>
           <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 42, width: 'auto', display: 'block' }} />
-          <div style={{
+          {/*<div style={{
             fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif',
             color: '#7c2a83',
             fontWeight: 900,
@@ -699,7 +699,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
             whiteSpace: 'nowrap'
           }}>
             Compensation Dashboard
-          </div>
+          </div>*/}
         </div>
 
         {/* User Menu */}
@@ -808,7 +808,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
 
       {/* Scenario Manager Section */}
       <div style={{
-        padding: '12px 16px',
+        padding: '8px 16px',
         borderBottom: '1px solid #e5e7eb',
         background: '#f9fafb'
       }}>
@@ -821,13 +821,13 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
         }}>
           {currentScenarioName && (
             <div style={{
-              padding: '8px 12px',
+              padding: '4px 4px',
               background: '#f0f9ff',
               border: '1px solid #bae6fd',
               borderRadius: 6,
               display: 'inline-flex',
               alignItems: 'center',
-              fontSize: 14,
+              fontSize: 12,
               fontWeight: 500,
               color: '#0369a1'
             }}>

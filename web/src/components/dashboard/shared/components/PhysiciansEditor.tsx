@@ -2111,7 +2111,6 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                       const transitionDay = Number(e.target.value)
                       const employeePortion = transitionDayToEmployeePortion(transitionDay, year)
                       console.log(`[${p.name}] Slider onChange - Day: ${transitionDay}, Calculated employeePortion: ${employeePortion}, Current stored: ${p.employeePortionOfYear}`)
-                      const partnerPortion = 1 - employeePortion
                       const totalVacationWeeks = (document as any).__dragStartTotalVacation ?? 8
 
                       // Re-apportion vacation weeks based on new proportions

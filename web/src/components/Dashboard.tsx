@@ -1780,13 +1780,28 @@ export function arePhysiciansChanged(
     const current = currentPhysicians[i]
     const defaultPhysician = defaultPhysicians[i]
 
+    // Only compare employeeWeeksVacation if physician has employee time
+    const hasEmployeeTime = current.type === 'employeeToPartner' && (current.employeePortionOfYear ?? 0) > 0
+    const employeeWeeksChanged = hasEmployeeTime && (current.employeeWeeksVacation !== defaultPhysician.employeeWeeksVacation)
+
+    // Only compare partnerWeeksVacation (via weeksVacation) if physician has partner time
+    // For employeeToPartner: only compare weeksVacation if employeePortionOfYear < 1
+    const hasPartnerTime =
+      current.type === 'partner' ||
+      (current.type === 'employeeToPartner' && (current.employeePortionOfYear ?? 0) < 1) ||
+      (current.type === 'partnerToRetire' && (current.partnerPortionOfYear ?? 0) > 0)
+    const partnerWeeksChanged = hasPartnerTime && (current.weeksVacation !== defaultPhysician.weeksVacation)
+
+    // Only compare additionalDaysWorked if physician actually worked (has partner time)
+    const additionalDaysChanged = hasPartnerTime && (current.additionalDaysWorked !== defaultPhysician.additionalDaysWorked)
+
     // Compare all relevant properties
     if (
       current.name !== defaultPhysician.name ||
       current.type !== defaultPhysician.type ||
       current.salary !== defaultPhysician.salary ||
-      current.weeksVacation !== defaultPhysician.weeksVacation ||
-      current.employeeWeeksVacation !== defaultPhysician.employeeWeeksVacation ||
+      partnerWeeksChanged ||
+      employeeWeeksChanged ||
       current.employeePortionOfYear !== defaultPhysician.employeePortionOfYear ||
       current.partnerPortionOfYear !== defaultPhysician.partnerPortionOfYear ||
       current.startPortionOfYear !== defaultPhysician.startPortionOfYear ||
@@ -1798,7 +1813,7 @@ export function arePhysiciansChanged(
       current.medicalDirectorHoursPercentage !== defaultPhysician.medicalDirectorHoursPercentage ||
       current.buyoutCost !== defaultPhysician.buyoutCost ||
       current.trailingSharedMdAmount !== defaultPhysician.trailingSharedMdAmount ||
-      current.additionalDaysWorked !== defaultPhysician.additionalDaysWorked
+      additionalDaysChanged
     ) {
       return true
     }
