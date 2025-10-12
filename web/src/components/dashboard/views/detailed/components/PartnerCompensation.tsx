@@ -304,6 +304,7 @@ export default function PartnerCompensation({
   const store = useDashboardStore()
   const [isExpanded, setIsExpanded] = useState(false)
   const [hoveredPhysician, setHoveredPhysician] = useState<string | null>(null)
+  const [selectedPhysician, setSelectedPhysician] = useState<string | null>(null)
 
   // Get physician data from store (using 2025 and scenario A for now)
   const year = 2025
@@ -429,15 +430,288 @@ export default function PartnerCompensation({
   }
 
 
+  // Mobile transposed view
+  if (isMobile) {
+    return (
+      <>
+        <div style={{
+          marginTop: 16,
+          maxWidth: '100%',
+          margin: '0',
+          overflowX: 'auto',
+          border: '1px solid #e5e7eb',
+          borderRadius: 6,
+          padding: 6,
+          background: '#ffffff',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+          position: 'relative'
+        }}>
+          {isRefreshing && (
+            <div style={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              padding: '4px 10px',
+              background: '#fff3cd',
+              border: '1px solid #ffc107',
+              borderRadius: 4,
+              fontSize: 11,
+              color: '#856404',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              zIndex: 10,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 1s linear infinite' }}>
+                <path d="M21 12a9 9 0 11-6.219-8.56" />
+              </svg>
+              Refreshing...
+              <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+            </div>
+          )}
+
+          <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 20 }}>Physician Compensation</div>
+
+          {/* Transposed table - physicians as rows */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* Header row */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 1fr 1fr',
+              gap: 4,
+              fontWeight: 600,
+              fontSize: 18,
+              padding: '4px 0',
+              borderBottom: '1px solid #e5e7eb'
+            }}>
+              <div style={{ textAlign: 'left' }}>Physician</div>
+              <div style={{ textAlign: 'right' }}>Projected</div>
+              <div style={{ textAlign: 'right' }}>Paid To Date</div>
+              <div style={{ textAlign: 'right' }}>Remaining</div>
+            </div>
+
+            {/* Physician rows */}
+            {physicianNames.map((physician, idx) => {
+              const projected = projectedData.totals[physician] || 0
+              const paidToDate = ytdData.totals[physician] || 0
+              const beginningEquity = getValue('Beginning Equity', physician, ytdData.data)
+              const remaining = projected + paidToDate + beginningEquity
+              const warnings = getPhysicianWarnings(physician)
+              const hasWarnings = warnings.length > 0
+
+              return (
+                <div
+                  key={physician}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr 1fr 1fr',
+                    gap: 4,
+                    padding: '6px 0',
+                    borderBottom: idx < physicianNames.length - 1 ? '1px solid #f0f0f0' : 'none',
+                    background: idx % 2 === 0 ? '#f9fafb' : 'transparent',
+                    fontSize: 16
+                  }}
+                >
+                  <div style={{
+                    textAlign: 'left',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}>
+                    {hasWarnings && (
+                      <span
+                        style={{ color: '#dc3545', fontSize: 14, cursor: 'help' }}
+                        onMouseEnter={() => setHoveredPhysician(physician)}
+                        onMouseLeave={() => setHoveredPhysician(null)}
+                      >
+                        ⚠️
+                      </span>
+                    )}
+                    {physician}
+                  </div>
+                  <div style={{
+                    textAlign: 'right',
+                    color: projected < 0 ? '#dc3545' : projected > 0 ? '#28a745' : '#6c757d'
+                  }}>
+                    {projected !== 0 ? formatCurrency(projected) : '-'}
+                  </div>
+                  <div
+                    style={{
+                      textAlign: 'right',
+                      color: paidToDate < 0 ? '#dc3545' : paidToDate > 0 ? '#28a745' : '#6c757d',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      textDecorationStyle: 'dotted'
+                    }}
+                    onClick={() => setSelectedPhysician(physician)}
+                  >
+                    {formatCurrency(paidToDate)}
+                  </div>
+                  <div style={{
+                    textAlign: 'right',
+                    color: remaining < 0 ? '#dc3545' : remaining > 0 ? '#28a745' : '#6c757d',
+                    fontWeight: 700
+                  }}>
+                    {formatCurrency(remaining)}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Breakdown popup modal */}
+        {selectedPhysician && (
+          <>
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0, 0, 0, 0.5)',
+                zIndex: 9999,
+                animation: 'fadeIn 0.2s ease-in'
+              }}
+              onClick={() => setSelectedPhysician(null)}
+            />
+            <div
+              style={{
+                position: 'fixed',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                background: '#fff',
+                borderRadius: 8,
+                padding: 16,
+                maxWidth: '90vw',
+                maxHeight: '80vh',
+                overflowY: 'auto',
+                zIndex: 10000,
+                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
+                animation: 'slideIn 0.3s ease-out'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 12,
+                paddingBottom: 8,
+                borderBottom: '2px solid #e5e7eb'
+              }}>
+                <div style={{ fontWeight: 700, fontSize: 16, color: '#333' }}>
+                  {selectedPhysician} - Breakdown
+                </div>
+                <button
+                  onClick={() => setSelectedPhysician(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: 24,
+                    cursor: 'pointer',
+                    color: '#666',
+                    padding: 0,
+                    width: 32,
+                    height: 32,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div style={{ fontSize: 13 }}>
+                {nonZeroRowNames.filter(rowName =>
+                  getValue(rowName, selectedPhysician, ytdData.data) !== 0
+                ).length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 20, color: '#666' }}>
+                    No detailed data available
+                  </div>
+                ) : (
+                  nonZeroRowNames
+                    .filter(rowName => getValue(rowName, selectedPhysician, ytdData.data) !== 0)
+                    .map((rowName, idx) => {
+                      const value = getValue(rowName, selectedPhysician, ytdData.data)
+                      return (
+                        <div
+                          key={rowName}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            padding: '10px 0',
+                            borderBottom: '1px solid #f0f0f0',
+                            gap: 12
+                          }}
+                        >
+                          <div style={{ flex: 1, color: '#333' }}>{rowName}</div>
+                          <div style={{
+                            fontWeight: 600,
+                            color: value < 0 ? '#dc3545' : value > 0 ? '#28a745' : '#6c757d',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {formatCurrency(value)}
+                          </div>
+                        </div>
+                      )
+                    })
+                )}
+
+                {/* Total */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  padding: '12px 0 4px',
+                  marginTop: 8,
+                  borderTop: '2px solid #333',
+                  fontWeight: 700,
+                  fontSize: 15
+                }}>
+                  <div>Total Paid</div>
+                  <div style={{
+                    color: ytdData.totals[selectedPhysician] < 0 ? '#dc3545' :
+                           ytdData.totals[selectedPhysician] > 0 ? '#28a745' : '#6c757d'
+                  }}>
+                    {formatCurrency(ytdData.totals[selectedPhysician] || 0)}
+                  </div>
+                </div>
+              </div>
+
+              <style>{`
+                @keyframes fadeIn {
+                  from { opacity: 0; }
+                  to { opacity: 1; }
+                }
+                @keyframes slideIn {
+                  from { transform: translate(-50%, -60%); opacity: 0; }
+                  to { transform: translate(-50%, -50%); opacity: 1; }
+                }
+              `}</style>
+            </div>
+          </>
+        )}
+      </>
+    )
+  }
+
+  // Desktop view
   return (
     <div style={{
       marginTop: 16,
-      maxWidth: isMobile ? '100%' : 900,
-      margin: isMobile ? '0' : '16px auto 16px auto',
+      maxWidth: 900,
+      margin: '16px auto 16px auto',
       overflowX: 'auto',
       border: '1px solid #e5e7eb',
       borderRadius: 6,
-      padding: isMobile ? 6 : 8,
+      padding: 8,
       background: '#ffffff',
       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
       position: 'relative'
@@ -469,7 +743,7 @@ export default function PartnerCompensation({
         </div>
       )}
 
-      <div style={{ fontWeight: 600, marginBottom: 8, fontSize: isMobile ? 14 : 16 }}>Physician Compensation</div>
+      <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 16 }}>Physician Compensation</div>
 
       <div style={{
         display: 'grid',

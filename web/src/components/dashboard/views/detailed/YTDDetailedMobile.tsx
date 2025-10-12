@@ -8,9 +8,7 @@ import {
 import { authenticatedFetch } from '../../../../lib/api'
 import { useDashboardStore } from '../../../Dashboard'
 import { useAuth } from '../../../auth/AuthProvider'
-import { supabase } from '../../../../lib/supabase'
 import DetailedChart from './components/DetailedChart'
-import YearlyDataGrid from './components/YearlyDataGrid'
 import PartnerCompensation from './components/PartnerCompensation'
 
 interface YTDDetailedMobileProps {
@@ -28,7 +26,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string | null | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<YTDPoint[]>([])
-  const [cachedData, setCachedData] = useState<{ daily?: any, summary?: any } | null>(null)
+  const [cachedData, setCachedData] = useState<{ daily?: any, summary?: any, equity?: any } | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   const isAdmin = profile?.is_admin === true
@@ -470,15 +468,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
             />
           </div>
         )}
-      </div>
-
-      {/* Physician Table */}
-      <div style={{ padding: 16 }}>
-        <YearlyDataGrid
-          environment="production"
-          cachedSummary={cachedData?.summary}
-          isLoadingCache={showLoadingModal}
-        />
       </div>
 
       {/* Partner Compensation */}

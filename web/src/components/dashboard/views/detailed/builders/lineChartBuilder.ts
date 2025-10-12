@@ -210,9 +210,9 @@ export const buildStaticLineTraces = ({
         showarrow: false,
         xanchor: 'right',
         xshift: -8,
-        yshift: 12,
+        yshift: 14,
         font: {
-          size: 12,
+          size: 14,
           color: CURRENT_YEAR_COLOR,
           family: 'Arial, sans-serif'
         },
@@ -267,9 +267,9 @@ export const buildStaticLineTraces = ({
         showarrow: false,
         xanchor: 'right',
         xshift: -8,
-        yshift: 12,
+        yshift: 14,
         font: {
-          size: 12,
+          size: 14,
           color: CURRENT_YEAR_COLOR,
           family: 'Arial, sans-serif'
         },
