@@ -371,18 +371,21 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup, embedded
         justifyContent: 'center',
         zIndex: 10000,
         animation: 'fadeIn 0.2s ease-in',
+        padding: '16px',
       }}
       onClick={handleClose}
     >
       <div
         style={{
           background: '#fff',
-          padding: '32px',
+          padding: '24px',
           borderRadius: '8px',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
           maxWidth: '400px',
           width: '100%',
           animation: 'slideIn 0.3s ease-out',
+          maxHeight: '90vh',
+          overflowY: 'auto',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -396,6 +399,11 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup, embedded
           @keyframes slideIn {
             from { transform: translateY(-20px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
+          }
+          @media (max-width: 640px) {
+            div[style*="padding: 24px"] {
+              padding: 20px !important;
+            }
           }
         `}</style>
       </div>

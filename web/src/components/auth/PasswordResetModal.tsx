@@ -142,23 +142,26 @@ export default function PasswordResetModal({ isOpen, onClose, mode = 'reset' }: 
         justifyContent: 'center',
         zIndex: 10000,
         animation: 'fadeIn 0.2s ease-in',
+        padding: '16px',
       }}
       onClick={handleClose}
     >
       <div
         style={{
           background: '#fff',
-          padding: '32px',
+          padding: '24px',
           borderRadius: '8px',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
           maxWidth: '400px',
           width: '100%',
           animation: 'slideIn 0.3s ease-out',
+          maxHeight: '90vh',
+          overflowY: 'auto',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>
+          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 600 }}>
             {mode === 'change'
               ? (step === 'current' ? 'Verify Current Password' : 'Set New Password')
               : 'Set New Password'
@@ -178,6 +181,7 @@ export default function PasswordResetModal({ isOpen, onClose, mode = 'reset' }: 
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              flexShrink: 0,
             }}
           >
             ×
@@ -378,6 +382,14 @@ export default function PasswordResetModal({ isOpen, onClose, mode = 'reset' }: 
           @keyframes slideIn {
             from { transform: translateY(-20px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
+          }
+          @media (max-width: 640px) {
+            div[style*="padding: 24px"] {
+              padding: 20px !important;
+            }
+            h2 {
+              font-size: 18px !important;
+            }
           }
         `}</style>
       </div>

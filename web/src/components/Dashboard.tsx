@@ -10,6 +10,7 @@ import SignupModal from './auth/SignupModal'
 import PasswordResetModal from './auth/PasswordResetModal'
 import ScenarioManager from './scenarios/ScenarioManager'
 import YTDDetailed from './dashboard/views/detailed/YTDDetailed'
+import YTDDetailedMobile from './dashboard/views/detailed/YTDDetailedMobile'
 import MultiYearView from './dashboard/views/multi-year/MultiYearView'
 import SyncButton from './dashboard/views/detailed/components/SyncButton'
 import SharedLinkWarningModal from './shared/SharedLinkWarningModal'
@@ -2062,7 +2063,7 @@ export function calculateProjectedValue(
 export function Dashboard() {
   const store = useDashboardStore()
   const { profile, loading, signOut } = useAuth()
-  const [viewMode, setViewMode] = useState<'Multi-Year' | 'YTD Detailed'>('YTD Detailed')
+  const [viewMode, setViewMode] = useState<'Multi-Year' | 'YTD Detailed' | 'YTD Mobile'>('YTD Detailed')
   const [urlLoaded, setUrlLoaded] = useState(false)
   // Initialize ytdSettings with defaults from chartConfig
   const [ytdSettings, setYtdSettings] = useState<YTDSettings>(DEFAULT_YTD_SETTINGS)
@@ -2757,6 +2758,10 @@ export function Dashboard() {
               onClick={() => setViewMode('Multi-Year')}
               style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'Multi-Year' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
             >Multi-Year</button>
+            <button
+              onClick={() => setViewMode('YTD Mobile')}
+              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Mobile' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
+            >YTD Mobile</button>
           </div>
         </div>
         
@@ -2771,6 +2776,12 @@ export function Dashboard() {
                 onRefreshRequest={handleYtdRefreshRequest}
               />
 
+            </div>
+            <div style={{ display: viewMode === 'YTD Mobile' ? 'block' : 'none' }}>
+              <YTDDetailedMobile
+                onRefreshRequest={handleYtdRefreshRequest}
+                onPasswordChange={() => setShowPasswordReset(true)}
+              />
             </div>
             {/* Only render MultiYearView after it's been visited once (lazy initialization) */}
             {multiYearInitialized && (
