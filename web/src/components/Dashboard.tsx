@@ -2649,22 +2649,23 @@ export function Dashboard() {
 
   // User is authenticated - show the full dashboard
   return (
-    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: 16, position: 'relative' }}>
-      {/* Top Bar with Auth and Help */}
-      <div className="full-bleed" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 12, paddingTop: 0, paddingLeft: 16, paddingRight: 16 }}>
-        {/* Sync Button - only show in YTD Detailed view */}
-        {viewMode === 'YTD Detailed' && (
-          <SyncButton 
-            environment="production" 
-            isLoadingDashboard={false}
-            onSyncComplete={() => {
-              // Trigger data refresh in YTDDetailed component
-              ytdRefreshCallbackRef.current?.()
-            }}
-          />
-        )}
-        {/* Spacer to push right elements to the right when SyncButton is hidden */}
-        {viewMode !== 'YTD Detailed' && <div style={{ flex: 1 }}></div>}
+    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: viewMode === 'YTD Mobile' ? 0 : 16, position: 'relative' }}>
+      {/* Top Bar with Auth and Help - hide in mobile mode */}
+      {viewMode !== 'YTD Mobile' && (
+        <div className="full-bleed" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 12, paddingTop: 0, paddingLeft: 16, paddingRight: 16 }}>
+          {/* Sync Button - only show in YTD Detailed view */}
+          {viewMode === 'YTD Detailed' && (
+            <SyncButton
+              environment="production"
+              isLoadingDashboard={false}
+              onSyncComplete={() => {
+                // Trigger data refresh in YTDDetailed component
+                ytdRefreshCallbackRef.current?.()
+              }}
+            />
+          )}
+          {/* Spacer to push right elements to the right when SyncButton is hidden */}
+          {viewMode !== 'YTD Detailed' && <div style={{ flex: 1 }}></div>}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 14, color: '#6b7280' }}>
             {profile.email}
@@ -2735,35 +2736,41 @@ export function Dashboard() {
           ?
         </div>
         </div>
-      </div>
-
-      {/* Centered Header */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
-        <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 60, width: 'auto', display: 'block' }} />
-        <h2 style={{ margin: 0, fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif', color: '#7c2a83', fontWeight: 900, fontSize: 36, lineHeight: 1.05 }}>Compensation Dashboard</h2>
-      </div>
-      
-      <div style={{ 
-        marginTop: 20, 
-        maxWidth: 1600, 
-        margin: '20px auto 0 auto' 
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              onClick={() => setViewMode('YTD Detailed')}
-              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Detailed' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
-            >YTD Detailed</button>
-            <button
-              onClick={() => setViewMode('Multi-Year')}
-              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'Multi-Year' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
-            >Multi-Year</button>
-            <button
-              onClick={() => setViewMode('YTD Mobile')}
-              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Mobile' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
-            >YTD Mobile</button>
-          </div>
         </div>
+      )}
+
+      {/* Centered Header - hide in mobile mode */}
+      {viewMode !== 'YTD Mobile' && (
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
+          <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 60, width: 'auto', display: 'block' }} />
+          <h2 style={{ margin: 0, fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif', color: '#7c2a83', fontWeight: 900, fontSize: 36, lineHeight: 1.05 }}>Compensation Dashboard</h2>
+        </div>
+      )}
+
+      <div style={{
+        marginTop: viewMode === 'YTD Mobile' ? 0 : 20,
+        maxWidth: viewMode === 'YTD Mobile' ? '100%' : 1600,
+        margin: viewMode === 'YTD Mobile' ? 0 : '20px auto 0 auto'
+      }}>
+        {/* View Mode Buttons - hide in mobile mode */}
+        {viewMode !== 'YTD Mobile' && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                onClick={() => setViewMode('YTD Detailed')}
+                style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Detailed' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
+              >YTD Detailed</button>
+              <button
+                onClick={() => setViewMode('Multi-Year')}
+                style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'Multi-Year' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
+              >Multi-Year</button>
+              <button
+                onClick={() => setViewMode('YTD Mobile')}
+                style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Mobile' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
+              >YTD Mobile</button>
+            </div>
+          </div>
+        )}
         
         {!urlLoaded ? (
           <div style={{ padding: 20, textAlign: 'center' }}>Loading...</div>

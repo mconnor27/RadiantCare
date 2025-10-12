@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faSync, faSignOutAlt, faKey } from '@fortawesome/free-solid-svg-icons'
+import { faUser, faSignOutAlt, faKey, faSync } from '@fortawesome/free-solid-svg-icons'
 import {
   parseTherapyIncome2025,
   type YTDPoint
@@ -8,6 +8,7 @@ import {
 import { authenticatedFetch } from '../../../../lib/api'
 import { useDashboardStore } from '../../../Dashboard'
 import { useAuth } from '../../../auth/AuthProvider'
+import { supabase } from '../../../../lib/supabase'
 import DetailedChart from './components/DetailedChart'
 import YearlyDataGrid from './components/YearlyDataGrid'
 
@@ -18,14 +19,18 @@ interface YTDDetailedMobileProps {
 
 export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }: YTDDetailedMobileProps) {
   const store = useDashboardStore()
-  const { signOut } = useAuth()
+  const { signOut, profile } = useAuth()
   const [showLoadingModal, setShowLoadingModal] = useState(true)
-  const [syncing, setSyncing] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showTooltip, setShowTooltip] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string | null | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<YTDPoint[]>([])
   const [cachedData, setCachedData] = useState<{ daily?: any, summary?: any } | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+
+  const isAdmin = profile?.is_admin === true
 
   // Parse 2025 data
   const historical2025Data = useMemo(() => parseTherapyIncome2025(), [])
@@ -98,22 +103,76 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
     })
   }, [historical2025Data, refreshTrigger])
 
+  // Load last sync timestamp
+  useEffect(() => {
+    if (!showLoadingModal) {
+      authenticatedFetch('/api/qbo/cached-2025')
+        .then(res => res.ok ? res.json() : null)
+        .then(cache => {
+          if (cache?.lastSyncTimestamp) {
+            setLastSyncTimestamp(cache.lastSyncTimestamp)
+          } else {
+            setLastSyncTimestamp(null)
+          }
+        })
+        .catch(() => {
+          setLastSyncTimestamp(null)
+        })
+    }
+  }, [showLoadingModal, refreshTrigger])
+
+  // Check if sync is available
+  const canSyncNow = (timestamp: string | null) => {
+    if (!timestamp) return true
+
+    const now = new Date()
+    const dayOfWeek = now.getDay()
+
+    // No sync on weekends
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      return false
+    }
+
+    // Simple check: allow sync if more than 12 hours have passed
+    const lastSync = new Date(timestamp)
+    const hoursSinceSync = (now.getTime() - lastSync.getTime()) / (1000 * 60 * 60)
+
+    return hoursSinceSync >= 12
+  }
+
+  const syncAvailable = isAdmin || (lastSyncTimestamp !== undefined && (lastSyncTimestamp === null || canSyncNow(lastSyncTimestamp)))
+
   // Handle sync
   const handleSync = async () => {
+    if (!syncAvailable) {
+      setShowTooltip(true)
+      setTimeout(() => setShowTooltip(false), 2000)
+      return
+    }
+
     setSyncing(true)
+    setShowTooltip(false)
+
     try {
       const response = await authenticatedFetch('/api/qbo/sync-2025', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          adminOverride: isAdmin
+        }),
       })
 
       const responseData = await response.json()
 
       if (!response.ok) {
         alert(responseData.message || 'Sync failed')
+        if (responseData.lastSyncTimestamp) {
+          setLastSyncTimestamp(responseData.lastSyncTimestamp)
+        }
       } else {
+        setLastSyncTimestamp(responseData.lastSyncTimestamp)
         setRefreshTrigger(prev => prev + 1)
       }
     } catch {
@@ -208,32 +267,78 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
         alignItems: 'center',
         justifyContent: 'space-between',
         zIndex: 100,
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+        gap: 12
       }}>
-        {/* Sync Button */}
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: syncing ? '#94a3b8' : '#0ea5e9',
-            fontSize: 20,
-            cursor: syncing ? 'not-allowed' : 'pointer',
-            padding: 8,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 36,
-            height: 36,
-            borderRadius: 4
-          }}
-        >
-          <FontAwesomeIcon icon={faSync} spin={syncing} />
-        </button>
+        {/* Sync Icon Button */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <button
+            onClick={handleSync}
+            disabled={syncing || lastSyncTimestamp === undefined}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: syncing || !syncAvailable || lastSyncTimestamp === undefined ? '#94a3b8' : '#0ea5e9',
+              fontSize: 20,
+              cursor: syncing || lastSyncTimestamp === undefined ? 'not-allowed' : (syncAvailable ? 'pointer' : 'pointer'),
+              padding: 8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 36,
+              height: 36,
+              borderRadius: 4
+            }}
+          >
+            <FontAwesomeIcon icon={faSync} spin={syncing} />
+          </button>
+
+          {/* Tooltip */}
+          {showTooltip && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              marginTop: 8,
+              background: '#333',
+              color: 'white',
+              padding: '8px 12px',
+              borderRadius: 4,
+              fontSize: 12,
+              whiteSpace: 'nowrap',
+              zIndex: 1000,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+            }}>
+              Sync not available yet
+            </div>
+          )}
+        </div>
+
+        {/* Title - Center */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 8,
+          flex: 1,
+          justifyContent: 'center',
+          minWidth: 0
+        }}>
+          <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 48, width: 'auto', display: 'block' }} />
+          <div style={{
+            fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif',
+            color: '#7c2a83',
+            fontWeight: 900,
+            fontSize: 24,
+            lineHeight: 1,
+            whiteSpace: 'nowrap'
+          }}>
+            Compensation Dashboard
+          </div>
+        </div>
 
         {/* User Menu */}
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative', flexShrink: 0 }}>
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
             style={{
@@ -330,57 +435,39 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
         </div>
       </div>
 
-      {/* Title */}
-      <div style={{
-        padding: '20px 16px 16px',
-        textAlign: 'center',
-        borderBottom: '1px solid #e5e7eb'
-      }}>
-        <div style={{
-          fontSize: 18,
-          fontWeight: 600,
-          color: '#0ea5e9',
-          marginBottom: 4
-        }}>
-          RadiantCare
-        </div>
-        <div style={{
-          fontSize: 14,
-          color: '#6b7280'
-        }}>
-          Compensation Dashboard
-        </div>
-      </div>
-
       {/* Chart */}
       <div style={{
         padding: 16,
-        borderBottom: '1px solid #e5e7eb'
+        borderBottom: '1px solid #e5e7eb',
+        overflowX: 'auto'
       }}>
         {error ? (
           <div style={{ color: '#991b1b', textAlign: 'center', padding: 20 }}>{error}</div>
         ) : (
-          <DetailedChart
-            data={data}
-            isNormalized={false}
-            showCombined={false}
-            combineStatistic={null}
-            combineError={null}
-            chartMode="line"
-            timeframe="year"
-            currentPeriod={{ year: new Date().getFullYear() }}
-            setCurrentPeriod={() => {}}
-            is2025Visible={true}
-            setIs2025Visible={() => {}}
-            showAllMonths={true}
-            incomeMode="total"
-            smoothing={0}
-            fy2025={fy2025}
-            selectedYears={Array.from({ length: 10 }, (_, i) => 2016 + i)}
-            visibleSites={{ lacey: true, centralia: true, aberdeen: true }}
-            colorScheme="gray"
-            siteColorScheme="rgb"
-          />
+          <div style={{ width: '100%'}}>
+            <DetailedChart
+              data={data}
+              isNormalized={false}
+              showCombined={false}
+              combineStatistic={null}
+              combineError={null}
+              chartMode="line"
+              timeframe="year"
+              currentPeriod={{ year: new Date().getFullYear() }}
+              setCurrentPeriod={() => {}}
+              is2025Visible={true}
+              setIs2025Visible={() => {}}
+              showAllMonths={true}
+              incomeMode="total"
+              smoothing={10}
+              fy2025={fy2025}
+              selectedYears={Array.from({ length: 10 }, (_, i) => 2016 + i)}
+              visibleSites={{ lacey: true, centralia: true, aberdeen: true }}
+              colorScheme="gray"
+              siteColorScheme="rgb"
+              isMobile={true}
+            />
+          </div>
         )}
       </div>
 

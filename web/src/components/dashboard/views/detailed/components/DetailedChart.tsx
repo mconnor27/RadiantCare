@@ -57,6 +57,7 @@ interface DetailedChartProps {
   visibleSites: { lacey: boolean, centralia: boolean, aberdeen: boolean }
   colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'
   siteColorScheme: 'rgb' | 'radiantCare' | 'jama'
+  isMobile?: boolean
 }
 
 export default function DetailedChart({
@@ -78,7 +79,8 @@ export default function DetailedChart({
   selectedYears,
   visibleSites,
   colorScheme,
-  siteColorScheme
+  siteColorScheme,
+  isMobile = false
 }: DetailedChartProps) {
   const [pulsePhase, setPulsePhase] = useState(0)
   const [containerWidth, setContainerWidth] = useState<number | null>(null)
@@ -656,7 +658,9 @@ export default function DetailedChart({
     )
   }
 
-    const config = CHART_CONFIG.desktop
+    const config = isMobile
+      ? { ...CHART_CONFIG.desktop, minWidth: 280, maxWidth: 0, aspectRatio: CHART_CONFIG.desktop.aspectRatio * 1.5 }
+      : CHART_CONFIG.desktop
     const maxWidth = config.maxWidth
 
     // Calculate height based on aspect ratio and current container width
