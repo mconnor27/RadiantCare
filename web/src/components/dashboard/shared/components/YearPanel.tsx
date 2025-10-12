@@ -230,7 +230,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           ) : null
         })()}
       </div>
-      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div  style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={UI_DEFAULTS.therapyIncomeMin}
@@ -276,7 +276,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
         <div style={{ fontSize: 14, fontWeight: 600 }}>Medical Director Hours</div>
       </div>
-      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '60px 1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1, marginBottom: 2 }}>
+      <div  style={{ display: 'grid', gridTemplateColumns: '60px 1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1, marginBottom: 2 }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: '#374151', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
           Shared
           <div style={{ width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -362,7 +362,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
       </div>
 
       {/* PRCS Row */}
-      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '60px 1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1, marginTop: 4 }}>
+      <div  style={{ display: 'grid', gridTemplateColumns: '60px 1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1, marginTop: 4 }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: '#374151', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
           PRCS
           <div style={{ width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -490,7 +490,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           ) : null
         })()}
       </div>
-      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div  style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={0}
@@ -589,7 +589,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           ) : null
         })()}
       </div>
-      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div  style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={UI_DEFAULTS.nonEmploymentCostsMin}
@@ -683,7 +683,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           ) : null
         })()}
       </div>
-      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div  style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={UI_DEFAULTS.nonMdEmploymentCostsMin}
@@ -779,7 +779,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           ) : null
         })()}
       </div>
-      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
+      <div  style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center', opacity: isReadOnly ? 0.7 : 1 }}>
         <input
           type="range"
           min={0}

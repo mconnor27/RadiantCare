@@ -258,12 +258,6 @@ export const PROJECTED_BAR_STYLE = {
 
 // Chart dimensions and margins
 export const CHART_CONFIG = {
-  mobile: {
-    height: 360,
-    minWidth: 300,
-    maxWidth: 0, // 0 = no max width (flex: 1), or set a number in pixels
-    aspectRatio: 5/6 // height/width ratio (0.833 = slightly taller than square)
-  },
   desktop: {
     height: 507,
     minWidth: 800,
