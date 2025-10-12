@@ -639,7 +639,7 @@ export default function PartnerCompensation({
                 ) : (
                   nonZeroRowNames
                     .filter(rowName => getValue(rowName, selectedPhysician, ytdData.data) !== 0)
-                    .map((rowName, idx) => {
+                    .map((rowName) => {
                       const value = getValue(rowName, selectedPhysician, ytdData.data)
                       return (
                         <div

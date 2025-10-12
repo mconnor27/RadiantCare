@@ -2752,25 +2752,23 @@ export function Dashboard() {
         maxWidth: viewMode === 'YTD Mobile' ? '100%' : 1600,
         margin: viewMode === 'YTD Mobile' ? 0 : '20px auto 0 auto'
       }}>
-        {/* View Mode Buttons - hide in mobile mode */}
-        {viewMode !== 'YTD Mobile' && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button
-                onClick={() => setViewMode('YTD Detailed')}
-                style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Detailed' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
-              >YTD Detailed</button>
-              <button
-                onClick={() => setViewMode('Multi-Year')}
-                style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'Multi-Year' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
-              >Multi-Year</button>
-              <button
-                onClick={() => setViewMode('YTD Mobile')}
-                style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Mobile' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
-              >YTD Mobile</button>
-            </div>
+        {/* View Mode Buttons */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={() => setViewMode('YTD Detailed')}
+              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Detailed' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
+            >YTD Detailed</button>
+            <button
+              onClick={() => setViewMode('Multi-Year')}
+              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'Multi-Year' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
+            >Multi-Year</button>
+            <button
+              onClick={() => setViewMode('YTD Mobile')}
+              style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Mobile' ? '#e5e7eb' : '#fff', cursor: 'pointer' }}
+            >YTD Mobile</button>
           </div>
-        )}
+        </div>
         
         {!urlLoaded ? (
           <div style={{ padding: 20, textAlign: 'center' }}>Loading...</div>
