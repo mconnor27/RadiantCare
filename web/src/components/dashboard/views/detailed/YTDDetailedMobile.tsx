@@ -152,10 +152,6 @@ function MobileScenarioLoadModal({
           </h2>
           <button
             onClick={onClose}
-            onTouchEnd={(e) => {
-              e.preventDefault()
-              onClose()
-            }}
             style={{
               background: 'none',
               border: 'none',
@@ -253,11 +249,6 @@ function MobileScenarioLoadModal({
                     WebkitTapHighlightColor: 'transparent'
                   }}
                   onClick={() => {
-                    onLoad(scenario.id)
-                    onClose()
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault()
                     onLoad(scenario.id)
                     onClose()
                   }}
@@ -646,12 +637,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
         <div style={{ position: 'relative', flexShrink: 0, alignSelf: 'flex-start' }}>
           <button
             onClick={handleSync}
-            onTouchEnd={(e) => {
-              if (!syncing && lastSyncTimestamp !== undefined && syncAvailable) {
-                e.preventDefault()
-                handleSync()
-              }
-            }}
             disabled={syncing || lastSyncTimestamp === undefined}
             style={{
               background: 'none',
@@ -721,10 +706,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
         <div style={{ position: 'relative', flexShrink: 0, alignSelf: 'flex-start' }}>
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            onTouchEnd={(e) => {
-              e.preventDefault()
-              setShowUserMenu(!showUserMenu)
-            }}
             style={{
               background: 'none',
               border: 'none',
@@ -775,11 +756,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
                     setShowUserMenu(false)
                     onPasswordChange?.()
                   }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault()
-                    setShowUserMenu(false)
-                    onPasswordChange?.()
-                  }}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -802,11 +778,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
                 </button>
                 <button
                   onClick={() => {
-                    setShowUserMenu(false)
-                    signOut()
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault()
                     setShowUserMenu(false)
                     signOut()
                   }}
@@ -867,15 +838,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
           {/* Load Button - positioned absolutely */}
           <button
             onClick={() => {
-              if (isScenarioDirty) {
-                if (!confirm('You have unsaved changes to the current scenario. Loading another scenario will discard these changes. Continue?')) {
-                  return
-                }
-              }
-              setShowLoadModal(true)
-            }}
-            onTouchEnd={(e) => {
-              e.preventDefault()
               if (isScenarioDirty) {
                 if (!confirm('You have unsaved changes to the current scenario. Loading another scenario will discard these changes. Continue?')) {
                   return
@@ -988,10 +950,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
               <div style={{ fontSize: 18, fontWeight: 700 }}>Chart Controls</div>
               <button
                 onClick={() => setShowControls(false)}
-                onTouchEnd={(e) => {
-                  e.preventDefault()
-                  setShowControls(false)
-                }}
                 style={{
                   padding: '6px 10px',
                   border: '1px solid #ccc',

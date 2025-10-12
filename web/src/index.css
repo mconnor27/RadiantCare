@@ -390,35 +390,3 @@ body.dragging [data-drag-handle] {
   margin-right: calc(50% - 50vw);
 }
 
-/* Mobile touch optimizations */
-* {
-  /* Prevent double-tap zoom on all elements */
-  touch-action: manipulation;
-  /* Remove tap highlight on iOS Safari */
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* Ensure buttons and interactive elements are properly sized for touch */
-button, input, select, textarea, [role="button"], [onclick] {
-  /* Minimum touch target size (44px recommended by Apple) */
-  min-height: 44px;
-  min-width: 44px;
-  /* Ensure touch events work properly */
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* Prevent text selection on buttons and interactive elements */
-button, [role="button"], [onclick] {
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-
-/* Ensure smooth scrolling on mobile */
-html {
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-}
-
