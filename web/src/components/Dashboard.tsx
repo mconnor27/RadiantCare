@@ -213,9 +213,11 @@ export const useDashboardStore = create<Store>()(
             const prevPartnerPortion = prev ? getPartnerPortionOfYear(prev) : 0
             const newPartnerPortion = getPartnerPortionOfYear(physician)
             const typeChanged = !!prev && prev.type !== physician.type
+            // Only consider it a partner mix change if the portion changed AND the type changed,
+            // or if it's a new physician. Small portion changes (just slider adjustments) shouldn't trigger redistribution.
             const partnerMixChanged = isNewInYear
               ? newPartnerPortion > 0
-              : (typeChanged || prevPartnerPortion !== newPartnerPortion)
+              : (typeChanged && prevPartnerPortion !== newPartnerPortion)
 
             if (mdPctChanged) {
               // Proportionally scale other eligible partners to keep total at 100

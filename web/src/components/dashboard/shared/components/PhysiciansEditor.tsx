@@ -2080,6 +2080,11 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
         ) : (
           // employeeToPartner
           <>
+            {(() => {
+              const sliderDay = employeePortionToTransitionDay(p.employeePortionOfYear ?? 0.5, year)
+              console.log(`[${p.name}] Render - employeePortionOfYear: ${p.employeePortionOfYear}, Calculated slider day: ${sliderDay}`)
+              return null
+            })()}
             <div className="control-panel" style={{ display: 'grid', gridTemplateRows: 'auto auto auto', gap: 8 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 20 }}>
@@ -2090,20 +2095,40 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     step={1}
                     className="growth-slider"
                     value={employeePortionToTransitionDay(p.employeePortionOfYear ?? 0.5, year)}
+                    onMouseDown={() => {
+                      // Capture the total vacation weeks at the start of the drag
+                      const totalAtStart = (p.employeeWeeksVacation ?? 0) + (p.weeksVacation ?? 8)
+                      ;(document as any).__dragStartTotalVacation = totalAtStart
+
+                      // Capture the starting partner portion and medical director hours for proportional redistribution
+                      const startingPartnerPortion = 1 - (p.employeePortionOfYear ?? 0)
+                      ;(document as any).__dragStartPartnerPortion = startingPartnerPortion
+                      ;(document as any).__dragStartMdHoursPercentage = p.medicalDirectorHoursPercentage ?? 0
+
+                      console.log(`[${p.name}] Starting drag - total vacation: ${totalAtStart}, partner portion: ${startingPartnerPortion}, MD hours %: ${p.medicalDirectorHoursPercentage}`)
+                    }}
                     onChange={(e) => {
                       const transitionDay = Number(e.target.value)
                       const employeePortion = transitionDayToEmployeePortion(transitionDay, year)
+                      console.log(`[${p.name}] Slider onChange - Day: ${transitionDay}, Calculated employeePortion: ${employeePortion}, Current stored: ${p.employeePortionOfYear}`)
                       const partnerPortion = 1 - employeePortion
-                      const totalVacationWeeks = 8
+                      const totalVacationWeeks = (document as any).__dragStartTotalVacation ?? 8
 
                       // Re-apportion vacation weeks based on new proportions
                       let employeeVacation = Math.round(totalVacationWeeks * employeePortion)
-                      let partnerVacation = Math.round(totalVacationWeeks * partnerPortion)
+                      let partnerVacation = totalVacationWeeks - employeeVacation
 
-                      if (employeePortion === 0) {
-                        employeeVacation = 0
-                        partnerVacation = totalVacationWeeks
-                      }
+                      console.log(`[${p.name}] Setting vacation - employeeWeeksVacation: ${p.employeeWeeksVacation} → ${employeeVacation}, weeksVacation: ${p.weeksVacation} → ${partnerVacation}`)
+                      console.log(`[${p.name}] Full physician object BEFORE:`, JSON.stringify({
+                        employeePortionOfYear: p.employeePortionOfYear,
+                        salary: p.salary,
+                        employeeWeeksVacation: p.employeeWeeksVacation,
+                        weeksVacation: p.weeksVacation,
+                        receivesBenefits: p.receivesBenefits,
+                        additionalDaysWorked: p.additionalDaysWorked,
+                        hasMedicalDirectorHours: p.hasMedicalDirectorHours,
+                        medicalDirectorHoursPercentage: p.medicalDirectorHoursPercentage
+                      }))
 
                       store.upsertPhysician(scenario, year, {
                         ...p,
@@ -2111,6 +2136,17 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                         employeeWeeksVacation: employeeVacation,
                         weeksVacation: partnerVacation,
                       })
+
+                      console.log(`[${p.name}] Full physician object AFTER:`, JSON.stringify({
+                        employeePortionOfYear: employeePortion,
+                        salary: p.salary,
+                        employeeWeeksVacation: employeeVacation,
+                        weeksVacation: partnerVacation,
+                        receivesBenefits: p.receivesBenefits,
+                        additionalDaysWorked: p.additionalDaysWorked,
+                        hasMedicalDirectorHours: p.hasMedicalDirectorHours,
+                        medicalDirectorHoursPercentage: p.medicalDirectorHoursPercentage
+                      }))
                     }}
                     disabled={readOnly}
                     style={{
@@ -2405,6 +2441,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   data-vacation-id={p.id}
                   style={{
                     fontSize: '20px',
+                    width: '20px',
                     color: '#666',
                     cursor: readOnly ? 'default' : 'pointer',
                     opacity: readOnly ? 0.6 : 1
@@ -2448,7 +2485,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   }}
                 />
               ) : (
-                <div style={{ width: '20px', height: '20px' }} />
+                <div style={{ width: '20px', height: '20px', display: 'inline-block' }} />
               )}
               <img 
                 src={p.receivesBenefits ? '/benefit_selected.png?v=2' : '/benefit_unselected.png'}

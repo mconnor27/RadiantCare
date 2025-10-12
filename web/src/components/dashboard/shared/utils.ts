@@ -85,7 +85,7 @@ export function employeePortionToTransitionDay(employeePortionOfYear: number, ye
   const totalDays = daysInYear(year)
   // If employeePortionOfYear is 0, they transition on Jan 1 (day 1)
   // If employeePortionOfYear is 1, they transition on Jan 1 of next year (day = totalDays + 1)
-  return Math.max(1, Math.round(employeePortionOfYear * totalDays) + 1)
+  return Math.round(employeePortionOfYear * totalDays + 1)
 }
 
 export function transitionDayToEmployeePortion(transitionDay: number, year: number): number {

@@ -467,7 +467,7 @@ export function createVacationWeeksTooltip(
   tooltip.id = tooltipId
   tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
 
-  const minValue = 2
+  const minValue = 0
   const displayWeeks = `${currentWeeks || 8} weeks off`
   const title = 'Employee Vacation Weeks'
 
