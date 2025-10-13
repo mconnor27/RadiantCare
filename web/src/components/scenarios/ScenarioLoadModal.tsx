@@ -53,9 +53,33 @@ export default function ScenarioLoadModal({
       const { data: myData, error: myError } = await myQuery.order('updated_at', { ascending: false })
 
       if (myError) throw myError
-      
+
+      // Fetch favorites for current user
+      const { data: favoritesData } = await supabase
+        .from('user_favorites')
+        .select('scenario_id, favorite_type')
+        .eq('user_id', profile?.id)
+
+      // Create a map of scenario_id -> favorite types
+      const favoritesMap = new Map<string, { is_favorite_a: boolean, is_favorite_b: boolean }>()
+      favoritesData?.forEach((fav: any) => {
+        if (!favoritesMap.has(fav.scenario_id)) {
+          favoritesMap.set(fav.scenario_id, { is_favorite_a: false, is_favorite_b: false })
+        }
+        const current = favoritesMap.get(fav.scenario_id)!
+        if (fav.favorite_type === 'A') current.is_favorite_a = true
+        if (fav.favorite_type === 'B') current.is_favorite_b = true
+      })
+
+      // Merge favorites into scenario data
+      const myDataWithFavorites = (myData || []).map((s: any) => ({
+        ...s,
+        is_favorite_a: favoritesMap.get(s.id)?.is_favorite_a || false,
+        is_favorite_b: favoritesMap.get(s.id)?.is_favorite_b || false,
+      }))
+
       // Sort scenarios: Default (A) > Default (B) > Favorite A > Favorite B > others
-      const sortedMyData = (myData || []).sort((a, b) => {
+      const sortedMyData = myDataWithFavorites.sort((a, b) => {
         const aName = a.name.toLowerCase()
         const bName = b.name.toLowerCase()
 
@@ -108,6 +132,8 @@ export default function ScenarioLoadModal({
         const publicWithEmail = publicData.map((s: any) => ({
           ...s,
           creator_email: emailMap.get(s.user_id),
+          is_favorite_a: favoritesMap.get(s.id)?.is_favorite_a || false,
+          is_favorite_b: favoritesMap.get(s.id)?.is_favorite_b || false,
         }))
 
         // Sort scenarios: Default (A) > Default (B) > Favorite A > Favorite B > others

@@ -356,17 +356,21 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
   useEffect(() => {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
     if (isIOS) {
-      // Prevent double-tap zoom
+      // Prevent double-tap zoom only on buttons, not charts
       let lastTouchEnd = 0
       const preventZoom = (e: TouchEvent) => {
-        const now = Date.now()
-        if (now - lastTouchEnd <= 300) {
-          e.preventDefault()
+        const target = e.target as HTMLElement
+        // Only prevent zoom on buttons, not chart elements
+        if (target && (target.tagName === 'BUTTON' || target.onclick || target.getAttribute('role') === 'button')) {
+          const now = Date.now()
+          if (now - lastTouchEnd <= 300) {
+            e.preventDefault()
+          }
+          lastTouchEnd = now
         }
-        lastTouchEnd = now
       }
       
-      // Force immediate click response
+      // Force immediate click response only on buttons
       const forceClick = (e: TouchEvent) => {
         const target = e.target as HTMLElement
         if (target && (target.tagName === 'BUTTON' || target.onclick || target.getAttribute('role') === 'button')) {

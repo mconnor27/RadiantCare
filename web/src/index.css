@@ -474,16 +474,12 @@ body.dragging [data-drag-handle] {
 
 /* iOS Safari touch fixes - disable animations that interfere with touch */
 @media screen and (-webkit-min-device-pixel-ratio: 0) {
-  /* Disable all animations on iOS Safari to prevent touch interference */
-  *, *::before, *::after {
+  /* Disable animations only on buttons and UI elements, not charts */
+  button, a, [role="button"], [onclick], .clickable {
     animation-duration: 0s !important;
     animation-delay: 0s !important;
     transition-duration: 0s !important;
     transition-delay: 0s !important;
-  }
-  
-  /* Force immediate touch response */
-  button, a, [role="button"], [onclick], .clickable {
     -webkit-tap-highlight-color: transparent !important;
     touch-action: manipulation !important;
     -webkit-touch-callout: none !important;
@@ -491,13 +487,9 @@ body.dragging [data-drag-handle] {
     user-select: none !important;
   }
   
-  /* Prevent any element from blocking touch events */
-  * {
-    pointer-events: auto !important;
-  }
-  
-  /* Ensure no invisible overlays */
-  *[style*="position: fixed"], *[style*="position: absolute"] {
+  /* Ensure chart elements can still receive touch events */
+  .js-plotly-plot, .plotly, [class*="plotly"] {
+    touch-action: auto !important;
     pointer-events: auto !important;
   }
 }

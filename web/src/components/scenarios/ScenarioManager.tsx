@@ -66,17 +66,41 @@ export default function ScenarioManager({
         .from('scenarios')
         .select('*')
         .eq('user_id', profile?.id)
-      
+
       if (viewMode === 'Multi-Year') {
         myQuery = myQuery.eq('view_mode', 'Multi-Year')
       }
-      
+
       const { data: myData, error: myError } = await myQuery.order('updated_at', { ascending: false })
 
       if (myError) throw myError
-      
+
+      // Fetch favorites for current user
+      const { data: favoritesData } = await supabase
+        .from('user_favorites')
+        .select('scenario_id, favorite_type')
+        .eq('user_id', profile?.id)
+
+      // Create a map of scenario_id -> favorite types
+      const favoritesMap = new Map<string, { is_favorite_a: boolean, is_favorite_b: boolean }>()
+      favoritesData?.forEach((fav: any) => {
+        if (!favoritesMap.has(fav.scenario_id)) {
+          favoritesMap.set(fav.scenario_id, { is_favorite_a: false, is_favorite_b: false })
+        }
+        const current = favoritesMap.get(fav.scenario_id)!
+        if (fav.favorite_type === 'A') current.is_favorite_a = true
+        if (fav.favorite_type === 'B') current.is_favorite_b = true
+      })
+
+      // Merge favorites into scenario data
+      const myDataWithFavorites = (myData || []).map((s: any) => ({
+        ...s,
+        is_favorite_a: favoritesMap.get(s.id)?.is_favorite_a || false,
+        is_favorite_b: favoritesMap.get(s.id)?.is_favorite_b || false,
+      }))
+
       // Sort scenarios: Default (A) > Default (B) > Favorite A > Favorite B > others
-      const sortedMyData = (myData || []).sort((a, b) => {
+      const sortedMyData = myDataWithFavorites.sort((a, b) => {
         const aName = a.name.toLowerCase()
         const bName = b.name.toLowerCase()
 
@@ -124,12 +148,14 @@ export default function ScenarioManager({
           .from('profiles')
           .select('id, email')
           .in('id', userIds)
-        
+
         // Map emails to scenarios
         const emailMap = new Map(profilesData?.map((p: any) => [p.id, p.email]) || [])
         const publicWithEmail = publicData.map((s: any) => ({
           ...s,
           creator_email: emailMap.get(s.user_id),
+          is_favorite_a: favoritesMap.get(s.id)?.is_favorite_a || false,
+          is_favorite_b: favoritesMap.get(s.id)?.is_favorite_b || false,
         }))
         
         // Sort scenarios: Default (A) > Default (B) > Favorite A > Favorite B > others
@@ -417,31 +443,41 @@ export default function ScenarioManager({
 
       // Then update the database in the background
       if (newFavoriteValue) {
-        // First, clear all other favorites of this type for this user
+        // First, delete any existing favorite of this type for this user
         await supabase
-          .from('scenarios')
-          .update({ [fieldToUpdate]: false })
+          .from('user_favorites')
+          .delete()
           .eq('user_id', profile?.id)
-          .eq(fieldToUpdate, true)
-      }
+          .eq('favorite_type', favoriteType)
 
-      // Now toggle the favorite for this scenario
-      const updateData: any = {}
-      if (favoriteType === 'A') {
-        updateData.is_favorite_a = newFavoriteValue
-      } else if (isMultiYearScenario(scenario)) {
-        updateData.is_favorite_b = newFavoriteValue
-      }
+        // Insert new favorite
+        const { error: insertError } = await supabase
+          .from('user_favorites')
+          .insert({
+            user_id: profile?.id,
+            scenario_id: id,
+            favorite_type: favoriteType
+          })
 
-      const { error: updateError } = await supabase
-        .from('scenarios')
-        .update(updateData)
-        .eq('id', id)
+        if (insertError) {
+          // If database update fails, reload to get correct state
+          await loadScenarios()
+          throw insertError
+        }
+      } else {
+        // Remove favorite
+        const { error: deleteError } = await supabase
+          .from('user_favorites')
+          .delete()
+          .eq('user_id', profile?.id)
+          .eq('scenario_id', id)
+          .eq('favorite_type', favoriteType)
 
-      if (updateError) {
-        // If database update fails, reload to get correct state
-        await loadScenarios()
-        throw updateError
+        if (deleteError) {
+          // If database update fails, reload to get correct state
+          await loadScenarios()
+          throw deleteError
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to toggle favorite')

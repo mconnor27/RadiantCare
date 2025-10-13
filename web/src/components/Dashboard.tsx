@@ -2646,14 +2646,24 @@ export function Dashboard() {
 
         if (error) throw error
 
+        // Fetch user's favorites
+        const { data: favoritesData } = await supabase
+          .from('user_favorites')
+          .select('scenario_id, favorite_type')
+          .eq('user_id', profile?.id)
+
+        // Create a map of favorites
+        const favoriteAId = favoritesData?.find(f => f.favorite_type === 'A')?.scenario_id
+        const favoriteBId = favoritesData?.find(f => f.favorite_type === 'B')?.scenario_id
+
         // Don't filter by view mode - scenarios should work across both views
         // Find favorite A or fallback to Default (A)
-        const favoriteA = scenarios?.find(s => s.is_favorite_a)
+        const favoriteA = scenarios?.find(s => s.id === favoriteAId)
         const defaultA = scenarios?.find(s => s.name === 'Default (A)')
         const scenarioA = favoriteA || defaultA
 
         // Find favorite B or fallback to Default (B)
-        const favoriteB = scenarios?.find(s => s.is_favorite_b)
+        const favoriteB = scenarios?.find(s => s.id === favoriteBId)
         const defaultB = scenarios?.find(s => s.name === 'Default (B)')
         const scenarioB = favoriteB || defaultB
 
