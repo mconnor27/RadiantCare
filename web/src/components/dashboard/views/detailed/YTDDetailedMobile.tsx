@@ -126,6 +126,7 @@ function MobileScenarioLoadModal({
           e.stopPropagation()
           onClose()
         }}
+        onTouchStart={() => {}}
       />
 
       {/* Modal */}
@@ -261,6 +262,7 @@ function MobileScenarioLoadModal({
                     onLoad(scenario.id)
                     onClose()
                   }}
+                  onTouchStart={() => {}}
                 >
                   {/* Header: Title + Public/Private */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
@@ -798,6 +800,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
                   e.stopPropagation()
                   setShowUserMenu(false)
                 }}
+                onTouchStart={() => {}}
               />
               <div style={{
                 position: 'absolute',
@@ -968,6 +971,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
               e.stopPropagation()
               setShowControls(false)
             }}
+            onTouchStart={() => {}}
           />
           <div
             style={{
