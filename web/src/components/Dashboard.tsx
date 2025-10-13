@@ -2744,14 +2744,14 @@ export function Dashboard() {
         height: '100vh',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         padding: 20
-      }}>
+      }} className="login-page-container">
         <div style={{
           background: '#fff',
           borderRadius: 12,
           padding: 48,
           boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-        }}>
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+        }} className="login-page-content">
+          <div style={{ textAlign: 'center', marginBottom: 32 }} className="login-page-header">
             <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 80, width: 'auto', marginBottom: 16 }} />
             <h1 style={{
               margin: '0 0 8px 0',
@@ -2767,7 +2767,7 @@ export function Dashboard() {
               Sign in to access the dashboard
             </p>
           </div>
-          
+
           <LoginModal
             isOpen={true}
             onClose={() => {}}
@@ -2790,6 +2790,34 @@ export function Dashboard() {
           onConfirm={handleSharedLinkConfirm}
           onCancel={handleSharedLinkCancel}
         />
+
+        <style>{`
+          @media (max-width: 640px) {
+            .login-page-container {
+              padding: 20px !important;
+            }
+            .login-page-content {
+              border-radius: 12px !important;
+              padding: 28px 24px !important;
+              max-height: 90vh;
+              overflow-y: auto;
+            }
+            .login-page-header img {
+              height: 50px !important;
+              margin-bottom: 12px !important;
+            }
+            .login-page-header h1 {
+              font-size: 22px !important;
+              margin-bottom: 6px !important;
+            }
+            .login-page-header p {
+              font-size: 14px !important;
+            }
+            .login-page-header {
+              margin-bottom: 24px !important;
+            }
+          }
+        `}</style>
       </div>
     )
   }

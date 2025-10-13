@@ -66,7 +66,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup, embedded
 
   // Render embedded form (no modal overlay)
   const formContent = (
-    <>
+    <div className="login-form-content">
       {!embedded && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>
@@ -348,7 +348,34 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup, embedded
           )}
         </div>
       </form>
-    </>
+
+      <style>{`
+        @media (max-width: 640px) {
+          .login-form-content label {
+            font-size: 15px !important;
+          }
+          .login-form-content input {
+            font-size: 16px !important;
+            padding: 12px 12px 12px 36px !important;
+          }
+          .login-form-content button[type="submit"] {
+            padding: 14px !important;
+            font-size: 17px !important;
+          }
+          .login-form-content button[type="button"] {
+            font-size: 15px !important;
+          }
+        }
+        @media (max-width: 640px) and (hover: none) {
+          .login-form-content button[type="button"]:active {
+            opacity: 0.7;
+          }
+          .login-form-content button[type="submit"]:active:not(:disabled) {
+            opacity: 0.9;
+          }
+        }
+      `}</style>
+    </div>
   )
 
   // If embedded, just return the form without modal wrapper
@@ -359,6 +386,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup, embedded
   // Otherwise, render as a modal
   return (
     <div
+      className="login-modal-overlay"
       style={{
         position: 'fixed',
         top: 0,
@@ -376,6 +404,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup, embedded
       onClick={handleClose}
     >
       <div
+        className="login-modal-content"
         style={{
           background: '#fff',
           padding: '24px',
@@ -401,8 +430,33 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignup, embedded
             to { transform: translateY(0); opacity: 1; }
           }
           @media (max-width: 640px) {
-            div[style*="padding: 24px"] {
+            .login-modal-overlay {
               padding: 20px !important;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            }
+            .login-modal-content {
+              padding: 24px 20px !important;
+              border-radius: 12px !important;
+              max-height: 90vh !important;
+            }
+            .login-modal-content h2 {
+              font-size: 20px !important;
+            }
+            .login-modal-content input {
+              font-size: 16px !important;
+              padding: 10px 12px 10px 36px !important;
+            }
+            .login-modal-content button[type="submit"] {
+              padding: 12px !important;
+              font-size: 16px !important;
+            }
+          }
+          @media (max-width: 640px) and (hover: none) {
+            .login-modal-content button[type="button"]:active {
+              opacity: 0.7;
+            }
+            .login-modal-content button[type="submit"]:active:not(:disabled) {
+              opacity: 0.9;
             }
           }
         `}</style>

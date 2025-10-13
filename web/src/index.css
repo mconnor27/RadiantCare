@@ -502,19 +502,4 @@ body.dragging [data-drag-handle] {
   }
 }
 
-/* DEBUG: Highlight all fixed/absolute positioned elements to find invisible overlays */
-*[style*="position: fixed"], *[style*="position: absolute"] {
-  outline: 2px solid red !important;
-  background: rgba(255, 0, 0, 0.1) !important;
-}
-
-/* DEBUG: Highlight elements with high z-index */
-*[style*="z-index"] {
-  outline: 1px solid blue !important;
-}
-
-/* DEBUG: Highlight invisible elements that might intercept touches */
-*[style*="pointer-events: none"] {
-  outline: 1px solid green !important;
-}
 

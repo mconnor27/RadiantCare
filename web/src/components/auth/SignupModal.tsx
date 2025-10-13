@@ -71,6 +71,7 @@ export default function SignupModal({ isOpen, onClose, onSwitchToLogin }: Signup
 
   return (
     <div
+      className="signup-modal-overlay"
       style={{
         position: 'fixed',
         top: 0,
@@ -83,10 +84,12 @@ export default function SignupModal({ isOpen, onClose, onSwitchToLogin }: Signup
         justifyContent: 'center',
         zIndex: 10000,
         animation: 'fadeIn 0.2s ease-in',
+        padding: '16px',
       }}
       onClick={handleClose}
     >
       <div
+        className="signup-modal-content"
         style={{
           background: '#fff',
           padding: '32px',
@@ -95,6 +98,8 @@ export default function SignupModal({ isOpen, onClose, onSwitchToLogin }: Signup
           maxWidth: '400px',
           width: '100%',
           animation: 'slideIn 0.3s ease-out',
+          maxHeight: '90vh',
+          overflowY: 'auto',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -316,6 +321,36 @@ export default function SignupModal({ isOpen, onClose, onSwitchToLogin }: Signup
           @keyframes slideIn {
             from { transform: translateY(-20px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
+          }
+          @media (max-width: 640px) {
+            .signup-modal-overlay {
+              padding: 20px !important;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            }
+            .signup-modal-content {
+              padding: 24px 20px !important;
+              border-radius: 12px !important;
+              max-height: 90vh !important;
+            }
+            .signup-modal-content h2 {
+              font-size: 20px !important;
+            }
+            .signup-modal-content input {
+              font-size: 16px !important;
+              padding: 10px 12px !important;
+            }
+            .signup-modal-content button[type="submit"] {
+              padding: 12px !important;
+              font-size: 16px !important;
+            }
+          }
+          @media (max-width: 640px) and (hover: none) {
+            .signup-modal-content button[type="button"]:active {
+              opacity: 0.7;
+            }
+            .signup-modal-content button[type="submit"]:active:not(:disabled) {
+              opacity: 0.9;
+            }
           }
         `}</style>
       </div>
