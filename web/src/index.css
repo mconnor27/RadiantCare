@@ -474,7 +474,7 @@ body.dragging [data-drag-handle] {
 
 /* iOS Safari touch fixes - disable animations that interfere with touch */
 @media screen and (-webkit-min-device-pixel-ratio: 0) {
-  /* Disable animations only on buttons and UI elements, not charts */
+  /* Disable animations only on buttons and UI elements, not charts or form controls */
   button, a, [role="button"], [onclick], .clickable {
     animation-duration: 0s !important;
     animation-delay: 0s !important;
@@ -485,6 +485,14 @@ body.dragging [data-drag-handle] {
     -webkit-touch-callout: none !important;
     -webkit-user-select: none !important;
     user-select: none !important;
+  }
+  
+  /* Allow normal interaction for form controls (inputs, labels) */
+  input, label, select, textarea {
+    touch-action: auto !important;
+    -webkit-user-select: auto !important;
+    user-select: auto !important;
+    pointer-events: auto !important;
   }
   
   /* Ensure chart elements can still receive touch events */

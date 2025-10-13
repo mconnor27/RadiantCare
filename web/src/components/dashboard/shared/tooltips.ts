@@ -40,7 +40,7 @@ export function createTooltip(id: string, content: string, e: React.MouseEvent<H
 
   const tooltip = document.createElement('div')
   tooltip.id = id
-  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 1000; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: pre-line; text-align: left; z-index: 10002; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
 
   tooltip.textContent = content
   document.body.appendChild(tooltip)
@@ -70,7 +70,7 @@ export function createBonusTooltip(
 
   const tooltip = document.createElement('div')
   tooltip.id = tooltipId
-  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
+  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 10002; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
   
   // Set ranges and labels based on employee type
   const minValue = isTerminatedEmployee ? -30000 : 0
@@ -151,7 +151,7 @@ export function createHoursTooltip(
 
   const tooltip = document.createElement('div')
   tooltip.id = tooltipId
-  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
+  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 10002; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
 
   const minValue = 0
   const maxValue = 100
@@ -274,7 +274,7 @@ export function createPrcsAmountTooltip(
 
   const tooltip = document.createElement('div')
   tooltip.id = tooltipId
-  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
+  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 10002; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
 
   const minValue = 0
   const displayAmount = `$${Math.round(currentAmount || 0).toLocaleString()}`
@@ -362,7 +362,7 @@ export function createTrailingSharedMdAmountTooltip(
 
   const tooltip = document.createElement('div')
   tooltip.id = tooltipId
-  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
+  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 10002; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
 
   // Calculate percentage of total budget
   const currentPercentage = totalBudget > 0 ? (currentAmount / totalBudget) * 100 : 0
@@ -465,7 +465,7 @@ export function createVacationWeeksTooltip(
 
   const tooltip = document.createElement('div')
   tooltip.id = tooltipId
-  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
+  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 10002; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
 
   const minValue = 0
   const displayWeeks = `${currentWeeks || 8} weeks off`
