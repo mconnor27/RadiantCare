@@ -517,26 +517,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
     }
   }, [showLoadingModal, refreshTrigger])
 
-  // Check if sync is available
-  const canSyncNow = (timestamp: string | null) => {
-    if (!timestamp) return true
-
-    const now = new Date()
-    const dayOfWeek = now.getDay()
-
-    // No sync on weekends
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      return false
-    }
-
-    // Simple check: allow sync if more than 12 hours have passed
-    const lastSync = new Date(timestamp)
-    const hoursSinceSync = (now.getTime() - lastSync.getTime()) / (1000 * 60 * 60)
-
-    return hoursSinceSync >= 12
-  }
-
-  const syncAvailable = isAdmin || (lastSyncTimestamp !== undefined && (lastSyncTimestamp === null || canSyncNow(lastSyncTimestamp)))
 
   // Handle scenario loading
   const handleLoadScenario = async (scenarioId: string) => {
