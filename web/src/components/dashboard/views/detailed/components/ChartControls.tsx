@@ -97,12 +97,12 @@ export default function ChartControls({
   const isMobile = variant === 'mobile'
   
   // Mobile-friendly sizing
-  const labelFontSize = isMobile ? 16 : 14
-  const buttonFontSize = isMobile ? 16 : 14
-  const buttonPadding = isMobile ? '8px 14px' : '4px 12px'
-  const checkboxFontSize = isMobile ? 15 : 13
-  const smallTextSize = isMobile ? 13 : 11
-  const containerPadding = isMobile ? 12 : 10
+  const labelFontSize = isMobile ? 14 : 14
+  const buttonFontSize = isMobile ? 13 : 14
+  const buttonPadding = isMobile ? '6px 10px' : '4px 12px'
+  const checkboxFontSize = isMobile ? 13 : 13
+  const smallTextSize = isMobile ? 11 : 11
+  const containerPadding = isMobile ? 10 : 10
   
   // Get colors based on selected color scheme
   const colors = getColorScheme(colorScheme)
@@ -231,7 +231,7 @@ export default function ChartControls({
             padding: isMobile ? undefined : '8px 0'
           }}>Color Scheme:</label>
           <div style={{
-            padding: '12px',
+            padding: isMobile ? '8px' : '12px',
             background: '#f9fafb',
             justifySelf: isMobile ? undefined : 'stretch',
             border: '1px solid #d1d5db',
@@ -263,7 +263,7 @@ export default function ChartControls({
             padding: isMobile ? undefined : '8px 0'
           }}>Income Mode:</label>
           <div style={{
-            padding: '12px',
+            padding: isMobile ? '8px' : '12px',
             background: '#f9fafb',
             justifySelf: isMobile ? undefined : 'stretch',
             border: '1px solid #d1d5db',
@@ -502,11 +502,11 @@ export default function ChartControls({
           }}>Historical Data:</label>
           <div style={{
             position: 'relative',
-            padding: '12px',
+            padding: isMobile ? '8px' : '12px',
             background: '#f9fafb',
             display: 'flex',
             flexDirection: 'column',
-            gap: 12,
+            gap: isMobile ? 8 : 12,
             justifySelf: isMobile ? undefined : 'stretch',
             border: '1px solid #d1d5db',
             borderRadius: 6,
@@ -1011,11 +1011,11 @@ export default function ChartControls({
             padding: isMobile ? undefined : '8px 0'
           }}>Chart Type:</label>
           <div style={{
-            padding: '12px',
+            padding: isMobile ? '8px' : '12px',
             background: '#f9fafb',
             display: 'flex',
             flexDirection: 'column',
-            gap: 12,
+            gap: isMobile ? 8 : 12,
             alignItems: 'flex-start',
             justifySelf: isMobile ? undefined : 'stretch',
             border: '1px solid #d1d5db',
@@ -1110,11 +1110,11 @@ export default function ChartControls({
             padding: isMobile ? undefined : '8px 0'
           }}>Timeframe:</label>
           <div style={{
-            padding: '12px',
+            padding: isMobile ? '8px' : '12px',
             background: '#f9fafb',
             display: 'flex',
             flexDirection: 'column',
-            gap: 12,
+            gap: isMobile ? 8 : 12,
             alignItems: 'flex-start',
             justifySelf: isMobile ? undefined : 'stretch',
             border: '1px solid #d1d5db',

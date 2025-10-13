@@ -41,8 +41,8 @@ export default function ColorSchemeSelector({
     // Check if historical is a single color (Array.fill) or a spectrum
     const isSingleColor = historical.length > 1 && historical.every(c => c === historical[0])
 
-    const swatchSize = isMobile ? 24 : 16
-    const spectrumWidth = isMobile ? 48 : 32
+    const swatchSize = isMobile ? 18 : 16
+    const spectrumWidth = isMobile ? 36 : 32
 
     return (
       <div style={{ display: 'flex', gap: 2 }}>
@@ -87,7 +87,7 @@ export default function ColorSchemeSelector({
   // Helper to render color swatches for site schemes
   const renderSiteSwatch = (scheme: keyof typeof SITE_COLOR_SCHEMES) => {
     const colors = SITE_COLOR_SCHEMES[scheme]
-    const swatchSize = isMobile ? 24 : 16
+    const swatchSize = isMobile ? 18 : 16
     return (
       <div style={{ display: 'flex', gap: 2 }}>
         <div
@@ -127,12 +127,12 @@ export default function ColorSchemeSelector({
       <button
         onClick={() => setIsOpen(!isOpen)}
         style={{
-          padding: isMobile ? '12px 20px' : '4px 8px',
+          padding: isMobile ? '6px 10px' : '4px 8px',
           border: '1px solid #ccc',
           borderRadius: 4,
           background: '#fff',
           color: '#333',
-          fontSize: isMobile ? 18 : 13,
+          fontSize: isMobile ? 13 : 13,
           cursor: 'pointer',
           transition: 'all 0.2s',
           display: 'flex',
