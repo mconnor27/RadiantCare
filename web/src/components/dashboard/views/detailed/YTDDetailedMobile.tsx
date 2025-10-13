@@ -351,6 +351,41 @@ interface YTDDetailedMobileProps {
 export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }: YTDDetailedMobileProps) {
   const store = useDashboardStore()
   const { signOut, profile } = useAuth()
+  
+  // iOS Safari touch fix - prevent double-tap zoom and ensure single-tap works
+  useEffect(() => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    if (isIOS) {
+      // Prevent double-tap zoom
+      let lastTouchEnd = 0
+      const preventZoom = (e: TouchEvent) => {
+        const now = Date.now()
+        if (now - lastTouchEnd <= 300) {
+          e.preventDefault()
+        }
+        lastTouchEnd = now
+      }
+      
+      // Force immediate click response
+      const forceClick = (e: TouchEvent) => {
+        const target = e.target as HTMLElement
+        if (target && (target.tagName === 'BUTTON' || target.onclick || target.getAttribute('role') === 'button')) {
+          // Trigger click immediately on touch end
+          setTimeout(() => {
+            target.click()
+          }, 0)
+        }
+      }
+      
+      document.addEventListener('touchend', preventZoom, { passive: false })
+      document.addEventListener('touchend', forceClick, { passive: true })
+      
+      return () => {
+        document.removeEventListener('touchend', preventZoom)
+        document.removeEventListener('touchend', forceClick)
+      }
+    }
+  }, [])
   const [showLoadingModal, setShowLoadingModal] = useState(true)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showTooltip, setShowTooltip] = useState(false)

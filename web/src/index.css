@@ -472,3 +472,49 @@ body.dragging [data-drag-handle] {
   margin-right: calc(50% - 50vw);
 }
 
+/* iOS Safari touch fixes - disable animations that interfere with touch */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  /* Disable all animations on iOS Safari to prevent touch interference */
+  *, *::before, *::after {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
+  
+  /* Force immediate touch response */
+  button, a, [role="button"], [onclick], .clickable {
+    -webkit-tap-highlight-color: transparent !important;
+    touch-action: manipulation !important;
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+  }
+  
+  /* Prevent any element from blocking touch events */
+  * {
+    pointer-events: auto !important;
+  }
+  
+  /* Ensure no invisible overlays */
+  *[style*="position: fixed"], *[style*="position: absolute"] {
+    pointer-events: auto !important;
+  }
+}
+
+/* DEBUG: Highlight all fixed/absolute positioned elements to find invisible overlays */
+*[style*="position: fixed"], *[style*="position: absolute"] {
+  outline: 2px solid red !important;
+  background: rgba(255, 0, 0, 0.1) !important;
+}
+
+/* DEBUG: Highlight elements with high z-index */
+*[style*="z-index"] {
+  outline: 1px solid blue !important;
+}
+
+/* DEBUG: Highlight invisible elements that might intercept touches */
+*[style*="pointer-events: none"] {
+  outline: 1px solid green !important;
+}
+
