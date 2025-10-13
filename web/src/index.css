@@ -506,6 +506,65 @@ body.dragging [data-drag-handle] {
     -webkit-user-select: auto !important;
     user-select: auto !important;
     pointer-events: auto !important;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1) !important;
+    -webkit-touch-callout: none !important;
+  }
+  
+  /* Ensure labels containing checkboxes/radios work properly */
+  label:has(input[type="checkbox"]), label:has(input[type="radio"]) {
+    touch-action: auto !important;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1) !important;
+    -webkit-touch-callout: none !important;
+    cursor: pointer !important;
+  }
+  
+  /* Specific fixes for checkbox and radio inputs */
+  input[type="checkbox"], input[type="radio"] {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    width: 16px !important;
+    height: 16px !important;
+    border: 1px solid #ccc !important;
+    border-radius: 2px !important;
+    background: #fff !important;
+    cursor: pointer !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1) !important;
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    position: relative !important;
+  }
+  
+  input[type="radio"] {
+    border-radius: 50% !important;
+  }
+  
+  input[type="checkbox"]:checked, input[type="radio"]:checked {
+    background: #1e40af !important;
+    border-color: #1e40af !important;
+  }
+  
+  input[type="checkbox"]:checked::after {
+    content: "✓" !important;
+    color: white !important;
+    font-size: 12px !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+  }
+  
+  input[type="radio"]:checked::after {
+    content: "" !important;
+    width: 6px !important;
+    height: 6px !important;
+    border-radius: 50% !important;
+    background: white !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
   }
   
   /* Ensure chart elements can still receive touch events */
