@@ -112,7 +112,7 @@ export function calculateAllCompensations(params: CompensationParams): Compensat
   const partnerMedicalDirectorAllocations = new Map<string, number>()
 
   // First, calculate total trailing MD amounts for prior-year retirees
-  // These are fixed dollar amounts that must be subtracted from the total budget FIRST
+  // These are fixed dollar amounts (part of the 100% total)
   const trailingMdTotal = partners.reduce((sum, p) => {
     const isPriorYearRetired = p.type === 'partnerToRetire' && (p.partnerPortionOfYear ?? 0) === 0
     if (isPriorYearRetired) {
@@ -121,15 +121,13 @@ export function calculateAllCompensations(params: CompensationParams): Compensat
     return sum
   }, 0)
 
-  // Calculate remainder budget after subtracting retiree amounts
-  const remainderBudget = Math.max(0, medicalDirectorIncome - trailingMdTotal)
-
-  // Allocate REMAINDER of shared Medical Director income to ACTIVE partners based on percentages
-  // Prior-year retirees are NOT included here - they get their fixed trailing amount separately
+  // Allocate shared Medical Director income to ACTIVE partners based on percentages
+  // Percentages are absolute (out of 100% total budget), not relative to remainder
+  // Prior-year retirees get their fixed amounts which are also part of the 100%
   for (const partner of partners) {
     const isPriorYearRetired = partner.type === 'partnerToRetire' && (partner.partnerPortionOfYear ?? 0) === 0
     if (!isPriorYearRetired && partner.hasMedicalDirectorHours && partner.medicalDirectorHoursPercentage) {
-      const allocation = (partner.medicalDirectorHoursPercentage / 100) * remainderBudget
+      const allocation = (partner.medicalDirectorHoursPercentage / 100) * medicalDirectorIncome
       partnerMedicalDirectorAllocations.set(partner.id, allocation)
     }
   }

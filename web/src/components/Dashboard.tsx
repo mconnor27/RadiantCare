@@ -28,6 +28,7 @@ import {
   getPartnerPortionOfYear,
   getBenefitCostsForYear
 } from './dashboard/shared/calculations'
+import { getDefaultTrailingSharedMdAmount } from './dashboard/shared/tooltips'
 import {
   calculateAllCompensations,
   calculateAllCompensationsWithRetired
@@ -220,49 +221,97 @@ export const useDashboardStore = create<Store>()(
               : (typeChanged && prevPartnerPortion !== newPartnerPortion)
 
             if (mdPctChanged) {
-              // Proportionally scale other eligible partners to keep total at 100
+              // DELTA TRACKING: Redistribute based on change, not recalculation
+              // This is mathematically invertible and avoids floating point drift
               const targetId = physician.id
               const eligibles = fy.physicians.filter(p => getPartnerPortionOfYear(p) > 0)
               const target = eligibles.find(p => p.id === targetId)
               if (target) {
                 const others = eligibles.filter(p => p.id !== targetId)
-                const desiredTargetPct = Math.max(0, Math.min(100, physician.medicalDirectorHoursPercentage ?? 0))
+                
+                // Calculate percentage taken by prior year retirees (fixed dollar amounts)
+                const totalMdBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 97200
+                const priorYearRetirees = fy.physicians.filter(p => p.type === 'partnerToRetire' && (p.partnerPortionOfYear ?? 0) === 0)
+                const retireeFixedDollars = priorYearRetirees.reduce((sum, p) => 
+                  sum + (p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)), 0)
+                const retireePct = totalMdBudget > 0 ? (retireeFixedDollars / totalMdBudget) * 100 : 0
+                
+                // Active partners must share the remaining percentage (100% - retiree%)
+                const maxActivePartnersPct = 100 - retireePct
+                const oldTargetPct = prev?.medicalDirectorHoursPercentage ?? 0
+                const desiredTargetPct = Math.max(0, Math.min(maxActivePartnersPct, physician.medicalDirectorHoursPercentage ?? 0))
+                
+                // Calculate the DELTA
+                const delta = desiredTargetPct - oldTargetPct
+                
+                console.log(`[Store Redistribution - DELTA] Total MD Budget: $${totalMdBudget}, Retiree Fixed: $${retireeFixedDollars} (${retireePct.toFixed(6)}%)`)
+                console.log(`[Store Redistribution - DELTA] Target ${target.name}: ${oldTargetPct.toFixed(6)}% → ${desiredTargetPct.toFixed(6)}% (Δ = ${delta.toFixed(6)}%)`)
+                console.log(`[Store Redistribution - DELTA] BEFORE - Others:`, others.map(p => `${p.name}: ${p.medicalDirectorHoursPercentage?.toFixed(6)}%`))
+                
                 if (others.length === 0) {
-                  target.medicalDirectorHoursPercentage = 100
-                  target.hasMedicalDirectorHours = true
+                  // Only one active partner - they get all available percentage
+                  target.medicalDirectorHoursPercentage = Math.round(maxActivePartnersPct * 1e6) / 1e6
+                  target.hasMedicalDirectorHours = target.medicalDirectorHoursPercentage > 0
                 } else {
-                  const remaining = Math.max(0, 100 - desiredTargetPct)
+                  // Distribute the NEGATIVE delta among others
                   const sumOtherCurrent = others.reduce((s, p) => s + (p.medicalDirectorHoursPercentage ?? 0), 0)
+                  
                   if (sumOtherCurrent > 0) {
-                    // Scale by current proportions
-                    for (let i = 0; i < others.length; i++) {
-                      const p = others[i]
-                      const scaled = (p.medicalDirectorHoursPercentage ?? 0) / sumOtherCurrent * remaining
-                      p.medicalDirectorHoursPercentage = scaled
-                      p.hasMedicalDirectorHours = scaled > 0
+                    // Distribute delta weighted by current percentages
+                    for (const p of others) {
+                      const currentPct = p.medicalDirectorHoursPercentage ?? 0
+                      const weight = currentPct / sumOtherCurrent
+                      const adjustment = -delta * weight
+                      const newPct = currentPct + adjustment
+                      // Round to 6 decimal places to avoid floating point drift
+                      p.medicalDirectorHoursPercentage = Math.round(Math.max(0, newPct) * 1e6) / 1e6
+                      p.hasMedicalDirectorHours = p.medicalDirectorHoursPercentage > 0
                     }
                   } else {
-                    // Distribute by partner portion weights; fallback to equal
+                    // No current percentages - distribute by partner portion weights
                     const weights = others.map(p => ({ p, w: getPartnerPortionOfYear(p) }))
                     const sumW = weights.reduce((s, x) => s + x.w, 0)
+                    
                     if (sumW > 0) {
                       for (const { p, w } of weights) {
-                        const scaled = w / sumW * remaining
-                        p.medicalDirectorHoursPercentage = scaled
-                        p.hasMedicalDirectorHours = scaled > 0
+                        const weight = w / sumW
+                        const adjustment = -delta * weight
+                        const newPct = (p.medicalDirectorHoursPercentage ?? 0) + adjustment
+                        // Round to 6 decimal places to avoid floating point drift
+                        p.medicalDirectorHoursPercentage = Math.round(Math.max(0, newPct) * 1e6) / 1e6
+                        p.hasMedicalDirectorHours = p.medicalDirectorHoursPercentage > 0
                       }
                     } else {
-                      const even = remaining / others.length
+                      // Equal distribution as fallback
+                      const equalAdjustment = -delta / others.length
                       for (const p of others) {
-                        p.medicalDirectorHoursPercentage = even
-                        p.hasMedicalDirectorHours = even > 0
+                        const newPct = (p.medicalDirectorHoursPercentage ?? 0) + equalAdjustment
+                        // Round to 6 decimal places to avoid floating point drift
+                        p.medicalDirectorHoursPercentage = Math.round(Math.max(0, newPct) * 1e6) / 1e6
+                        p.hasMedicalDirectorHours = p.medicalDirectorHoursPercentage > 0
                       }
                     }
                   }
-                  // Set target last to the requested value
-                  target.medicalDirectorHoursPercentage = desiredTargetPct
-                  target.hasMedicalDirectorHours = desiredTargetPct > 0
+                  
+                  // Set target to the new value
+                  target.medicalDirectorHoursPercentage = Math.round(desiredTargetPct * 1e6) / 1e6
+                  target.hasMedicalDirectorHours = target.medicalDirectorHoursPercentage > 0
                 }
+                
+                // Log final state after redistribution
+                console.log(`[Store Redistribution] AFTER - Target ${target.name}: ${target.medicalDirectorHoursPercentage?.toFixed(6)}%`)
+                console.log(`[Store Redistribution] AFTER - Others:`, others.map(p => `${p.name}: ${p.medicalDirectorHoursPercentage?.toFixed(6)}%`))
+                const totalActivePct = target.medicalDirectorHoursPercentage! + others.reduce((s, p) => s + (p.medicalDirectorHoursPercentage ?? 0), 0)
+                console.log(`[Store Redistribution] Total Active %: ${totalActivePct.toFixed(6)}%, Max Allowed: ${maxActivePartnersPct.toFixed(6)}%`)
+                console.log(`[Store Redistribution] Grand Total %: ${(totalActivePct + retireePct).toFixed(6)}% (should be 100%)`)
+                
+                // Log dollar amounts
+                const targetDollars = (target.medicalDirectorHoursPercentage! / 100) * totalMdBudget
+                console.log(`[Store Redistribution] Target ${target.name} dollars: $${targetDollars.toFixed(2)}`)
+                others.forEach(p => {
+                  const dollars = ((p.medicalDirectorHoursPercentage ?? 0) / 100) * totalMdBudget
+                  console.log(`[Store Redistribution] Other ${p.name} dollars: $${dollars.toFixed(2)}`)
+                })
               }
             } else if (partnerMixChanged) {
               // Only auto-redistribute when partner mix/portion changes
@@ -1885,30 +1934,86 @@ export function hasChangesFromLoadedScenario(
     return true
   }
 
-  for (let i = 0; i < currentFy.physicians.length; i++) {
-    const current = currentFy.physicians[i]
-    const snapshot = snapshotFy.physicians[i]
+  // Normalize physician data to consistent defaults for comparison
+  // Uses semantic resolution for portion fields based on type (same logic as calculation engine)
+  const normalizePhysician = (p: Physician) => {
+    // Resolve employee portion based on type (mirrors getEmployeePortionOfYear)
+    let employeePortionOfYear: number
+    if (p.type === 'employee') employeePortionOfYear = 1
+    else if (p.type === 'partner' || p.type === 'partnerToRetire') employeePortionOfYear = 0
+    else if (p.type === 'newEmployee') employeePortionOfYear = 1 - (p.startPortionOfYear ?? 0)
+    else if (p.type === 'employeeToTerminate') employeePortionOfYear = p.terminatePortionOfYear ?? 1
+    else employeePortionOfYear = p.employeePortionOfYear ?? 0.5
+    
+    // Resolve partner portion based on type (mirrors getPartnerPortionOfYear)
+    let partnerPortionOfYear: number
+    if (p.type === 'employee' || p.type === 'newEmployee' || p.type === 'employeeToTerminate') partnerPortionOfYear = 0
+    else if (p.type === 'partner') partnerPortionOfYear = 1
+    else if (p.type === 'partnerToRetire') partnerPortionOfYear = p.partnerPortionOfYear ?? 0.5
+    else partnerPortionOfYear = 1 - employeePortionOfYear
+    
+    return {
+      ...p,
+      // Boolean fields: undefined -> false
+      hasMedicalDirectorHours: p.hasMedicalDirectorHours ?? false,
+      receivesBenefits: p.receivesBenefits ?? false,
+      receivesBonuses: p.receivesBonuses ?? false,
+      // Numeric fields: undefined -> 0
+      medicalDirectorHoursPercentage: p.medicalDirectorHoursPercentage ?? 0,
+      trailingSharedMdAmount: p.trailingSharedMdAmount ?? 0,
+      bonusAmount: p.bonusAmount ?? 0,
+      additionalDaysWorked: p.additionalDaysWorked ?? 0,
+      buyoutCost: p.buyoutCost ?? 0,
+      // Portion fields: resolved based on type for semantic equality
+      employeePortionOfYear,
+      partnerPortionOfYear,
+      startPortionOfYear: p.startPortionOfYear ?? 0,
+      terminatePortionOfYear: p.terminatePortionOfYear ?? 0,
+    }
+  }
 
-    if (
-      current.id !== snapshot.id ||
-      current.name !== snapshot.name ||
-      current.type !== snapshot.type ||
-      current.salary !== snapshot.salary ||
-      current.weeksVacation !== snapshot.weeksVacation ||
-      current.employeeWeeksVacation !== snapshot.employeeWeeksVacation ||
-      current.employeePortionOfYear !== snapshot.employeePortionOfYear ||
-      current.partnerPortionOfYear !== snapshot.partnerPortionOfYear ||
-      current.startPortionOfYear !== snapshot.startPortionOfYear ||
-      current.terminatePortionOfYear !== snapshot.terminatePortionOfYear ||
-      current.receivesBenefits !== snapshot.receivesBenefits ||
-      current.receivesBonuses !== snapshot.receivesBonuses ||
-      current.bonusAmount !== snapshot.bonusAmount ||
-      current.hasMedicalDirectorHours !== snapshot.hasMedicalDirectorHours ||
-      current.medicalDirectorHoursPercentage !== snapshot.medicalDirectorHoursPercentage ||
-      current.buyoutCost !== snapshot.buyoutCost ||
-      current.trailingSharedMdAmount !== snapshot.trailingSharedMdAmount ||
-      current.additionalDaysWorked !== snapshot.additionalDaysWorked
-    ) {
+  for (let i = 0; i < currentFy.physicians.length; i++) {
+    const current = normalizePhysician(currentFy.physicians[i])
+    const snapshot = normalizePhysician(snapshotFy.physicians[i])
+
+    // Use tolerance for floating point comparisons to avoid false positives from rounding
+    const FLOAT_TOLERANCE = 1e-6 // 0.000001
+    const portionsEqual = (a: number, b: number) => {
+      return Math.abs(a - b) < FLOAT_TOLERANCE
+    }
+
+    const checks = {
+      id: current.id !== snapshot.id,
+      name: current.name !== snapshot.name,
+      type: current.type !== snapshot.type,
+      salary: current.salary !== snapshot.salary,
+      weeksVacation: current.weeksVacation !== snapshot.weeksVacation,
+      employeeWeeksVacation: current.employeeWeeksVacation !== snapshot.employeeWeeksVacation,
+      employeePortionOfYear: !portionsEqual(current.employeePortionOfYear, snapshot.employeePortionOfYear),
+      partnerPortionOfYear: !portionsEqual(current.partnerPortionOfYear, snapshot.partnerPortionOfYear),
+      startPortionOfYear: !portionsEqual(current.startPortionOfYear, snapshot.startPortionOfYear),
+      terminatePortionOfYear: !portionsEqual(current.terminatePortionOfYear, snapshot.terminatePortionOfYear),
+      receivesBenefits: current.receivesBenefits !== snapshot.receivesBenefits,
+      receivesBonuses: current.receivesBonuses !== snapshot.receivesBonuses,
+      bonusAmount: !portionsEqual(current.bonusAmount, snapshot.bonusAmount),
+      hasMedicalDirectorHours: current.hasMedicalDirectorHours !== snapshot.hasMedicalDirectorHours,
+      medicalDirectorHoursPercentage: !portionsEqual(current.medicalDirectorHoursPercentage, snapshot.medicalDirectorHoursPercentage),
+      buyoutCost: !portionsEqual(current.buyoutCost, snapshot.buyoutCost),
+      trailingSharedMdAmount: !portionsEqual(current.trailingSharedMdAmount, snapshot.trailingSharedMdAmount),
+      additionalDaysWorked: !portionsEqual(current.additionalDaysWorked, snapshot.additionalDaysWorked)
+    }
+    
+    const isDifferent = Object.values(checks).some(v => v)
+    
+    if (isDifferent) {
+      const failedChecks = Object.entries(checks).filter(([_, v]) => v).map(([k]) => k)
+      console.log(`[DIRTY CHECK A] Physician ${current.name} differs on:`, failedChecks)
+      console.log('  Current:', { 
+        ...failedChecks.reduce((acc, k) => ({ ...acc, [k]: current[k as keyof typeof current] }), {})
+      })
+      console.log('  Snapshot:', { 
+        ...failedChecks.reduce((acc, k) => ({ ...acc, [k]: snapshot[k as keyof typeof snapshot] }), {})
+      })
       return true
     }
   }

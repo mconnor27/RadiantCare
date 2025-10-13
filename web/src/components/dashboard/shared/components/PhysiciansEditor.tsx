@@ -2105,7 +2105,13 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                       ;(document as any).__dragStartPartnerPortion = startingPartnerPortion
                       ;(document as any).__dragStartMdHoursPercentage = p.medicalDirectorHoursPercentage ?? 0
 
-                      console.log(`[${p.name}] Starting drag - total vacation: ${totalAtStart}, partner portion: ${startingPartnerPortion}, MD hours %: ${p.medicalDirectorHoursPercentage}`)
+                      console.log(`[${p.name} Drag Start] ==============================`)
+                      console.log(`[${p.name} Drag Start] Current state:`)
+                      console.log(`[${p.name} Drag Start]   employeePortionOfYear: ${p.employeePortionOfYear?.toFixed(10)}`)
+                      console.log(`[${p.name} Drag Start]   partnerPortionOfYear: ${startingPartnerPortion.toFixed(10)}`)
+                      console.log(`[${p.name} Drag Start]   medicalDirectorHoursPercentage: ${(p.medicalDirectorHoursPercentage ?? 0).toFixed(10)}%`)
+                      console.log(`[${p.name} Drag Start]   totalVacationWeeks: ${totalAtStart}`)
+                      console.log(`[${p.name} Drag Start] ==============================`)
                     }}
                     onChange={(e) => {
                       const transitionDay = Number(e.target.value)
@@ -2118,34 +2124,36 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                       let partnerVacation = totalVacationWeeks - employeeVacation
 
                       console.log(`[${p.name}] Setting vacation - employeeWeeksVacation: ${p.employeeWeeksVacation} → ${employeeVacation}, weeksVacation: ${p.weeksVacation} → ${partnerVacation}`)
-                      console.log(`[${p.name}] Full physician object BEFORE:`, JSON.stringify({
-                        employeePortionOfYear: p.employeePortionOfYear,
-                        salary: p.salary,
-                        employeeWeeksVacation: p.employeeWeeksVacation,
-                        weeksVacation: p.weeksVacation,
-                        receivesBenefits: p.receivesBenefits,
-                        additionalDaysWorked: p.additionalDaysWorked,
-                        hasMedicalDirectorHours: p.hasMedicalDirectorHours,
-                        medicalDirectorHoursPercentage: p.medicalDirectorHoursPercentage
-                      }))
 
+                      // Scale MD hours with partner portion
+                      const startingPartnerPortion = (document as any).__dragStartPartnerPortion ?? (1 - (p.employeePortionOfYear ?? 0))
+                      const startingMdHoursPercentage = (document as any).__dragStartMdHoursPercentage ?? 0
+                      const newPartnerPortion = 1 - employeePortion
+                      
+                      console.log(`[${p.name} Transition Slider] Day ${transitionDay} → employeePortion: ${employeePortion.toFixed(10)}`)
+                      console.log(`[${p.name} Transition Slider] Partner portion: ${startingPartnerPortion.toFixed(10)} → ${newPartnerPortion.toFixed(10)}`)
+                      
+                      let newMdHoursPercentage = startingMdHoursPercentage
+                      if (startingPartnerPortion > 0 && startingMdHoursPercentage > 0) {
+                        // Scale this physician's MD hours proportionally to partner time change
+                        const ratio = newPartnerPortion / startingPartnerPortion
+                        const unrounded = startingMdHoursPercentage * ratio
+                        // Round to 6 decimal places to avoid floating point drift
+                        newMdHoursPercentage = Math.round(unrounded * 1e6) / 1e6
+                        console.log(`[${p.name} Transition Slider] MD Hours scaling: ${startingMdHoursPercentage.toFixed(10)}% * ${ratio.toFixed(10)} = ${unrounded.toFixed(10)}% → ${newMdHoursPercentage.toFixed(10)}% (rounded)`)
+                      } else {
+                        console.log(`[${p.name} Transition Slider] No MD hours scaling (starting partner portion: ${startingPartnerPortion}, starting MD %: ${startingMdHoursPercentage})`)
+                      }
+
+                      // Update this physician - the store will handle redistribution to other partners
                       store.upsertPhysician(scenario, year, {
                         ...p,
                         employeePortionOfYear: employeePortion,
                         employeeWeeksVacation: employeeVacation,
                         weeksVacation: partnerVacation,
+                        medicalDirectorHoursPercentage: newMdHoursPercentage,
+                        hasMedicalDirectorHours: newMdHoursPercentage > 0
                       })
-
-                      console.log(`[${p.name}] Full physician object AFTER:`, JSON.stringify({
-                        employeePortionOfYear: employeePortion,
-                        salary: p.salary,
-                        employeeWeeksVacation: employeeVacation,
-                        weeksVacation: partnerVacation,
-                        receivesBenefits: p.receivesBenefits,
-                        additionalDaysWorked: p.additionalDaysWorked,
-                        hasMedicalDirectorHours: p.hasMedicalDirectorHours,
-                        medicalDirectorHoursPercentage: p.medicalDirectorHoursPercentage
-                      }))
                     }}
                     disabled={readOnly}
                     style={{
@@ -2218,23 +2226,39 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                           const currentDay = employeePortionToTransitionDay(p.employeePortionOfYear ?? 0.5, year)
                           const newDay = Math.min(daysInYear(year), currentDay + 1)
                           const employeePortion = transitionDayToEmployeePortion(newDay, year)
-                          const partnerPortion = 1 - employeePortion
-                          const totalVacationWeeks = 8
+                          // Preserve current total vacation weeks
+                          const totalVacationWeeks = (p.employeeWeeksVacation ?? 0) + (p.weeksVacation ?? 8)
 
                           // Re-apportion vacation weeks based on new proportions
                           let employeeVacation = Math.round(totalVacationWeeks * employeePortion)
-                          let partnerVacation = Math.round(totalVacationWeeks * partnerPortion)
+                          let partnerVacation = totalVacationWeeks - employeeVacation
 
                           if (employeePortion === 0) {
                             employeeVacation = 0
                             partnerVacation = totalVacationWeeks
                           }
 
+                          // Scale MD hours with partner portion
+                          const startingPartnerPortion = 1 - (p.employeePortionOfYear ?? 0)
+                          const startingMdHoursPercentage = p.medicalDirectorHoursPercentage ?? 0
+                          const newPartnerPortion = 1 - employeePortion
+                          
+                          let newMdHoursPercentage = startingMdHoursPercentage
+                          if (startingPartnerPortion > 0 && startingMdHoursPercentage > 0) {
+                            const ratio = newPartnerPortion / startingPartnerPortion
+                            const unrounded = startingMdHoursPercentage * ratio
+                            // Round to 6 decimal places to avoid floating point drift
+                            newMdHoursPercentage = Math.round(unrounded * 1e6) / 1e6
+                          }
+
+                          // Update this physician - the store will handle redistribution to other partners
                           store.upsertPhysician(scenario, year, {
                             ...p,
                             employeePortionOfYear: employeePortion,
                             employeeWeeksVacation: employeeVacation,
                             weeksVacation: partnerVacation,
+                            medicalDirectorHoursPercentage: newMdHoursPercentage,
+                            hasMedicalDirectorHours: newMdHoursPercentage > 0
                           })
                         }}
                         style={{
@@ -2262,23 +2286,39 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                           const currentDay = employeePortionToTransitionDay(p.employeePortionOfYear ?? 0.5, year)
                           const newDay = Math.max(1, currentDay - 1)
                           const employeePortion = transitionDayToEmployeePortion(newDay, year)
-                          const partnerPortion = 1 - employeePortion
-                          const totalVacationWeeks = 8
+                          // Preserve current total vacation weeks
+                          const totalVacationWeeks = (p.employeeWeeksVacation ?? 0) + (p.weeksVacation ?? 8)
 
                           // Re-apportion vacation weeks based on new proportions
                           let employeeVacation = Math.round(totalVacationWeeks * employeePortion)
-                          let partnerVacation = Math.round(totalVacationWeeks * partnerPortion)
+                          let partnerVacation = totalVacationWeeks - employeeVacation
 
                           if (employeePortion === 0) {
                             employeeVacation = 0
                             partnerVacation = totalVacationWeeks
                           }
 
+                          // Scale MD hours with partner portion
+                          const startingPartnerPortion = 1 - (p.employeePortionOfYear ?? 0)
+                          const startingMdHoursPercentage = p.medicalDirectorHoursPercentage ?? 0
+                          const newPartnerPortion = 1 - employeePortion
+                          
+                          let newMdHoursPercentage = startingMdHoursPercentage
+                          if (startingPartnerPortion > 0 && startingMdHoursPercentage > 0) {
+                            const ratio = newPartnerPortion / startingPartnerPortion
+                            const unrounded = startingMdHoursPercentage * ratio
+                            // Round to 6 decimal places to avoid floating point drift
+                            newMdHoursPercentage = Math.round(unrounded * 1e6) / 1e6
+                          }
+
+                          // Update this physician - the store will handle redistribution to other partners
                           store.upsertPhysician(scenario, year, {
                             ...p,
                             employeePortionOfYear: employeePortion,
                             employeeWeeksVacation: employeeVacation,
                             weeksVacation: partnerVacation,
+                            medicalDirectorHoursPercentage: newMdHoursPercentage,
+                            hasMedicalDirectorHours: newMdHoursPercentage > 0
                           })
                         }}
                         style={{

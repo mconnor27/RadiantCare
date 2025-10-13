@@ -2,7 +2,7 @@ import { useMemo, useEffect, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faFolderOpen, faFloppyDisk, faCopy, faCircleXmark, faGear, faRotateLeft } from '@fortawesome/free-solid-svg-icons'
 import { useDashboardStore } from '../../../Dashboard'
-import type { Store } from '../../shared/types'
+import type { Store, Physician } from '../../shared/types'
 import YearPanel from '../../shared/components/YearPanel'
 import ProjectionSettingsControls from '../../shared/components/ProjectionSettingsControls'
 import HistoricAndProjectionChart from './HistoricAndProjectionChart'
@@ -289,28 +289,75 @@ export default function MultiYearView() {
       // Compare physician arrays
       if (currentFy.physicians.length !== snapshotFy.physicians.length) return true
 
+      // Normalize physician data to consistent defaults for comparison
+      // Uses semantic resolution for portion fields based on type (same logic as calculation engine)
+      const normalizePhysician = (p: Physician) => {
+        // Resolve employee portion based on type (mirrors getEmployeePortionOfYear)
+        let employeePortionOfYear: number
+        if (p.type === 'employee') employeePortionOfYear = 1
+        else if (p.type === 'partner' || p.type === 'partnerToRetire') employeePortionOfYear = 0
+        else if (p.type === 'newEmployee') employeePortionOfYear = 1 - (p.startPortionOfYear ?? 0)
+        else if (p.type === 'employeeToTerminate') employeePortionOfYear = p.terminatePortionOfYear ?? 1
+        else employeePortionOfYear = p.employeePortionOfYear ?? 0.5
+        
+        // Resolve partner portion based on type (mirrors getPartnerPortionOfYear)
+        let partnerPortionOfYear: number
+        if (p.type === 'employee' || p.type === 'newEmployee' || p.type === 'employeeToTerminate') partnerPortionOfYear = 0
+        else if (p.type === 'partner') partnerPortionOfYear = 1
+        else if (p.type === 'partnerToRetire') partnerPortionOfYear = p.partnerPortionOfYear ?? 0.5
+        else partnerPortionOfYear = 1 - employeePortionOfYear
+        
+        return {
+          ...p,
+          // Boolean fields: undefined -> false
+          hasMedicalDirectorHours: p.hasMedicalDirectorHours ?? false,
+          receivesBenefits: p.receivesBenefits ?? false,
+          receivesBonuses: p.receivesBonuses ?? false,
+          // Numeric fields: undefined -> 0
+          medicalDirectorHoursPercentage: p.medicalDirectorHoursPercentage ?? 0,
+          trailingSharedMdAmount: p.trailingSharedMdAmount ?? 0,
+          bonusAmount: p.bonusAmount ?? 0,
+          additionalDaysWorked: p.additionalDaysWorked ?? 0,
+          buyoutCost: p.buyoutCost ?? 0,
+          // Portion fields: resolved based on type for semantic equality
+          employeePortionOfYear,
+          partnerPortionOfYear,
+          startPortionOfYear: p.startPortionOfYear ?? 0,
+          terminatePortionOfYear: p.terminatePortionOfYear ?? 0,
+        }
+      }
+
       return currentFy.physicians.some((currentPhys, physIdx) => {
         const snapshotPhys = snapshotFy.physicians[physIdx]
         if (!snapshotPhys) return true
 
+        const current = normalizePhysician(currentPhys)
+        const snapshot = normalizePhysician(snapshotPhys)
+
+        // Use tolerance for floating point comparisons to avoid false positives from rounding
+        const FLOAT_TOLERANCE = 1e-6 // 0.000001
+        const portionsEqual = (a: number, b: number) => {
+          return Math.abs(a - b) < FLOAT_TOLERANCE
+        }
+
         // Compare all physician properties
-        return currentPhys.id !== snapshotPhys.id ||
-               currentPhys.name !== snapshotPhys.name ||
-               currentPhys.type !== snapshotPhys.type ||
-               currentPhys.salary !== snapshotPhys.salary ||
-               currentPhys.weeksVacation !== snapshotPhys.weeksVacation ||
-               currentPhys.employeePortionOfYear !== snapshotPhys.employeePortionOfYear ||
-               currentPhys.partnerPortionOfYear !== snapshotPhys.partnerPortionOfYear ||
-               currentPhys.startPortionOfYear !== snapshotPhys.startPortionOfYear ||
-               currentPhys.terminatePortionOfYear !== snapshotPhys.terminatePortionOfYear ||
-               currentPhys.receivesBenefits !== snapshotPhys.receivesBenefits ||
-               currentPhys.receivesBonuses !== snapshotPhys.receivesBonuses ||
-               currentPhys.bonusAmount !== snapshotPhys.bonusAmount ||
-               currentPhys.hasMedicalDirectorHours !== snapshotPhys.hasMedicalDirectorHours ||
-               currentPhys.medicalDirectorHoursPercentage !== snapshotPhys.medicalDirectorHoursPercentage ||
-               currentPhys.buyoutCost !== snapshotPhys.buyoutCost ||
-               currentPhys.trailingSharedMdAmount !== snapshotPhys.trailingSharedMdAmount ||
-               currentPhys.additionalDaysWorked !== snapshotPhys.additionalDaysWorked
+        return current.id !== snapshot.id ||
+               current.name !== snapshot.name ||
+               current.type !== snapshot.type ||
+               current.salary !== snapshot.salary ||
+               current.weeksVacation !== snapshot.weeksVacation ||
+               !portionsEqual(current.employeePortionOfYear, snapshot.employeePortionOfYear) ||
+               !portionsEqual(current.partnerPortionOfYear, snapshot.partnerPortionOfYear) ||
+               !portionsEqual(current.startPortionOfYear, snapshot.startPortionOfYear) ||
+               !portionsEqual(current.terminatePortionOfYear, snapshot.terminatePortionOfYear) ||
+               current.receivesBenefits !== snapshot.receivesBenefits ||
+               current.receivesBonuses !== snapshot.receivesBonuses ||
+               !portionsEqual(current.bonusAmount, snapshot.bonusAmount) ||
+               current.hasMedicalDirectorHours !== snapshot.hasMedicalDirectorHours ||
+               !portionsEqual(current.medicalDirectorHoursPercentage, snapshot.medicalDirectorHoursPercentage) ||
+               !portionsEqual(current.buyoutCost, snapshot.buyoutCost) ||
+               !portionsEqual(current.trailingSharedMdAmount, snapshot.trailingSharedMdAmount) ||
+               !portionsEqual(current.additionalDaysWorked, snapshot.additionalDaysWorked)
       })
     })
 
