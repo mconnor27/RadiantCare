@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faSignOutAlt, faKey, faSync, faFolderOpen } from '@fortawesome/free-solid-svg-icons'
+import { faUser, faSignOutAlt, faKey, faFolderOpen } from '@fortawesome/free-solid-svg-icons'
 import {
   parseTherapyIncome2025,
   type YTDPoint
@@ -399,8 +399,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
   }, [])
   const [showLoadingModal, setShowLoadingModal] = useState(true)
   const [showUserMenu, setShowUserMenu] = useState(false)
-  const [showTooltip, setShowTooltip] = useState(false)
-  const [syncing, setSyncing] = useState(false)
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string | null | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<YTDPoint[]>([])
@@ -539,46 +537,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
   }
 
   const syncAvailable = isAdmin || (lastSyncTimestamp !== undefined && (lastSyncTimestamp === null || canSyncNow(lastSyncTimestamp)))
-
-  // Handle sync
-  const handleSync = async () => {
-    if (!syncAvailable) {
-      setShowTooltip(true)
-      setTimeout(() => setShowTooltip(false), 2000)
-      return
-    }
-
-    setSyncing(true)
-    setShowTooltip(false)
-
-    try {
-      const response = await authenticatedFetch('/api/qbo/sync-2025', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          adminOverride: isAdmin
-        }),
-      })
-
-      const responseData = await response.json()
-
-      if (!response.ok) {
-        alert(responseData.message || 'Sync failed')
-        if (responseData.lastSyncTimestamp) {
-          setLastSyncTimestamp(responseData.lastSyncTimestamp)
-        }
-      } else {
-        setLastSyncTimestamp(responseData.lastSyncTimestamp)
-        setRefreshTrigger(prev => prev + 1)
-      }
-    } catch {
-      alert('Network error - please try again')
-    } finally {
-      setSyncing(false)
-    }
-  }
 
   // Handle scenario loading
   const handleLoadScenario = async (scenarioId: string) => {

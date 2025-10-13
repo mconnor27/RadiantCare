@@ -2482,14 +2482,15 @@ export function Dashboard() {
     }
   }, [pendingSharedLinkId])
 
-  // Detect password reset URLs and handle auth state changes
+  // Detect password reset URLs and invite URLs and handle auth state changes
   useEffect(() => {
     const handleAuthStateChange = async () => {
       const hashParams = new URLSearchParams(window.location.hash.substring(1))
       const accessToken = hashParams.get('access_token')
       const type = hashParams.get('type')
 
-      if (type === 'recovery' && accessToken) {
+      // Handle both password recovery and new user invites
+      if ((type === 'recovery' || type === 'invite') && accessToken) {
         setShowPasswordReset(true)
         // Clean up URL
         window.history.replaceState(null, '', window.location.pathname)
@@ -3169,7 +3170,7 @@ export function Dashboard() {
       <PasswordResetModal
         isOpen={showPasswordReset}
         onClose={() => setShowPasswordReset(false)}
-        mode="change"
+        mode="reset"
       />
 
       {/* Shared Link Warning Modal */}

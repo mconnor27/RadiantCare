@@ -252,13 +252,27 @@ CREATE TRIGGER update_scenarios_search_vector_trigger
   BEFORE INSERT OR UPDATE ON public.scenarios
   FOR EACH ROW EXECUTE FUNCTION update_scenarios_search_vector();
 
--- Function to handle new user registration (only via invitation)
+-- Function to handle new user registration
+-- Allows: service role invites (dashboard) OR valid invitation codes
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
   invitation_record public.user_invitations%ROWTYPE;
 BEGIN
-  -- Check if there's a valid invitation for this email
+  -- If auth.uid() is NULL, this is a service role action (admin dashboard)
+  -- Allow it to proceed without invitation requirement
+  IF auth.uid() IS NULL THEN
+    -- Create profile for service-role invited user
+    INSERT INTO public.profiles (id, email, display_name)
+    VALUES (
+      NEW.id,
+      NEW.email,
+      COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1))
+    );
+    RETURN NEW;
+  END IF;
+
+  -- For regular signups, check if there's a valid invitation
   SELECT * INTO invitation_record
   FROM public.user_invitations
   WHERE email = NEW.email
