@@ -59,14 +59,19 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-/* Custom hover effects for buttons and sliders */
+/* Custom hover effects for buttons and sliders - disabled on touch devices */
 button {
   transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
 }
-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+
+/* Only apply hover effects on devices that support hover (non-touch devices) */
+@media (hover: hover) {
+  button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+  }
 }
+
 button:active {
   transform: translateY(0);
   box-shadow: 0 1px 3px rgba(0,0,0,0.12) inset;
@@ -311,6 +316,29 @@ input[type=number] {
 
 .table-row-total-hover:hover {
   background-color: rgba(16, 185, 129, 0.08) !important; /* Subtle green highlight for totals */
+}
+
+/* Safari-specific fixes for touch events */
+@media (hover: none) and (pointer: coarse) {
+  /* Disable hover effects on touch devices */
+  button:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+  
+  /* Ensure buttons respond to single tap on touch devices */
+  button {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
+/* Additional Safari iOS fixes */
+@supports (-webkit-touch-callout: none) {
+  button {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
 }
 
 /* Enhanced hover effects for colored panels */
