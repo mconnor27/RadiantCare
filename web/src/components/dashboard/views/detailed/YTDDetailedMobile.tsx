@@ -847,7 +847,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
         }}>
           {currentScenarioName && (
             <div style={{
-              padding: '4px 4px',
+              padding: '4px 8px',
               background: '#f0f9ff',
               border: '1px solid #bae6fd',
               borderRadius: 6,

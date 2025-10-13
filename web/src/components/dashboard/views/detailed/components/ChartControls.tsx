@@ -212,13 +212,6 @@ export default function ChartControls({
         position: 'relative',
         transition: 'width 0.3s ease-in-out, min-width 0.3s ease-in-out, max-width 0.3s ease-in-out'
       }}>
-      {isMobile && (
-        <h3 style={{
-          margin: '0 0 16px 0',
-          fontSize: 18,
-          fontWeight: 700
-        }}>Chart Controls</h3>
-      )}
       <div style={{
         display: isMobile ? 'flex' : 'grid',
         flexDirection: isMobile ? 'column' : undefined,
@@ -234,7 +227,7 @@ export default function ChartControls({
             fontSize: labelFontSize,
             fontWeight: 500,
             paddingTop: isMobile ? undefined : 6,
-            marginBottom: isMobile ? 8 : undefined,
+            marginBottom: isMobile ? 0 : undefined,
             padding: isMobile ? undefined : '8px 0'
           }}>Color Scheme:</label>
           <div style={{
@@ -265,7 +258,7 @@ export default function ChartControls({
             fontWeight: 500,
             whiteSpace: isMobile ? undefined : 'nowrap',
             paddingTop: isMobile ? undefined : 6,
-            marginBottom: isMobile ? 8 : undefined,
+            marginBottom: isMobile ? 0 : undefined,
             opacity: chartMode === 'proportion' ? 0.5 : 1,
             padding: isMobile ? undefined : '8px 0'
           }}>Income Mode:</label>
@@ -504,7 +497,7 @@ export default function ChartControls({
             fontSize: labelFontSize,
             fontWeight: 500,
             paddingTop: isMobile ? undefined : 6,
-            marginBottom: isMobile ? 8 : undefined,
+            marginBottom: isMobile ? 0 : undefined,
             padding: isMobile ? undefined : '8px 0'
           }}>Historical Data:</label>
           <div style={{
@@ -1014,7 +1007,7 @@ export default function ChartControls({
             fontSize: labelFontSize,
             fontWeight: 500,
             paddingTop: isMobile ? undefined : 6,
-            marginBottom: isMobile ? 8 : undefined,
+            marginBottom: isMobile ? 0 : undefined,
             padding: isMobile ? undefined : '8px 0'
           }}>Chart Type:</label>
           <div style={{
@@ -1112,7 +1105,7 @@ export default function ChartControls({
             fontSize: labelFontSize,
             fontWeight: 500,
             paddingTop: isMobile ? undefined : 6,
-            marginBottom: isMobile ? 8 : undefined,
+            marginBottom: isMobile ? 0 : undefined,
             opacity: chartMode === 'proportion' ? 0.5 : 1,
             padding: isMobile ? undefined : '8px 0'
           }}>Timeframe:</label>
