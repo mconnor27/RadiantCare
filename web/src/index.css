@@ -486,13 +486,13 @@ body.dragging [data-drag-handle] {
     -webkit-user-select: none !important;
     user-select: none !important;
   }
-
+  
   /* Ensure chart elements can still receive touch events */
   .js-plotly-plot, .plotly, [class*="plotly"] {
     touch-action: auto !important;
     pointer-events: auto !important;
   }
-
+  
   /* But chart control buttons should still get touch fixes */
   .chart-control-button {
     animation-duration: 0s !important;
@@ -504,6 +504,8 @@ body.dragging [data-drag-handle] {
     -webkit-touch-callout: none !important;
     -webkit-user-select: none !important;
     user-select: none !important;
+    pointer-events: auto !important;
+    z-index: 1001 !important;
   }
 }
 

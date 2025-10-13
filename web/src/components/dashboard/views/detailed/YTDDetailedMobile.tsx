@@ -369,7 +369,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
           lastTouchEnd = now
         }
       }
-
+      
       // Force immediate click response only on buttons
       const forceClick = (e: TouchEvent) => {
         const target = e.target as HTMLElement

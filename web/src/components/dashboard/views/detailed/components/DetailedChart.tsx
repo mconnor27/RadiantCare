@@ -765,8 +765,13 @@ export default function DetailedChart({
         {/* Mobile gear for opening controls */}
         {isMobile && (
           <button
-            onClick={() => onOpenControls && onOpenControls()}
             className="chart-control-button"
+            onTouchEnd={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onOpenControls && onOpenControls()
+            }}
+            onClick={() => onOpenControls && onOpenControls()}
             style={{
               position: 'absolute',
               top: 8,
@@ -794,8 +799,13 @@ export default function DetailedChart({
         {shouldShowControls && (
           <>
             <button
-              onClick={handlePrevious}
               className="chart-control-button"
+              onTouchEnd={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handlePrevious()
+              }}
+              onClick={handlePrevious}
               style={{
                 position: 'absolute',
                 ...(isMobile ? { bottom: 8 } : { top: 8 }),
@@ -819,8 +829,13 @@ export default function DetailedChart({
               {isMobile ? '←' : '← Previous'}
             </button>
             <button
-              onClick={handleNext}
               className="chart-control-button"
+              onTouchEnd={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleNext()
+              }}
+              onClick={handleNext}
               style={{
                 position: 'absolute',
                 ...(isMobile ? { bottom: 8 } : { top: 8 }),
