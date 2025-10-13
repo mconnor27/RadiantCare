@@ -633,33 +633,89 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
 
       {/* Header */}
       <div style={{
-        position: 'sticky',
+        position: 'fixed',
         top: 0,
+        left: 0,
+        right: 0,
         background: '#fff',
         borderBottom: '1px solid #e5e7eb',
-        padding: '8px 16px',
-        display: 'flex',
+        padding: '8px 12px',
+        display: 'grid',
+        gridTemplateColumns: '1fr auto 1fr',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        zIndex: 100,
+        zIndex: 1000,
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-        gap: 12,
         WebkitTapHighlightColor: 'rgba(0,0,0,0)'
       }}>
-        {/* Sync Icon Button */}
-        <div style={{ position: 'relative', flexShrink: 0, alignSelf: 'flex-start' }}>
+        {/* Left Icons Container */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0, justifySelf: 'start' }}>
+          {/* Sync Icon Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handleSync()
+              }}
+              disabled={syncing || lastSyncTimestamp === undefined}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: syncing || !syncAvailable || lastSyncTimestamp === undefined ? '#94a3b8' : '#0ea5e9',
+                fontSize: 20,
+                cursor: 'pointer',
+                padding: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 36,
+                height: 36,
+                borderRadius: 4,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              <FontAwesomeIcon icon={faSync} spin={syncing} />
+            </button>
+
+            {/* Tooltip */}
+            {showTooltip && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                marginTop: 8,
+                background: '#333',
+                color: 'white',
+                padding: '8px 12px',
+                borderRadius: 4,
+                fontSize: 12,
+                whiteSpace: 'nowrap',
+                zIndex: 1000,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+              }}>
+                Sync not available yet
+              </div>
+            )}
+          </div>
+
+          {/* Load Icon Button */}
           <button
             onClick={(e) => {
               e.stopPropagation()
-              handleSync()
+              if (isScenarioDirty) {
+                if (!confirm('You have unsaved changes to the current scenario. Loading another scenario will discard these changes. Continue?')) {
+                  return
+                }
+              }
+              setShowLoadModal(true)
             }}
-            disabled={syncing || lastSyncTimestamp === undefined}
             style={{
               background: 'none',
               border: 'none',
-              color: syncing || !syncAvailable || lastSyncTimestamp === undefined ? '#94a3b8' : '#0ea5e9',
+              color: '#0ea5e9',
               fontSize: 20,
               cursor: 'pointer',
+              transition: 'opacity 0.2s',
               padding: 8,
               display: 'flex',
               alignItems: 'center',
@@ -670,29 +726,10 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
               touchAction: 'manipulation',
               WebkitTapHighlightColor: 'transparent'
             }}
+            title="Load scenario"
           >
-            <FontAwesomeIcon icon={faSync} spin={syncing} />
+            <FontAwesomeIcon icon={faFolderOpen} />
           </button>
-
-          {/* Tooltip */}
-          {showTooltip && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              marginTop: 8,
-              background: '#333',
-              color: 'white',
-              padding: '8px 12px',
-              borderRadius: 4,
-              fontSize: 12,
-              whiteSpace: 'nowrap',
-              zIndex: 1000,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-            }}>
-              Sync not available yet
-            </div>
-          )}
         </div>
 
         {/* Title - Center */}
@@ -705,7 +742,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
           justifyContent: 'center',
           minWidth: 0
         }}>
-          <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 42, width: 'auto', display: 'block' }} />
+          <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 36, width: 'auto', display: 'block' }} />
           {/*<div style={{
             fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif',
             color: '#7c2a83',
@@ -719,7 +756,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
         </div>
 
         {/* User Menu */}
-        <div style={{ position: 'relative', flexShrink: 0, alignSelf: 'flex-start' }}>
+        <div style={{ position: 'relative', justifySelf: 'end' }}>
           <button
             onClick={(e) => {
               e.stopPropagation()
@@ -836,6 +873,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
         padding: '8px 16px',
         borderBottom: '1px solid #e5e7eb',
         background: '#f9fafb',
+        marginTop: '58px', // Account for fixed header height
         WebkitTapHighlightColor: 'rgba(0,0,0,0)'
       }}>
         <div style={{
@@ -861,40 +899,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
             </div>
           )}
 
-          {/* Load Button - positioned absolutely */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              if (isScenarioDirty) {
-                if (!confirm('You have unsaved changes to the current scenario. Loading another scenario will discard these changes. Continue?')) {
-                  return
-                }
-              }
-              setShowLoadModal(true)
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#0ea5e9',
-              fontSize: 20,
-              cursor: 'pointer',
-              transition: 'opacity 0.2s',
-              padding: 8,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 36,
-              height: 36,
-              borderRadius: 4,
-              position: 'absolute',
-              right: 0,
-              touchAction: 'manipulation',
-              WebkitTapHighlightColor: 'transparent'
-            }}
-            title="Load scenario"
-          >
-            <FontAwesomeIcon icon={faFolderOpen} />
-          </button>
         </div>
       </div>
 
