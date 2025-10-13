@@ -374,24 +374,37 @@ input[type=number] {
   }
 }
 
-/* Prevent iOS Safari double-tap zoom on all elements */
-* {
+/* Prevent iOS Safari double-tap zoom on interactive elements, but allow form controls */
+button, a, [role="button"], [onclick], .clickable {
   touch-action: manipulation;
+}
+
+/* Ensure form controls work properly on iOS Safari */
+input, label, select, textarea {
+  touch-action: auto;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  -webkit-user-select: auto;
+  user-select: auto;
 }
 
 /* Specifically target iOS Safari */
 @supports (-webkit-touch-callout: none) {
-  * {
+  /* Apply touch fixes only to non-form elements */
+  button, a, [role="button"], [onclick], .clickable {
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
-  }
-  
-  /* Prevent text selection which can interfere with touch events */
-  button, a, [role="button"], [onclick], .clickable, input, select, textarea {
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+  }
+  
+  /* Ensure form controls work properly */
+  input, label, select, textarea {
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    touch-action: auto;
+    -webkit-user-select: auto;
+    user-select: auto;
   }
 }
 
