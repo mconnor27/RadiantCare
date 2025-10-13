@@ -4,6 +4,16 @@
   "outputDirectory": "web/dist",
   "installCommand": "npm install --legacy-peer-deps --prefix web && npm install --prefix api",
   "devCommand": "cd web && npm run dev",
+  "crons": [
+    {
+      "path": "/api/qbo/sync-2025",
+      "schedule": "0 9 * 1-2,11-12 2-6"
+    },
+    {
+      "path": "/api/qbo/sync-2025",
+      "schedule": "0 8 * 3-10 2-6"
+    }
+  ],
   "rewrites": [
     {
       "source": "/((?!api).*)",

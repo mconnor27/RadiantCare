@@ -38,7 +38,8 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
   const [syncStep, setSyncStep] = useState<SyncStep | null>(null)
   const [syncMessage, setSyncMessage] = useState<string>('')
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
-  
+  const [showSyncInfoModal, setShowSyncInfoModal] = useState(false)
+
   const isAdmin = profile?.is_admin === true
 
   // Load last sync timestamp on mount - but wait for dashboard loading to complete
@@ -73,10 +74,18 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
   const handleSyncClick = () => {
     const hasCustomValues = Object.keys(store.customProjectedValues).length > 0
 
+    // Always show warning about potential refresh
     if (hasCustomValues) {
       setShowConfirmDialog(true)
     } else {
-      performSync(false)
+      // Show simple warning for users without custom values
+      const confirmed = confirm(
+        'Syncing will refresh your dashboard view with new QuickBooks data.\n\n' +
+        'Any unsaved work in progress may be lost. Continue?'
+      )
+      if (confirmed) {
+        performSync(false)
+      }
     }
   }
 
@@ -326,6 +335,8 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
             <h3 style={{ margin: '0 0 16px 0', fontSize: 18, fontWeight: 600 }}>Manual Changes Detected</h3>
             <p style={{ margin: '0 0 24px 0', fontSize: 14, lineHeight: 1.5, color: '#666' }}>
               You have manually adjusted some projected values in the grid.
+              Syncing will refresh your dashboard with new QuickBooks data.
+              <br/><br/>
               Would you like to keep these manual changes or recalculate them based on the new synced data?
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
@@ -469,50 +480,88 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
         gap: 6
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
-          <button
-            onClick={handleSyncClick}
-            disabled={syncing || !syncAvailable || lastSyncTimestamp === undefined}
-            onMouseEnter={(e) => createSyncTooltip(getButtonTooltip(), e)}
-            onMouseLeave={() => removeTooltip('sync-button-tooltip')}
-            onTouchStart={(e) => createSyncTooltip(getButtonTooltip(), e)}
-          style={{
-            padding: '6px 12px',
-            background: syncing || !syncAvailable || lastSyncTimestamp === undefined ? '#94a3b8' : '#0ea5e9',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 4,
-            fontSize: 14,
-            fontWeight: 500,
-            cursor: syncing || !syncAvailable || lastSyncTimestamp === undefined ? 'not-allowed' : 'pointer',
-            whiteSpace: 'nowrap',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6
-          }}
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          {isAdmin ? (
+            // Admin: Show sync button
+            <button
+              onClick={handleSyncClick}
+              disabled={syncing || !syncAvailable || lastSyncTimestamp === undefined}
+              onMouseEnter={(e) => createSyncTooltip(getButtonTooltip(), e)}
+              onMouseLeave={() => removeTooltip('sync-button-tooltip')}
+              onTouchStart={(e) => createSyncTooltip(getButtonTooltip(), e)}
             style={{
-              animation: syncing ? 'spin 1s linear infinite' : 'none'
+              padding: '6px 12px',
+              background: syncing || !syncAvailable || lastSyncTimestamp === undefined ? '#94a3b8' : '#0ea5e9',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              fontSize: 14,
+              fontWeight: 500,
+              cursor: syncing || !syncAvailable || lastSyncTimestamp === undefined ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6
             }}
           >
-            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-          </svg>
-          {syncing ? 'Syncing...' : 'Sync QuickBooks'}
-          <style>{`
-            @keyframes spin {
-              from { transform: rotate(0deg); }
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
-        </button>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                animation: syncing ? 'spin 1s linear infinite' : 'none'
+              }}
+            >
+              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            </svg>
+            {syncing ? 'Syncing...' : 'Sync QuickBooks'}
+            <style>{`
+              @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+              }
+            `}</style>
+          </button>
+          ) : (
+            // Non-admin: Show info icon with tooltip
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#0ea5e9"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ cursor: 'pointer' }}
+                onClick={() => setShowSyncInfoModal(true)}
+                onMouseEnter={(e) => {
+                  const tooltip = document.createElement('div')
+                  tooltip.id = 'sync-info-tooltip'
+                  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
+                  tooltip.textContent = 'View sync schedule'
+                  document.body.appendChild(tooltip)
+                  const rect = (e.currentTarget as SVGElement).getBoundingClientRect()
+                  tooltip.style.left = `${rect.left}px`
+                  tooltip.style.top = `${rect.bottom + window.scrollY + 8}px`
+                }}
+                onMouseLeave={() => {
+                  const tooltip = document.getElementById('sync-info-tooltip')
+                  if (tooltip) tooltip.remove()
+                }}
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              <span style={{ fontSize: 14, color: '#0369a1', fontWeight: 500 }}>Sync Schedule</span>
+            </div>
+          )}
         {lastSyncTimestamp === undefined ? (
           <div style={{
             minHeight: 20,
@@ -547,6 +596,82 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
             syncError
           )}
         </div>
+      )}
+
+      {/* Sync Info Modal for Non-Admins */}
+      {showSyncInfoModal && !isAdmin && (
+        <>
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0,0,0,0.5)',
+              zIndex: 10000,
+              animation: 'fadeIn 0.2s ease-in'
+            }}
+            onClick={() => setShowSyncInfoModal(false)}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: '#fff',
+              borderRadius: '8px',
+              padding: '32px',
+              maxWidth: '500px',
+              width: '90%',
+              zIndex: 10001,
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+              animation: 'slideIn 0.3s ease-out'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 600 }}>
+              QuickBooks Sync Schedule
+            </h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '14px', lineHeight: 1.5, color: '#666' }}>
+              QuickBooks data is automatically synced every business day (Monday-Friday) at 1:00 AM Pacific Time.
+              <br/><br/>
+              The sync runs Tuesday through Saturday mornings to capture the previous business day's data, excluding weekends and federal holidays.
+            </p>
+            <p style={{ margin: '0 0 16px 0', fontSize: '14px', lineHeight: 1.5, color: '#666' }}>
+              To request additional syncs or report sync issues, please contact:
+            </p>
+            <p style={{ margin: '0 0 24px 0', fontSize: '14px', textAlign: 'center' }}>
+              <a
+                href="mailto:connor@radiantcare.com"
+                style={{
+                  color: '#0ea5e9',
+                  textDecoration: 'none',
+                  fontWeight: 500
+                }}
+              >
+                connor@radiantcare.com
+              </a>
+            </p>
+            <button
+              onClick={() => setShowSyncInfoModal(false)}
+              style={{
+                width: '100%',
+                padding: '10px',
+                background: '#0ea5e9',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                fontSize: '14px',
+                fontWeight: 500,
+                cursor: 'pointer'
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </>
       )}
       </div>
     </>

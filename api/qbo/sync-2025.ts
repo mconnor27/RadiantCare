@@ -18,6 +18,38 @@ interface QboRefreshTokenResponse {
 
 const TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
 
+// US Federal Holidays (2025)
+const FEDERAL_HOLIDAYS_2025 = [
+  '2025-01-01', // New Year's Day
+  '2025-01-20', // Martin Luther King Jr. Day
+  '2025-02-17', // Presidents' Day
+  '2025-05-26', // Memorial Day
+  '2025-06-19', // Juneteenth
+  '2025-07-04', // Independence Day
+  '2025-09-01', // Labor Day
+  '2025-10-13', // Columbus Day
+  '2025-11-11', // Veterans Day
+  '2025-11-27', // Thanksgiving
+  '2025-12-25', // Christmas
+]
+
+function isBusinessDay(date: Date): boolean {
+  const dayOfWeek = date.getDay()
+
+  // Check if weekend
+  if (dayOfWeek === 0 || dayOfWeek === 6) {
+    return false
+  }
+
+  // Check if federal holiday
+  const dateStr = date.toISOString().slice(0, 10)
+  if (FEDERAL_HOLIDAYS_2025.includes(dateStr)) {
+    return false
+  }
+
+  return true
+}
+
 function getCredentials(env: string) {
   if (env === 'sandbox') {
     return {
@@ -159,9 +191,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  // Require authentication (any authenticated user can trigger sync)
-  const user = await requireAuth(req, res)
-  if (!user) return
+  // Check if this is a cron request
+  const authHeader = req.headers.authorization
+  const isCronRequest = authHeader === `Bearer ${process.env.CRON_SECRET}`
+
+  let user = null
+  if (isCronRequest) {
+    // Cron authentication - check if it's a business day
+    const now = new Date()
+    if (!isBusinessDay(now)) {
+      console.log('Cron skipped: Not a business day')
+      return res.status(200).json({
+        skipped: true,
+        reason: 'not_business_day',
+        message: 'Sync skipped - not a business day'
+      })
+    }
+
+    // Broadcast warning to active users via Supabase
+    const supabase = getSupabaseAdmin()
+    try {
+      await supabase
+        .from('sync_notifications')
+        .insert({
+          message: 'QuickBooks sync starting - your view may refresh shortly',
+          created_at: new Date().toISOString()
+        })
+      console.log('Sync warning broadcast to active users')
+    } catch (err) {
+      console.error('Failed to broadcast sync warning:', err)
+      // Don't fail the sync if notification fails
+    }
+
+    // Create a synthetic admin user for cron
+    user = { id: 'cron', email: 'cron@system', isAdmin: true }
+  } else {
+    // Regular authenticated user request
+    user = await requireAuth(req, res)
+    if (!user) return
+  }
 
   try {
     const supabase = getSupabaseAdmin()

@@ -44,6 +44,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Listen for sync notifications from cron jobs
+  useEffect(() => {
+    if (!session) return
+
+    const channel = supabase
+      .channel('sync-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'sync_notifications'
+        },
+        (payload) => {
+          // Show toast notification to user
+          const message = payload.new.message || 'QuickBooks sync starting'
+
+          // Create a simple toast notification
+          const toast = document.createElement('div')
+          toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #0ea5e9;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 10001;
+            font-size: 14px;
+            font-weight: 500;
+            animation: slideInRight 0.3s ease-out;
+          `
+          toast.textContent = message
+
+          // Add animation styles
+          const style = document.createElement('style')
+          style.textContent = `
+            @keyframes slideInRight {
+              from { transform: translateX(400px); opacity: 0; }
+              to { transform: translateX(0); opacity: 1; }
+            }
+          `
+          document.head.appendChild(style)
+
+          document.body.appendChild(toast)
+
+          // Remove after 5 seconds
+          setTimeout(() => {
+            toast.style.animation = 'slideInRight 0.3s ease-out reverse'
+            setTimeout(() => toast.remove(), 300)
+          }, 5000)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [session])
+
   async function loadProfile(userId: string) {
     try {
       const { data, error } = await supabase

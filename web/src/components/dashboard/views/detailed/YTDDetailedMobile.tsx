@@ -409,6 +409,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
   const [showControls, setShowControls] = useState(false)
   const [showLoadModal, setShowLoadModal] = useState(false) // Mobile scenario load modal
   const [isScenarioDirty, setIsScenarioDirty] = useState(false) // Track if scenario has been modified
+  const [showSyncInfoModal, setShowSyncInfoModal] = useState(false) // Sync info modal
 
   // Mobile chart settings state
   const [isNormalized, setIsNormalized] = useState(false)
@@ -711,60 +712,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
       }}>
         {/* Left Icons Container */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 0, justifySelf: 'start' }}>
-          {/* Sync Icon Button */}
-          <div style={{ position: 'relative' }}>
-            <button
-              onTouchEnd={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                handleSync()
-              }}
-              onClick={(e) => {
-                e.stopPropagation()
-                handleSync()
-              }}
-              disabled={syncing || lastSyncTimestamp === undefined}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: syncing || !syncAvailable || lastSyncTimestamp === undefined ? '#94a3b8' : '#0ea5e9',
-                fontSize: 20,
-                cursor: 'pointer',
-                padding: 8,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 36,
-                height: 36,
-                borderRadius: 4,
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              <FontAwesomeIcon icon={faSync} spin={syncing} />
-            </button>
-
-            {/* Tooltip */}
-            {showTooltip && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                marginTop: 8,
-                background: '#333',
-                color: 'white',
-                padding: '8px 12px',
-                borderRadius: 4,
-                fontSize: 12,
-                whiteSpace: 'nowrap',
-                zIndex: 1000,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-              }}>
-                Sync not available yet
-              </div>
-            )}
-          </div>
-
           {/* Load Icon Button */}
           <button
             onTouchEnd={(e) => {
@@ -1151,6 +1098,142 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
         onLoad={handleLoadScenario}
         viewMode="YTD Mobile"
       />
+
+      {/* Last Synced Footer */}
+      {lastSyncTimestamp && (
+        <div style={{
+          padding: '12px',
+          textAlign: 'center',
+          fontSize: '12px',
+          color: '#6b7280',
+          fontStyle: 'italic',
+          borderTop: '1px solid #e5e7eb',
+          background: '#f9fafb'
+        }}>
+          <span
+            style={{
+              textDecoration: 'underline',
+              textDecorationStyle: 'dotted',
+              cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent'
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setShowSyncInfoModal(true)
+            }}
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowSyncInfoModal(true)
+            }}
+          >
+            Last Synced: {new Date(lastSyncTimestamp).toLocaleString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true
+            })}
+          </span>
+        </div>
+      )}
+
+      {/* Sync Info Modal */}
+      {showSyncInfoModal && (
+        <>
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0,0,0,0.5)',
+              zIndex: 10000,
+              animation: 'fadeIn 0.2s ease-in',
+              WebkitTapHighlightColor: 'rgba(0,0,0,0)'
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setShowSyncInfoModal(false)
+            }}
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowSyncInfoModal(false)
+            }}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: '#fff',
+              borderRadius: '8px',
+              padding: '24px',
+              maxWidth: '90%',
+              width: '400px',
+              zIndex: 10001,
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+              animation: 'slideIn 0.3s ease-out',
+              WebkitTapHighlightColor: 'rgba(0,0,0,0)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 600 }}>
+              QuickBooks Sync Schedule
+            </h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '14px', lineHeight: 1.5, color: '#666', textAlign: 'left' }}>
+              QuickBooks data is automatically synced every business day (Monday-Friday) at 1:00 AM Pacific Time.
+              <br/><br/>
+              The sync captures through the previous business day's data, excluding weekends and federal holidays.
+            </p>
+            <p style={{ margin: '0 0 16px 0', fontSize: '14px', lineHeight: 1.5, color: '#666', textAlign: 'left' }}>
+              To request additional syncs or report sync issues, please contact:
+            </p>
+            <p style={{ margin: '0 0 16px 0', fontSize: '14px', textAlign: 'center' }}>
+              <a
+                href="mailto:connor@radiantcare.com"
+                style={{
+                  color: '#0ea5e9',
+                  textDecoration: 'none',
+                  fontWeight: 500
+                }}
+              >
+                connor@radiantcare.com
+              </a>
+            </p>
+            <button
+              onTouchEnd={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setShowSyncInfoModal(false)
+              }}
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowSyncInfoModal(false)
+              }}
+              style={{
+                width: '100%',
+                padding: '10px',
+                background: '#0ea5e9',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                fontSize: '14px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </>
+      )}
     </>
   )
 }
