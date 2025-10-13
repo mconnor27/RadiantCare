@@ -356,11 +356,11 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
   useEffect(() => {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
     if (isIOS) {
-      // Prevent double-tap zoom only on buttons, not charts
+      // Prevent double-tap zoom only on buttons, not charts or form controls
       let lastTouchEnd = 0
       const preventZoom = (e: TouchEvent) => {
         const target = e.target as HTMLElement
-        // Only prevent zoom on buttons, not chart elements
+        // Only prevent zoom on buttons, not chart elements or form controls
         if (target && (target.tagName === 'BUTTON' || target.onclick || target.getAttribute('role') === 'button')) {
           const now = Date.now()
           if (now - lastTouchEnd <= 300) {
@@ -370,10 +370,17 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
         }
       }
       
-      // Force immediate click response only on buttons
+      // Force immediate click response only on buttons, NOT on labels or inputs
       const forceClick = (e: TouchEvent) => {
         const target = e.target as HTMLElement
-        if (target && (target.tagName === 'BUTTON' || target.onclick || target.getAttribute('role') === 'button')) {
+        // Exclude INPUT, LABEL, SELECT, TEXTAREA from force click
+        if (target && 
+            target.tagName !== 'INPUT' && 
+            target.tagName !== 'LABEL' && 
+            target.tagName !== 'SELECT' && 
+            target.tagName !== 'TEXTAREA' &&
+            !target.closest('label') && // Don't force click if inside a label
+            (target.tagName === 'BUTTON' || target.onclick || target.getAttribute('role') === 'button')) {
           // Trigger click immediately on touch end
           setTimeout(() => {
             target.click()

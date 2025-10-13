@@ -3,26 +3,34 @@ import React from 'react'
 import { PRCS_MD_ANNUAL_MAX } from './defaults'
 
 // Helper function to calculate smart tooltip position that avoids going off-screen
-function calculateTooltipPosition(rect: DOMRect, tooltipWidth: number = 300, tooltipHeight: number = 100) {
-  const offset = 10
+function calculateTooltipPosition(
+  rect: DOMRect, 
+  tooltipWidth: number = 300, 
+  tooltipHeight: number = 100,
+  offsetX: number = 10,
+  offsetY: number = 0
+) {
   const padding = 10
 
-  let x = rect.right + offset
-  let y = rect.top + window.scrollY
+  // Start with the desired position
+  let x = rect.right + offsetX
+  let y = rect.top + window.scrollY + offsetY
 
-  // Check right edge
+  // Check right edge - only reposition if truly necessary
   if (x + tooltipWidth > window.innerWidth - padding) {
-    x = rect.left - tooltipWidth - offset // Position to left of element
+    // Try positioning to the left of the element
+    const leftX = rect.left - tooltipWidth - Math.abs(offsetX)
+    if (leftX >= padding) {
+      x = leftX
+    } else {
+      // If can't fit on left either, just constrain to right edge
+      x = Math.max(padding, window.innerWidth - tooltipWidth - padding)
+    }
   }
 
   // Check bottom edge
   if (y + tooltipHeight > window.innerHeight + window.scrollY - padding) {
-    y = rect.bottom + window.scrollY - tooltipHeight // Position above element
-  }
-
-  // Check left edge
-  if (x < padding) {
-    x = padding
+    y = Math.max(window.scrollY + padding, rect.bottom + window.scrollY - tooltipHeight)
   }
 
   // Check top edge
@@ -34,7 +42,13 @@ function calculateTooltipPosition(rect: DOMRect, tooltipWidth: number = 300, too
 }
 
 // Helper function for creating tooltips
-export function createTooltip(id: string, content: string, e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>) {
+export function createTooltip(
+  id: string, 
+  content: string, 
+  e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>,
+  offsetX: number = 10,
+  offsetY: number = 0
+) {
   const existing = document.getElementById(id)
   if (existing) existing.remove()
 
@@ -46,7 +60,7 @@ export function createTooltip(id: string, content: string, e: React.MouseEvent<H
   document.body.appendChild(tooltip)
 
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  const pos = calculateTooltipPosition(rect)
+  const pos = calculateTooltipPosition(rect, 300, 100, offsetX, offsetY)
   tooltip.style.left = `${pos.x}px`
   tooltip.style.top = `${pos.y}px`
 }

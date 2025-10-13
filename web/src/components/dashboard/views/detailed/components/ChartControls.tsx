@@ -332,7 +332,8 @@ export default function ChartControls({
                 }}
                 onMouseEnter={(e) => {
                   if (chartMode !== 'proportion') {
-                    createTooltip('income-mode-info', 'Total Income data available daily.\nPer Site data available through prior month.', e)
+                    // Position tooltip above and to the right
+                    createTooltip('income-mode-info', 'Total Income data available daily.\nPer Site data available through prior month.', e, 30, -60)
                   }
                 }}
                 onMouseLeave={() => removeTooltip('income-mode-info')}
