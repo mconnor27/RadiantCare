@@ -126,7 +126,6 @@ function MobileScenarioLoadModal({
           e.stopPropagation()
           onClose()
         }}
-        onTouchStart={() => {}}
       />
 
       {/* Modal */}
@@ -161,7 +160,6 @@ function MobileScenarioLoadModal({
               e.stopPropagation()
               onClose()
             }}
-            onTouchStart={() => {}}
             style={{
               background: 'none',
               border: 'none',
@@ -263,7 +261,6 @@ function MobileScenarioLoadModal({
                     onLoad(scenario.id)
                     onClose()
                   }}
-                  onTouchStart={() => {}}
                 >
                   {/* Header: Title + Public/Private */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
@@ -659,7 +656,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
                 e.stopPropagation()
                 handleSync()
               }}
-              onTouchStart={() => {}}
               disabled={syncing || lastSyncTimestamp === undefined}
               style={{
                 background: 'none',
@@ -713,7 +709,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
               }
               setShowLoadModal(true)
             }}
-            onTouchStart={() => {}}
             style={{
               background: 'none',
               border: 'none',
@@ -767,7 +762,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
               e.stopPropagation()
               setShowUserMenu(!showUserMenu)
             }}
-            onTouchStart={() => {}}
             style={{
               background: 'none',
               border: 'none',
@@ -804,7 +798,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
                   e.stopPropagation()
                   setShowUserMenu(false)
                 }}
-                onTouchStart={() => {}}
               />
               <div style={{
                 position: 'absolute',
@@ -824,7 +817,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
                     setShowUserMenu(false)
                     onPasswordChange?.()
                   }}
-                  onTouchStart={() => {}}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -851,7 +843,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
                     setShowUserMenu(false)
                     signOut()
                   }}
-                  onTouchStart={() => {}}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -977,7 +968,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
               e.stopPropagation()
               setShowControls(false)
             }}
-            onTouchStart={() => {}}
           />
           <div
             style={{
@@ -1000,7 +990,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
                   e.stopPropagation()
                   setShowControls(false)
                 }}
-                onTouchStart={() => {}}
                 style={{
                   padding: '6px 10px',
                   border: '1px solid #ccc',
