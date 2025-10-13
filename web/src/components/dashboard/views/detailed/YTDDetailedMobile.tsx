@@ -426,8 +426,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
   const [colorScheme, setColorScheme] = useState<'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'>('gray')
   const [siteColorScheme, setSiteColorScheme] = useState<'rgb' | 'radiantCare' | 'jama'>('rgb')
 
-  const isAdmin = profile?.is_admin === true
-
   // Parse 2025 data
   const historical2025Data = useMemo(() => parseTherapyIncome2025(), [])
 
