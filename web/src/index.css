@@ -505,7 +505,6 @@ body.dragging [data-drag-handle] {
     -webkit-user-select: none !important;
     user-select: none !important;
     pointer-events: auto !important;
-    z-index: 1001 !important;
   }
 }
 
