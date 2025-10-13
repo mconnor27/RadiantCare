@@ -120,8 +120,12 @@ function MobileScenarioLoadModal({
           background: 'rgba(0,0,0,0.5)',
           zIndex: 10000,
           animation: 'fadeIn 0.2s ease-in',
+          WebkitTapHighlightColor: 'rgba(0,0,0,0)'
         }}
-        onClick={onClose}
+        onClick={(e) => {
+          e.stopPropagation()
+          onClose()
+        }}
       />
 
       {/* Modal */}
@@ -137,6 +141,7 @@ function MobileScenarioLoadModal({
           display: 'flex',
           flexDirection: 'column',
           animation: 'slideIn 0.3s ease-out',
+          WebkitTapHighlightColor: 'rgba(0,0,0,0)'
         }}
       >
         {/* Header */}
@@ -151,7 +156,10 @@ function MobileScenarioLoadModal({
             Load Scenario
           </h2>
           <button
-            onClick={onClose}
+            onClick={(e) => {
+              e.stopPropagation()
+              onClose()
+            }}
             style={{
               background: 'none',
               border: 'none',
@@ -248,7 +256,8 @@ function MobileScenarioLoadModal({
                     touchAction: 'manipulation',
                     WebkitTapHighlightColor: 'transparent'
                   }}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation()
                     onLoad(scenario.id)
                     onClose()
                   }}
@@ -547,21 +556,24 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
 
   return (
     <>
-      {/* Loading Modal */}
-      {showLoadingModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.6)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000,
-          animation: 'fadeIn 0.2s ease-in'
-        }}>
+      {/* Loading Modal - properly unmount when hidden */}
+      {showLoadingModal ? (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            animation: 'fadeIn 0.2s ease-in'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <div style={{
             background: '#fff',
             padding: 32,
@@ -617,7 +629,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
             }
           `}</style>
         </div>
-      )}
+      ) : null}
 
       {/* Header */}
       <div style={{
@@ -631,19 +643,23 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
         justifyContent: 'space-between',
         zIndex: 100,
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-        gap: 12
+        gap: 12,
+        WebkitTapHighlightColor: 'rgba(0,0,0,0)'
       }}>
         {/* Sync Icon Button */}
         <div style={{ position: 'relative', flexShrink: 0, alignSelf: 'flex-start' }}>
           <button
-            onClick={handleSync}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleSync()
+            }}
             disabled={syncing || lastSyncTimestamp === undefined}
             style={{
               background: 'none',
               border: 'none',
               color: syncing || !syncAvailable || lastSyncTimestamp === undefined ? '#94a3b8' : '#0ea5e9',
               fontSize: 20,
-              cursor: syncing || lastSyncTimestamp === undefined ? 'not-allowed' : (syncAvailable ? 'pointer' : 'pointer'),
+              cursor: 'pointer',
               padding: 8,
               display: 'flex',
               alignItems: 'center',
@@ -705,7 +721,10 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
         {/* User Menu */}
         <div style={{ position: 'relative', flexShrink: 0, alignSelf: 'flex-start' }}>
           <button
-            onClick={() => setShowUserMenu(!showUserMenu)}
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowUserMenu(!showUserMenu)
+            }}
             style={{
               background: 'none',
               border: 'none',
@@ -735,9 +754,13 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  zIndex: 999
+                  zIndex: 999,
+                  WebkitTapHighlightColor: 'rgba(0,0,0,0)'
                 }}
-                onClick={() => setShowUserMenu(false)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowUserMenu(false)
+                }}
               />
               <div style={{
                 position: 'absolute',
@@ -752,7 +775,8 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
                 zIndex: 1000
               }}>
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation()
                     setShowUserMenu(false)
                     onPasswordChange?.()
                   }}
@@ -777,7 +801,8 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
                   Change Password
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation()
                     setShowUserMenu(false)
                     signOut()
                   }}
@@ -810,7 +835,8 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
       <div style={{
         padding: '8px 16px',
         borderBottom: '1px solid #e5e7eb',
-        background: '#f9fafb'
+        background: '#f9fafb',
+        WebkitTapHighlightColor: 'rgba(0,0,0,0)'
       }}>
         <div style={{
           display: 'flex',
@@ -837,7 +863,8 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
 
           {/* Load Button - positioned absolutely */}
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation()
               if (isScenarioDirty) {
                 if (!confirm('You have unsaved changes to the current scenario. Loading another scenario will discard these changes. Continue?')) {
                   return
@@ -875,7 +902,8 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
       <div style={{
         padding: 16,
         borderBottom: '1px solid #e5e7eb',
-        overflowX: 'auto'
+        overflowX: 'auto',
+        WebkitTapHighlightColor: 'rgba(0,0,0,0)'
       }}>
         {error ? (
           <div style={{ color: '#991b1b', textAlign: 'center', padding: 20 }}>{error}</div>
@@ -929,9 +957,13 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
               right: 0,
               bottom: 0,
               background: 'rgba(0,0,0,0.45)',
-              zIndex: 10000
+              zIndex: 10000,
+              WebkitTapHighlightColor: 'rgba(0,0,0,0)'
             }}
-            onClick={() => setShowControls(false)}
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowControls(false)
+            }}
           />
           <div
             style={{
@@ -943,13 +975,17 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
               background: '#fff',
               zIndex: 10001,
               display: 'flex',
-              flexDirection: 'column'
+              flexDirection: 'column',
+              WebkitTapHighlightColor: 'rgba(0,0,0,0)'
             }}
           >
-            <div style={{ padding: 12, borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: 12, borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', WebkitTapHighlightColor: 'rgba(0,0,0,0)' }}>
               <div style={{ fontSize: 18, fontWeight: 700 }}>Chart Controls</div>
               <button
-                onClick={() => setShowControls(false)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowControls(false)
+                }}
                 style={{
                   padding: '6px 10px',
                   border: '1px solid #ccc',
