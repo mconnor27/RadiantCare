@@ -350,7 +350,7 @@ interface YTDDetailedMobileProps {
 
 export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }: YTDDetailedMobileProps) {
   const store = useDashboardStore()
-  const { signOut, profile } = useAuth()
+  const { signOut } = useAuth()
   
   // iOS Safari touch fix - prevent double-tap zoom and ensure single-tap works
   useEffect(() => {
