@@ -356,12 +356,16 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
   useEffect(() => {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
     if (isIOS) {
-      // Prevent double-tap zoom only on buttons, not charts
+      // Prevent double-tap zoom on buttons, including chart control buttons
       let lastTouchEnd = 0
       const preventZoom = (e: TouchEvent) => {
         const target = e.target as HTMLElement
-        // Only prevent zoom on buttons, not chart elements
+        // Only prevent zoom on buttons, but allow chart content to work normally
         if (target && (target.tagName === 'BUTTON' || target.onclick || target.getAttribute('role') === 'button')) {
+          // Skip chart content areas but allow chart control buttons
+          if (target.closest('.plotly') && !target.closest('button')) {
+            return
+          }
           const now = Date.now()
           if (now - lastTouchEnd <= 300) {
             e.preventDefault()
@@ -370,10 +374,14 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
         }
       }
       
-      // Force immediate click response only on buttons
+      // Force immediate click response on buttons, including chart control buttons
       const forceClick = (e: TouchEvent) => {
         const target = e.target as HTMLElement
         if (target && (target.tagName === 'BUTTON' || target.onclick || target.getAttribute('role') === 'button')) {
+          // Skip chart content areas but allow chart control buttons
+          if (target.closest('.plotly') && !target.closest('button')) {
+            return
+          }
           // Trigger click immediately on touch end
           setTimeout(() => {
             target.click()
