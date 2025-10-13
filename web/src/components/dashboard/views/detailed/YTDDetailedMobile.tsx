@@ -122,6 +122,11 @@ function MobileScenarioLoadModal({
           animation: 'fadeIn 0.2s ease-in',
           WebkitTapHighlightColor: 'rgba(0,0,0,0)'
         }}
+        onTouchEnd={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          onClose()
+        }}
         onClick={(e) => {
           e.stopPropagation()
           onClose()
@@ -156,6 +161,11 @@ function MobileScenarioLoadModal({
             Load Scenario
           </h2>
           <button
+            onTouchEnd={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onClose()
+            }}
             onClick={(e) => {
               e.stopPropagation()
               onClose()
@@ -255,6 +265,12 @@ function MobileScenarioLoadModal({
                     cursor: 'pointer',
                     touchAction: 'manipulation',
                     WebkitTapHighlightColor: 'transparent'
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onLoad(scenario.id)
+                    onClose()
                   }}
                   onClick={(e) => {
                     e.stopPropagation()
@@ -652,6 +668,11 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
           {/* Sync Icon Button */}
           <div style={{ position: 'relative' }}>
             <button
+              onTouchEnd={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleSync()
+              }}
               onClick={(e) => {
                 e.stopPropagation()
                 handleSync()
@@ -700,6 +721,16 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
 
           {/* Load Icon Button */}
           <button
+            onTouchEnd={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              if (isScenarioDirty) {
+                if (!confirm('You have unsaved changes to the current scenario. Loading another scenario will discard these changes. Continue?')) {
+                  return
+                }
+              }
+              setShowLoadModal(true)
+            }}
             onClick={(e) => {
               e.stopPropagation()
               if (isScenarioDirty) {
@@ -758,6 +789,11 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
         {/* User Menu */}
         <div style={{ position: 'relative', justifySelf: 'end' }}>
           <button
+            onTouchEnd={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setShowUserMenu(!showUserMenu)
+            }}
             onClick={(e) => {
               e.stopPropagation()
               setShowUserMenu(!showUserMenu)
@@ -812,6 +848,12 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
                 zIndex: 1000
               }}>
                 <button
+                  onTouchEnd={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setShowUserMenu(false)
+                    onPasswordChange?.()
+                  }}
                   onClick={(e) => {
                     e.stopPropagation()
                     setShowUserMenu(false)
@@ -838,6 +880,12 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
                   Change Password
                 </button>
                 <button
+                  onTouchEnd={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setShowUserMenu(false)
+                    signOut()
+                  }}
                   onClick={(e) => {
                     e.stopPropagation()
                     setShowUserMenu(false)
@@ -964,6 +1012,11 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
               zIndex: 10000,
               WebkitTapHighlightColor: 'rgba(0,0,0,0)'
             }}
+            onTouchEnd={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setShowControls(false)
+            }}
             onClick={(e) => {
               e.stopPropagation()
               setShowControls(false)
@@ -986,6 +1039,11 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
             <div style={{ padding: 12, borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', WebkitTapHighlightColor: 'rgba(0,0,0,0)' }}>
               <div style={{ fontSize: 18, fontWeight: 700 }}>Chart Controls</div>
               <button
+                onTouchEnd={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setShowControls(false)
+                }}
                 onClick={(e) => {
                   e.stopPropagation()
                   setShowControls(false)
