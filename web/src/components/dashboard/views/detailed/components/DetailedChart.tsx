@@ -766,6 +766,7 @@ export default function DetailedChart({
         {isMobile && (
           <button
             onClick={() => onOpenControls && onOpenControls()}
+            className="chart-control-button"
             style={{
               position: 'absolute',
               top: 8,
@@ -794,6 +795,7 @@ export default function DetailedChart({
           <>
             <button
               onClick={handlePrevious}
+              className="chart-control-button"
               style={{
                 position: 'absolute',
                 ...(isMobile ? { bottom: 8 } : { top: 8 }),
@@ -818,6 +820,7 @@ export default function DetailedChart({
             </button>
             <button
               onClick={handleNext}
+              className="chart-control-button"
               style={{
                 position: 'absolute',
                 ...(isMobile ? { bottom: 8 } : { top: 8 }),
