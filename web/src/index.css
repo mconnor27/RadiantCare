@@ -19,9 +19,7 @@ a {
   color: #646cff;
   text-decoration: inherit;
 }
-a:hover {
-  color: #535bf2;
-}
+/* Moved a:hover into @media (hover: hover) below to avoid double-tap on touch */
 
 body {
   margin: 0;
@@ -51,9 +49,7 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
-button:hover {
-  border-color: #646cff;
-}
+/* Moved button:hover into @media (hover: hover) below to avoid double-tap on touch */
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
@@ -66,9 +62,25 @@ button {
 
 /* Only apply hover effects on devices that support hover (non-touch devices) */
 @media (hover: hover) {
+  a:hover {
+    color: #535bf2;
+  }
   button:hover {
+    border-color: #646cff;
     transform: translateY(-1px);
     box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+  }
+}
+
+/* Disable hover effects on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  a:hover {
+    color: #646cff !important;
+  }
+  button:hover {
+    border-color: transparent !important;
+    transform: none !important;
+    box-shadow: none !important;
   }
 }
 
@@ -130,8 +142,10 @@ input[type="range"]::-webkit-slider-thumb {
   box-shadow: 0 1px 2px rgba(0,0,0,0.1);
   transition: box-shadow 0.12s ease, transform 0.12s ease;
 }
-input[type="range"]:hover::-webkit-slider-thumb {
-  box-shadow: 0 0 0 6px rgba(100, 108, 255, 0.15);
+@media (hover: hover) {
+  input[type="range"]:hover::-webkit-slider-thumb {
+    box-shadow: 0 0 0 6px rgba(100, 108, 255, 0.15);
+  }
 }
 input[type="range"]:active::-webkit-slider-thumb {
   transform: scale(1.05);
@@ -147,8 +161,10 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 1px 2px rgba(0,0,0,0.1);
   transition: box-shadow 0.12s ease, transform 0.12s ease;
 }
-input[type="range"]:hover::-moz-range-thumb {
-  box-shadow: 0 0 0 6px rgba(100, 108, 255, 0.15);
+@media (hover: hover) {
+  input[type="range"]:hover::-moz-range-thumb {
+    box-shadow: 0 0 0 6px rgba(100, 108, 255, 0.15);
+  }
 }
 input[type="range"]:active::-moz-range-thumb {
   transform: scale(1.05);
@@ -320,12 +336,6 @@ input[type=number] {
 
 /* Safari-specific fixes for touch events */
 @media (hover: none) and (pointer: coarse) {
-  /* Disable hover effects on touch devices */
-  button:hover {
-    transform: none !important;
-    box-shadow: none !important;
-  }
-  
   /* Ensure buttons respond to single tap on touch devices */
   button {
     -webkit-tap-highlight-color: transparent;
