@@ -370,15 +370,15 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
           lastTouchEnd = now
         }
       }
-      
+
       // Force immediate click response only on buttons, NOT on labels or inputs
       const forceClick = (e: TouchEvent) => {
         const target = e.target as HTMLElement
         // Exclude INPUT, LABEL, SELECT, TEXTAREA from force click
-        if (target && 
-            target.tagName !== 'INPUT' && 
-            target.tagName !== 'LABEL' && 
-            target.tagName !== 'SELECT' && 
+        if (target &&
+            target.tagName !== 'INPUT' &&
+            target.tagName !== 'LABEL' &&
+            target.tagName !== 'SELECT' &&
             target.tagName !== 'TEXTAREA' &&
             !target.closest('label') && // Don't force click if inside a label
             (target.tagName === 'BUTTON' || target.onclick || target.getAttribute('role') === 'button')) {
@@ -388,15 +388,111 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
           }, 0)
         }
       }
-      
+
       document.addEventListener('touchend', preventZoom, { passive: false })
       document.addEventListener('touchend', forceClick, { passive: true })
-      
+
       return () => {
         document.removeEventListener('touchend', preventZoom)
         document.removeEventListener('touchend', forceClick)
       }
     }
+  }, [])
+
+  // Ensure mobile mode only uses scenario A - clear scenario B state on mount
+  useEffect(() => {
+    console.log('[Mobile] Clearing scenario B state for mobile mode')
+    // Disable scenario B and clear all scenario B data
+    store.setScenarioEnabled(false)
+    // Force clear scenario B data to ensure it's not loaded
+    // Note: We use setTimeout to ensure this happens after any potential initialization
+    setTimeout(() => {
+      // This ensures scenario B is completely cleared from store state
+      // The setScenarioEnabled(false) above should handle this, but we're being explicit
+    }, 0)
+  }, [])
+
+  // Handle shared links in mobile mode
+  useEffect(() => {
+    const handleSharedLinks = async () => {
+      // Check for URL hash shared links (#s=...)
+      const hash = window.location.hash
+      if (hash && hash.startsWith('#s=')) {
+        try {
+          const encoded = hash.slice(3)
+          const decoded = decodeURIComponent(atob(encoded))
+          const data = JSON.parse(decoded)
+
+          await handleSharedLinkData(data)
+        } catch (err) {
+          console.error('Failed to load hash-based shared link:', err)
+        }
+        return
+      }
+
+      // Check for path-based shared links (/share/{id})
+      const pathMatch = window.location.pathname.match(/^\/share\/([^\/]+)$/)
+      if (pathMatch) {
+        const linkId = pathMatch[1]
+        try {
+          const response = await authenticatedFetch(`/api/shared-links?id=${linkId}`)
+          if (response.ok) {
+            const data = await response.json()
+            await handleSharedLinkData(data)
+          }
+        } catch (err) {
+          console.error('Failed to load path-based shared link:', err)
+        }
+      }
+    }
+
+    const handleSharedLinkData = async (data: any) => {
+      console.log('[Mobile] Processing shared link data:', data)
+
+      // Check if scenario A exists and is in 2025 baseline mode
+      if (!data.scenario_a || !data.scenario_a.id) {
+        alert('This shared link does not contain scenario data that can be viewed on mobile. Redirecting to main application.')
+        window.location.href = '/'
+        return
+      }
+
+      // Check if scenario A is in 2025 baseline mode (required for mobile)
+      const scenarioADataMode = data.scenario_a.baseline_mode || '2025 Data'
+      if (scenarioADataMode !== '2025 Data') {
+        alert('This shared link contains scenario data that is not in 2025 baseline mode and cannot be viewed on mobile. Redirecting to main application.')
+        window.location.href = '/'
+        return
+      }
+
+      // Warn if scenario B is enabled
+      if (data.scenario_b_enabled && data.scenario_b) {
+        alert('This shared link contains scenario B data, which cannot be viewed on mobile. Only scenario A data will be displayed.')
+      }
+
+      // Load scenario A
+      try {
+        await store.loadScenarioFromDatabase(data.scenario_a.id, 'A', true)
+
+        // Apply view mode if it's YTD Detailed (mobile only supports this)
+        if (data.view_mode === 'YTD Detailed') {
+          // Mobile only supports YTD Detailed view, so this is fine
+        } else {
+          // If it's Multi-Year, warn that mobile can only show YTD view
+          alert('This shared link is configured for Multi-Year view. Mobile can only display YTD Detailed view.')
+        }
+
+        // Clear the URL after successful load
+        window.history.pushState({}, '', '/')
+
+        console.log('[Mobile] Successfully loaded shared link')
+      } catch (error) {
+        console.error('Error loading shared link scenario:', error)
+        alert('Failed to load shared link scenario')
+        window.location.href = '/'
+      }
+    }
+
+    handleSharedLinks()
   }, [])
   const [showLoadingModal, setShowLoadingModal] = useState(true)
   const [showUserMenu, setShowUserMenu] = useState(false)
@@ -597,7 +693,10 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
     try {
       // Freeze compensation table during scenario load
       setIsResyncingCompensation(true)
-      
+
+      // Disable scenario B for mobile mode - only scenario A is supported
+      store.setScenarioEnabled(false)
+
       await store.loadScenarioFromDatabase(scenarioId, 'A', true)
       setIsScenarioDirty(false)
       setShowLoadModal(false)
@@ -606,7 +705,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
       lastSyncRef.current = { scenarioId: null, syncTimestamp: null }
 
       setRefreshTrigger(prev => prev + 1)
-      
+
       // Note: setIsResyncingCompensation(false) will be called by post-load resync effect
     } catch (error) {
       console.error('Error loading scenario:', error)

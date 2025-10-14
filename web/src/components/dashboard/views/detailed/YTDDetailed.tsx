@@ -368,19 +368,13 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
 
 
   // Reset scenario to original state
-  const handleResetScenario = async () => {
-    if (!store.currentScenarioId) return
+  const handleResetScenario = () => {
+    if (!store.loadedScenarioSnapshot) return
 
     if (confirm('Reset scenario to original state? All unsaved changes will be lost.')) {
-      try {
-        await store.loadScenarioFromDatabase(store.currentScenarioId, 'A', true)
-        setIsScenarioDirty(false)
-        // Trigger a refresh
-        setRefreshTrigger(prev => prev + 1)
-      } catch (err) {
-        console.error('Error resetting scenario:', err)
-        alert('Failed to reset scenario')
-      }
+      // Simple reset from snapshot - no database reload needed
+      store.resetScenarioFromSnapshot('A')
+      // The dirty state will automatically update via the effect that monitors changes
     }
   }
 

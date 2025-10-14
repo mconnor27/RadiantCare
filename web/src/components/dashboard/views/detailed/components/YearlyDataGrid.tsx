@@ -415,6 +415,17 @@ export default function YearlyDataGrid({
       // Use a longer delay to reduce redundant syncs during rapid state changes
       setTimeout(() => {
         syncGridValuesToMultiyear(store, store.customProjectedValues, data)
+        
+        // Update the snapshot AFTER cache sync completes so reset goes to post-cache state
+        // Only update if a scenario is currently loaded (has a snapshot)
+        if (store.loadedScenarioSnapshot && store.currentScenarioId) {
+          console.log('📸 Updating Scenario A snapshot after QBO cache sync')
+          store.updateScenarioSnapshot('A')
+        }
+        if (store.scenarioBEnabled && store.loadedScenarioBSnapshot && store.currentScenarioBId) {
+          console.log('📸 Updating Scenario B snapshot after QBO cache sync')
+          store.updateScenarioSnapshot('B')
+        }
       }, 200)
     } catch (err) {
       console.error('Error loading yearly data:', err)

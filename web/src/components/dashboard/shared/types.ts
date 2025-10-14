@@ -234,6 +234,8 @@ export type Store = {
   loadScenarioFromDatabase: (id: string, target?: 'A' | 'B', loadBaseline?: boolean) => Promise<any>
   setCurrentScenario: (id: string | null, name: string | null, userId?: string | null) => void
   setCurrentScenarioB: (id: string | null, name: string | null, userId?: string | null) => void
+  updateScenarioSnapshot: (scenario?: 'A' | 'B') => void
+  resetScenarioFromSnapshot: (scenario?: 'A' | 'B') => void
   saveScenarioBToDatabase: (
     name: string,
     description: string,

@@ -1231,6 +1231,85 @@ export const useDashboardStore = create<Store>()(
             state.currentScenarioBUserId = userId ?? null
           }),
 
+        // Update/refresh the scenario snapshot (call this after cache sync or other updates)
+        updateScenarioSnapshot: (scenario: 'A' | 'B' = 'A') => {
+          set((state) => {
+            if (scenario === 'A') {
+              // Exclude selectedYear from snapshot (it's just UI state)
+              const { selectedYear: _selectedYear, ...scenarioAWithoutUI } = state.scenarioA
+              void _selectedYear // Mark as intentionally unused
+              state.loadedScenarioSnapshot = {
+                scenarioA: JSON.parse(JSON.stringify(scenarioAWithoutUI)),
+                customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
+              }
+              console.log('[SNAPSHOT UPDATE] Updated Scenario A snapshot after cache sync')
+            } else {
+              if (!state.scenarioB) {
+                console.warn('Cannot update snapshot: Scenario B does not exist')
+                return
+              }
+              const { selectedYear: _selectedYear, ...scenarioBWithoutUI } = state.scenarioB
+              void _selectedYear // Mark as intentionally unused
+              state.loadedScenarioBSnapshot = {
+                scenarioB: JSON.parse(JSON.stringify(scenarioBWithoutUI))
+              }
+              console.log('[SNAPSHOT UPDATE] Updated Scenario B snapshot')
+            }
+          })
+        },
+
+        // Reset scenario from loaded snapshot (simple, fast reset without database reload)
+        resetScenarioFromSnapshot: (scenario: 'A' | 'B' = 'A') => {
+          set((state) => {
+            const snapshot = scenario === 'A' ? state.loadedScenarioSnapshot : state.loadedScenarioBSnapshot
+            
+            // If no snapshot exists, can't reset
+            if (!snapshot) {
+              console.warn(`No snapshot available for scenario ${scenario}`)
+              return
+            }
+
+            if (scenario === 'A') {
+              // Preserve UI state (selectedYear)
+              const preservedSelectedYear = state.scenarioA.selectedYear
+              
+              // Get snapshot data
+              const snapshotScenarioA = 'scenarioA' in snapshot ? snapshot.scenarioA : null
+              
+              if (snapshotScenarioA) {
+                // Deep clone the snapshot scenario to avoid reference issues
+                state.scenarioA = JSON.parse(JSON.stringify(snapshotScenarioA))
+                
+                // Restore preserved UI state
+                state.scenarioA.selectedYear = preservedSelectedYear
+                
+                // Restore custom projected values (grid overrides)
+                if ('customProjectedValues' in snapshot) {
+                  state.customProjectedValues = JSON.parse(JSON.stringify(snapshot.customProjectedValues))
+                }
+              }
+            } else {
+              // Scenario B
+              if (!state.scenarioB) {
+                console.warn('Scenario B does not exist in current state')
+                return
+              }
+              
+              const preservedSelectedYear = state.scenarioB.selectedYear
+              
+              const snapshotScenarioB = 'scenarioB' in snapshot ? snapshot.scenarioB : null
+              
+              if (snapshotScenarioB) {
+                const restoredScenario: ScenarioState = JSON.parse(JSON.stringify(snapshotScenarioB))
+                restoredScenario.selectedYear = preservedSelectedYear
+                state.scenarioB = restoredScenario
+                
+                // Note: Scenario B doesn't have separate customProjectedValues
+              }
+            }
+          })
+        },
+
         saveScenarioToDatabase: async (
           name: string,
           description: string,
