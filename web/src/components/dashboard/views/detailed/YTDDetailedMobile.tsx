@@ -564,7 +564,8 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
       console.log('[Mobile] ✅ Sync already complete, unfreezing')
       setIsResyncingCompensation(false)
     }
-  }, [cachedData?.summary, cachedData?.lastSyncTimestamp, store.loadedScenarioSnapshot, store.currentScenarioId, store, refreshTrigger])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cachedData?.summary, cachedData?.lastSyncTimestamp, store.loadedScenarioSnapshot, store.currentScenarioId, refreshTrigger])
 
   // Load last sync timestamp
   useEffect(() => {

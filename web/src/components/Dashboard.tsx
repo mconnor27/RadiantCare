@@ -2201,6 +2201,8 @@ export function Dashboard() {
   const [scenarioManagerInitialScenario, setScenarioManagerInitialScenario] = useState<SavedScenario | undefined>(undefined)
   // Store refresh callback for YTD data after sync
   const ytdRefreshCallbackRef = useRef<(() => void) | null>(null)
+  // Track if default scenarios have been loaded to prevent duplicate loads
+  const defaultScenariosLoadedRef = useRef(false)
   // Shared link warning modal
   const [showSharedLinkWarning, setShowSharedLinkWarning] = useState(false)
   const [pendingSharedLinkId, setPendingSharedLinkId] = useState<string | null>(null)
@@ -2578,6 +2580,12 @@ export function Dashboard() {
   useEffect(() => {
     if (!profile || !urlLoaded) return
 
+    // Prevent duplicate loads using ref
+    if (defaultScenariosLoadedRef.current) {
+      console.log('[INIT] Skipping default load - already loaded once')
+      return
+    }
+
     // Only load if scenarios aren't already set (avoid overwriting URL-loaded state)
     const hash = window.location.hash
     if (hash && hash.startsWith('#s=')) return
@@ -2595,8 +2603,12 @@ export function Dashboard() {
         store.scenarioA &&
         store.scenarioB) {
       console.log('[INIT] Skipping default load - scenarios and snapshots already present')
+      defaultScenariosLoadedRef.current = true
       return
     }
+
+    // Mark as loading to prevent duplicate runs
+    defaultScenariosLoadedRef.current = true
 
     console.log('[INIT] Loading default scenarios', {
       hasA: !!store.currentScenarioName,
@@ -2718,7 +2730,8 @@ export function Dashboard() {
     }
 
     loadDefaultScenarios()
-  }, [profile, urlLoaded, store, viewMode])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, urlLoaded])
 
   // Show loading state while checking authentication
   if (loading) {

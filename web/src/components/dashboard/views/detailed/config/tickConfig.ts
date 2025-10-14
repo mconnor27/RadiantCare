@@ -5,11 +5,11 @@ export const getTickConfiguration = (
   isMobile?: boolean
 ) => {
   if (timeframe === 'year') {
-    // In mobile mode, show fewer labels to avoid crowding: Jan, Apr, Jul, Oct, Dec 31
+    // In mobile mode, show fewer labels to avoid crowding: Jan, Apr, Jul, Oct, EOY
     if (isMobile) {
       return {
         tickvals: ['01-01', '04-01', '07-01', '10-01', '12-31'],
-        ticktext: ['Jan', 'Apr', 'Jul', 'Oct', 'Dec 31']
+        ticktext: ['Jan', 'Apr', 'Jul', 'Oct', 'EOY']
       }
     }
     return {
@@ -22,20 +22,20 @@ export const getTickConfiguration = (
     const endMonth = startMonth + 2
     const tickvals: string[] = []
     const ticktext: string[] = []
-    
+
     // Add 1st and 15th of each month in the quarter
     for (let month = startMonth; month <= endMonth; month++) {
       const monthStr = month.toString().padStart(2, '0')
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
       const monthName = monthNames[month - 1]
-      
+
       tickvals.push(`${monthStr}-01`)
-      ticktext.push(`${monthName} 1`)
-      
+      ticktext.push(isMobile ? '' : `${monthName} 1`)
+
       tickvals.push(`${monthStr}-15`)
-      ticktext.push(`${monthName} 15`)
+      ticktext.push(isMobile ? '' : `${monthName} 15`)
     }
-    
+
     // Add last day of quarter
     const lastMonth = endMonth
     const lastMonthStr = lastMonth.toString().padStart(2, '0')
@@ -43,10 +43,10 @@ export const getTickConfiguration = (
     const lastMonthName = lastMonthNames[lastMonth - 1]
     const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     const lastDay = daysInMonth[lastMonth - 1]
-    
+
     tickvals.push(`${lastMonthStr}-${lastDay.toString().padStart(2, '0')}`)
-    ticktext.push(`${lastMonthName} ${lastDay}`)
-    
+    ticktext.push(isMobile ? '' : `${lastMonthName} ${lastDay}`)
+
     return { tickvals, ticktext }
   } else if (timeframe === 'month' && currentPeriod?.month) {
     // For month view: show several days throughout the month
@@ -55,7 +55,15 @@ export const getTickConfiguration = (
     const monthName = monthNames[currentPeriod.month - 1]
     const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     const lastDay = daysInMonth[currentPeriod.month - 1]
-    
+
+    // Mobile monthly view: maintain vertical grid lines but hide tick labels
+    if (isMobile) {
+      return {
+        tickvals: [`${monthStr}-01`, `${monthStr}-08`, `${monthStr}-15`, `${monthStr}-22`, `${monthStr}-${lastDay.toString().padStart(2, '0')}`],
+        ticktext: ['', '', '', '', ''] // Empty labels to hide text but maintain vertical lines
+      }
+    }
+
     return {
       tickvals: [`${monthStr}-01`, `${monthStr}-08`, `${monthStr}-15`, `${monthStr}-22`, `${monthStr}-${lastDay.toString().padStart(2, '0')}`],
       ticktext: [`${monthName} 1`, `${monthName} 8`, `${monthName} 15`, `${monthName} 22`, `${monthName} ${lastDay}`]

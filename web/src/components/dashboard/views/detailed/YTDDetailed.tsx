@@ -806,11 +806,29 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
       </div>
 
       <div style={{ marginBottom: 24 }}>
-        <PartnerCompensation
-          environment={environment}
-          cachedSummary={cachedData?.summary}
-          cachedEquity={cachedData?.equity}
-        />
+        {showLoadingModal ? (
+          // Show loading placeholder during initial data load
+          <div style={{
+            border: '1px solid #e5e7eb',
+            borderRadius: 6,
+            padding: 16,
+            background: '#ffffff',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+            maxWidth: '1200px',
+            margin: '0 auto'
+          }}>
+            <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 18 }}>Physician Compensation</div>
+            <div style={{ padding: '60px 20px', textAlign: 'center', color: '#666', fontSize: 15 }}>
+              Loading compensation data...
+            </div>
+          </div>
+        ) : (
+          <PartnerCompensation
+            environment={environment}
+            cachedSummary={cachedData?.summary}
+            cachedEquity={cachedData?.equity}
+          />
+        )}
       </div>
       <div style={{ width: '900px', margin: '0 auto', marginBottom: 24 }}>
         <PhysiciansEditor

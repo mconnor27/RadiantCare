@@ -38,7 +38,6 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
   const [syncStep, setSyncStep] = useState<SyncStep | null>(null)
   const [syncMessage, setSyncMessage] = useState<string>('')
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
-  const [showSyncInfoModal, setShowSyncInfoModal] = useState(false)
 
   const isAdmin = profile?.is_admin === true
 
@@ -539,12 +538,17 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 style={{ cursor: 'pointer' }}
-                onClick={() => setShowSyncInfoModal(true)}
                 onMouseEnter={(e) => {
                   const tooltip = document.createElement('div')
                   tooltip.id = 'sync-info-tooltip'
-                  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
-                  tooltip.textContent = 'View sync schedule'
+                  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 12px 16px; border-radius: 6px; font-size: 13px; white-space: nowrap; text-align: left; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.3); pointer-events: none; line-height: 1.4;`
+                  tooltip.innerHTML = `
+                    <strong>QuickBooks Sync Schedule</strong><br><br>
+                    Synced following every business day (M-F) at 1:00 AM PT<br><br>
+
+                    For additional syncs or issues:<br>
+                    <strong>connor@radiantcare.com</strong>
+                  `
                   document.body.appendChild(tooltip)
                   const rect = (e.currentTarget as SVGElement).getBoundingClientRect()
                   tooltip.style.left = `${rect.left}px`
@@ -559,7 +563,7 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
                 <line x1="12" y1="16" x2="12" y2="12"></line>
                 <line x1="12" y1="8" x2="12.01" y2="8"></line>
               </svg>
-              <span style={{ fontSize: 14, color: '#0369a1', fontWeight: 500 }}>Sync Schedule</span>
+              
             </div>
           )}
         {lastSyncTimestamp === undefined ? (
@@ -598,81 +602,6 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
         </div>
       )}
 
-      {/* Sync Info Modal for Non-Admins */}
-      {showSyncInfoModal && !isAdmin && (
-        <>
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0,0,0,0.5)',
-              zIndex: 10000,
-              animation: 'fadeIn 0.2s ease-in'
-            }}
-            onClick={() => setShowSyncInfoModal(false)}
-          />
-          <div
-            style={{
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              background: '#fff',
-              borderRadius: '8px',
-              padding: '32px',
-              maxWidth: '500px',
-              width: '90%',
-              zIndex: 10001,
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-              animation: 'slideIn 0.3s ease-out'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 600 }}>
-              QuickBooks Sync Schedule
-            </h3>
-            <p style={{ margin: '0 0 16px 0', fontSize: '14px', lineHeight: 1.5, color: '#666' }}>
-              QuickBooks data is automatically synced every business day (Monday-Friday) at 1:00 AM Pacific Time.
-              <br/><br/>
-              The sync runs Tuesday through Saturday mornings to capture the previous business day's data, excluding weekends and federal holidays.
-            </p>
-            <p style={{ margin: '0 0 16px 0', fontSize: '14px', lineHeight: 1.5, color: '#666' }}>
-              To request additional syncs or report sync issues, please contact:
-            </p>
-            <p style={{ margin: '0 0 24px 0', fontSize: '14px', textAlign: 'center' }}>
-              <a
-                href="mailto:connor@radiantcare.com"
-                style={{
-                  color: '#0ea5e9',
-                  textDecoration: 'none',
-                  fontWeight: 500
-                }}
-              >
-                connor@radiantcare.com
-              </a>
-            </p>
-            <button
-              onClick={() => setShowSyncInfoModal(false)}
-              style={{
-                width: '100%',
-                padding: '10px',
-                background: '#0ea5e9',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '14px',
-                fontWeight: 500,
-                cursor: 'pointer'
-              }}
-            >
-              Close
-            </button>
-          </div>
-        </>
-      )}
       </div>
     </>
   )

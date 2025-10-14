@@ -248,7 +248,7 @@ export default function ChartControls({
         display: isMobile ? 'flex' : 'grid',
         flexDirection: isMobile ? 'column' : undefined,
         gridTemplateColumns: isMobile ? undefined : 'minmax(105px, auto) 1fr',
-        gap: isMobile ? 12 : '0 16px',
+        gap: isMobile ? 0 : '0 16px',
         alignItems: isMobile ? undefined : 'start',
         justifyItems: isMobile ? undefined : 'start'
       }}>
@@ -269,7 +269,7 @@ export default function ChartControls({
             border: '1px solid #d1d5db',
             borderRadius: 6,
             boxShadow: '0 3px 6px rgba(0, 0, 0, 0.15)',
-            margin: isMobile ? undefined : '4px 0',
+            margin: isMobile ? '8px 0 12px 0' : '4px 0 12px 0',
             transition: 'all 0.3s ease-in-out'
           }}>
             <ColorSchemeSelector
@@ -301,13 +301,13 @@ export default function ChartControls({
             border: '1px solid #d1d5db',
             borderRadius: 6,
             boxShadow: '0 3px 6px rgba(0, 0, 0, 0.15)',
-            margin: isMobile ? undefined : '4px 0',
+            margin: isMobile ? '8px 0 12px 0' : '4px 0 12px 0',
             transition: 'all 0.3s ease-in-out'
           }}>
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: 8, 
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
             alignItems: 'flex-start',
             transition: 'all 0.3s ease-in-out'
           }}>
@@ -544,7 +544,7 @@ export default function ChartControls({
             border: '1px solid #d1d5db',
             borderRadius: 6,
             boxShadow: '0 3px 6px rgba(0, 0, 0, 0.15)',
-            margin: isMobile ? undefined : '4px 0',
+            margin: isMobile ? '8px 0 12px 0' : '4px 0 12px 0',
             transition: 'all 0.3s ease-in-out'
           }}>
           <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
@@ -1054,7 +1054,7 @@ export default function ChartControls({
             border: '1px solid #d1d5db',
             borderRadius: 6,
             boxShadow: '0 3px 6px rgba(0, 0, 0, 0.15)',
-            margin: isMobile ? undefined : '4px 0',
+            margin: isMobile ? '8px 0 12px 0' : '4px 0 12px 0',
             transition: 'all 0.3s ease-in-out'
           }}>
             <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
@@ -1153,7 +1153,7 @@ export default function ChartControls({
             border: '1px solid #d1d5db',
             borderRadius: 6,
             boxShadow: '0 3px 6px rgba(0, 0, 0, 0.15)',
-            margin: isMobile ? undefined : '4px 0',
+            margin: isMobile ? '8px 0 12px 0' : '4px 0 12px 0',
             transition: 'all 0.3s ease-in-out'
           }}>
             <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>

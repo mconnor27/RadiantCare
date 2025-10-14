@@ -210,6 +210,28 @@ export const buildChartLayout = ({
     }
   }
 
+  const getMonthAbbreviation = () => {
+    if (currentPeriod?.month) {
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      return monthNames[currentPeriod.month - 1]
+    }
+    return ''
+  }
+
+  const getQuarterRange = () => {
+    if (currentPeriod?.quarter) {
+      const quarter = currentPeriod.quarter
+      const quarterMap = {
+        1: 'Jan - Mar',
+        2: 'Apr - Jun',
+        3: 'Jul - Sep',
+        4: 'Oct - Dec'
+      }
+      return `${quarterMap[quarter as keyof typeof quarterMap]}`
+    }
+    return ''
+  }
+
   const getXAxisConfig = () => {
     // Special handling for SINGLE month bar mode - no title, horizontal labels, larger/bold font
     // Only apply these changes when viewing a single month (showAllMonths = false)
@@ -232,8 +254,8 @@ export const buildChartLayout = ({
     }
     
     const baseConfig = {
-      title: { 
-        text: '' // No x-axis label in any mode
+      title: {
+        text: '' // No x-axis label in any mode - using annotation instead for mobile monthly
       },
       type: 'category' as const,
       tickangle: (chartMode === 'bar' && (timeframe === 'year' && showCombined || (timeframe === 'month' && !showAllMonths))) ? 0 : -45,
@@ -426,6 +448,51 @@ export const buildChartLayout = ({
         ? `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income Amounts${getHistoricalDescription()} (Normalized)`
         : `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}ly Income Amounts${getHistoricalDescription()}`))
 
+  // Create period label annotations for mobile line modes
+  const periodAnnotations = []
+
+  if (chartMode === 'line' && isMobile) {
+    if (timeframe === 'month' && currentPeriod?.month) {
+      periodAnnotations.push({
+        x: 0.4, // Position at left side of chart
+        y: -0.05, // Position at top of chart
+        xref: 'paper',
+        yref: 'paper',
+        text: getMonthAbbreviation(),
+        showarrow: false,
+        font: {
+          size: 16,
+          weight: 500,
+          family: 'Inter, system-ui, Arial',
+          color: '#333333'
+        },
+        xanchor: 'left',
+        yanchor: 'top',
+        bgcolor: 'rgba(255, 255, 255, 0.8)',
+        borderpad: 4
+      })
+    } else if (timeframe === 'quarter' && currentPeriod?.quarter) {
+      periodAnnotations.push({
+        x: 0.33, // Position at left side of chart
+        y: -0.05, // Position at top of chart
+        xref: 'paper',
+        yref: 'paper',
+        text: getQuarterRange(),
+        showarrow: false,
+        font: {
+          size: 16,
+          weight: 500,
+          family: 'Inter, system-ui, Arial',
+          color: '#333333'
+        },
+        xanchor: 'left',
+        yanchor: 'top',
+        bgcolor: 'rgba(255, 255, 255, 0.8)',
+        borderpad: 4
+      })
+    }
+  }
+
   return {
     title: {
       text: titleText,
@@ -443,12 +510,13 @@ export const buildChartLayout = ({
       b: CHART_CONFIG.margins.bottom,
       autoexpand: false
     },
+    annotations: periodAnnotations,
     // Make bars wider and eliminate gaps in bar mode
     bargap: chartMode === 'bar' ? BAR_CONFIG[timeframe][showCombined ? 'combined' : 'individual'].bargap : undefined,
     bargroupgap: chartMode === 'bar' ? BAR_CONFIG[timeframe][showCombined ? 'combined' : 'individual'].bargroupgap : undefined,
-    barmode: chartMode === 'bar' 
-      ? (incomeMode === 'per-site' ? 'stack' as const 
-        : (timeframe === 'year' && showCombined ? 'stack' as const : 'group' as const)) 
+    barmode: chartMode === 'bar'
+      ? (incomeMode === 'per-site' ? 'stack' as const
+        : (timeframe === 'year' && showCombined ? 'stack' as const : 'group' as const))
       : undefined,
     yaxis: getYAxisConfig(),
     xaxis: getXAxisConfig(),
