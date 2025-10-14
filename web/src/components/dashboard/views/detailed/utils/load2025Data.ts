@@ -190,3 +190,92 @@ export async function load2025ValuesForReset(
     consultingServicesAgreement
   }
 }
+
+/**
+ * Syncs fresh 2025 values from QBO cache to the store.
+ * This is needed on mobile where YearlyDataGrid doesn't render (and thus doesn't auto-sync).
+ *
+ * @param store - Dashboard store instance
+ * @param cachedSummary - Cached QBO summary data
+ */
+export async function syncStoreFrom2025Cache(
+  store: any,
+  cachedSummary: any | null
+): Promise<void> {
+  if (!cachedSummary) {
+    console.log('⏭️  No cached summary, skipping store sync')
+    return
+  }
+
+  const fy2025 = store.scenarioA.future.find((f: any) => f.year === 2025)
+  if (!fy2025) {
+    console.log('⏭️  No 2025 baseline found, skipping store sync')
+    return
+  }
+
+  console.log('🔄 [Mobile] Syncing QBO cache → store')
+
+  try {
+    // Extract values using the same logic as load2025ValuesForReset
+    const gridData = await loadYearlyGridData(
+      {}, // collapsed sections
+      {}, // custom projected values
+      {
+        physicians: fy2025.physicians,
+        benefitGrowthPct: store.scenarioA.projection.benefitCostsGrowthPct,
+        locumCosts: fy2025.locumCosts,
+        prcsDirectorPhysicianId: fy2025.prcsDirectorPhysicianId,
+        prcsMedicalDirectorHours: fy2025.prcsMedicalDirectorHours
+      },
+      cachedSummary
+    )
+
+    // Extract values from grid
+    const extractValue = (accountName: string): number => {
+      const projectedColIndex = gridData.columns.length - 1
+      const row = gridData.rows.find((row: any) => {
+        const accountCell = row.cells?.[0] as any
+        const cellText = accountCell?.text?.trim() || ''
+        return cellText === accountName || cellText.includes(accountName)
+      })
+      if (row) {
+        const projectedCell = row.cells?.[projectedColIndex] as any
+        const cellText = projectedCell?.text || '0'
+        return parseFloat(cellText.replace(/[$,\s]/g, '')) || 0
+      }
+      return 0
+    }
+
+    // Extract all financial values
+    const therapyIncomeTotal = extractValue('Total 7100 Therapy Income')
+    const otherIncomeTotal = extractValue('Total Other Income')
+    const therapyIncome = therapyIncomeTotal + otherIncomeTotal
+    const nonEmploymentCosts = extractValue('Non-Employment Costs')
+    const nonMdEmploymentCosts = extractValue('Staff Employment')
+    const locumCosts = extractValue('8322 Locums - Salary')
+    const miscEmploymentCosts = extractValue('Misc Employment')
+    const medicalDirectorHours = extractValue('Medical Director Hours (Shared)')
+    const prcsMedicalDirectorHours = extractValue('Medical Director Hours (PRCS)')
+    const consultingServicesAgreement = extractValue('Consulting Agreement/Other')
+
+    // Update store with fresh values
+    store.setFutureValue('A', 2025, 'therapyIncome', therapyIncome)
+    store.setFutureValue('A', 2025, 'nonEmploymentCosts', nonEmploymentCosts)
+    store.setFutureValue('A', 2025, 'nonMdEmploymentCosts', nonMdEmploymentCosts)
+    store.setFutureValue('A', 2025, 'locumCosts', locumCosts)
+    store.setFutureValue('A', 2025, 'miscEmploymentCosts', miscEmploymentCosts)
+    store.setFutureValue('A', 2025, 'medicalDirectorHours', medicalDirectorHours)
+    store.setFutureValue('A', 2025, 'prcsMedicalDirectorHours', prcsMedicalDirectorHours)
+    store.setFutureValue('A', 2025, 'consultingServicesAgreement', consultingServicesAgreement)
+
+    console.log('✅ [Mobile] Store synced with fresh QBO values:', {
+      therapyIncome,
+      nonEmploymentCosts,
+      nonMdEmploymentCosts,
+      locumCosts,
+      miscEmploymentCosts
+    })
+  } catch (error) {
+    console.error('❌ [Mobile] Failed to sync store from cache:', error)
+  }
+}

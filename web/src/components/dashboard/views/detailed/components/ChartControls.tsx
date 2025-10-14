@@ -67,6 +67,38 @@ export default function ChartControls({
   fullWidth = false
 }: ChartControlsProps) {
   
+  // iOS Safari touch fix for checkboxes and radio buttons
+  useEffect(() => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    if (isIOS) {
+      const handleTouchEnd = (e: TouchEvent) => {
+        const target = e.target as HTMLElement
+        // Handle checkbox and radio inputs specifically
+        if (target && (target.tagName === 'INPUT' && (target.getAttribute('type') === 'checkbox' || target.getAttribute('type') === 'radio'))) {
+          // Trigger click immediately on touch end for form controls
+          setTimeout(() => {
+            target.click()
+          }, 0)
+        }
+        // Also handle labels containing checkboxes/radios
+        else if (target && target.tagName === 'LABEL' && target.querySelector('input[type="checkbox"], input[type="radio"]')) {
+          const input = target.querySelector('input[type="checkbox"], input[type="radio"]') as HTMLInputElement
+          if (input) {
+            setTimeout(() => {
+              input.click()
+            }, 0)
+          }
+        }
+      }
+      
+      document.addEventListener('touchend', handleTouchEnd, { passive: true })
+      
+      return () => {
+        document.removeEventListener('touchend', handleTouchEnd)
+      }
+    }
+  }, [])
+  
   // Calculate available months for projection mode based on selected years
   const calculateAvailableMonths = () => {
     if (chartMode !== 'proportion') return 10

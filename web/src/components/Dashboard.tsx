@@ -2732,7 +2732,7 @@ export function Dashboard() {
         flexDirection: 'column',
         gap: 16
       }}>
-        <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 'auto', width: 'auto', maxHeight: '90vh', maxWidth: '90vw' }} />
+        <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 'auto', width: 'auto', maxHeight: '90vh', maxWidth: '90vw' }} className="splash-logo" />
         <div style={{ fontSize: 18, color: '#6b7280' }}>Loading...</div>
       </div>
     )

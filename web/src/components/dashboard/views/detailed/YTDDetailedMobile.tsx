@@ -11,6 +11,7 @@ import { useAuth } from '../../../auth/AuthProvider'
 import DetailedChart from './components/DetailedChart'
 import ChartControls from './components/ChartControls'
 import PartnerCompensation from './components/PartnerCompensation'
+import { syncStoreFrom2025Cache } from './utils/load2025Data'
 
 // Mobile Scenario Load Modal Component
 function MobileScenarioLoadModal({
@@ -483,9 +484,14 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
             console.error('Error loading cached data, using fallback:', err)
             return { data: historical2025Data, cache: null }
           })
-          .then((result: any) => {
+          .then(async (result: any) => {
             const elapsed = Date.now() - startTime
             const remainingTime = Math.max(0, 1000 - elapsed)
+
+            // Sync store with fresh QBO cache values before showing UI
+            if (result.cache?.summary) {
+              await syncStoreFrom2025Cache(store, result.cache.summary)
+            }
 
             setTimeout(() => {
               setData(result.data)
@@ -495,7 +501,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
           })
       }, 50)
     })
-  }, [historical2025Data, refreshTrigger])
+  }, [historical2025Data, refreshTrigger, store])
 
   // Load last sync timestamp
   useEffect(() => {

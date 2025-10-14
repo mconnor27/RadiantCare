@@ -588,4 +588,11 @@ body.dragging [data-drag-handle] {
   }
 }
 
+/* Scale down splash screen logo on desktop */
+@media (min-width: 768px) {
+  .splash-logo {
+    max-height: 200px !important;
+    max-width: 400px !important;
+  }
+}
 
