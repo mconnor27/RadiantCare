@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUser, faSignOutAlt, faKey, faFolderOpen } from '@fortawesome/free-solid-svg-icons'
 import {
@@ -403,12 +403,32 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string | null | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<YTDPoint[]>([])
-  const [cachedData, setCachedData] = useState<{ daily?: any, summary?: any, equity?: any } | null>(null)
+  const [cachedData, setCachedData] = useState<{ daily?: any, summary?: any, equity?: any, lastSyncTimestamp?: string } | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [showControls, setShowControls] = useState(false)
   const [showLoadModal, setShowLoadModal] = useState(false) // Mobile scenario load modal
   const [isScenarioDirty, setIsScenarioDirty] = useState(false) // Track if scenario has been modified
   const [showSyncInfoModal, setShowSyncInfoModal] = useState(false) // Sync info modal
+
+  // Track last sync to prevent duplicate post-load resyncs
+  const lastSyncRef = useRef<{ scenarioId: string | null, syncTimestamp: string | null }>({
+    scenarioId: null,
+    syncTimestamp: null
+  })
+
+  // Track if we're in the scenario-load → cache-sync cycle (freeze table during this)
+  // Start frozen on mount - will unfreeze after QBO cache syncs
+  const [isResyncingCompensation, setIsResyncingCompensation] = useState(true)
+  
+  // DEBUG: Log initial freeze state
+  useEffect(() => {
+    console.log('[Mobile] 🔒 Initial freeze state:', {
+      isResyncingCompensation: true,
+      hasScenarioData: !!store.scenarioA?.future?.length,
+      hasSnapshot: !!store.loadedScenarioSnapshot,
+      therapyIncome: store.scenarioA?.future?.find(f => f.year === 2025)?.therapyIncome
+    })
+  }, [])
 
   // Mobile chart settings state
   const [isNormalized, setIsNormalized] = useState(false)
@@ -466,33 +486,29 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
           .then((res: Response) => {
             if (!res.ok) {
               console.log('No cached data available, using historical JSON fallback')
-              return { data: historical2025Data, cache: null }
+              return { data: historical2025Data, cache: { daily: null, summary: null, equity: null, lastSyncTimestamp: null } }
             }
             return res.json().then((cache: any) => {
               if (cache?.daily) {
                 const points = parseTherapyIncome2025(cache.daily)
                 return {
                   data: points,
-                  cache: { daily: cache.daily, summary: cache.summary, equity: cache.equity }
+                  cache: { daily: cache.daily, summary: cache.summary, equity: cache.equity, lastSyncTimestamp: cache.lastSyncTimestamp }
                 }
               } else {
-                return { data: historical2025Data, cache: null }
+                return { data: historical2025Data, cache: { daily: null, summary: null, equity: null, lastSyncTimestamp: null } }
               }
             })
           })
           .catch((err: any) => {
             console.error('Error loading cached data, using fallback:', err)
-            return { data: historical2025Data, cache: null }
+            return { data: historical2025Data, cache: { daily: null, summary: null, equity: null, lastSyncTimestamp: null } }
           })
           .then(async (result: any) => {
             const elapsed = Date.now() - startTime
             const remainingTime = Math.max(0, 1000 - elapsed)
 
-            // Sync store with fresh QBO cache values before showing UI
-            if (result.cache?.summary) {
-              await syncStoreFrom2025Cache(store, result.cache.summary)
-            }
-
+            // Set data and cache but don't sync yet - wait for scenario load
             setTimeout(() => {
               setData(result.data)
               setCachedData(result.cache)
@@ -502,6 +518,53 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
       }, 50)
     })
   }, [historical2025Data, refreshTrigger, store])
+
+  // Post-load resync: wait for scenarios to load, then sync from cache once
+  useEffect(() => {
+    // Reset sync tracking when refresh happens
+    if (refreshTrigger > 0) {
+      lastSyncRef.current = { scenarioId: null, syncTimestamp: null }
+      setIsResyncingCompensation(true) // Re-freeze on manual refresh
+    }
+
+    // Only run if we have cached data and scenarios are loaded
+    if (!cachedData?.summary || !store.loadedScenarioSnapshot || !store.currentScenarioId) {
+      // Keep frozen while waiting
+      return
+    }
+
+    // Scenarios are loaded, check if we need to sync
+    const syncKey = `${store.currentScenarioId}|${cachedData.lastSyncTimestamp || 'unknown'}`
+
+    // If this is a new scenario or different cache version, run the sync
+    if (syncKey !== lastSyncRef.current.scenarioId + '|' + lastSyncRef.current.syncTimestamp) {
+      console.log('🔄 [Mobile] Post-load resync: scenarios loaded, applying QBO cache values', {
+        currentTherapyIncome: store.scenarioA?.future?.find(f => f.year === 2025)?.therapyIncome
+      })
+      
+      lastSyncRef.current = {
+        scenarioId: store.currentScenarioId,
+        syncTimestamp: cachedData.lastSyncTimestamp || null
+      }
+
+      syncStoreFrom2025Cache(store, cachedData.summary)
+        .then(() => {
+          // Small delay to let React propagate the state updates
+          setTimeout(() => {
+            console.log('[Mobile] ✅ QBO sync complete, unfreezing')
+            setIsResyncingCompensation(false)
+          }, 100)
+        })
+        .catch(error => {
+          console.error('❌ [Mobile] Post-load resync failed:', error)
+          setIsResyncingCompensation(false)
+        })
+    } else {
+      // Sync already complete, unfreeze
+      console.log('[Mobile] ✅ Sync already complete, unfreezing')
+      setIsResyncingCompensation(false)
+    }
+  }, [cachedData?.summary, cachedData?.lastSyncTimestamp, store.loadedScenarioSnapshot, store.currentScenarioId, store, refreshTrigger])
 
   // Load last sync timestamp
   useEffect(() => {
@@ -531,13 +594,23 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
     }
 
     try {
+      // Freeze compensation table during scenario load
+      setIsResyncingCompensation(true)
+      
       await store.loadScenarioFromDatabase(scenarioId, 'A', true)
       setIsScenarioDirty(false)
       setShowLoadModal(false)
+
+      // Reset sync tracking for new scenario (this will trigger post-load resync)
+      lastSyncRef.current = { scenarioId: null, syncTimestamp: null }
+
       setRefreshTrigger(prev => prev + 1)
+      
+      // Note: setIsResyncingCompensation(false) will be called by post-load resync effect
     } catch (error) {
       console.error('Error loading scenario:', error)
       alert('Failed to load scenario')
+      setIsResyncingCompensation(false)
     }
   }
 
@@ -925,12 +998,30 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
 
       {/* Partner Compensation */}
       <div style={{ padding: '0 16px 16px' }}>
-        <PartnerCompensation
-          environment="production"
-          cachedSummary={cachedData?.summary}
-          cachedEquity={cachedData?.equity}
-          isMobile={true}
-        />
+        {isResyncingCompensation ? (
+          // Show loading placeholder during resync
+          <div style={{
+            marginTop: 16,
+            border: '1px solid #e5e7eb',
+            borderRadius: 6,
+            padding: 6,
+            background: '#ffffff',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+            position: 'relative'
+          }}>
+            <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 17 }}>Physician Compensation</div>
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: '#666', fontSize: 14 }}>
+              Loading compensation data...
+            </div>
+          </div>
+        ) : (
+          <PartnerCompensation
+            environment="production"
+            cachedSummary={cachedData?.summary}
+            cachedEquity={cachedData?.equity}
+            isMobile={true}
+          />
+        )}
       </div>
 
       {/* Mobile Controls Overlay */}

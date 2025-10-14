@@ -316,7 +316,18 @@ export default function PartnerCompensation({
   
   // Parse both projected and YTD data (must be called before any early returns)
   const projectedData = useMemo(() => {
-    return parseProjectedData(physicians, fy2025)
+    const result = parseProjectedData(physicians, fy2025)
+    
+    // DEBUG: Log when projected data changes
+    if (isMobile) {
+      console.log('[PartnerComp] 📊 Projected data recalculated:', {
+        isRefreshing,
+        therapyIncome: fy2025?.therapyIncome,
+        totalComp: Object.values(result.totals).reduce((sum, val) => sum + val, 0)
+      })
+    }
+    
+    return result
   }, [
     physicians,
     fy2025?.therapyIncome,
@@ -329,6 +340,8 @@ export default function PartnerCompensation({
     fy2025?.locumCosts,
     fy2025?.prcsDirectorPhysicianId,
     store.scenarioA.projection?.benefitCostsGrowthPct,
+    isRefreshing,
+    isMobile
   ])
   const ytdData = useMemo(() => parseYTDPhysicianData(physicians, equityData, summaryData), [physicians, equityData, summaryData])
   

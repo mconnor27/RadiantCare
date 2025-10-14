@@ -194,6 +194,7 @@ export async function load2025ValuesForReset(
 /**
  * Syncs fresh 2025 values from QBO cache to the store.
  * This is needed on mobile where YearlyDataGrid doesn't render (and thus doesn't auto-sync).
+ * Respects user's custom projected values (grid overrides) from scenarios or desktop edits.
  *
  * @param store - Dashboard store instance
  * @param cachedSummary - Cached QBO summary data
@@ -216,10 +217,10 @@ export async function syncStoreFrom2025Cache(
   console.log('🔄 [Mobile] Syncing QBO cache → store')
 
   try {
-    // Extract values using the same logic as load2025ValuesForReset
+    // IMPORTANT: Pass customProjectedValues to preserve user overrides from scenarios/desktop
     const gridData = await loadYearlyGridData(
       {}, // collapsed sections
-      {}, // custom projected values
+      store.customProjectedValues || {}, // custom projected values - preserve these!
       {
         physicians: fy2025.physicians,
         benefitGrowthPct: store.scenarioA.projection.benefitCostsGrowthPct,
@@ -230,8 +231,16 @@ export async function syncStoreFrom2025Cache(
       cachedSummary
     )
 
-    // Extract values from grid
+    // Helper to extract value, respecting custom overrides (same logic as desktop grid)
     const extractValue = (accountName: string): number => {
+      // First check if there's a custom value (preserve user overrides)
+      const customProjectedValues = store.customProjectedValues || {}
+      if (customProjectedValues[accountName] !== undefined) {
+        console.log(`  ✓ Using custom value for "${accountName}": $${customProjectedValues[accountName].toLocaleString()}`)
+        return customProjectedValues[accountName]
+      }
+
+      // Otherwise, extract from grid (QBO cache value)
       const projectedColIndex = gridData.columns.length - 1
       const row = gridData.rows.find((row: any) => {
         const accountCell = row.cells?.[0] as any
@@ -246,7 +255,7 @@ export async function syncStoreFrom2025Cache(
       return 0
     }
 
-    // Extract all financial values
+    // Extract all financial values (respecting custom overrides)
     const therapyIncomeTotal = extractValue('Total 7100 Therapy Income')
     const otherIncomeTotal = extractValue('Total Other Income')
     const therapyIncome = therapyIncomeTotal + otherIncomeTotal
@@ -258,7 +267,7 @@ export async function syncStoreFrom2025Cache(
     const prcsMedicalDirectorHours = extractValue('Medical Director Hours (PRCS)')
     const consultingServicesAgreement = extractValue('Consulting Agreement/Other')
 
-    // Update store with fresh values
+    // Update store with values (custom overrides already applied in extractValue)
     store.setFutureValue('A', 2025, 'therapyIncome', therapyIncome)
     store.setFutureValue('A', 2025, 'nonEmploymentCosts', nonEmploymentCosts)
     store.setFutureValue('A', 2025, 'nonMdEmploymentCosts', nonMdEmploymentCosts)
@@ -268,7 +277,8 @@ export async function syncStoreFrom2025Cache(
     store.setFutureValue('A', 2025, 'prcsMedicalDirectorHours', prcsMedicalDirectorHours)
     store.setFutureValue('A', 2025, 'consultingServicesAgreement', consultingServicesAgreement)
 
-    console.log('✅ [Mobile] Store synced with fresh QBO values:', {
+    const customCount = Object.keys(store.customProjectedValues || {}).length
+    console.log('✅ [Mobile] Store synced with QBO values (respecting', customCount, 'custom overrides):', {
       therapyIncome,
       nonEmploymentCosts,
       nonMdEmploymentCosts,
