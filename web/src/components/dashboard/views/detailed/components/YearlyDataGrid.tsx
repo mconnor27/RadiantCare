@@ -196,6 +196,7 @@ interface YearlyDataGridProps {
   environment?: 'production' | 'sandbox'
   cachedSummary?: any
   isLoadingCache?: boolean  // Add flag to indicate if cached data is still loading
+  onSyncComplete?: () => void  // Callback when cache sync to store completes
 }
 
 // Click detection coordinates for expand/collapse all icons in header
@@ -210,7 +211,8 @@ const HEADER_ICON_DETECTION = {
 export default function YearlyDataGrid({
   environment = 'sandbox',
   cachedSummary,
-  isLoadingCache = false
+  isLoadingCache = false,
+  onSyncComplete
 }: YearlyDataGridProps = {}) {
   const store = useDashboardStore()
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
@@ -426,6 +428,9 @@ export default function YearlyDataGrid({
           console.log('📸 Updating Scenario B snapshot after QBO cache sync')
           store.updateScenarioSnapshot('B')
         }
+        
+        // Notify parent that sync is complete
+        onSyncComplete?.()
       }, 200)
     } catch (err) {
       console.error('Error loading yearly data:', err)

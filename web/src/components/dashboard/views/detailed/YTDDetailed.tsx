@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faFolderOpen, faFloppyDisk, faCopy, faCircleXmark, faGear, faRotateLeft } from '@fortawesome/free-solid-svg-icons'
 import {
@@ -41,6 +41,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
   const [data, setData] = useState<YTDPoint[]>([])
   const [environment] = useState<'production' | 'sandbox'>('production')
   const [cachedData, setCachedData] = useState<{ daily?: any, summary?: any, equity?: any } | null>(null)
+  const [isResyncingCompensation, setIsResyncingCompensation] = useState(true) // Keep compensation frozen until cache syncs
   const [refreshTrigger, setRefreshTrigger] = useState(0) // Trigger for data refresh after sync
   const [isNormalized, setIsNormalized] = useState(initialSettings?.isNormalized ?? false)
   const [showCombined, setShowCombined] = useState(initialSettings?.showCombined ?? false)
@@ -217,6 +218,12 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
       }, 50) // Small delay after paint to ensure modal is visible
     })
   }, [historical2025Data, environment, refreshTrigger])
+
+  // Callback for when YearlyDataGrid completes cache sync
+  const handleSyncComplete = useCallback(() => {
+    console.log('✅ [Desktop] Cache synced to store, unfreezing compensation table')
+    setIsResyncingCompensation(false)
+  }, [])
 
   // Initialize current period based on timeframe
   useEffect(() => {
@@ -800,8 +807,8 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
       </div>
 
       <div style={{ marginBottom: 24 }}>
-        {showLoadingModal ? (
-          // Show loading placeholder during initial data load
+        {showLoadingModal || isResyncingCompensation ? (
+          // Show loading placeholder during initial data load and cache sync
           <div style={{
             border: '1px solid #e5e7eb',
             borderRadius: 6,
@@ -839,6 +846,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
           environment={environment}
           cachedSummary={cachedData?.summary}
           isLoadingCache={showLoadingModal}
+          onSyncComplete={handleSyncComplete}
         />
       </div>
     </>
