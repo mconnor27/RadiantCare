@@ -83,34 +83,26 @@ git push
 After deployment:
 1. Go to Vercel Dashboard → Your Project → Crons
 2. You should see TWO cron jobs for `/api/qbo/sync-2025`:
-   - `0 9 * 1-2,11-12 2-6` (Winter: PST)
-   - `0 8 * 3-10 2-6` (Summer: PDT)
+   - `0 9 * 1-2,11-12 2-6` (9:00 AM UTC = 1:00 AM PST - Winter months)
+   - `0 8 * 3-10 2-6` (8:00 AM UTC = 1:00 AM PDT - Summer months)
 3. Check logs after 1am Pacific on a business day to verify execution
 
 ## Schedule Details
 
-- **Runs**: Tuesday through Saturday at approximately 1:00 AM Pacific Time
+- **Runs**: Tuesday through Saturday at exactly 1:00 AM Pacific Time
 - **Syncs Data For**: Monday through Friday (previous business day)
 - **Skips**: Weekends and US Federal Holidays
 
-### DST Schedule (Approximate)
+### DST Schedule (Pacific Time)
 
-Two cron expressions handle seasonal time changes:
+Two cron expressions handle seasonal time changes to ensure consistent 1:00 AM Pacific Time execution:
 
 | Period | Schedule | Time (UTC) | Pacific Time | Notes |
 |--------|----------|------------|--------------|-------|
-| Jan-Feb, Nov-Dec | `0 9 * 1-2,11-12 2-6` | 9:00 AM | 1:00 AM PST | Winter months |
-| Mar-Oct | `0 8 * 3-10 2-6` | 8:00 AM | ~1:00 AM PDT | Summer months |
+| Jan-Feb, Nov-Dec | `0 9 * 1-2,11-12 2-6` | 9:00 AM | 1:00 AM PST | Winter months (PST) |
+| Mar-Oct | `0 8 * 3-10 2-6` | 8:00 AM | 1:00 AM PDT | Summer months (PDT) |
 
-**Note**: This uses a simplified 2-cron approach due to Vercel free tier limits. The sync will run:
-- **Exactly 1:00 AM** during most of the year
-- **Off by 1 hour** for 1-2 weeks during DST transitions in early March and early November
-  - Early March (before Mar 9): Runs at 12:00 AM (midnight) instead of 1:00 AM
-  - Early November (Nov 1): Runs at 12:00 AM (midnight) instead of 1:00 AM
-
-**DST Transitions for 2025:**
-- **Spring Forward**: Sunday, March 9, 2025 at 2:00 AM → 3:00 AM PDT
-- **Fall Back**: Sunday, November 2, 2025 at 2:00 AM → 1:00 AM PST
+**Note**: The sync runs at exactly 1:00 AM Pacific Time year-round. The different UTC times account for Daylight Saving Time changes.
 
 ### Federal Holidays (2025)
 - January 1 - New Year's Day
