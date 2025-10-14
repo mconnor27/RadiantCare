@@ -46,11 +46,11 @@ function MobileScenarioLoadModal({
     try {
       const { supabase } = await import('../../../../lib/supabase')
 
-      // Load all user's scenarios
+      // Load user's private scenarios and all public scenarios
       const { data: allData, error: myError } = await supabase
         .from('scenarios')
         .select('*')
-        .eq('user_id', profile.id)
+        .or(`user_id.eq.${profile.id},is_public.eq.true`)
         .order('updated_at', { ascending: false })
 
       if (myError) throw myError
