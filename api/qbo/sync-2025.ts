@@ -187,13 +187,18 @@ async function refreshTokenIfNeeded(token: QboToken): Promise<QboToken> {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleCors(req, res)) return
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
-
   // Check if this is a cron request
   const authHeader = req.headers.authorization
   const isCronRequest = authHeader === `Bearer ${process.env.CRON_SECRET}`
+
+  // Allow GET requests for cron jobs, POST for regular requests
+  if (!isCronRequest && req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  if (isCronRequest && req.method !== 'GET' && req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
 
   let user = null
   if (isCronRequest) {
