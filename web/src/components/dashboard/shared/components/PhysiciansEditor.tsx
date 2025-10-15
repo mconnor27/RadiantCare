@@ -42,31 +42,78 @@ import {
 } from '../tooltips'
 import { useDashboardStore, arePhysiciansChanged, hasChangesFromLoadedScenario } from '../../../Dashboard'
 
-export default function PhysiciansEditor({ year, scenario, readOnly = false, physiciansOverride, locumCosts, onLocumCostsChange, ytdLocumsMin }: { year: number; scenario: ScenarioKey; readOnly?: boolean; physiciansOverride?: Physician[]; locumCosts: number; onLocumCostsChange: (value: number) => void; ytdLocumsMin?: number }) {
+export default function PhysiciansEditor({ year, scenario, mode = 'scenario', readOnly = false, physiciansOverride, locumCosts, onLocumCostsChange, ytdLocumsMin }: { year: number; scenario: ScenarioKey; mode?: 'scenario' | 'ytd'; readOnly?: boolean; physiciansOverride?: Physician[]; locumCosts: number; onLocumCostsChange: (value: number) => void; ytdLocumsMin?: number }) {
   const store = useDashboardStore()
-  const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
-  const fyExisting = sc.future.find((f) => f.year === year)
-  const defaultPhysiciansIfNeeded = physiciansOverride ?? (scenario === 'A' ? scenarioADefaultsByYear(year) : scenarioBDefaultsByYear(year))
-  const suszkoDefault = year >= 2024 ? defaultPhysiciansIfNeeded.find((p) => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire')) : undefined
-  const fy: FutureYear = fyExisting ?? {
-    year,
-    therapyIncome: 0,
-    nonEmploymentCosts: 0,
-    nonMdEmploymentCosts: 0,
-    locumCosts,
-    miscEmploymentCosts: 0,
-    medicalDirectorHours: undefined,
-    prcsMedicalDirectorHours: undefined,
-    prcsDirectorPhysicianId: suszkoDefault?.id,
-    physicians: defaultPhysiciansIfNeeded,
+  
+  // Get data based on mode
+  let fy: FutureYear
+  let physicians: Physician[]
+  let defaultPrcsDirectorId: string | undefined
+  let prcsSelectedId: string | null | undefined
+  let sc: any // scenario state (only available in scenario mode)
+  
+  if (mode === 'ytd') {
+    // YTD mode: use ytdData
+    fy = store.ytdData
+    sc = null // No scenario in YTD mode
+    const defaultPhysiciansIfNeeded = physiciansOverride ?? scenarioADefaultsByYear(2025)
+    const suszkoDefault = defaultPhysiciansIfNeeded.find((p) => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+    physicians = physiciansOverride ?? fy.physicians
+    defaultPrcsDirectorId = suszkoDefault?.id
+    prcsSelectedId = (fy.prcsDirectorPhysicianId === undefined ? defaultPrcsDirectorId : fy.prcsDirectorPhysicianId)
+  } else {
+    // Scenario mode: use scenarioA/B
+    sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
+    const fyExisting = sc.future.find((f: FutureYear) => f.year === year)
+    const defaultPhysiciansIfNeeded = physiciansOverride ?? (scenario === 'A' ? scenarioADefaultsByYear(year) : scenarioBDefaultsByYear(year))
+    const suszkoDefault = year >= 2024 ? defaultPhysiciansIfNeeded.find((p) => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire')) : undefined
+    fy = fyExisting ?? {
+      year,
+      therapyIncome: 0,
+      nonEmploymentCosts: 0,
+      nonMdEmploymentCosts: 0,
+      locumCosts,
+      miscEmploymentCosts: 0,
+      medicalDirectorHours: undefined,
+      prcsMedicalDirectorHours: undefined,
+      prcsDirectorPhysicianId: suszkoDefault?.id,
+      physicians: defaultPhysiciansIfNeeded,
+    }
+    physicians = physiciansOverride ?? fy.physicians
+    defaultPrcsDirectorId = suszkoDefault?.id
+    prcsSelectedId = (fy.prcsDirectorPhysicianId === undefined ? defaultPrcsDirectorId : fy.prcsDirectorPhysicianId)
   }
-  const physicians = physiciansOverride ?? fy.physicians
-  const defaultPrcsDirectorId = suszkoDefault?.id
-  // Use default only if prcsDirectorPhysicianId is undefined (not set), not if it's null (explicitly deselected)
-  const prcsSelectedId = (fy.prcsDirectorPhysicianId === undefined ? defaultPrcsDirectorId : fy.prcsDirectorPhysicianId)
 
   const handleReorder = (fromIndex: number, toIndex: number) => {
-    store.reorderPhysicians(scenario, year, fromIndex, toIndex)
+    if (mode === 'ytd') {
+      store.reorderYtdPhysicians(fromIndex, toIndex)
+    } else {
+      store.reorderPhysicians(scenario, year, fromIndex, toIndex)
+    }
+  }
+
+  const handleUpsertPhysician = (physician: Physician) => {
+    if (mode === 'ytd') {
+      store.upsertYtdPhysician(physician)
+    } else {
+      handleUpsertPhysician( physician)
+    }
+  }
+
+  const handleRemovePhysician = (physicianId: string) => {
+    if (mode === 'ytd') {
+      store.removeYtdPhysician(physicianId)
+    } else {
+      store.removePhysician(scenario, year, physicianId)
+    }
+  }
+
+  const handleSetPrcsDirector = (physicianId?: string | null) => {
+    if (mode === 'ytd') {
+      store.setYtdPrcsDirector(physicianId)
+    } else {
+      store.setPrcsDirector(scenario, year, physicianId)
+    }
   }
 
   const rows = physicians.map((p) => {
@@ -127,11 +174,13 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   // Read-only: show a non-interactive summary tooltip reflecting current selection state
                   if (isSelected) {
                     // Use specific 2024-25 values when in those data modes for baseline year
-                    let amount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 0
-                    if (year === 2025 && sc.dataMode === '2024 Data') {
+                    let amount = fy.prcsMedicalDirectorHours ?? (sc?.projection?.prcsMedicalDirectorHours ?? 0)
+                    if (year === 2025 && sc?.dataMode === '2024 Data') {
                       amount = fy.prcsMedicalDirectorHours ?? ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS // 2024 PRCS medical director amount
-                    } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                    } else if (year === 2025 && sc?.dataMode === '2025 Data') {
                       amount = fy.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS // 2025 PRCS medical director amount
+                    } else if (year === 2025 && mode === 'ytd') {
+                      amount = fy.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS // 2025 YTD mode
                     }
                     createTooltip(`prcs-readonly-${p.id}`, `PRCS Medical Director: ${currency(Math.round(amount))}`, e)
                   } else {
@@ -145,11 +194,13 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   // Only show the slider on hover if this physician is already selected
                   if (isSelected) {
                     // Use specific 2024-25 values when in those data modes for baseline year
-                    let currentAmount = fy.prcsMedicalDirectorHours ?? sc.projection.prcsMedicalDirectorHours ?? 80000
-                    if (year === 2025 && sc.dataMode === '2024 Data') {
+                    let currentAmount = fy.prcsMedicalDirectorHours ?? (sc?.projection?.prcsMedicalDirectorHours ?? 80000)
+                    if (year === 2025 && sc?.dataMode === '2024 Data') {
                       currentAmount = fy.prcsMedicalDirectorHours ?? ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS // 2024 PRCS medical director amount
-                    } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                    } else if (year === 2025 && sc?.dataMode === '2025 Data') {
                       currentAmount = fy.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS // 2025 PRCS medical director amount
+                    } else if (year === 2025 && mode === 'ytd') {
+                      currentAmount = fy.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS // 2025 YTD mode
                     }
                     createPrcsAmountTooltip(p.id, currentAmount, e, (_pid, amount) => {
                       store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
@@ -177,7 +228,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 const wasSelected = prcsSelectedId === p.id
                 const prevSelectedId = prcsSelectedId
                 // Toggle selection - use null to explicitly deselect (undefined means "use default")
-                store.setPrcsDirector(scenario, year, wasSelected ? null : p.id)
+                handleSetPrcsDirector(wasSelected ? null : p.id)
                 // If selecting (none previously or selecting a new one), open the slider immediately
                 if (!wasSelected) {
                   // Remove any tooltips from the previously selected physician
@@ -226,7 +277,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
         <input
           value={p.name}
           onChange={(e) =>
-            store.upsertPhysician(scenario, year, { ...p, name: e.target.value })
+            handleUpsertPhysician({ ...p, name: e.target.value })
           }
           disabled={readOnly}
           style={{ 
@@ -269,7 +320,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
               partnerVacation = p.weeksVacation ?? 8
             }
 
-            store.upsertPhysician(scenario, year, {
+            handleUpsertPhysician({
               ...p,
               type: newType,
               // Initialize sensible defaults when switching types
@@ -309,7 +360,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     onChange={(e) => {
                       const startDay = Number(e.target.value)
                       const startPortion = startDayToStartPortion(startDay, year)
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                         startPortionOfYear: startPortion,
                       })
@@ -385,7 +436,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                           const currentDay = startPortionToStartDay(p.startPortionOfYear ?? 0, year)
                           const newDay = Math.min(daysInYear(year), currentDay + 1)
                           const startPortion = startDayToStartPortion(newDay, year)
-                          store.upsertPhysician(scenario, year, {
+                          handleUpsertPhysician( {
                             ...p,
                             startPortionOfYear: startPortion,
                           })
@@ -415,7 +466,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                           const currentDay = startPortionToStartDay(p.startPortionOfYear ?? 0, year)
                           const newDay = Math.max(1, currentDay - 1)
                           const startPortion = startDayToStartPortion(newDay, year)
-                          store.upsertPhysician(scenario, year, {
+                          handleUpsertPhysician( {
                             ...p,
                             startPortionOfYear: startPortion,
                           })
@@ -451,7 +502,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   step={100}
                   value={p.salary ?? 0}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       salary: Number(e.target.value),
                     })
@@ -466,7 +517,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   type="text"
                   value={currency(Math.round(p.salary ?? 0))}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       salary: Number(e.target.value.replace(/[^0-9]/g, '')),
                     })
@@ -493,7 +544,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   step={1}
                   value={p.employeeWeeksVacation ?? 8}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       employeeWeeksVacation: Number(e.target.value),
                     })
@@ -512,7 +563,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   type="text"
                   value={`${p.employeeWeeksVacation ?? 8} weeks off`}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       employeeWeeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
                     })
@@ -545,7 +596,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 onClick={(e) => {
                   if (!readOnly) {
                     createBonusTooltip(p.id, p.bonusAmount ?? 0, e, (_, amount) => {
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                         bonusAmount: amount,
                         receivesBonuses: amount !== 0
@@ -556,7 +607,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 onMouseEnter={(e) => {
                   if (!readOnly) {
                     createBonusTooltip(p.id, p.bonusAmount ?? 0, e, (_, amount) => {
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                         bonusAmount: amount,
                         receivesBonuses: amount !== 0
@@ -582,7 +633,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 onTouchStart={(e) => {
                   if (!readOnly) {
                     createBonusTooltip(p.id, p.bonusAmount ?? 0, e, (_, amount) => {
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                         bonusAmount: amount,
                         receivesBonuses: amount !== 0
@@ -603,7 +654,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 onClick={() => {
                   if (!readOnly) {
                     const newBenefitsState = !p.receivesBenefits
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p, 
                       receivesBenefits: newBenefitsState
                     })
@@ -712,7 +763,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     onChange={(e) => {
                       const terminateDay = Number(e.target.value)
                       const terminatePortion = startDayToStartPortion(terminateDay, year)
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                         terminatePortionOfYear: terminatePortion,
                       })
@@ -788,7 +839,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                           const currentDay = startPortionToStartDay(p.terminatePortionOfYear ?? 1, year)
                           const newDay = Math.min(daysInYear(year), currentDay + 1)
                           const terminatePortion = startDayToStartPortion(newDay, year)
-                          store.upsertPhysician(scenario, year, {
+                          handleUpsertPhysician( {
                             ...p,
                             terminatePortionOfYear: terminatePortion,
                           })
@@ -818,7 +869,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                           const currentDay = startPortionToStartDay(p.terminatePortionOfYear ?? 1, year)
                           const newDay = Math.max(1, currentDay - 1)
                           const terminatePortion = startDayToStartPortion(newDay, year)
-                          store.upsertPhysician(scenario, year, {
+                          handleUpsertPhysician( {
                             ...p,
                             terminatePortionOfYear: terminatePortion,
                           })
@@ -854,7 +905,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   step={100}
                   value={p.salary ?? 0}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       salary: Number(e.target.value),
                     })
@@ -869,7 +920,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   type="text"
                   value={currency(Math.round(p.salary ?? 0))}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       salary: Number(e.target.value.replace(/[^0-9]/g, '')),
                     })
@@ -896,7 +947,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   step={1}
                   value={p.employeeWeeksVacation ?? 8}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       employeeWeeksVacation: Number(e.target.value),
                     })
@@ -915,7 +966,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   type="text"
                   value={`${p.employeeWeeksVacation ?? 8} weeks off`}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       employeeWeeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
                     })
@@ -952,7 +1003,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 onClick={() => {
                   if (!readOnly) {
                     const newBenefitsState = !p.receivesBenefits
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p, 
                       receivesBenefits: newBenefitsState
                     })
@@ -1056,7 +1107,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   step={100}
                   value={p.salary ?? 0}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       salary: Number(e.target.value),
                     })
@@ -1071,7 +1122,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   type="text"
                   value={currency(Math.round(p.salary ?? 0))}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       salary: Number(e.target.value.replace(/[^0-9]/g, '')),
                     })
@@ -1098,7 +1149,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   step={1}
                   value={p.employeeWeeksVacation ?? 8}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       employeeWeeksVacation: Number(e.target.value),
                     })
@@ -1117,7 +1168,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   type="text"
                   value={`${p.employeeWeeksVacation ?? 8} weeks off`}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       employeeWeeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
                     })
@@ -1147,7 +1198,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 onClick={() => {
                   if (!readOnly) {
                     const newBenefitsState = !p.receivesBenefits
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       receivesBenefits: newBenefitsState
                     })
@@ -1263,7 +1314,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                         // Changing from Prior Year to actual working days, set default weeks
                         updatedPhysician.weeksVacation = updatedPhysician.weeksVacation ?? 8
                       }
-                      store.upsertPhysician(scenario, year, updatedPhysician)
+                      handleUpsertPhysician( updatedPhysician)
                     }}
                     disabled={readOnly}
                     style={{ 
@@ -1352,7 +1403,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                           } else if (p.partnerPortionOfYear === 0 && partnerPortion > 0) {
                             updatedPhysician.weeksVacation = updatedPhysician.weeksVacation ?? 8
                           }
-                          store.upsertPhysician(scenario, year, updatedPhysician)
+                          handleUpsertPhysician( updatedPhysician)
                         }}
                         style={{
                           width: 16,
@@ -1392,7 +1443,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                           } else if (p.partnerPortionOfYear === 0 && partnerPortion > 0) {
                             updatedPhysician.weeksVacation = updatedPhysician.weeksVacation ?? 8
                           }
-                          store.upsertPhysician(scenario, year, updatedPhysician)
+                          handleUpsertPhysician( updatedPhysician)
                         }}
                         style={{
                           width: 16,
@@ -1430,7 +1481,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     step={1}
                     value={p.weeksVacation ?? 8}
                     onChange={(e) =>
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                         weeksVacation: Number(e.target.value),
                       })
@@ -1449,7 +1500,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     type="text"
                     value={`${p.weeksVacation ?? 8} weeks off`}
                     onChange={(e) =>
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                         weeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
                       })
@@ -1476,7 +1527,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     step={100}
                     value={p.additionalDaysWorked ?? 0}
                     onChange={(e) =>
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                         additionalDaysWorked: Number(e.target.value),
                       })
@@ -1493,7 +1544,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                     onChange={(e) => {
                       const value = Number(e.target.value.replace(/[^0-9]/g, ''))
                       if (!isNaN(value)) {
-                        store.upsertPhysician(scenario, year, {
+                        handleUpsertPhysician( {
                           ...p,
                           additionalDaysWorked: value,
                         })
@@ -1519,7 +1570,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   step={100}
                   value={p.buyoutCost ?? 0}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       buyoutCost: Number(e.target.value),
                     })
@@ -1534,7 +1585,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   type="text"
                   value={currency(Math.round(p.buyoutCost ?? 0))}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       buyoutCost: Number(e.target.value.replace(/[^0-9]/g, '')),
                     })
@@ -1579,17 +1630,19 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   onClick={(e) => {
                     if (!readOnly) {
                       // Use specific 2024-25 values when in those data modes for baseline year
-                      let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
-                      if (year === 2025 && sc.dataMode === '2024 Data') {
-                        totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
-                      } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                        totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
-                      }
+                    let totalBudget = fy.medicalDirectorHours ?? (sc?.projection?.medicalDirectorHours ?? 80000)
+                  if (year === 2025 && sc?.dataMode === '2024 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
+                  } else if (year === 2025 && sc?.dataMode === '2025 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
+                  } else if (year === 2025 && mode === 'ytd') {
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 YTD mode
+                  }
                       
                       if ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0) {
                         const initial = p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)
                         createTrailingSharedMdAmountTooltip(p.id, initial, e, (_, amount) => {
-                          store.upsertPhysician(scenario, year, {
+                          handleUpsertPhysician( {
                             ...p,
                             trailingSharedMdAmount: amount
                           })
@@ -1601,7 +1654,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                         }, 0)
                         const remainderBudget = Math.max(0, totalBudget - trailingTotal)
                         createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
-                          store.upsertPhysician(scenario, year, {
+                          handleUpsertPhysician( {
                             ...p,
                             medicalDirectorHoursPercentage: percentage,
                             hasMedicalDirectorHours: percentage !== 0
@@ -1612,17 +1665,19 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   }}
                 onMouseEnter={(e) => {
                   // Use specific 2024-25 values when in those data modes for baseline year
-                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
-                  if (year === 2025 && sc.dataMode === '2024 Data') {
+                    let totalBudget = fy.medicalDirectorHours ?? (sc?.projection?.medicalDirectorHours ?? 80000)
+                  if (year === 2025 && sc?.dataMode === '2024 Data') {
                     totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
-                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                  } else if (year === 2025 && sc?.dataMode === '2025 Data') {
                     totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
+                  } else if (year === 2025 && mode === 'ytd') {
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 YTD mode
                   }
                   if (!readOnly) {
                     if ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0) {
                       const initial = p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)
                       createTrailingSharedMdAmountTooltip(p.id, initial, e, (_, amount) => {
-                        store.upsertPhysician(scenario, year, {
+                        handleUpsertPhysician( {
                           ...p,
                           trailingSharedMdAmount: amount
                         })
@@ -1634,7 +1689,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                       }, 0)
                       const remainderBudget = Math.max(0, totalBudget - trailingTotal)
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
-                        store.upsertPhysician(scenario, year, {
+                        handleUpsertPhysician( {
                           ...p,
                           medicalDirectorHoursPercentage: percentage,
                           hasMedicalDirectorHours: percentage !== 0
@@ -1681,17 +1736,19 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   onTouchStart={(e) => {
                     if (!readOnly) {
                       // Use specific 2024-25 values when in those data modes for baseline year
-                      let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
-                      if (year === 2025 && sc.dataMode === '2024 Data') {
-                        totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
-                      } else if (year === 2025 && sc.dataMode === '2025 Data') {
-                        totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
-                      }
+                    let totalBudget = fy.medicalDirectorHours ?? (sc?.projection?.medicalDirectorHours ?? 80000)
+                  if (year === 2025 && sc?.dataMode === '2024 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
+                  } else if (year === 2025 && sc?.dataMode === '2025 Data') {
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
+                  } else if (year === 2025 && mode === 'ytd') {
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 YTD mode
+                  }
                       
                       if ((p.type === 'partnerToRetire') && (p.partnerPortionOfYear ?? 0) === 0) {
                         const initial = p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)
                         createTrailingSharedMdAmountTooltip(p.id, initial, e, (_, amount) => {
-                          store.upsertPhysician(scenario, year, {
+                          handleUpsertPhysician( {
                             ...p,
                             trailingSharedMdAmount: amount
                           })
@@ -1703,7 +1760,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                         }, 0)
                         const remainderBudget = Math.max(0, totalBudget - trailingTotal)
                         createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
-                          store.upsertPhysician(scenario, year, {
+                          handleUpsertPhysician( {
                             ...p,
                             medicalDirectorHoursPercentage: percentage,
                             hasMedicalDirectorHours: percentage !== 0
@@ -1842,7 +1899,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   step={1}
                   value={p.weeksVacation ?? 8}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       weeksVacation: Number(e.target.value),
                     })
@@ -1862,7 +1919,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   onChange={(e) => {
                     const weeks = Number(e.target.value.replace(/[^0-9]/g, ''))
                     if (!isNaN(weeks)) {
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                         weeksVacation: weeks,
                       })
@@ -1887,7 +1944,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   step={500}
                   value={p.additionalDaysWorked ?? 0}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       additionalDaysWorked: Number(e.target.value),
                     })
@@ -1904,7 +1961,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   onChange={(e) => {
                     const value = Number(e.target.value.replace(/[^0-9]/g, ''))
                     if (!isNaN(value)) {
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                         additionalDaysWorked: value,
                       })
@@ -1938,14 +1995,16 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 onClick={(e) => {
                   if (!readOnly) {
                       // Use specific 2024-25 values when in those data modes for baseline year
-                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
-                  if (year === 2025 && sc.dataMode === '2024 Data') {
+                    let totalBudget = fy.medicalDirectorHours ?? (sc?.projection?.medicalDirectorHours ?? 80000)
+                  if (year === 2025 && sc?.dataMode === '2024 Data') {
                     totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
-                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                  } else if (year === 2025 && sc?.dataMode === '2025 Data') {
                     totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
+                  } else if (year === 2025 && mode === 'ytd') {
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 YTD mode
                   }
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                           medicalDirectorHoursPercentage: percentage,
                           hasMedicalDirectorHours: percentage !== 0
@@ -1955,15 +2014,17 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 }}
                 onMouseEnter={(e) => {
                   // Use specific 2024-25 values when in those data modes for baseline year
-                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
-                  if (year === 2025 && sc.dataMode === '2024 Data') {
+                    let totalBudget = fy.medicalDirectorHours ?? (sc?.projection?.medicalDirectorHours ?? 80000)
+                  if (year === 2025 && sc?.dataMode === '2024 Data') {
                     totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
-                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                  } else if (year === 2025 && sc?.dataMode === '2025 Data') {
                     totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
+                  } else if (year === 2025 && mode === 'ytd') {
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 YTD mode
                   }
                   if (!readOnly) {
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                           medicalDirectorHoursPercentage: percentage,
                           hasMedicalDirectorHours: percentage !== 0
@@ -1994,15 +2055,17 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 }}
                 onTouchStart={(e) => {
                   // Use specific 2024-25 values when in those data modes for baseline year
-                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
-                  if (year === 2025 && sc.dataMode === '2024 Data') {
+                    let totalBudget = fy.medicalDirectorHours ?? (sc?.projection?.medicalDirectorHours ?? 80000)
+                  if (year === 2025 && sc?.dataMode === '2024 Data') {
                     totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
-                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                  } else if (year === 2025 && sc?.dataMode === '2025 Data') {
                     totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
+                  } else if (year === 2025 && mode === 'ytd') {
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 YTD mode
                   }
                   if (!readOnly) {
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                           medicalDirectorHoursPercentage: percentage,
                           hasMedicalDirectorHours: percentage !== 0
@@ -2146,7 +2209,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                       }
 
                       // Update this physician - the store will handle redistribution to other partners
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                         employeePortionOfYear: employeePortion,
                         employeeWeeksVacation: employeeVacation,
@@ -2252,7 +2315,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                           }
 
                           // Update this physician - the store will handle redistribution to other partners
-                          store.upsertPhysician(scenario, year, {
+                          handleUpsertPhysician( {
                             ...p,
                             employeePortionOfYear: employeePortion,
                             employeeWeeksVacation: employeeVacation,
@@ -2312,7 +2375,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                           }
 
                           // Update this physician - the store will handle redistribution to other partners
-                          store.upsertPhysician(scenario, year, {
+                          handleUpsertPhysician( {
                             ...p,
                             employeePortionOfYear: employeePortion,
                             employeeWeeksVacation: employeeVacation,
@@ -2352,7 +2415,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   step={100}
                   value={p.salary ?? 0}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       salary: Number(e.target.value),
                     })
@@ -2367,7 +2430,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   type="text"
                   value={currency(Math.round(p.salary ?? 0))}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       salary: Number(e.target.value.replace(/[^0-9]/g, '')),
                     })
@@ -2394,7 +2457,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   step={1}
                   value={p.weeksVacation ?? 8}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       weeksVacation: Number(e.target.value),
                     })
@@ -2413,7 +2476,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   type="text"
                   value={`${p.weeksVacation ?? 8} weeks off`}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       weeksVacation: Number(e.target.value.replace(/[^0-9]/g, '')),
                     })
@@ -2437,7 +2500,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   step={500}
                   value={p.additionalDaysWorked ?? 0}
                   onChange={(e) =>
-                    store.upsertPhysician(scenario, year, {
+                    handleUpsertPhysician( {
                       ...p,
                       additionalDaysWorked: Number(e.target.value),
                     })
@@ -2454,7 +2517,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                   onChange={(e) => {
                     const value = Number(e.target.value.replace(/[^0-9]/g, ''))
                     if (!isNaN(value)) {
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                         additionalDaysWorked: value,
                       })
@@ -2490,7 +2553,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                       const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
                       const maxWeeks = (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
                       createVacationWeeksTooltip(p.id, p.employeeWeeksVacation ?? 8, e as any, (_pid, weeks) => {
-                        store.upsertPhysician(scenario, year, {
+                        handleUpsertPhysician( {
                           ...p,
                           employeeWeeksVacation: weeks
                         })
@@ -2502,7 +2565,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                       const currentDataMode = scenario === 'A' ? store.scenarioA.dataMode : store.scenarioB?.dataMode || '2025 Data'
                       const maxWeeks = (currentDataMode === '2024 Data' || year <= 2024) ? 24 : 16
                       createVacationWeeksTooltip(p.id, p.employeeWeeksVacation ?? 8, e as any, (_pid, weeks) => {
-                        store.upsertPhysician(scenario, year, {
+                        handleUpsertPhysician( {
                           ...p,
                           employeeWeeksVacation: weeks
                         })
@@ -2538,7 +2601,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 onClick={() => {
                   if (!readOnly) {
                     const newBenefitsState = !p.receivesBenefits
-                    store.upsertPhysician(scenario, year, { 
+                    handleUpsertPhysician( { 
                       ...p, 
                       receivesBenefits: newBenefitsState
                     })
@@ -2577,14 +2640,16 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 onClick={(e) => {
                   if (!readOnly) {
                       // Use specific 2024-25 values when in those data modes for baseline year
-                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
-                  if (year === 2025 && sc.dataMode === '2024 Data') {
+                    let totalBudget = fy.medicalDirectorHours ?? (sc?.projection?.medicalDirectorHours ?? 80000)
+                  if (year === 2025 && sc?.dataMode === '2024 Data') {
                     totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
-                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                  } else if (year === 2025 && sc?.dataMode === '2025 Data') {
                     totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
+                  } else if (year === 2025 && mode === 'ytd') {
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 YTD mode
                   }
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                           medicalDirectorHoursPercentage: percentage,
                           hasMedicalDirectorHours: percentage !== 0
@@ -2594,15 +2659,17 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 }}
                 onMouseEnter={(e) => {
                   // Use specific 2024-25 values when in those data modes for baseline year
-                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
-                  if (year === 2025 && sc.dataMode === '2024 Data') {
+                    let totalBudget = fy.medicalDirectorHours ?? (sc?.projection?.medicalDirectorHours ?? 80000)
+                  if (year === 2025 && sc?.dataMode === '2024 Data') {
                     totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
-                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                  } else if (year === 2025 && sc?.dataMode === '2025 Data') {
                     totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
+                  } else if (year === 2025 && mode === 'ytd') {
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 YTD mode
                   }
                   if (!readOnly) {
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                           medicalDirectorHoursPercentage: percentage,
                           hasMedicalDirectorHours: percentage !== 0
@@ -2633,15 +2700,17 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
                 }}
                 onTouchStart={(e) => {
                   // Use specific 2024-25 values when in those data modes for baseline year
-                  let totalBudget = fy.medicalDirectorHours ?? sc.projection.medicalDirectorHours ?? 80000
-                  if (year === 2025 && sc.dataMode === '2024 Data') {
+                    let totalBudget = fy.medicalDirectorHours ?? (sc?.projection?.medicalDirectorHours ?? 80000)
+                  if (year === 2025 && sc?.dataMode === '2024 Data') {
                     totalBudget = fy.medicalDirectorHours ?? ACTUAL_2024_MEDICAL_DIRECTOR_HOURS // 2024 shared medical director amount
-                  } else if (year === 2025 && sc.dataMode === '2025 Data') {
+                  } else if (year === 2025 && sc?.dataMode === '2025 Data') {
                     totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 shared medical director amount
+                  } else if (year === 2025 && mode === 'ytd') {
+                    totalBudget = fy.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS // 2025 YTD mode
                   }
                   if (!readOnly) {
                       createHoursTooltip(p.id, p.medicalDirectorHoursPercentage ?? 0, e, (_, percentage) => {
-                      store.upsertPhysician(scenario, year, {
+                      handleUpsertPhysician( {
                         ...p,
                           medicalDirectorHoursPercentage: percentage,
                           hasMedicalDirectorHours: percentage !== 0
@@ -2788,15 +2857,28 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
         <div style={{ fontWeight: 600 }}>Physicians</div>
         {(() => {
           // Use snapshot comparison if a scenario is loaded, otherwise fall back to default comparison
-          const hasSnapshot = scenario === 'A' ? store.loadedScenarioSnapshot : store.loadedScenarioBSnapshot
-          const isChanged = hasSnapshot
-            ? hasChangesFromLoadedScenario(year, store, scenario)
-            : arePhysiciansChanged(scenario, year, physicians, store)
+          let hasSnapshot: any
+          let isChanged: boolean
+          
+          if (mode === 'ytd') {
+            hasSnapshot = store.loadedCurrentYearSettingsSnapshot
+            isChanged = hasSnapshot ? store.isCurrentYearSettingsDirty() : false
+          } else {
+            hasSnapshot = scenario === 'A' ? store.loadedScenarioSnapshot : store.loadedScenarioBSnapshot
+            isChanged = hasSnapshot
+              ? hasChangesFromLoadedScenario(year, store, scenario)
+              : arePhysiciansChanged(scenario, year, physicians, store)
+          }
+          
           return isChanged && !readOnly ? (
             <button
               onClick={() => {
                 removeTooltip('physicians-reset-tooltip')
-                store.resetPhysicians(scenario, year)
+                if (mode === 'ytd') {
+                  store.resetCurrentYearSettings()
+                } else {
+                  store.resetPhysicians(scenario, year)
+                }
               }}
               style={{
                 position: 'absolute',
@@ -3018,7 +3100,7 @@ export default function PhysiciansEditor({ year, scenario, readOnly = false, phy
           onClick={() => {
             const nextIndex = fy.physicians.length
             const type: PhysicianType = 'newEmployee'
-            store.upsertPhysician(scenario, year, {
+            handleUpsertPhysician( {
               id: `${year}-${nextIndex}`,
               name: `Physician ${nextIndex + 1}`,
               type,

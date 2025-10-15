@@ -170,41 +170,45 @@ export function calculateAllCompensations(params: CompensationParams): Compensat
   const basePool = Math.max(0, totalIncome - totalCosts)
   const pool = Math.max(0, basePool - totalMedicalDirectorAllocations - totalAdditionalDaysAllocations)
 
-  // DEBUG: Log pool calculation summary (only log once per second to reduce StrictMode duplicates)
+  // DEBUG: Log pool calculation with full breakdown for 2025
   if (year === 2025) {
     const now = Date.now()
     const lastLog = (globalThis as any).__lastCompCalcLog ?? 0
     if (now - lastLog > 100) {  // Throttle to max 10 logs/sec
-      console.log(`💰 Comp calc: Income=$${(totalIncome/1000).toFixed(0)}K, Costs=$${(totalCosts/1000).toFixed(0)}K, Pool=$${(pool/1000).toFixed(0)}K`)
+      console.log('💰 [Comp] Calculation triggered:', {
+        summary: `Income=$${(totalIncome/1000).toFixed(0)}K, Costs=$${(totalCosts/1000).toFixed(0)}K, Pool=$${(pool/1000).toFixed(0)}K`,
+        income: {
+          total: totalIncome,
+          therapyIncome: fy.therapyIncome ?? 0,
+          medicalDirectorIncome,
+          prcsMedicalDirectorIncome,
+          consultingServicesAgreement: fy.consultingServicesAgreement ?? 0,
+          note: fy.therapyIncome === 0 ? '⚠️ ZERO therapyIncome - using fallback?' : '✓'
+        },
+        costs: {
+          total: totalCosts,
+          nonEmploymentCosts: fy.nonEmploymentCosts ?? 0,
+          nonMdEmploymentCosts: fy.nonMdEmploymentCosts ?? 0,
+          miscEmploymentCosts: fy.miscEmploymentCosts ?? 0,
+          locumCosts: fy.locumCosts ?? 0,
+          totalEmployeeCosts,
+          totalBuyoutCosts,
+          totalDelayedW2Costs,
+          note: fy.nonEmploymentCosts === 0 ? '⚠️ ZERO nonEmploymentCosts - using fallback?' : '✓'
+        },
+        pool: {
+          basePool,
+          mdAllocations: totalMedicalDirectorAllocations,
+          additionalDays: totalAdditionalDaysAllocations,
+          finalPool: pool
+        },
+        fySource: {
+          year: fy.year,
+          physicians: fy.physicians?.length ?? 0
+        }
+      })
       ;(globalThis as any).__lastCompCalcLog = now
     }
-  }
-  
-  // Full breakdown (commented out to reduce spam)
-  if (false && year === 2025) {
-    console.log('[COMP ENGINE] 📊 Pool calculation breakdown:', {
-      totalIncome,
-      breakdown: {
-        therapyIncome: fy.therapyIncome ?? 0,
-        medicalDirectorIncome,
-        prcsMedicalDirectorIncome,
-        consultingServicesAgreement: fy.consultingServicesAgreement ?? 0
-      },
-      totalCosts,
-      costsBreakdown: {
-        nonEmploymentCosts: fy.nonEmploymentCosts ?? 0,
-        nonMdEmploymentCosts: fy.nonMdEmploymentCosts ?? 0,
-        miscEmploymentCosts: fy.miscEmploymentCosts ?? 0,
-        locumCosts: fy.locumCosts ?? 0,
-        totalEmployeeCosts,
-        totalBuyoutCosts,
-        totalDelayedW2Costs
-      },
-      basePool,
-      totalMedicalDirectorAllocations,
-      totalAdditionalDaysAllocations,
-      finalPool: pool
-    })
   }
 
   // === STEP 8: Distribute pool by FTE weight ===

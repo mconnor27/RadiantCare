@@ -351,7 +351,7 @@ export default function ScenarioManager({
         )
         
         // If YTD scenario, update ytdSettings
-        if (loadedData && loadedData.view_mode === 'YTD Detailed' && onYtdSettingsChange) {
+        if (loadedData && loadedData.view_mode === 'YTD Detailed' && loadedData.ytd_settings && onYtdSettingsChange) {
           onYtdSettingsChange(loadedData.ytd_settings)
         }
       }

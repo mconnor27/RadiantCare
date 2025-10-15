@@ -83,6 +83,21 @@ export const useDashboardStore = create<Store>()(
         scenarioB: undefined,
         scenarioBEnabled: false,
         customProjectedValues: {},
+        // NEW: Dedicated YTD state (separate from Scenario A/B)
+        ytdData: INITIAL_FUTURE_YEARS_A.find(f => f.year === 2025) || {
+          year: 2025,
+          therapyIncome: 0,
+          nonEmploymentCosts: 0,
+          nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+          locumCosts: DEFAULT_LOCUM_COSTS_2025,
+          miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+          medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
+          prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
+          consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_2025,
+          prcsDirectorPhysicianId: scenarioADefaultsByYear(2025).find(p => p.name === 'Suszko')?.id,
+          physicians: scenarioADefaultsByYear(2025),
+        },
+        ytdCustomProjectedValues: {},
         currentScenarioId: null,
         currentScenarioName: null,
         currentScenarioUserId: null,
@@ -200,6 +215,20 @@ export const useDashboardStore = create<Store>()(
                 }, 0)
               }
             }
+          }),
+        setYtdValue: (field, value) =>
+          set((state) => {
+            // Guard: Only update if value actually changed to prevent infinite loops
+            const currentValue = state.ytdData[field]
+            const valueChanged = typeof currentValue === 'number' && typeof value === 'number'
+              ? Math.abs(currentValue - value) > 0.01  // Use small epsilon for floating point comparison
+              : currentValue !== value
+
+            if (!valueChanged) {
+              return  // Skip update if value hasn't changed
+            }
+
+            state.ytdData[field] = value
           }),
         upsertPhysician: (scenario, year, physician) =>
           set((state) => {
@@ -515,6 +544,78 @@ export const useDashboardStore = create<Store>()(
             // Update the physicians array
             fy.physicians = physicians
           }),
+        
+        // YTD-specific physician methods
+        upsertYtdPhysician: (physician) =>
+          set((state) => {
+            console.log(`[Upsert YTD Physician] Updating ${physician.name}`)
+            
+            const idx = state.ytdData.physicians.findIndex((p) => p.id === physician.id)
+            const previousInYear = idx >= 0 ? state.ytdData.physicians[idx] : undefined
+            const prev = previousInYear
+
+            if (prev) {
+              // Log what changed
+              const changes: string[] = []
+              for (const key of Object.keys(physician) as Array<keyof typeof physician>) {
+                if (JSON.stringify(physician[key]) !== JSON.stringify(prev[key])) {
+                  changes.push(`${String(key)}: ${JSON.stringify(prev[key])} -> ${JSON.stringify(physician[key])}`)
+                }
+              }
+              if (changes.length > 0) {
+                console.log(`[Upsert YTD Physician] Changes:`, changes)
+              }
+            }
+
+            if (idx >= 0) state.ytdData.physicians[idx] = physician
+            else state.ytdData.physicians.push(physician)
+
+            // Determine if this edit was a manual MD percentage adjustment
+            const mdPctChanged = !!prev && prev.medicalDirectorHoursPercentage !== physician.medicalDirectorHoursPercentage
+            
+            // Check if partner portion changed (which affects MD redistribution)
+            const prevPartnerPortion = prev ? getPartnerPortionOfYear(prev) : 0
+            const newPartnerPortion = getPartnerPortionOfYear(physician)
+            const partnerPortionChanged = prevPartnerPortion !== newPartnerPortion
+            
+            console.log(`[Upsert YTD Physician] MD percentage changed: ${mdPctChanged}`)
+            console.log(`[Upsert YTD Physician] Partner portion changed: ${partnerPortionChanged} (${prevPartnerPortion} -> ${newPartnerPortion})`)
+            
+            // Only redistribute MD percentages if:
+            // 1. User didn't manually change MD percentage
+            // 2. AND partner portion actually changed (type change, employee/partner transition, retirement date, etc.)
+            if (!mdPctChanged && partnerPortionChanged) {
+              console.log(`[Upsert YTD Physician] Calling calculateMedicalDirectorHourPercentages (partner portion changed)`)
+              const before = state.ytdData.physicians.map(p => ({ name: p.name, pct: p.medicalDirectorHoursPercentage }))
+              state.ytdData.physicians = calculateMedicalDirectorHourPercentages(state.ytdData.physicians)
+              const after = state.ytdData.physicians.map(p => ({ name: p.name, pct: p.medicalDirectorHoursPercentage }))
+              console.log(`[Upsert YTD Physician] MD percentages before:`, before)
+              console.log(`[Upsert YTD Physician] MD percentages after:`, after)
+            } else {
+              console.log(`[Upsert YTD Physician] Skipping MD redistribution (mdPctChanged=${mdPctChanged}, partnerPortionChanged=${partnerPortionChanged})`)
+            }
+          }),
+        
+        removeYtdPhysician: (physicianId) =>
+          set((state) => {
+            state.ytdData.physicians = state.ytdData.physicians.filter((p) => p.id !== physicianId)
+            // Re-distribute medical director hours after removal
+            state.ytdData.physicians = calculateMedicalDirectorHourPercentages(state.ytdData.physicians)
+          }),
+        
+        reorderYtdPhysicians: (fromIndex, toIndex) =>
+          set((state) => {
+            const physicians = [...state.ytdData.physicians]
+            const [movedPhysician] = physicians.splice(fromIndex, 1)
+            physicians.splice(toIndex, 0, movedPhysician)
+            state.ytdData.physicians = physicians
+          }),
+        
+        setYtdPrcsDirector: (physicianId) =>
+          set((state) => {
+            state.ytdData.prcsDirectorPhysicianId = physicianId
+          }),
+        
         setProjectionField: (scenario, field, value) =>
           set((state) => {
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
@@ -1223,6 +1324,16 @@ export const useDashboardStore = create<Store>()(
             state.customProjectedValues = {}
           }),
         
+        setYtdCustomProjectedValue: (accountName: string, value: number) =>
+          set((state) => {
+            state.ytdCustomProjectedValues[accountName] = value
+          }),
+        
+        removeYtdCustomProjectedValue: (accountName: string) =>
+          set((state) => {
+            delete state.ytdCustomProjectedValues[accountName]
+          }),
+        
         // Scenario management
         setCurrentScenario: (id: string | null, name: string | null, userId?: string | null) =>
           set((state) => {
@@ -1253,7 +1364,7 @@ export const useDashboardStore = create<Store>()(
                 scenarioA: JSON.parse(JSON.stringify(scenarioAWithoutUI)),
                 customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
               }
-              console.log('[SNAPSHOT UPDATE] Updated Scenario A snapshot after cache sync')
+              console.log('📸 [Snapshot] Updated Scenario A after cache sync')
             } else {
               if (!state.scenarioB) {
                 console.warn('Cannot update snapshot: Scenario B does not exist')
@@ -1264,7 +1375,7 @@ export const useDashboardStore = create<Store>()(
               state.loadedScenarioBSnapshot = {
                 scenarioB: JSON.parse(JSON.stringify(scenarioBWithoutUI))
               }
-              console.log('[SNAPSHOT UPDATE] Updated Scenario B snapshot')
+              console.log('📸 [Snapshot] Updated Scenario B after cache sync')
             }
           })
         },
@@ -1678,26 +1789,7 @@ export const useDashboardStore = create<Store>()(
                   scenarioA: JSON.parse(JSON.stringify(scenarioAWithoutUI)),
                   customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
                 }
-                console.log('[SNAPSHOT A] ========== COMPLETE SCENARIO A DATA ==========')
-                console.log('[SNAPSHOT A] Scenario A Object:', JSON.parse(JSON.stringify(state.scenarioA)))
-                console.log('[SNAPSHOT A] Snapshot Object:', JSON.parse(JSON.stringify(state.loadedScenarioSnapshot)))
-                console.log('[SNAPSHOT A] Future Years Count:', state.scenarioA?.future?.length)
-                console.log('[SNAPSHOT A] Future Years Data:', state.scenarioA?.future?.map(f => ({
-                  year: f.year,
-                  therapyIncome: f.therapyIncome,
-                  physicianCount: f.physicians?.length,
-                  physicians: f.physicians,
-                  locumCosts: f.locumCosts,
-                  medicalDirectorHours: f.medicalDirectorHours,
-                  prcsMedicalDirectorHours: f.prcsMedicalDirectorHours
-                })))
-                console.log('[SNAPSHOT A] Projection Settings:', state.scenarioA?.projection)
-                console.log('[SNAPSHOT A] Custom Projected Values:', state.customProjectedValues)
-                console.log('[SNAPSHOT A] UI State:', {
-                  selectedYear: state.scenarioA?.selectedYear,
-                  dataMode: state.scenarioA?.dataMode
-                })
-                console.log('[SNAPSHOT A] ===============================================')
+                console.log('📸 [Snapshot] Created Scenario A snapshot')
               }
 
               if (target === 'B') {
@@ -1750,25 +1842,7 @@ export const useDashboardStore = create<Store>()(
                     scenarioB: JSON.parse(JSON.stringify(scenarioBWithoutUI))
                   }
                 }
-                console.log('[SNAPSHOT B] ========== COMPLETE SCENARIO B DATA ==========')
-                console.log('[SNAPSHOT B] Scenario B Object:', JSON.parse(JSON.stringify(state.scenarioB)))
-                console.log('[SNAPSHOT B] Snapshot Object:', JSON.parse(JSON.stringify(state.loadedScenarioBSnapshot)))
-                console.log('[SNAPSHOT B] Future Years Count:', state.scenarioB?.future?.length)
-                console.log('[SNAPSHOT B] Future Years Data:', state.scenarioB?.future?.map(f => ({
-                  year: f.year,
-                  therapyIncome: f.therapyIncome,
-                  physicianCount: f.physicians?.length,
-                  physicians: f.physicians,
-                  locumCosts: f.locumCosts,
-                  medicalDirectorHours: f.medicalDirectorHours,
-                  prcsMedicalDirectorHours: f.prcsMedicalDirectorHours
-                })))
-                console.log('[SNAPSHOT B] Projection Settings:', state.scenarioB?.projection)
-                console.log('[SNAPSHOT B] UI State:', {
-                  selectedYear: state.scenarioB?.selectedYear,
-                  dataMode: state.scenarioB?.dataMode
-                })
-                console.log('[SNAPSHOT B] ===============================================')
+                console.log('📸 [Snapshot] Created Scenario B snapshot')
               }
               // Don't automatically clear B when loading A - they can coexist
               // B should only be cleared when explicitly replaced or reset
@@ -1800,27 +1874,85 @@ export const useDashboardStore = create<Store>()(
           const state = get()
           if (!state.loadedCurrentYearSettingsSnapshot) return false
 
-          // Get current 2025 data
-          const current2025 = state.scenarioA.future.find(f => f.year === 2025)
-          const snapshot2025 = state.loadedCurrentYearSettingsSnapshot.year_2025_data
-
-          // Deep compare 2025 data
-          if (JSON.stringify(current2025) !== JSON.stringify(snapshot2025)) {
+          // Deep compare YTD data
+          const currentYtdStr = JSON.stringify(state.ytdData)
+          const snapshotYtdStr = JSON.stringify(state.loadedCurrentYearSettingsSnapshot.ytdData)
+          
+          if (currentYtdStr !== snapshotYtdStr) {
+            console.log('[Dirty Check] YTD data changed')
+            
+            // Find the specific differences
+            const current = state.ytdData
+            const snapshot = state.loadedCurrentYearSettingsSnapshot.ytdData
+            
+            // Check simple fields
+            const simpleFields = ['year', 'therapyIncome', 'nonEmploymentCosts', 'nonMdEmploymentCosts', 'locumCosts', 'miscEmploymentCosts', 'medicalDirectorHours', 'prcsMedicalDirectorHours', 'prcsDirectorPhysicianId', 'consultingServicesAgreement']
+            for (const field of simpleFields) {
+              if (current[field as keyof typeof current] !== snapshot[field as keyof typeof snapshot]) {
+                console.log(`[Dirty Check]   Field changed: ${field}`)
+                console.log(`[Dirty Check]     Current:  ${JSON.stringify(current[field as keyof typeof current])}`)
+                console.log(`[Dirty Check]     Snapshot: ${JSON.stringify(snapshot[field as keyof typeof snapshot])}`)
+              }
+            }
+            
+            // Check physicians array
+            if (JSON.stringify(current.physicians) !== JSON.stringify(snapshot.physicians)) {
+              console.log('[Dirty Check]   Physicians changed')
+              console.log(`[Dirty Check]     Current count:  ${current.physicians.length}`)
+              console.log(`[Dirty Check]     Snapshot count: ${snapshot.physicians.length}`)
+              
+              // Compare each physician
+              for (let i = 0; i < Math.max(current.physicians.length, snapshot.physicians.length); i++) {
+                const currPhys = current.physicians[i]
+                const snapPhys = snapshot.physicians[i]
+                
+                if (JSON.stringify(currPhys) !== JSON.stringify(snapPhys)) {
+                  console.log(`[Dirty Check]     Physician ${i} (${currPhys?.name || snapPhys?.name}) differs:`)
+                  if (currPhys && snapPhys) {
+                    // Find specific field differences
+                    const allKeys = new Set([...Object.keys(currPhys), ...Object.keys(snapPhys)])
+                    for (const key of allKeys) {
+                      if (JSON.stringify(currPhys[key as keyof typeof currPhys]) !== JSON.stringify(snapPhys[key as keyof typeof snapPhys])) {
+                        console.log(`[Dirty Check]       ${key}: ${JSON.stringify(currPhys[key as keyof typeof currPhys])} -> ${JSON.stringify(snapPhys[key as keyof typeof snapPhys])}`)
+                      }
+                    }
+                  } else {
+                    console.log(`[Dirty Check]       One is missing: current=${!!currPhys}, snapshot=${!!snapPhys}`)
+                  }
+                }
+              }
+            }
+            
             return true
           }
 
-          // Compare 2025 grid overrides
-          const current2025Keys = Object.keys(state.customProjectedValues).filter(k => k.startsWith('2025-'))
-          const snapshot2025Keys = Object.keys(state.loadedCurrentYearSettingsSnapshot.custom_projected_values_2025)
-
-          if (current2025Keys.length !== snapshot2025Keys.length) return true
-
-          for (const key of current2025Keys) {
-            if (Math.abs(state.customProjectedValues[key] - (state.loadedCurrentYearSettingsSnapshot.custom_projected_values_2025[key] || 0)) > 0.01) {
-              return true
+          // Compare YTD grid overrides
+          const currentCustomStr = JSON.stringify(state.ytdCustomProjectedValues)
+          const snapshotCustomStr = JSON.stringify(state.loadedCurrentYearSettingsSnapshot.ytdCustomProjectedValues)
+          
+          if (currentCustomStr !== snapshotCustomStr) {
+            console.log('[Dirty Check] YTD custom projected values changed')
+            console.log('[Dirty Check]   Current keys:', Object.keys(state.ytdCustomProjectedValues).length)
+            console.log('[Dirty Check]   Snapshot keys:', Object.keys(state.loadedCurrentYearSettingsSnapshot.ytdCustomProjectedValues).length)
+            
+            // Show differences
+            const allKeys = new Set([
+              ...Object.keys(state.ytdCustomProjectedValues),
+              ...Object.keys(state.loadedCurrentYearSettingsSnapshot.ytdCustomProjectedValues)
+            ])
+            
+            for (const key of allKeys) {
+              const curr = state.ytdCustomProjectedValues[key]
+              const snap = state.loadedCurrentYearSettingsSnapshot.ytdCustomProjectedValues[key]
+              if (curr !== snap) {
+                console.log(`[Dirty Check]   ${key}: ${curr} vs ${snap}`)
+              }
             }
+            
+            return true
           }
 
+          console.log('[Dirty Check] No changes detected - clean state')
           return false
         },
 
@@ -1873,19 +2005,9 @@ export const useDashboardStore = create<Store>()(
           set((state) => {
             if (!state.loadedCurrentYearSettingsSnapshot) return
 
-            // Revert 2025 data
-            const index2025 = state.scenarioA.future.findIndex(f => f.year === 2025)
-            if (index2025 >= 0) {
-              state.scenarioA.future[index2025] = JSON.parse(JSON.stringify(state.loadedCurrentYearSettingsSnapshot.year_2025_data))
-            }
-
-            // Revert 2025 grid overrides
-            Object.keys(state.customProjectedValues).forEach(key => {
-              if (key.startsWith('2025-')) {
-                delete state.customProjectedValues[key]
-              }
-            })
-            Object.assign(state.customProjectedValues, state.loadedCurrentYearSettingsSnapshot.custom_projected_values_2025)
+            // Revert YTD data and grid overrides
+            state.ytdData = JSON.parse(JSON.stringify(state.loadedCurrentYearSettingsSnapshot.ytdData))
+            state.ytdCustomProjectedValues = JSON.parse(JSON.stringify(state.loadedCurrentYearSettingsSnapshot.ytdCustomProjectedValues))
           })
         },
 
@@ -1928,19 +2050,9 @@ export const useDashboardStore = create<Store>()(
 
         updateCurrentYearSettingsSnapshot: () => {
           set((state) => {
-            const year2025 = state.scenarioA.future.find(f => f.year === 2025)
-            if (!year2025) return
-
-            const custom2025Values: Record<string, number> = {}
-            Object.keys(state.customProjectedValues).forEach(key => {
-              if (key.startsWith('2025-')) {
-                custom2025Values[key] = state.customProjectedValues[key]
-              }
-            })
-
             state.loadedCurrentYearSettingsSnapshot = {
-              year_2025_data: JSON.parse(JSON.stringify(year2025)),
-              custom_projected_values_2025: custom2025Values
+              ytdData: JSON.parse(JSON.stringify(state.ytdData)),
+              ytdCustomProjectedValues: JSON.parse(JSON.stringify(state.ytdCustomProjectedValues))
             }
           })
         },
@@ -1981,7 +2093,7 @@ export const useDashboardStore = create<Store>()(
           name: string,
           description: string,
           isPublic: boolean,
-          ytdSettings?: YTDSettings
+          _ytdSettings?: YTDSettings
         ) => {
           const state = get()
           // Use the already-imported supabase client (line 4)
@@ -2004,17 +2116,37 @@ export const useDashboardStore = create<Store>()(
             console.warn('Could not fetch QBO sync timestamp:', err)
           }
 
-          // Extract 2025 data
-          const year2025 = state.scenarioA.future.find(f => f.year === 2025)
-          if (!year2025) throw new Error('No 2025 data to save')
+          // Extract YTD data (current year 2025)
+          const ytdData = state.ytdData
+          if (!ytdData) throw new Error('No YTD data to save')
 
-          // Extract 2025 grid overrides
-          const custom2025Values: Record<string, number> = {}
-          Object.keys(state.customProjectedValues).forEach(key => {
-            if (key.startsWith('2025-')) {
-              custom2025Values[key] = state.customProjectedValues[key]
-            }
-          })
+          // Filter year_2025_data to only include user modifications
+          const filteredYear2025: Partial<FutureYear> & { year: number, physicians: Physician[] } = {
+            year: 2025,
+            physicians: ytdData.physicians,
+          }
+
+          // Only save PhysiciansEditor fields if different from defaults
+          if (ytdData.locumCosts !== undefined && ytdData.locumCosts !== DEFAULT_LOCUM_COSTS_2025) {
+            filteredYear2025.locumCosts = ytdData.locumCosts
+          }
+
+          if (ytdData.prcsMedicalDirectorHours !== undefined && 
+              ytdData.prcsMedicalDirectorHours !== ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS) {
+            filteredYear2025.prcsMedicalDirectorHours = ytdData.prcsMedicalDirectorHours
+          }
+
+          // Check if prcsDirectorPhysicianId differs from default (Suszko)
+          const defaultPhysicians = scenarioADefaultsByYear(2025)
+          const defaultSuszko = defaultPhysicians.find(p => p.name === 'Suszko' && 
+            (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+
+          if (ytdData.prcsDirectorPhysicianId !== defaultSuszko?.id) {
+            filteredYear2025.prcsDirectorPhysicianId = ytdData.prcsDirectorPhysicianId
+          }
+
+          // Extract YTD grid overrides (already filtered by slider logic)
+          const custom2025Values: Record<string, number> = { ...state.ytdCustomProjectedValues }
 
           const saveData = {
             name,
@@ -2022,9 +2154,9 @@ export const useDashboardStore = create<Store>()(
             is_public: isPublic,
             scenario_type: 'current_year' as const,
             view_mode: 'YTD Detailed' as const,
-            year_2025_data: year2025,
+            year_2025_data: filteredYear2025,
             custom_projected_values: custom2025Values,
-            ytd_settings: ytdSettings || null,
+            ytd_settings: null, // Don't save chart settings
             baseline_date: new Date().toISOString().split('T')[0],
             qbo_sync_timestamp: qboSyncTimestamp,
           }
@@ -2188,25 +2320,72 @@ export const useDashboardStore = create<Store>()(
           }
 
           set((state) => {
-            // Restore 2025 year data
-            if (data.year_2025_data) {
-              const existingIndex = state.scenarioA.future.findIndex(f => f.year === 2025)
-              if (existingIndex >= 0) {
-                state.scenarioA.future[existingIndex] = data.year_2025_data
-              } else {
-                state.scenarioA.future.push(data.year_2025_data)
-              }
+            // Build COMPLETE 2025 data by merging: defaults → loaded scenario
+            // Do NOT use existing store values - this is a fresh load
+            const defaultPhysicians = scenarioADefaultsByYear(2025)
+            const defaultSuszko = defaultPhysicians.find(p => p.name === 'Suszko' && 
+              (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+            
+            // Start with defaults for all fields
+            const complete2025: FutureYear = {
+              year: 2025,
+              
+              // Defaults for configured fields (will be overridden by loaded scenario if customized)
+              locumCosts: DEFAULT_LOCUM_COSTS_2025,
+              medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
+              prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
+              consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_2025,
+              miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
+              prcsDirectorPhysicianId: defaultSuszko?.id,
+              physicians: defaultPhysicians,
+              
+              // QBO/computed values - start at 0, grid will populate from QBO cache after load
+              // Compensation will be frozen during this sync to prevent showing incorrect values
+              therapyIncome: 0,
+              nonEmploymentCosts: 0,
+              nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+              therapyLacey: undefined,
+              therapyCentralia: undefined,
+              therapyAberdeen: undefined,
             }
-
-            // Restore 2025 grid overrides (replace existing 2025 keys)
-            Object.keys(state.customProjectedValues).forEach(key => {
-              if (key.startsWith('2025-')) {
-                delete state.customProjectedValues[key]
+            
+            // Merge loaded scenario data (physicians + modified fields override everything)
+            if (data.year_2025_data) {
+              Object.assign(complete2025, data.year_2025_data)
+            }
+            
+            console.log('🔍 [Load] Fresh YTD scenario load from DB:', {
+              scenarioName: data.name,
+              scenarioId: data.id,
+              loadedData: {
+                locumCosts: data.year_2025_data?.locumCosts,
+                prcsMedicalDirectorHours: data.year_2025_data?.prcsMedicalDirectorHours,
+                physicians: data.year_2025_data?.physicians?.length,
+                customProjectedValues: Object.keys(data.custom_projected_values || {}).length
               }
             })
-            if (data.custom_projected_values) {
-              Object.assign(state.customProjectedValues, data.custom_projected_values)
-            }
+            
+            console.log('📦 [Load] Complete 2025 data after merging defaults:', {
+              locumCosts: complete2025.locumCosts,
+              prcsMedicalDirectorHours: complete2025.prcsMedicalDirectorHours,
+              medicalDirectorHours: complete2025.medicalDirectorHours,
+              therapyIncome: complete2025.therapyIncome,
+              nonEmploymentCosts: complete2025.nonEmploymentCosts,
+              physicians: complete2025.physicians?.length,
+              note: 'therapyIncome/nonEmploymentCosts will be synced from QBO cache by grid'
+            })
+            
+            // Load into dedicated YTD state (NOT Scenario A)
+            state.ytdData = complete2025
+
+            // Restore YTD grid overrides
+            state.ytdCustomProjectedValues = data.custom_projected_values || {}
+            
+            console.log('✅ [Load] Loaded into YTD store state:', {
+              ytdDataYear: state.ytdData?.year,
+              ytdDataPhysicians: state.ytdData?.physicians?.length,
+              ytdCustomValuesCount: Object.keys(state.ytdCustomProjectedValues).length
+            })
 
             state.currentYearSettingId = data.id
             state.currentYearSettingName = data.name
@@ -2311,6 +2490,27 @@ export const useDashboardStore = create<Store>()(
           get().updateProjectionSnapshot()
 
           return data as any
+        },
+
+        loadDefaultYTDScenario: async () => {
+          try {
+            // Try to find and load "2025 Default" scenario
+            const { data, error } = await supabase
+              .from('scenarios')
+              .select('*')
+              .eq('scenario_type', 'current_year')
+              .eq('name', '2025 Default')
+              .single()
+
+            if (data && !error) {
+              console.log('📥 Loading "2025 Default" scenario on initialization')
+              await get().loadCurrentYearSettings(data.id)
+            } else {
+              console.log('📝 No "2025 Default" scenario found, using defaults')
+            }
+          } catch (err) {
+            console.log('📝 Could not load default scenario, using defaults:', err)
+          }
         },
       }
     }),
@@ -3206,8 +3406,14 @@ export function Dashboard() {
   }, [])
 
   // Load Default (A) and Default (B) scenarios on app load
+  // DISABLED: YTD is now the default view, Multi-Year scenarios are loaded on-demand
   useEffect(() => {
     if (!profile || !urlLoaded) return
+
+    // YTD is default view - Multi-Year scenarios only load when user switches to that view
+    console.log('[INIT] Skipping Multi-Year scenario auto-load (YTD is default view)')
+    setIsInitialScenarioLoadComplete(true)
+    return
 
     // Prevent duplicate loads using ref
     if (defaultScenariosLoadedRef.current) {
@@ -3239,44 +3445,6 @@ export function Dashboard() {
 
     // Mark as loading to prevent duplicate runs
     defaultScenariosLoadedRef.current = true
-
-    console.log('[INIT] Loading default scenarios', {
-      hasA: !!store.currentScenarioName,
-      hasB: !!store.currentScenarioBName,
-      hasSnapshotA: !!store.loadedScenarioSnapshot,
-      hasSnapshotB: !!store.loadedScenarioBSnapshot
-    })
-
-    // Full state report
-    console.log('[STATE REPORT] Current state:', {
-      scenarioA: {
-        exists: !!store.scenarioA,
-        dataMode: store.scenarioA?.dataMode,
-        selectedYear: store.scenarioA?.selectedYear,
-        projection: store.scenarioA?.projection,
-        currentScenarioId: store.currentScenarioId,
-        currentScenarioName: store.currentScenarioName
-      },
-      scenarioB: {
-        exists: !!store.scenarioB,
-        dataMode: store.scenarioB?.dataMode,
-        selectedYear: store.scenarioB?.selectedYear,
-        projection: store.scenarioB?.projection,
-        currentScenarioBId: store.currentScenarioBId,
-        currentScenarioBName: store.currentScenarioBName,
-        enabled: store.scenarioBEnabled
-      },
-      snapshotA: {
-        exists: !!store.loadedScenarioSnapshot,
-        dataMode: store.loadedScenarioSnapshot?.scenarioA?.dataMode,
-        projection: store.loadedScenarioSnapshot?.scenarioA?.projection
-      },
-      snapshotB: {
-        exists: !!store.loadedScenarioBSnapshot,
-        dataMode: store.loadedScenarioBSnapshot?.scenarioB?.dataMode,
-        projection: store.loadedScenarioBSnapshot?.scenarioB?.projection
-      }
-    })
 
     async function loadDefaultScenarios() {
       try {
@@ -3329,31 +3497,6 @@ export function Dashboard() {
             console.log('[INIT] Disabled scenario B visibility')
           }
         }
-
-        // Final state report after loading
-        console.log('[STATE REPORT] After loading defaults:', {
-          scenarioA: {
-            exists: !!store.scenarioA,
-            id: store.currentScenarioId,
-            name: store.currentScenarioName,
-            dataMode: store.scenarioA?.dataMode
-          },
-          scenarioB: {
-            exists: !!store.scenarioB,
-            id: store.currentScenarioBId,
-            name: store.currentScenarioBName,
-            dataMode: store.scenarioB?.dataMode,
-            enabled: store.scenarioBEnabled
-          },
-          snapshotA: {
-            exists: !!store.loadedScenarioSnapshot,
-            dataMode: store.loadedScenarioSnapshot?.scenarioA?.dataMode
-          },
-          snapshotB: {
-            exists: !!store.loadedScenarioBSnapshot,
-            dataMode: store.loadedScenarioBSnapshot?.scenarioB?.dataMode
-          }
-        })
       } catch (err) {
         console.error('Error loading default scenarios:', err)
       } finally {

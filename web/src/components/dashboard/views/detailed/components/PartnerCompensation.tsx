@@ -290,13 +290,15 @@ interface PartnerCompensationProps {
   cachedSummary?: any
   cachedEquity?: any
   isMobile?: boolean
+  isResyncing?: boolean
 }
 
 export default function PartnerCompensation({
   environment = 'sandbox',
   cachedSummary,
   cachedEquity,
-  isMobile = false
+  isMobile = false,
+  isResyncing = false
 }: PartnerCompensationProps = {}) {
   // Use cached data in production mode, otherwise use static files
   const equityData = (environment === 'production' && cachedEquity) ? cachedEquity : equityDataStatic
@@ -306,13 +308,19 @@ export default function PartnerCompensation({
   const [hoveredPhysician, setHoveredPhysician] = useState<string | null>(null)
   const [selectedPhysician, setSelectedPhysician] = useState<string | null>(null)
 
-  // Get physician data from store (using 2025 and scenario A for now)
-  const year = 2025
-  const fy2025 = store.scenarioA.future.find((f) => f.year === year)
+  // Get physician data from store (using YTD data, not Scenario A)
+  const fy2025 = store.ytdData
   const physicians = fy2025?.physicians || []
   
-  // Check if we're still waiting for fresh API data (showing stale localStorage data)
-  const isRefreshing = environment === 'production' && !cachedSummary
+  console.log('👥 [PartnerComp] Using data source:', {
+    source: 'store.ytdData',
+    therapyIncome: fy2025?.therapyIncome,
+    nonEmploymentCosts: fy2025?.nonEmploymentCosts,
+    physicians: physicians.length
+  })
+  
+  // Check if we're still waiting for fresh API data AND compensation recalculation
+  const isRefreshing = environment === 'production' && (isResyncing || !cachedSummary)
   
   // Parse both projected and YTD data (must be called before any early returns)
   const projectedData = useMemo(() => {

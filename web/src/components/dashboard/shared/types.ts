@@ -171,9 +171,9 @@ export type CurrentYearSettingsScenario = {
   is_public: boolean
   scenario_type: 'current_year'
   view_mode: 'YTD Detailed'
-  year_2025_data: FutureYear // 2025 physicians + settings
+  year_2025_data: Partial<FutureYear> & { year: number, physicians: Physician[] } // Only modified fields saved
   custom_projected_values: Record<string, number> // Grid overrides for 2025 ONLY ('2025-*' keys)
-  ytd_settings: YTDSettings | null
+  ytd_settings: null // Chart settings not saved
   baseline_date: string // ISO date (YYYY-MM-DD)
   qbo_sync_timestamp: string | null
   is_favorite_a?: boolean
@@ -235,6 +235,9 @@ export type Store = {
   scenarioBEnabled: boolean
   customProjectedValues: Record<string, number>
   suppressNextGridSync?: boolean
+  // NEW: Dedicated YTD state (separate from Scenario A/B)
+  ytdData: FutureYear // Current year (2025) data for YTD view
+  ytdCustomProjectedValues: Record<string, number> // Grid overrides for YTD view (2025-* keys)
   currentScenarioId: string | null // Legacy - for backward compat
   currentScenarioName: string | null // Legacy - for backward compat
   currentScenarioUserId: string | null // Legacy - for backward compat
@@ -258,8 +261,8 @@ export type Store = {
   } | null
   // NEW: Split snapshots for modular system
   loadedCurrentYearSettingsSnapshot: {
-    year_2025_data: FutureYear
-    custom_projected_values_2025: Record<string, number> // Only '2025-*' keys
+    ytdData: FutureYear
+    ytdCustomProjectedValues: Record<string, number> // YTD grid overrides
   } | null
   loadedProjectionSnapshot: {
     baseline_mode: BaselineMode
@@ -275,9 +278,18 @@ export type Store = {
     field: 'therapyIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'locumCosts' | 'miscEmploymentCosts' | 'medicalDirectorHours' | 'prcsMedicalDirectorHours' | 'consultingServicesAgreement' | 'therapyLacey' | 'therapyCentralia' | 'therapyAberdeen',
     value: number
   ) => void
+  setYtdValue: (
+    field: 'therapyIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'locumCosts' | 'miscEmploymentCosts' | 'medicalDirectorHours' | 'prcsMedicalDirectorHours' | 'consultingServicesAgreement' | 'therapyLacey' | 'therapyCentralia' | 'therapyAberdeen',
+    value: number
+  ) => void
   upsertPhysician: (scenario: ScenarioKey, year: number, physician: Physician) => void
   removePhysician: (scenario: ScenarioKey, year: number, physicianId: string) => void
   reorderPhysicians: (scenario: ScenarioKey, year: number, fromIndex: number, toIndex: number) => void
+  // YTD-specific physician methods
+  upsertYtdPhysician: (physician: Physician) => void
+  removeYtdPhysician: (physicianId: string) => void
+  reorderYtdPhysicians: (fromIndex: number, toIndex: number) => void
+  setYtdPrcsDirector: (physicianId?: string | null) => void
   setProjectionField: (scenario: ScenarioKey, field: keyof Projection, value: number) => void
   applyProjectionFromLastActual: (scenario: ScenarioKey) => void
   setSelectedYear: (scenario: ScenarioKey, year: number) => void
@@ -295,6 +307,8 @@ export type Store = {
   setCustomProjectedValue: (accountName: string, value: number) => void
   removeCustomProjectedValue: (accountName: string) => void
   resetCustomProjectedValues: () => void
+  setYtdCustomProjectedValue: (accountName: string, value: number) => void
+  removeYtdCustomProjectedValue: (accountName: string) => void
   setSuppressNextGridSync: (suppress: boolean) => void
   consumeSuppressNextGridSync: () => boolean
   // Scenario management methods
@@ -338,4 +352,5 @@ export type Store = {
   ) => Promise<ProjectionScenario>
   loadCurrentYearSettings: (id: string) => Promise<CurrentYearSettingsScenario>
   loadProjection: (id: string, target?: 'A' | 'B') => Promise<ProjectionScenario>
+  loadDefaultYTDScenario: () => Promise<void>
 }

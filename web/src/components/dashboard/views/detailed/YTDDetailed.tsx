@@ -16,7 +16,7 @@ import DetailedChart from './components/DetailedChart'
 import PartnerCompensation from './components/PartnerCompensation'
 
 // Import dashboard store and physicians editor
-import { useDashboardStore, hasChangesFromLoadedScenario } from '../../../Dashboard'
+import { useDashboardStore } from '../../../Dashboard'
 import PhysiciansEditor from '../../shared/components/PhysiciansEditor'
 import { DEFAULT_LOCUM_COSTS_2025 } from '../../shared/defaults'
 import ModularScenarioSaveDialog from '../../../scenarios/ModularScenarioSaveDialog'
@@ -78,8 +78,8 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
   // Parse 2025 data for loading into the chart component
   const historical2025Data = useMemo(() => parseTherapyIncome2025(), [])
 
-  // Get or create the 2025 future year entry for scenario A
-  const fy2025 = store.scenarioA.future.find((f) => f.year === 2025)
+  // Get YTD data (2025 current year)
+  const fy2025 = store.ytdData
   const currentLocumCosts = fy2025?.locumCosts ?? DEFAULT_LOCUM_COSTS_2025
 
   // Parse YTD Locums amount from summary data (row 8323 Salary Locums, TOTAL column)
@@ -223,9 +223,30 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
 
   // Callback for when YearlyDataGrid completes cache sync
   const handleSyncComplete = useCallback(() => {
-    console.log('✅ [Desktop] Cache synced to store, unfreezing compensation table')
-    setIsResyncingCompensation(false)
+    console.log('✅ [Desktop] Cache synced to store, waiting for compensation recalc...')
+    // Use requestAnimationFrame + small timeout to ensure React has re-rendered
+    // with the new values before unfreezing the compensation table
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        console.log('✅ [Desktop] Unfreezing compensation table')
+        setIsResyncingCompensation(false)
+      }, 100) // Small delay to ensure compensation has recalculated
+    })
   }, [])
+
+  // Load "2025 Default" scenario on mount (only once)
+  useEffect(() => {
+    store.loadDefaultYTDScenario()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Watch for scenario loads and freeze compensation until grid re-syncs
+  useEffect(() => {
+    const currentScenarioId = store.currentYearSettingId
+    if (currentScenarioId) {
+      console.log('🔄 [Desktop] Scenario loaded, freezing compensation until grid re-syncs')
+      setIsResyncingCompensation(true)
+    }
+  }, [store.currentYearSettingId])
 
   // Initialize current period based on timeframe
   useEffect(() => {
@@ -333,26 +354,26 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
   // Mark scenario as dirty when scenario data changes compared to loaded snapshot
   useEffect(() => {
     // Skip if no scenario loaded
-    if (!store.currentScenarioId || !store.loadedScenarioSnapshot) {
+    if (!store.currentYearSettingId || !store.loadedCurrentYearSettingsSnapshot) {
       setIsScenarioDirty(false)
       return
     }
 
-    // Check if current state differs from snapshot (YTD scenarios don't use dataMode)
-    const isDirty = hasChangesFromLoadedScenario(2025, store)
+    // Check if current state differs from snapshot
+    const isDirty = store.isCurrentYearSettingsDirty()
     setIsScenarioDirty(isDirty)
   }, [
-    store.currentScenarioId,
-    store.loadedScenarioSnapshot,
+    store.currentYearSettingId,
+    store.loadedCurrentYearSettingsSnapshot,
     // Track changes to scenario data (physician panel, grid, etc.)
     JSON.stringify(fy2025),
-    JSON.stringify(store.customProjectedValues)
+    JSON.stringify(store.ytdCustomProjectedValues)
   ])
 
-  // Fetch scenario A public status when loaded
+  // Fetch scenario public status when loaded
   useEffect(() => {
     async function fetchScenarioPublicStatus() {
-      if (!store.currentScenarioId) {
+      if (!store.currentYearSettingId) {
         setScenarioAIsPublic(false)
         return
       }
@@ -361,7 +382,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         const { data, error } = await supabase
           .from('scenarios')
           .select('is_public')
-          .eq('id', store.currentScenarioId)
+          .eq('id', store.currentYearSettingId)
           .single()
 
         if (!error && data) {
@@ -373,23 +394,23 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     }
 
     fetchScenarioPublicStatus()
-  }, [store.currentScenarioId])
+  }, [store.currentYearSettingId])
 
 
   // Reset scenario to original state
   const handleResetScenario = () => {
-    if (!store.loadedScenarioSnapshot) return
+    if (!store.loadedCurrentYearSettingsSnapshot) return
 
     if (confirm('Reset scenario to original state? All unsaved changes will be lost.')) {
       // Simple reset from snapshot - no database reload needed
-      store.resetScenarioFromSnapshot('A')
+      store.resetCurrentYearSettings()
       // The dirty state will automatically update via the effect that monitors changes
     }
   }
 
   // Get current scenario info from store
-  const currentScenarioName = store.currentScenarioName
-  const currentScenarioUserId = store.currentScenarioUserId
+  const currentScenarioName = store.currentYearSettingName
+  const currentScenarioUserId = store.currentYearSettingUserId
   const isScenarioOwner = currentScenarioUserId && profile?.id === currentScenarioUserId
 
   return (
@@ -610,7 +631,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         </button>
 
         {/* Unload Button - only show if scenario is loaded and not Default */}
-        {currentScenarioName && currentScenarioName !== 'Default (A)' && (
+        {currentScenarioName && currentScenarioName !== '2025 Default' && (
           <button
             onClick={() => {
               const event = new CustomEvent('unloadScenario')
@@ -648,7 +669,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         {/* Share Link Button */}
         <ShareLinkButton
           viewMode="YTD Detailed"
-          scenarioAId={store.currentScenarioId}
+          scenarioAId={store.currentYearSettingId}
           scenarioAIsPublic={scenarioAIsPublic}
           scenarioBId={null}
           scenarioBIsPublic={false}
@@ -752,33 +773,33 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         marginBottom: 24,
         position: 'relative'
       }}>
-        {/* Refreshing indicator for chart projections */}
-        {environment === 'production' && !cachedData?.summary && (
-          <div style={{
-            position: 'absolute',
-            top: 8,
-            right: 8,
-            padding: '4px 10px',
-            background: '#fff3cd',
-            border: '1px solid #ffc107',
-            borderRadius: 4,
-            fontSize: 11,
-            color: '#856404',
-            fontWeight: 500,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            zIndex: 100,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-          }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 1s linear infinite' }}>
-              <path d="M21 12a9 9 0 11-6.219-8.56" />
-            </svg>
-            Refreshing projections...
-            <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
-          </div>
-        )}
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, position: 'relative' }}>
+          {/* Refreshing indicator for chart projections */}
+          {environment === 'production' && isResyncingCompensation && (
+            <div style={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              padding: '4px 10px',
+              background: '#fff3cd',
+              border: '1px solid #ffc107',
+              borderRadius: 4,
+              fontSize: 11,
+              color: '#856404',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              zIndex: 100,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 1s linear infinite' }}>
+                <path d="M21 12a9 9 0 11-6.219-8.56" />
+              </svg>
+              Refreshing projections...
+              <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+            </div>
+          )}
           {error === 'not_connected' ? (
             <div>
               <div style={{ marginBottom: 8 }}>Connect your QuickBooks to load real YTD data.</div>
@@ -802,7 +823,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
               showAllMonths={showAllMonths}
               incomeMode={incomeMode}
               smoothing={getCurrentSmoothing()}
-              fy2025={fy2025}
+              fy2025={isResyncingCompensation ? undefined : fy2025}
               selectedYears={selectedYears}
               visibleSites={visibleSites}
               colorScheme={colorScheme}
@@ -865,6 +886,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
             environment={environment}
             cachedSummary={cachedData?.summary}
             cachedEquity={cachedData?.equity}
+            isResyncing={isResyncingCompensation}
           />
         )}
       </div>
@@ -872,9 +894,10 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         <PhysiciansEditor
           year={2025}
           scenario="A"
+          mode="ytd"
           readOnly={false}
           locumCosts={Math.max(currentLocumCosts, ytdLocumsAmount)}
-          onLocumCostsChange={(value) => store.setFutureValue('A', 2025, 'locumCosts', value)}
+          onLocumCostsChange={(value) => store.setYtdValue('locumCosts', value)}
           ytdLocumsMin={ytdLocumsAmount}
         />
       </div>
@@ -884,6 +907,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
           cachedSummary={cachedData?.summary}
           isLoadingCache={showLoadingModal}
           onSyncComplete={handleSyncComplete}
+          mode="ytd"
         />
       </div>
     </>

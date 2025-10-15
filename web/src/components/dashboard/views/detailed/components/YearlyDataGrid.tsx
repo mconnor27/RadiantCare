@@ -75,13 +75,14 @@ const normalizeAccountName = (label: string): string => {
     .trim() // Remove trailing whitespace
 }
 
-// Function to sync grid projected values to multiyear store
+// Function to sync grid projected values to multiyear store OR ytd store
 function syncGridValuesToMultiyear(
   store: any,
   customProjectedValues: Record<string, number>,
-  gridData: { rows: any[], allRows: any[], columns: any[] }
+  gridData: { rows: any[], allRows: any[], columns: any[] },
+  mode: 'scenario' | 'ytd' = 'scenario'
 ) {
-  console.log('🔄 Syncing grid → store')
+  console.log(`🔄 Syncing grid → ${mode === 'ytd' ? 'YTD' : 'Scenario A/B'}`)
   try {
     // Helper to get current projected value for an account
     const getProjectedValue = (accountName: string): number => {
@@ -132,11 +133,15 @@ function syncGridValuesToMultiyear(
     Object.entries(GRID_TO_MULTIYEAR_MAPPING).forEach(([gridAccountName, multiyearField]) => {
       const value = getProjectedValue(gridAccountName)
       
-      // Update both scenarios A and B for 2025
+      // Update YTD or Scenario state depending on mode
       try {
-        store.setFutureValue('A', 2025, multiyearField, value)
-        if (store.scenarioBEnabled) {
-          store.setFutureValue('B', 2025, multiyearField, value)
+        if (mode === 'ytd') {
+          store.setYtdValue(multiyearField, value)
+        } else {
+          store.setFutureValue('A', 2025, multiyearField, value)
+          if (store.scenarioBEnabled) {
+            store.setFutureValue('B', 2025, multiyearField, value)
+          }
         }
       } catch (error) {
         console.error(`Failed to sync ${multiyearField}:`, error)
@@ -161,9 +166,13 @@ function syncGridValuesToMultiyear(
     
     // Sync therapy income total
     try {
-      store.setFutureValue('A', 2025, 'therapyIncome', therapyIncomeTotal)
-      if (store.scenarioBEnabled) {
-        store.setFutureValue('B', 2025, 'therapyIncome', therapyIncomeTotal)
+      if (mode === 'ytd') {
+        store.setYtdValue('therapyIncome', therapyIncomeTotal)
+      } else {
+        store.setFutureValue('A', 2025, 'therapyIncome', therapyIncomeTotal)
+        if (store.scenarioBEnabled) {
+          store.setFutureValue('B', 2025, 'therapyIncome', therapyIncomeTotal)
+        }
       }
     } catch (error) {
       console.error(`Failed to sync therapyIncome:`, error)
@@ -175,16 +184,40 @@ function syncGridValuesToMultiyear(
       const centralia = getProjectedValue('7110 Therapy - Centralia')
       const aberdeen = getProjectedValue('7108 Therapy - Aberdeen')
       
-      store.setFutureValue('A', 2025, 'therapyLacey', lacey)
-      store.setFutureValue('A', 2025, 'therapyCentralia', centralia)
-      store.setFutureValue('A', 2025, 'therapyAberdeen', aberdeen)
-      if (store.scenarioBEnabled) {
-        store.setFutureValue('B', 2025, 'therapyLacey', lacey)
-        store.setFutureValue('B', 2025, 'therapyCentralia', centralia)
-        store.setFutureValue('B', 2025, 'therapyAberdeen', aberdeen)
+      if (mode === 'ytd') {
+        store.setYtdValue('therapyLacey', lacey)
+        store.setYtdValue('therapyCentralia', centralia)
+        store.setYtdValue('therapyAberdeen', aberdeen)
+      } else {
+        store.setFutureValue('A', 2025, 'therapyLacey', lacey)
+        store.setFutureValue('A', 2025, 'therapyCentralia', centralia)
+        store.setFutureValue('A', 2025, 'therapyAberdeen', aberdeen)
+        if (store.scenarioBEnabled) {
+          store.setFutureValue('B', 2025, 'therapyLacey', lacey)
+          store.setFutureValue('B', 2025, 'therapyCentralia', centralia)
+          store.setFutureValue('B', 2025, 'therapyAberdeen', aberdeen)
+        }
       }
     } catch (error) {
       console.error('Failed to sync per-site therapy values:', error)
+    }
+    
+    // Log what was synced
+    if (mode === 'ytd') {
+      console.log('✅ [Sync] Grid → YTD store complete:', {
+        therapyIncome: therapyIncomeTotal,
+        nonEmploymentCosts: getProjectedValue('Non-Employment Costs'),
+        nonMdEmploymentCosts: getProjectedValue('8320 Non-MD Payroll'),
+        therapyLacey: getProjectedValue('7105 Therapy - Lacey'),
+        therapyCentralia: getProjectedValue('7110 Therapy - Centralia'),
+        therapyAberdeen: getProjectedValue('7108 Therapy - Aberdeen')
+      })
+    } else {
+      console.log('✅ [Sync] Grid → Scenario A/B complete:', {
+        therapyIncome: therapyIncomeTotal,
+        nonEmploymentCosts: getProjectedValue('Non-Employment Costs'),
+        nonMdEmploymentCosts: getProjectedValue('8320 Non-MD Payroll')
+      })
     }
     
   } catch (error) {
@@ -197,6 +230,7 @@ interface YearlyDataGridProps {
   cachedSummary?: any
   isLoadingCache?: boolean  // Add flag to indicate if cached data is still loading
   onSyncComplete?: () => void  // Callback when cache sync to store completes
+  mode?: 'scenario' | 'ytd'  // Which state to sync to (default: 'scenario')
 }
 
 // Click detection coordinates for expand/collapse all icons in header
@@ -212,7 +246,8 @@ export default function YearlyDataGrid({
   environment = 'sandbox',
   cachedSummary,
   isLoadingCache = false,
-  onSyncComplete
+  onSyncComplete,
+  mode = 'scenario'
 }: YearlyDataGridProps = {}) {
   const store = useDashboardStore()
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
@@ -396,8 +431,9 @@ export default function YearlyDataGrid({
       setError(null)
 
       // Load both the grid data and the projection ratio
+      const customValues = mode === 'ytd' ? store.ytdCustomProjectedValues : store.customProjectedValues
       const [data, ratio] = await Promise.all([
-        loadYearlyGridData(collapsedSections, store.customProjectedValues, physicianData, cachedSummaryData),
+        loadYearlyGridData(collapsedSections, customValues, physicianData, cachedSummaryData),
         calculateProjectionRatio(cachedSummaryData)
       ])
 
@@ -416,17 +452,29 @@ export default function YearlyDataGrid({
       // Always sync grid values to store on initial load for compensation calculations
       // Use a longer delay to reduce redundant syncs during rapid state changes
       setTimeout(() => {
-        syncGridValuesToMultiyear(store, store.customProjectedValues, data)
+        const customValues = mode === 'ytd' ? store.ytdCustomProjectedValues : store.customProjectedValues
+        syncGridValuesToMultiyear(store, customValues, data, mode)
         
         // Update the snapshot AFTER cache sync completes so reset goes to post-cache state
-        // Only update if a scenario is currently loaded (has a snapshot)
-        if (store.loadedScenarioSnapshot && store.currentScenarioId) {
-          console.log('📸 Updating Scenario A snapshot after QBO cache sync')
-          store.updateScenarioSnapshot('A')
-        }
-        if (store.scenarioBEnabled && store.loadedScenarioBSnapshot && store.currentScenarioBId) {
-          console.log('📸 Updating Scenario B snapshot after QBO cache sync')
-          store.updateScenarioSnapshot('B')
+        if (mode === 'ytd') {
+          console.log('📸 [YTD] Updating YTD snapshot after QBO cache sync')
+          console.log('📊 [YTD] Store state after sync:', {
+            therapyIncome: store.ytdData?.therapyIncome,
+            nonEmploymentCosts: store.ytdData?.nonEmploymentCosts,
+            locumCosts: store.ytdData?.locumCosts,
+            customValuesCount: Object.keys(store.ytdCustomProjectedValues || {}).length
+          })
+          store.updateCurrentYearSettingsSnapshot()
+        } else {
+          // Multi-Year mode: update scenario snapshots
+          if (store.loadedScenarioSnapshot && store.currentScenarioId) {
+            console.log('📸 [Multi-Year] Updating Scenario A snapshot after QBO cache sync')
+            store.updateScenarioSnapshot('A')
+          }
+          if (store.scenarioBEnabled && store.loadedScenarioBSnapshot && store.currentScenarioBId) {
+            console.log('📸 [Multi-Year] Updating Scenario B snapshot after QBO cache sync')
+            store.updateScenarioSnapshot('B')
+          }
         }
         
         // Notify parent that sync is complete
@@ -633,11 +681,19 @@ export default function YearlyDataGrid({
     if (approximatelyEqual(newValue, defaultValue)) {
       // Remove override if matching default value
       if (customProjectedValues[accountName] !== undefined) {
-        store.removeCustomProjectedValue(accountName)
+        if (mode === 'ytd') {
+          store.removeYtdCustomProjectedValue(accountName)
+        } else {
+          store.removeCustomProjectedValue(accountName)
+        }
       }
     } else {
       // Set/replace override (including when set to annualized but different from default)
-      store.setCustomProjectedValue(accountName, newValue)
+      if (mode === 'ytd') {
+        store.setYtdCustomProjectedValue(accountName, newValue)
+      } else {
+        store.setCustomProjectedValue(accountName, newValue)
+      }
     }
     
       // Trigger immediate sync to multiyear store after value change
@@ -645,7 +701,8 @@ export default function YearlyDataGrid({
       setTimeout(() => {
         if (gridData.rows.length > 0) {
           // console.log('🎯 Syncing after projected value change...')
-          syncGridValuesToMultiyear(store, store.customProjectedValues, gridData)
+          const customValues = mode === 'ytd' ? store.ytdCustomProjectedValues : store.customProjectedValues
+          syncGridValuesToMultiyear(store, customValues, gridData, mode)
         }
       }, 50) // Short delay to allow dynamic calculations to complete
   }, [slider.accountName, slider.currentValue, slider.annualizedBaseline, store.customProjectedValues, gridData, store])
