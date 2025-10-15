@@ -2093,7 +2093,7 @@ export const useDashboardStore = create<Store>()(
           name: string,
           description: string,
           isPublic: boolean,
-          _ytdSettings?: YTDSettings
+          _ytdSettings?: YTDSettings | null
         ) => {
           const state = get()
           // Use the already-imported supabase client (line 4)

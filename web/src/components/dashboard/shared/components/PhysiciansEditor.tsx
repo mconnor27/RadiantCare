@@ -729,7 +729,7 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
               ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
             </div>
             <button
-              onClick={() => store.removePhysician(scenario, year, p.id)}
+              onClick={() => handleRemovePhysician(p.id)}
               disabled={!canDelete}
               title={canDelete ? 'Remove' : 'Minimum 3 physicians'}
               style={{
@@ -1078,7 +1078,7 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
               ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
             </div>
             <button
-              onClick={() => store.removePhysician(scenario, year, p.id)}
+              onClick={() => handleRemovePhysician(p.id)}
               disabled={!canDelete}
               title={canDelete ? 'Remove' : 'Minimum 3 physicians'}
               style={{
@@ -1266,7 +1266,7 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
               ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
             </div>
             <button
-              onClick={() => store.removePhysician(scenario, year, p.id)}
+              onClick={() => handleRemovePhysician(p.id)}
               disabled={!canDelete}
               title={canDelete ? 'Remove' : 'Minimum 3 physicians'}
               style={{
@@ -1866,7 +1866,7 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
                 ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
               </div>
             <button
-              onClick={() => store.removePhysician(scenario, year, p.id)}
+              onClick={() => handleRemovePhysician(p.id)}
               disabled={!canDelete}
               title={canDelete ? 'Remove' : 'Minimum 3 physicians'}
               style={{
@@ -2122,7 +2122,7 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
               ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
             </div>
             <button
-              onClick={() => store.removePhysician(scenario, year, p.id)}
+              onClick={() => handleRemovePhysician(p.id)}
               disabled={!canDelete}
               title={canDelete ? 'Remove' : 'Minimum 3 physicians'}
               style={{
@@ -2828,7 +2828,7 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
                 ><span style={{ transform: 'translateY(-0.5px)', display: 'inline-block' }}>ℹ</span></div>
               </div>
             <button
-              onClick={() => store.removePhysician(scenario, year, p.id)}
+              onClick={() => handleRemovePhysician(p.id)}
               disabled={!canDelete}
               title={canDelete ? 'Remove' : 'Minimum 3 physicians'}
               style={{

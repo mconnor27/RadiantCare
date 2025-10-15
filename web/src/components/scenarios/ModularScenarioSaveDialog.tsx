@@ -1,20 +1,17 @@
 import { useState } from 'react'
-import type { YTDSettings } from '../dashboard/shared/types'
 
 interface ModularScenarioSaveDialogProps {
   isOpen: boolean
   onClose: () => void
   onSave: (saveType: 'current_year' | 'projection' | 'both', name: string, description: string, isPublic: boolean) => Promise<void>
   baselineMode: '2024 Data' | '2025 Data' | 'Custom'
-  ytdSettings?: YTDSettings
 }
 
 export default function ModularScenarioSaveDialog({
   isOpen,
   onClose,
   onSave,
-  baselineMode,
-  ytdSettings
+  baselineMode
 }: ModularScenarioSaveDialogProps) {
   const [saveType, setSaveType] = useState<'current_year' | 'projection' | 'both'>(
     baselineMode === '2025 Data' ? 'both' : 'projection'

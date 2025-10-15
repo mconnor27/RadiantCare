@@ -421,38 +421,10 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         onClose={() => setShowModularSaveDialog(false)}
         onSave={async (_saveType, name, description, isPublic) => {
           // In YTD view, always save as Current Year Settings
-          // (It's always 2025 Data mode in this view)
-          const ytdSettings = {
-            // Required YTDSettings properties
-            isNormalized,
-            smoothing: getCurrentSmoothing(),
-            chartType: chartMode,
-            incomeMode,
-            showTarget: true, // Default to true
-            // Additional YTD-specific properties
-            showCombined,
-            combineStatistic,
-            combineError,
-            timeframe,
-            currentPeriod,
-            is2025Visible,
-            showAllMonths,
-            smoothingByMode,
-            selectedYears,
-            visibleSites,
-            colorScheme,
-            siteColorScheme
-          }
-          await store.saveCurrentYearSettings(name, description, isPublic, ytdSettings)
+          // Chart settings are NOT saved (ytdSettings = null)
+          await store.saveCurrentYearSettings(name, description, isPublic, null)
         }}
         baselineMode="2025 Data"
-        ytdSettings={{
-          isNormalized,
-          smoothing: getCurrentSmoothing(),
-          chartType: chartMode,
-          incomeMode,
-          showTarget: true
-        }}
       />
 
       {/* Loading Modal - render FIRST before any content */}

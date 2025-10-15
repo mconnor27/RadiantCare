@@ -342,7 +342,7 @@ export type Store = {
     name: string,
     description: string,
     isPublic: boolean,
-    ytdSettings?: YTDSettings
+    ytdSettings?: YTDSettings | null
   ) => Promise<CurrentYearSettingsScenario>
   saveProjection: (
     name: string,
