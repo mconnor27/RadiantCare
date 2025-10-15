@@ -380,7 +380,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         daily: dailyData,
         summary: summaryData,
         equity: equityData,
-        synced_by: user.id,
+        synced_by: isCronRequest ? null : user.id,
       })
 
     if (cacheError) {
