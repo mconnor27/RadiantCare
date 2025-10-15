@@ -19,6 +19,7 @@ import PartnerCompensation from './components/PartnerCompensation'
 import { useDashboardStore, hasChangesFromLoadedScenario } from '../../../Dashboard'
 import PhysiciansEditor from '../../shared/components/PhysiciansEditor'
 import { DEFAULT_LOCUM_COSTS_2025 } from '../../shared/defaults'
+import ModularScenarioSaveDialog from '../../../scenarios/ModularScenarioSaveDialog'
 import ScenarioLoadModal from '../../../scenarios/ScenarioLoadModal'
 import ShareLinkButton from '../../../shared/ShareLinkButton'
 import { useAuth } from '../../../auth/AuthProvider'
@@ -35,6 +36,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
   const { profile } = useAuth()
   const [showLoadingModal, setShowLoadingModal] = useState(true)  // Start as true to show immediately
   const [showLoadModal, setShowLoadModal] = useState(false)  // Scenario load modal
+  const [showModularSaveDialog, setShowModularSaveDialog] = useState(false)  // Modular save dialog
   const [isScenarioDirty, setIsScenarioDirty] = useState(false)  // Track if scenario has been modified
   const [scenarioAIsPublic, setScenarioAIsPublic] = useState(false)  // Track if scenario is public
   const [error, setError] = useState<string | null>(null)
@@ -392,6 +394,46 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
 
   return (
     <>
+      {/* Modular Save Dialog */}
+      <ModularScenarioSaveDialog
+        isOpen={showModularSaveDialog}
+        onClose={() => setShowModularSaveDialog(false)}
+        onSave={async (_saveType, name, description, isPublic) => {
+          // In YTD view, always save as Current Year Settings
+          // (It's always 2025 Data mode in this view)
+          const ytdSettings = {
+            // Required YTDSettings properties
+            isNormalized,
+            smoothing: getCurrentSmoothing(),
+            chartType: chartMode,
+            incomeMode,
+            showTarget: true, // Default to true
+            // Additional YTD-specific properties
+            showCombined,
+            combineStatistic,
+            combineError,
+            timeframe,
+            currentPeriod,
+            is2025Visible,
+            showAllMonths,
+            smoothingByMode,
+            selectedYears,
+            visibleSites,
+            colorScheme,
+            siteColorScheme
+          }
+          await store.saveCurrentYearSettings(name, description, isPublic, ytdSettings)
+        }}
+        baselineMode="2025 Data"
+        ytdSettings={{
+          isNormalized,
+          smoothing: getCurrentSmoothing(),
+          chartType: chartMode,
+          incomeMode,
+          showTarget: true
+        }}
+      />
+
       {/* Loading Modal - render FIRST before any content */}
       {showLoadingModal && (
         <div style={{
@@ -546,12 +588,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
 
         {/* Save As Button */}
         <button
-          onClick={() => {
-            if (confirm('Note: Only 2025 data will be saved from this view.\n\nIf you want to save multiple years, please use the MultiYear view instead.\n\nContinue saving?')) {
-              const event = new CustomEvent('saveScenarioAs')
-              window.dispatchEvent(event)
-            }
-          }}
+          onClick={() => setShowModularSaveDialog(true)}
           style={{
             background: 'none',
             border: 'none',

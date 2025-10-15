@@ -89,8 +89,19 @@ export const useDashboardStore = create<Store>()(
         currentScenarioBId: null,
         currentScenarioBName: null,
         currentScenarioBUserId: null,
+        // NEW: Split scenario tracking
+        currentYearSettingId: null,
+        currentYearSettingName: null,
+        currentYearSettingUserId: null,
+        currentProjectionId: null,
+        currentProjectionName: null,
+        currentProjectionUserId: null,
+        // Legacy snapshots
         loadedScenarioSnapshot: null,
         loadedScenarioBSnapshot: null,
+        // NEW: Split snapshots
+        loadedCurrentYearSettingsSnapshot: null,
+        loadedProjectionSnapshot: null,
         setScenarioEnabled: (enabled) => {
           set((state) => {
             state.scenarioBEnabled = enabled
@@ -1318,7 +1329,7 @@ export const useDashboardStore = create<Store>()(
           ytdSettings?: YTDSettings
         ) => {
           const state = get()
-          const { supabase } = await import('../lib/supabase')
+          // Use the already-imported supabase client (line 4) instead of dynamic import
 
           // Get current session
           const { data: { session } } = await supabase.auth.getSession()
@@ -1346,6 +1357,7 @@ export const useDashboardStore = create<Store>()(
             name: string
             description: string
             is_public: boolean
+            scenario_type: 'current_year' | 'projection'
             view_mode: 'YTD Detailed' | 'Multi-Year'
             baseline_date: string
             qbo_sync_timestamp: string | null
@@ -1374,6 +1386,7 @@ export const useDashboardStore = create<Store>()(
               name,
               description,
               is_public: isPublic,
+              scenario_type: 'current_year',
               view_mode: 'YTD Detailed',
               ytd_settings: ytdSettings,
               baseline_date: new Date().toISOString().split('T')[0],
@@ -1405,6 +1418,7 @@ export const useDashboardStore = create<Store>()(
               name,
               description,
               is_public: isPublic,
+              scenario_type: 'projection',
               view_mode: 'Multi-Year',
               baseline_mode: dataMode,
               baseline_date: baselineDate,
@@ -1475,7 +1489,7 @@ export const useDashboardStore = create<Store>()(
           isPublic: boolean
         ) => {
           const state = get()
-          const { supabase } = await import('../lib/supabase')
+          // Use the already-imported supabase client (line 4)
 
           // Get current session
           const { data: { session } } = await supabase.auth.getSession()
@@ -1591,7 +1605,7 @@ export const useDashboardStore = create<Store>()(
           target: 'A' | 'B' = 'A', 
           loadBaseline: boolean = true
         ) => {
-          const { supabase } = await import('../lib/supabase')
+          // Use the already-imported supabase client (line 4)
           
           const { data, error } = await supabase
             .from('scenarios')
@@ -1762,6 +1776,541 @@ export const useDashboardStore = create<Store>()(
             
             return data
           }
+        },
+
+        // NEW MODULAR SCENARIO METHODS
+
+        setCurrentYearSetting: (id: string | null, name: string | null, userId?: string | null) => {
+          set((state) => {
+            state.currentYearSettingId = id
+            state.currentYearSettingName = name
+            state.currentYearSettingUserId = userId || null
+          })
+        },
+
+        setCurrentProjection: (id: string | null, name: string | null, userId?: string | null) => {
+          set((state) => {
+            state.currentProjectionId = id
+            state.currentProjectionName = name
+            state.currentProjectionUserId = userId || null
+          })
+        },
+
+        isCurrentYearSettingsDirty: () => {
+          const state = get()
+          if (!state.loadedCurrentYearSettingsSnapshot) return false
+
+          // Get current 2025 data
+          const current2025 = state.scenarioA.future.find(f => f.year === 2025)
+          const snapshot2025 = state.loadedCurrentYearSettingsSnapshot.year_2025_data
+
+          // Deep compare 2025 data
+          if (JSON.stringify(current2025) !== JSON.stringify(snapshot2025)) {
+            return true
+          }
+
+          // Compare 2025 grid overrides
+          const current2025Keys = Object.keys(state.customProjectedValues).filter(k => k.startsWith('2025-'))
+          const snapshot2025Keys = Object.keys(state.loadedCurrentYearSettingsSnapshot.custom_projected_values_2025)
+
+          if (current2025Keys.length !== snapshot2025Keys.length) return true
+
+          for (const key of current2025Keys) {
+            if (Math.abs(state.customProjectedValues[key] - (state.loadedCurrentYearSettingsSnapshot.custom_projected_values_2025[key] || 0)) > 0.01) {
+              return true
+            }
+          }
+
+          return false
+        },
+
+        isProjectionDirty: () => {
+          const state = get()
+          if (!state.loadedProjectionSnapshot) return false
+
+          // Compare projection settings
+          const projectionDirty = Object.keys(state.scenarioA.projection).some(key => {
+            const k = key as keyof typeof state.scenarioA.projection
+            return Math.abs(state.scenarioA.projection[k] - state.loadedProjectionSnapshot!.projection[k]) > 0.001
+          })
+
+          if (projectionDirty) return true
+
+          // Compare 2026-2035 years
+          const current2026Plus = state.scenarioA.future.filter(f => f.year >= 2026 && f.year <= 2035)
+          const snapshot2026Plus = state.loadedProjectionSnapshot.future_2026_2035
+
+          if (JSON.stringify(current2026Plus) !== JSON.stringify(snapshot2026Plus)) {
+            return true
+          }
+
+          // Compare future grid overrides (non-2025 keys)
+          const currentFutureKeys = Object.keys(state.customProjectedValues).filter(k => !k.startsWith('2025-'))
+          const snapshotFutureKeys = Object.keys(state.loadedProjectionSnapshot.custom_projected_values_future)
+
+          if (currentFutureKeys.length !== snapshotFutureKeys.length) return true
+
+          for (const key of currentFutureKeys) {
+            if (Math.abs(state.customProjectedValues[key] - (state.loadedProjectionSnapshot.custom_projected_values_future[key] || 0)) > 0.01) {
+              return true
+            }
+          }
+
+          // Compare baseline years (for 2024/Custom modes)
+          if (state.loadedProjectionSnapshot.baseline_years) {
+            const currentBaselineYears = state.scenarioA.future.filter(f => 
+              state.loadedProjectionSnapshot!.baseline_years!.some(by => by.year === f.year)
+            )
+            if (JSON.stringify(currentBaselineYears) !== JSON.stringify(state.loadedProjectionSnapshot.baseline_years)) {
+              return true
+            }
+          }
+
+          return false
+        },
+
+        resetCurrentYearSettings: () => {
+          set((state) => {
+            if (!state.loadedCurrentYearSettingsSnapshot) return
+
+            // Revert 2025 data
+            const index2025 = state.scenarioA.future.findIndex(f => f.year === 2025)
+            if (index2025 >= 0) {
+              state.scenarioA.future[index2025] = JSON.parse(JSON.stringify(state.loadedCurrentYearSettingsSnapshot.year_2025_data))
+            }
+
+            // Revert 2025 grid overrides
+            Object.keys(state.customProjectedValues).forEach(key => {
+              if (key.startsWith('2025-')) {
+                delete state.customProjectedValues[key]
+              }
+            })
+            Object.assign(state.customProjectedValues, state.loadedCurrentYearSettingsSnapshot.custom_projected_values_2025)
+          })
+        },
+
+        resetProjection: () => {
+          set((state) => {
+            if (!state.loadedProjectionSnapshot) return
+
+            // Revert projection settings
+            state.scenarioA.projection = JSON.parse(JSON.stringify(state.loadedProjectionSnapshot.projection))
+
+            // Revert 2026-2035 years
+            state.scenarioA.future = [
+              ...state.scenarioA.future.filter(f => f.year < 2026),
+              ...JSON.parse(JSON.stringify(state.loadedProjectionSnapshot.future_2026_2035))
+            ].sort((a, b) => a.year - b.year)
+
+            // Revert future grid overrides
+            Object.keys(state.customProjectedValues).forEach(key => {
+              if (!key.startsWith('2025-')) {
+                delete state.customProjectedValues[key]
+              }
+            })
+            Object.assign(state.customProjectedValues, state.loadedProjectionSnapshot.custom_projected_values_future)
+
+            // Revert baseline years (for 2024/Custom modes)
+            if (state.loadedProjectionSnapshot.baseline_years) {
+              const baselineYears = JSON.parse(JSON.stringify(state.loadedProjectionSnapshot.baseline_years))
+              baselineYears.forEach((baselineYear: FutureYear) => {
+                const existingIndex = state.scenarioA.future.findIndex(f => f.year === baselineYear.year)
+                if (existingIndex >= 0) {
+                  state.scenarioA.future[existingIndex] = baselineYear
+                } else {
+                  state.scenarioA.future.push(baselineYear)
+                }
+              })
+              state.scenarioA.future.sort((a, b) => a.year - b.year)
+            }
+          })
+        },
+
+        updateCurrentYearSettingsSnapshot: () => {
+          set((state) => {
+            const year2025 = state.scenarioA.future.find(f => f.year === 2025)
+            if (!year2025) return
+
+            const custom2025Values: Record<string, number> = {}
+            Object.keys(state.customProjectedValues).forEach(key => {
+              if (key.startsWith('2025-')) {
+                custom2025Values[key] = state.customProjectedValues[key]
+              }
+            })
+
+            state.loadedCurrentYearSettingsSnapshot = {
+              year_2025_data: JSON.parse(JSON.stringify(year2025)),
+              custom_projected_values_2025: custom2025Values
+            }
+          })
+        },
+
+        updateProjectionSnapshot: () => {
+          set((state) => {
+            const future2026Plus = state.scenarioA.future.filter(f => f.year >= 2026 && f.year <= 2035)
+            
+            const customFutureValues: Record<string, number> = {}
+            Object.keys(state.customProjectedValues).forEach(key => {
+              if (!key.startsWith('2025-')) {
+                customFutureValues[key] = state.customProjectedValues[key]
+              }
+            })
+
+            // Get baseline years if in 2024/Custom mode
+            let baselineYears: FutureYear[] | undefined
+            if (state.scenarioA.dataMode === '2024 Data') {
+              const year2024 = state.scenarioA.future.find(f => f.year === 2024)
+              if (year2024) {
+                baselineYears = [JSON.parse(JSON.stringify(year2024))]
+              }
+            } else if (state.scenarioA.dataMode === 'Custom') {
+              baselineYears = state.scenarioA.future.filter(f => f.year < 2025).map(y => JSON.parse(JSON.stringify(y)))
+            }
+
+            state.loadedProjectionSnapshot = {
+              baseline_mode: state.scenarioA.dataMode,
+              baseline_years: baselineYears,
+              projection: JSON.parse(JSON.stringify(state.scenarioA.projection)),
+              future_2026_2035: JSON.parse(JSON.stringify(future2026Plus)),
+              custom_projected_values_future: customFutureValues
+            }
+          })
+        },
+
+        saveCurrentYearSettings: async (
+          name: string,
+          description: string,
+          isPublic: boolean,
+          ytdSettings?: YTDSettings
+        ) => {
+          const state = get()
+          // Use the already-imported supabase client (line 4)
+
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session) throw new Error('Not authenticated')
+
+          // Get QBO sync timestamp
+          let qboSyncTimestamp: string | null = null
+          try {
+            const { data: cacheData } = await supabase
+              .from('qbo_cache')
+              .select('last_sync_timestamp')
+              .eq('id', 1)
+              .single()
+            if (cacheData) {
+              qboSyncTimestamp = cacheData.last_sync_timestamp
+            }
+          } catch (err) {
+            console.warn('Could not fetch QBO sync timestamp:', err)
+          }
+
+          // Extract 2025 data
+          const year2025 = state.scenarioA.future.find(f => f.year === 2025)
+          if (!year2025) throw new Error('No 2025 data to save')
+
+          // Extract 2025 grid overrides
+          const custom2025Values: Record<string, number> = {}
+          Object.keys(state.customProjectedValues).forEach(key => {
+            if (key.startsWith('2025-')) {
+              custom2025Values[key] = state.customProjectedValues[key]
+            }
+          })
+
+          const saveData = {
+            name,
+            description,
+            is_public: isPublic,
+            scenario_type: 'current_year' as const,
+            view_mode: 'YTD Detailed' as const,
+            year_2025_data: year2025,
+            custom_projected_values: custom2025Values,
+            ytd_settings: ytdSettings || null,
+            baseline_date: new Date().toISOString().split('T')[0],
+            qbo_sync_timestamp: qboSyncTimestamp,
+          }
+
+          // Check if updating existing Current Year Setting
+          if (state.currentYearSettingId) {
+            const { data, error } = await supabase
+              .from('scenarios')
+              .update(saveData)
+              .eq('id', state.currentYearSettingId)
+              .select()
+              .single()
+
+            if (error) throw error
+
+            get().setCurrentYearSetting(data.id, name, session.user.id)
+            get().updateCurrentYearSettingsSnapshot()
+
+            return data as any
+          } else {
+            const { data, error } = await supabase
+              .from('scenarios')
+              .insert({
+                user_id: session.user.id,
+                ...saveData,
+              })
+              .select()
+              .single()
+
+            if (error) throw error
+
+            get().setCurrentYearSetting(data.id, name, session.user.id)
+            get().updateCurrentYearSettingsSnapshot()
+
+            return data as any
+          }
+        },
+
+        saveProjection: async (
+          name: string,
+          description: string,
+          isPublic: boolean,
+          target: 'A' | 'B' = 'A'
+        ) => {
+          const state = get()
+          // Use the already-imported supabase client (line 4)
+
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session) throw new Error('Not authenticated')
+
+          const scenario = target === 'A' ? state.scenarioA : state.scenarioB
+          if (!scenario) throw new Error(`No Scenario ${target} to save`)
+
+          // Get QBO sync timestamp
+          let qboSyncTimestamp: string | null = null
+          try {
+            const { data: cacheData } = await supabase
+              .from('qbo_cache')
+              .select('last_sync_timestamp')
+              .eq('id', 1)
+              .single()
+            if (cacheData) {
+              qboSyncTimestamp = cacheData.last_sync_timestamp
+            }
+          } catch (err) {
+            console.warn('Could not fetch QBO sync timestamp:', err)
+          }
+
+          // Extract projection settings
+          const projectionSettings = scenario.projection
+
+          // Extract 2026-2035 years
+          const future2026Plus = scenario.future.filter(f => f.year >= 2026 && f.year <= 2035)
+
+          // Extract future grid overrides (non-2025 keys)
+          const customFutureValues: Record<string, number> = {}
+          Object.keys(state.customProjectedValues).forEach(key => {
+            if (!key.startsWith('2025-')) {
+              customFutureValues[key] = state.customProjectedValues[key]
+            }
+          })
+
+          // Extract baseline years if not in 2025 Data mode
+          let baselineYears: FutureYear[] | null = null
+          if (scenario.dataMode === '2024 Data') {
+            const year2024 = scenario.future.find(f => f.year === 2024)
+            if (year2024) {
+              baselineYears = [year2024]
+            }
+          } else if (scenario.dataMode === 'Custom') {
+            baselineYears = scenario.future.filter(f => f.year < 2025)
+          }
+
+          const baselineDate = scenario.dataMode === '2024 Data' 
+            ? '2024-12-31' 
+            : new Date().toISOString().split('T')[0]
+
+          const saveData = {
+            name,
+            description,
+            is_public: isPublic,
+            scenario_type: 'projection' as const,
+            view_mode: 'Multi-Year' as const,
+            baseline_mode: scenario.dataMode,
+            baseline_years: baselineYears,
+            projection_settings: projectionSettings,
+            future_years: future2026Plus,
+            future_custom_values: customFutureValues,
+            baseline_date: baselineDate,
+            qbo_sync_timestamp: qboSyncTimestamp,
+          }
+
+          // Check if updating existing Projection
+          if (state.currentProjectionId) {
+            const { data, error } = await supabase
+              .from('scenarios')
+              .update(saveData)
+              .eq('id', state.currentProjectionId)
+              .select()
+              .single()
+
+            if (error) throw error
+
+            get().setCurrentProjection(data.id, name, session.user.id)
+            get().updateProjectionSnapshot()
+
+            return data as any
+          } else {
+            const { data, error } = await supabase
+              .from('scenarios')
+              .insert({
+                user_id: session.user.id,
+                ...saveData,
+              })
+              .select()
+              .single()
+
+            if (error) throw error
+
+            get().setCurrentProjection(data.id, name, session.user.id)
+            get().updateProjectionSnapshot()
+
+            return data as any
+          }
+        },
+
+        loadCurrentYearSettings: async (id: string) => {
+          // Use the already-imported supabase client (line 4)
+
+          const { data, error } = await supabase
+            .from('scenarios')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+          if (error) throw error
+          if (!data) throw new Error('Scenario not found')
+
+          if (data.scenario_type !== 'current_year') {
+            throw new Error('Not a Current Year Settings scenario')
+          }
+
+          set((state) => {
+            // Restore 2025 year data
+            if (data.year_2025_data) {
+              const existingIndex = state.scenarioA.future.findIndex(f => f.year === 2025)
+              if (existingIndex >= 0) {
+                state.scenarioA.future[existingIndex] = data.year_2025_data
+              } else {
+                state.scenarioA.future.push(data.year_2025_data)
+              }
+            }
+
+            // Restore 2025 grid overrides (replace existing 2025 keys)
+            Object.keys(state.customProjectedValues).forEach(key => {
+              if (key.startsWith('2025-')) {
+                delete state.customProjectedValues[key]
+              }
+            })
+            if (data.custom_projected_values) {
+              Object.assign(state.customProjectedValues, data.custom_projected_values)
+            }
+
+            state.currentYearSettingId = data.id
+            state.currentYearSettingName = data.name
+            state.currentYearSettingUserId = data.user_id
+          })
+
+          // Update snapshot
+          get().updateCurrentYearSettingsSnapshot()
+
+          return data as any
+        },
+
+        loadProjection: async (id: string, target: 'A' | 'B' = 'A') => {
+          // Use the already-imported supabase client (line 4)
+
+          const { data, error } = await supabase
+            .from('scenarios')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+          if (error) throw error
+          if (!data) throw new Error('Scenario not found')
+
+          if (data.scenario_type !== 'projection') {
+            throw new Error('Not a Projection scenario')
+          }
+
+          set((state) => {
+            const targetScenario = target === 'A' ? state.scenarioA : state.scenarioB
+            if (!targetScenario && target === 'B') {
+              throw new Error('Scenario B not initialized')
+            }
+
+            // Restore projection settings
+            if (target === 'A') {
+              state.scenarioA.projection = data.projection_settings
+            } else if (state.scenarioB) {
+              state.scenarioB.projection = data.projection_settings
+            }
+
+            // Restore 2026-2035 years
+            const future2026Plus = data.future_years || []
+            if (target === 'A') {
+              state.scenarioA.future = [
+                ...state.scenarioA.future.filter(f => f.year < 2026),
+                ...future2026Plus
+              ].sort((a, b) => a.year - b.year)
+            } else if (state.scenarioB) {
+              state.scenarioB.future = [
+                ...state.scenarioB.future.filter(f => f.year < 2026),
+                ...future2026Plus
+              ].sort((a, b) => a.year - b.year)
+            }
+
+            // Restore future grid overrides (replace existing non-2025 keys)
+            Object.keys(state.customProjectedValues).forEach(key => {
+              if (!key.startsWith('2025-')) {
+                delete state.customProjectedValues[key]
+              }
+            })
+            if (data.future_custom_values) {
+              Object.assign(state.customProjectedValues, data.future_custom_values)
+            }
+
+            // Restore baseline years if applicable (2024/Custom modes)
+            if (data.baseline_years && data.baseline_years.length > 0) {
+              const baselineYears = data.baseline_years as FutureYear[]
+              baselineYears.forEach(baselineYear => {
+                if (target === 'A') {
+                  const existingIndex = state.scenarioA.future.findIndex(f => f.year === baselineYear.year)
+                  if (existingIndex >= 0) {
+                    state.scenarioA.future[existingIndex] = baselineYear
+                  } else {
+                    state.scenarioA.future.push(baselineYear)
+                  }
+                } else if (state.scenarioB) {
+                  const existingIndex = state.scenarioB.future.findIndex(f => f.year === baselineYear.year)
+                  if (existingIndex >= 0) {
+                    state.scenarioB.future[existingIndex] = baselineYear
+                  } else {
+                    state.scenarioB.future.push(baselineYear)
+                  }
+                }
+              })
+              
+              if (target === 'A') {
+                state.scenarioA.future.sort((a, b) => a.year - b.year)
+                state.scenarioA.dataMode = data.baseline_mode || '2025 Data'
+              } else if (state.scenarioB) {
+                state.scenarioB.future.sort((a, b) => a.year - b.year)
+                state.scenarioB.dataMode = data.baseline_mode || '2025 Data'
+              }
+            }
+
+            state.currentProjectionId = data.id
+            state.currentProjectionName = data.name
+            state.currentProjectionUserId = data.user_id
+          })
+
+          // Update snapshot
+          get().updateProjectionSnapshot()
+
+          return data as any
         },
       }
     }),
@@ -2282,6 +2831,7 @@ export function Dashboard() {
   const ytdRefreshCallbackRef = useRef<(() => void) | null>(null)
   // Track if default scenarios have been loaded to prevent duplicate loads
   const defaultScenariosLoadedRef = useRef(false)
+  const [isInitialScenarioLoadComplete, setIsInitialScenarioLoadComplete] = useState(false)
   // Shared link warning modal
   const [showSharedLinkWarning, setShowSharedLinkWarning] = useState(false)
   const [pendingSharedLinkId, setPendingSharedLinkId] = useState<string | null>(null)
@@ -2683,6 +3233,7 @@ export function Dashboard() {
         store.scenarioB) {
       console.log('[INIT] Skipping default load - scenarios and snapshots already present')
       defaultScenariosLoadedRef.current = true
+      setIsInitialScenarioLoadComplete(true)
       return
     }
 
@@ -2805,6 +3356,9 @@ export function Dashboard() {
         })
       } catch (err) {
         console.error('Error loading default scenarios:', err)
+      } finally {
+        // Mark as complete after scenarios are loaded (or failed)
+        setIsInitialScenarioLoadComplete(true)
       }
     }
 
@@ -3055,6 +3609,7 @@ export function Dashboard() {
               <YTDDetailedMobile
                 onRefreshRequest={handleYtdRefreshRequest}
                 onPasswordChange={() => setShowPasswordReset(true)}
+                isInitialScenarioLoadComplete={isInitialScenarioLoadComplete}
               />
             ) : (
               <>

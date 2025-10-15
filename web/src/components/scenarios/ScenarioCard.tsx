@@ -1,5 +1,10 @@
 import type { SavedScenario } from '../dashboard/shared/types'
-import { isYTDScenario, isMultiYearScenario } from '../dashboard/shared/types'
+import { 
+  isYTDScenario, 
+  isMultiYearScenario, 
+  isCurrentYearSettingsScenario, 
+  isProjectionScenario 
+} from '../dashboard/shared/types'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTrash, faPenToSquare, faClone, faFolderOpen, faRotate, faStar as faSolidStar } from '@fortawesome/free-solid-svg-icons'
 import { faStar as faRegularStar } from '@fortawesome/free-regular-svg-icons'
@@ -49,10 +54,18 @@ export default function ScenarioCard({
 
   // Get view mode badge info
   const getViewModeInfo = () => {
+    // Check for new modular types first
+    if (isCurrentYearSettingsScenario(scenario)) {
+      return { label: '⚙️ Current Year Settings', color: '#0369a1', bg: '#dbeafe' }
+    }
+    if (isProjectionScenario(scenario)) {
+      return { label: '📊 Projection', color: '#7c3aed', bg: '#ede9fe' }
+    }
+    // Legacy types
     if (isYTDScenario(scenario)) {
-      return { label: '📊 YTD View', color: '#0369a1', bg: '#e0f2fe' }
+      return { label: '📊 YTD View (Legacy)', color: '#6b7280', bg: '#f3f4f6' }
     } else {
-      return { label: '📈 Multi-Year', color: '#15803d', bg: '#dcfce7' }
+      return { label: '📈 Multi-Year (Legacy)', color: '#6b7280', bg: '#f3f4f6' }
     }
   }
 

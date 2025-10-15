@@ -160,17 +160,72 @@ export type MultiYearScenario = {
   creator_email?: string
 }
 
-// Union type for all scenarios
-export type SavedScenario = YTDScenario | MultiYearScenario
+// NEW MODULAR TYPES
 
-// Type guard to check if scenario is YTD
-export function isYTDScenario(scenario: SavedScenario): scenario is YTDScenario {
-  return scenario.view_mode === 'YTD Detailed'
+// Current Year Settings Scenario (2025 baseline customizations ONLY)
+export type CurrentYearSettingsScenario = {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  is_public: boolean
+  scenario_type: 'current_year'
+  view_mode: 'YTD Detailed'
+  year_2025_data: FutureYear // 2025 physicians + settings
+  custom_projected_values: Record<string, number> // Grid overrides for 2025 ONLY ('2025-*' keys)
+  ytd_settings: YTDSettings | null
+  baseline_date: string // ISO date (YYYY-MM-DD)
+  qbo_sync_timestamp: string | null
+  is_favorite_a?: boolean
+  created_at: string
+  updated_at: string
+  creator_email?: string
 }
 
-// Type guard to check if scenario is Multi-Year
+// Projection Scenario (projection settings + 2026-2035, optionally 2024/Custom baseline)
+export type ProjectionScenario = {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  is_public: boolean
+  scenario_type: 'projection'
+  view_mode: 'Multi-Year'
+  baseline_mode: BaselineMode
+  baseline_years: FutureYear[] | null // For 2024/Custom modes (basic data, no grid overrides)
+  projection_settings: Projection // Growth rates, global params
+  future_years: FutureYear[] // 2026-2035 only
+  future_custom_values: Record<string, number> // Grid overrides for 2026-2035 ONLY
+  baseline_date: string // ISO date (YYYY-MM-DD)
+  qbo_sync_timestamp: string | null
+  is_favorite_a?: boolean
+  is_favorite_b?: boolean
+  created_at: string
+  updated_at: string
+  creator_email?: string
+}
+
+// Union type for all scenarios (legacy + new modular types)
+export type SavedScenario = YTDScenario | MultiYearScenario | CurrentYearSettingsScenario | ProjectionScenario
+
+// Type guard to check if scenario is YTD (legacy)
+export function isYTDScenario(scenario: SavedScenario): scenario is YTDScenario {
+  return scenario.view_mode === 'YTD Detailed' && !('scenario_type' in scenario)
+}
+
+// Type guard to check if scenario is Multi-Year (legacy)
 export function isMultiYearScenario(scenario: SavedScenario): scenario is MultiYearScenario {
-  return scenario.view_mode === 'Multi-Year'
+  return scenario.view_mode === 'Multi-Year' && !('scenario_type' in scenario)
+}
+
+// Type guard for Current Year Settings
+export function isCurrentYearSettingsScenario(scenario: SavedScenario): scenario is CurrentYearSettingsScenario {
+  return 'scenario_type' in scenario && scenario.scenario_type === 'current_year'
+}
+
+// Type guard for Projection
+export function isProjectionScenario(scenario: SavedScenario): scenario is ProjectionScenario {
+  return 'scenario_type' in scenario && scenario.scenario_type === 'projection'
 }
 
 export type Store = {
@@ -180,19 +235,38 @@ export type Store = {
   scenarioBEnabled: boolean
   customProjectedValues: Record<string, number>
   suppressNextGridSync?: boolean
-  currentScenarioId: string | null
-  currentScenarioName: string | null
-  currentScenarioUserId: string | null
+  currentScenarioId: string | null // Legacy - for backward compat
+  currentScenarioName: string | null // Legacy - for backward compat
+  currentScenarioUserId: string | null // Legacy - for backward compat
   currentScenarioBId: string | null
   currentScenarioBName: string | null
   currentScenarioBUserId: string | null
-  // Snapshot of loaded scenario state for change detection
+  // NEW: Split scenario tracking
+  currentYearSettingId: string | null
+  currentYearSettingName: string | null
+  currentYearSettingUserId: string | null
+  currentProjectionId: string | null
+  currentProjectionName: string | null
+  currentProjectionUserId: string | null
+  // Legacy snapshot (for backward compat)
   loadedScenarioSnapshot: {
     scenarioA: ScenarioState
     customProjectedValues: Record<string, number>
   } | null
   loadedScenarioBSnapshot: {
     scenarioB: ScenarioState
+  } | null
+  // NEW: Split snapshots for modular system
+  loadedCurrentYearSettingsSnapshot: {
+    year_2025_data: FutureYear
+    custom_projected_values_2025: Record<string, number> // Only '2025-*' keys
+  } | null
+  loadedProjectionSnapshot: {
+    baseline_mode: BaselineMode
+    baseline_years?: FutureYear[] // For 2024/Custom modes
+    projection: Projection
+    future_2026_2035: FutureYear[]
+    custom_projected_values_future: Record<string, number> // Only non-'2025-*' keys
   } | null
   setScenarioEnabled: (enabled: boolean) => void
   setFutureValue: (
@@ -241,4 +315,27 @@ export type Store = {
     description: string,
     isPublic: boolean
   ) => Promise<SavedScenario>
+  // NEW: Modular scenario methods
+  setCurrentYearSetting: (id: string | null, name: string | null, userId?: string | null) => void
+  setCurrentProjection: (id: string | null, name: string | null, userId?: string | null) => void
+  isCurrentYearSettingsDirty: () => boolean
+  isProjectionDirty: () => boolean
+  resetCurrentYearSettings: () => void
+  resetProjection: () => void
+  updateCurrentYearSettingsSnapshot: () => void
+  updateProjectionSnapshot: () => void
+  saveCurrentYearSettings: (
+    name: string,
+    description: string,
+    isPublic: boolean,
+    ytdSettings?: YTDSettings
+  ) => Promise<CurrentYearSettingsScenario>
+  saveProjection: (
+    name: string,
+    description: string,
+    isPublic: boolean,
+    target?: 'A' | 'B'
+  ) => Promise<ProjectionScenario>
+  loadCurrentYearSettings: (id: string) => Promise<CurrentYearSettingsScenario>
+  loadProjection: (id: string, target?: 'A' | 'B') => Promise<ProjectionScenario>
 }

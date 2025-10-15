@@ -11,6 +11,7 @@ import WorkforceAnalysis from '../../shared/components/WorkforceAnalysis'
 import ParametersSummary from './components/ParametersSummary'
 import CollapsibleSection from '../../shared/components/CollapsibleSection'
 import ScenarioLoadModal from '../../../scenarios/ScenarioLoadModal'
+import ModularScenarioSaveDialog from '../../../scenarios/ModularScenarioSaveDialog'
 import ShareLinkButton from '../../../shared/ShareLinkButton'
 import { useAuth } from '../../../auth/AuthProvider'
 import { supabase } from '../../../../lib/supabase'
@@ -60,6 +61,7 @@ export default function MultiYearView() {
   const [parametersOpen, setParametersOpen] = useState(true)
   const [showLoadModal, setShowLoadModal] = useState(false)
   const [showLoadModalB, setShowLoadModalB] = useState(false)
+  const [showModularSaveDialog, setShowModularSaveDialog] = useState(false)
   const [isScenarioDirty, setIsScenarioDirty] = useState(false)
   const [isScenarioBDirty, setIsScenarioBDirty] = useState(false)
   const [scenarioAIsPublic, setScenarioAIsPublic] = useState(false)
@@ -477,6 +479,26 @@ export default function MultiYearView() {
 
   return (
     <>
+      {/* Modular Save Dialog */}
+      <ModularScenarioSaveDialog
+        isOpen={showModularSaveDialog}
+        onClose={() => setShowModularSaveDialog(false)}
+        onSave={async (saveType, name, description, isPublic) => {
+          if (saveType === 'both') {
+            // Save Current Year Settings first
+            await store.saveCurrentYearSettings(name + ' - Current Year', description, isPublic)
+            // Then save Projection
+            await store.saveProjection(name + ' - Projection', description, isPublic, 'A')
+          } else if (saveType === 'current_year') {
+            await store.saveCurrentYearSettings(name, description, isPublic)
+          } else {
+            // Save projection only
+            await store.saveProjection(name, description, isPublic, 'A')
+          }
+        }}
+        baselineMode={store.scenarioA.dataMode}
+      />
+
       {/* Scenario A Load Modal */}
       <ScenarioLoadModal
         isOpen={showLoadModal}
@@ -550,6 +572,40 @@ export default function MultiYearView() {
               </label>
             </div>
           </div>
+
+          {/* NEW: Show loaded Current Year Setting and Projection (when in 2025 Data mode) */}
+          {store.scenarioA.dataMode === '2025 Data' && (store.currentYearSettingName || store.currentProjectionName) && (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 16, 
+              padding: '12px 16px', 
+              background: '#eff6ff', 
+              border: '1px solid #bfdbfe',
+              borderRadius: 8,
+              marginTop: 8,
+              fontSize: 14
+            }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, color: '#1e40af', marginBottom: 2, fontWeight: 500 }}>
+                  Current Year Settings:
+                </div>
+                <div style={{ color: '#1e3a8a' }}>
+                  {store.currentYearSettingName || 'Not loaded'}
+                  {store.isCurrentYearSettingsDirty() && <span style={{ marginLeft: 8, color: '#f59e0b' }}>• Modified</span>}
+                </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, color: '#1e40af', marginBottom: 2, fontWeight: 500 }}>
+                  Projection:
+                </div>
+                <div style={{ color: '#1e3a8a' }}>
+                  {store.currentProjectionName || 'Not loaded'}
+                  {store.isProjectionDirty() && <span style={{ marginLeft: 8, color: '#f59e0b' }}>• Modified</span>}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div style={{ 
@@ -641,10 +697,7 @@ export default function MultiYearView() {
 
                   {/* Save As Button */}
                   <button
-                    onClick={() => {
-                      const event = new CustomEvent('saveScenarioAs')
-                      window.dispatchEvent(event)
-                    }}
+                    onClick={() => setShowModularSaveDialog(true)}
                     style={{
                       background: 'none',
                       border: 'none',

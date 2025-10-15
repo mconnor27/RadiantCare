@@ -347,9 +347,10 @@ function MobileScenarioLoadModal({
 interface YTDDetailedMobileProps {
   onRefreshRequest?: (callback: () => void) => void
   onPasswordChange?: () => void
+  isInitialScenarioLoadComplete?: boolean
 }
 
-export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }: YTDDetailedMobileProps) {
+export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, isInitialScenarioLoadComplete = false }: YTDDetailedMobileProps) {
   const store = useDashboardStore()
   const { signOut } = useAuth()
   
@@ -623,9 +624,12 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
       setIsResyncingCompensation(true) // Re-freeze on manual refresh
     }
 
-    // Only run if we have cached data and scenarios are loaded
-    if (!cachedData?.summary || !store.loadedScenarioSnapshot || !store.currentScenarioId) {
+    // Only run if we have cached data, scenarios are loaded, AND initial scenario load is complete
+    if (!cachedData?.summary || !store.loadedScenarioSnapshot || !store.currentScenarioId || !isInitialScenarioLoadComplete) {
       // Keep frozen while waiting
+      if (!isInitialScenarioLoadComplete && cachedData?.summary && store.loadedScenarioSnapshot) {
+        console.log('[Mobile] 🔒 Waiting for Dashboard initial scenario load to complete...')
+      }
       return
     }
 
@@ -661,7 +665,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange }
       setIsResyncingCompensation(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cachedData?.summary, cachedData?.lastSyncTimestamp, store.loadedScenarioSnapshot, store.currentScenarioId, refreshTrigger])
+  }, [cachedData?.summary, cachedData?.lastSyncTimestamp, store.loadedScenarioSnapshot, store.currentScenarioId, refreshTrigger, isInitialScenarioLoadComplete])
 
   // Load last sync timestamp
   useEffect(() => {

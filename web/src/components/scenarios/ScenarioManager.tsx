@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { SavedScenario } from '../dashboard/shared/types'
-import { isMultiYearScenario } from '../dashboard/shared/types'
+import { 
+  isMultiYearScenario, 
+  isCurrentYearSettingsScenario, 
+  isProjectionScenario 
+} from '../dashboard/shared/types'
 import { useAuth } from '../auth/AuthProvider'
 import { useDashboardStore } from '../Dashboard'
 import ScenarioList from './ScenarioList'
@@ -20,6 +24,7 @@ interface ScenarioManagerProps {
 
 type Tab = 'my-scenarios' | 'public-scenarios'
 type View = 'list' | 'form' | 'edit' | 'formB' | 'editB'
+type ScenarioTypeFilter = 'all' | 'current_year' | 'projection' | 'legacy'
 
 export default function ScenarioManager({
   isOpen,
@@ -35,6 +40,7 @@ export default function ScenarioManager({
   
   const [activeTab, setActiveTab] = useState<Tab>('my-scenarios')
   const [view, setView] = useState<View>('list')
+  const [scenarioTypeFilter, setScenarioTypeFilter] = useState<ScenarioTypeFilter>('all')
   const [myScenarios, setMyScenarios] = useState<SavedScenario[]>([])
   const [publicScenarios, setPublicScenarios] = useState<SavedScenario[]>([])
   const [editingScenario, setEditingScenario] = useState<SavedScenario | undefined>()
@@ -54,6 +60,22 @@ export default function ScenarioManager({
       setEditingScenario(initialScenario)
     }
   }, [isOpen, profile, viewMode, initialView, initialScenario])
+
+  // Filter scenarios by type
+  function filterScenariosByType(scenarios: SavedScenario[]): SavedScenario[] {
+    if (scenarioTypeFilter === 'all') return scenarios
+    
+    return scenarios.filter(scenario => {
+      if (scenarioTypeFilter === 'current_year') {
+        return isCurrentYearSettingsScenario(scenario)
+      } else if (scenarioTypeFilter === 'projection') {
+        return isProjectionScenario(scenario)
+      } else if (scenarioTypeFilter === 'legacy') {
+        return !isCurrentYearSettingsScenario(scenario) && !isProjectionScenario(scenario)
+      }
+      return true
+    })
+  }
 
   async function loadScenarios() {
     setLoading(true)
@@ -240,7 +262,7 @@ export default function ScenarioManager({
 
   async function handleLoadScenario(id: string, target: 'A' | 'B' = 'A') {
     try {
-      // Fetch the scenario to check if we need to show warning
+      // Fetch the scenario to check type and determine load method
       const { data: scenario, error: fetchError } = await supabase
         .from('scenarios')
         .select('*')
@@ -253,6 +275,36 @@ export default function ScenarioManager({
       // In YTD mode: Always load into A only (ignore target parameter)
       const loadTarget = viewMode === 'YTD Detailed' ? 'A' : target
       
+      // MODULAR SCENARIO HANDLING
+      if (isCurrentYearSettingsScenario(scenario)) {
+        // Loading Current Year Settings (modular)
+        const loadedData = await store.loadCurrentYearSettings(id)
+        
+        // Apply ytd_settings if available
+        if (loadedData.ytd_settings && onYtdSettingsChange) {
+          onYtdSettingsChange(loadedData.ytd_settings)
+        }
+        
+        onClose()
+        return
+      }
+      
+      if (isProjectionScenario(scenario)) {
+        // Loading Projection (modular) - always compositional
+        // Show warning if loading into B (affects baseline behavior)
+        if (viewMode === 'Multi-Year' && loadTarget === 'B') {
+          setPendingScenario(scenario)
+          setPendingTarget('B')
+          setShowBaselineWarning(true)
+          return // Wait for user decision
+        }
+        
+        await store.loadProjection(id, loadTarget)
+        onClose()
+        return
+      }
+      
+      // LEGACY SCENARIO HANDLING
       // In Multi-Year mode: Show warning modal if loading Multi-Year scenario into B
       if (viewMode === 'Multi-Year' && loadTarget === 'B' && isMultiYearScenario(scenario)) {
         setPendingScenario(scenario)
@@ -261,7 +313,7 @@ export default function ScenarioManager({
         return // Wait for user decision
       }
       
-      // Load the scenario
+      // Load the scenario (legacy path)
       const loadedData = await store.loadScenarioFromDatabase(id, loadTarget, true)
       
       // If YTD scenario or loading into YTD mode, update ytdSettings
@@ -285,15 +337,23 @@ export default function ScenarioManager({
     if (!pendingScenario) return
     
     try {
-      const loadedData = await store.loadScenarioFromDatabase(
-        pendingScenario.id, 
-        pendingTarget, 
-        loadBaseline
-      )
-      
-      // If YTD scenario, update ytdSettings
-      if (loadedData && loadedData.view_mode === 'YTD Detailed' && onYtdSettingsChange) {
-        onYtdSettingsChange(loadedData.ytd_settings)
+      // Handle modular projections
+      if (isProjectionScenario(pendingScenario)) {
+        // For projection scenarios, loadBaseline parameter is ignored
+        // (baseline_mode is stored in the scenario itself)
+        await store.loadProjection(pendingScenario.id, pendingTarget)
+      } else {
+        // Legacy multi-year scenario
+        const loadedData = await store.loadScenarioFromDatabase(
+          pendingScenario.id, 
+          pendingTarget, 
+          loadBaseline
+        )
+        
+        // If YTD scenario, update ytdSettings
+        if (loadedData && loadedData.view_mode === 'YTD Detailed' && onYtdSettingsChange) {
+          onYtdSettingsChange(loadedData.ytd_settings)
+        }
       }
       
       setShowBaselineWarning(false)
@@ -631,11 +691,35 @@ export default function ScenarioManager({
                 </div>
               )}
 
+              {/* Scenario Type Filter */}
+              <div style={{ marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <label style={{ fontSize: '14px', color: '#6b7280', fontWeight: 500 }}>
+                  Type:
+                </label>
+                <select
+                  value={scenarioTypeFilter}
+                  onChange={(e) => setScenarioTypeFilter(e.target.value as ScenarioTypeFilter)}
+                  style={{
+                    padding: '6px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    background: '#fff',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="all">All Types</option>
+                  <option value="current_year">Current Year Settings</option>
+                  <option value="projection">Projections</option>
+                  <option value="legacy">Legacy Scenarios</option>
+                </select>
+              </div>
+
               {activeTab === 'my-scenarios' ? (
                 <>
                   <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                     <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                      {myScenarios.length} {viewMode === 'YTD Detailed' ? 'YTD' : 'Multi-Year'} scenario{myScenarios.length !== 1 ? 's' : ''}
+                      {filterScenariosByType(myScenarios).length} of {myScenarios.length} {viewMode === 'YTD Detailed' ? 'YTD' : 'Multi-Year'} scenario{myScenarios.length !== 1 ? 's' : ''}
                     </div>
                     <button
                       onClick={() => setView('form')}
@@ -654,7 +738,7 @@ export default function ScenarioManager({
                     </button>
                   </div>
                   <ScenarioList
-                    scenarios={myScenarios}
+                    scenarios={filterScenariosByType(myScenarios)}
                     currentUserId={profile?.id}
                     onLoad={handleLoadScenario}
                     onClone={handleCloneScenario}
@@ -670,11 +754,11 @@ export default function ScenarioManager({
                 <>
                   <div style={{ marginBottom: '16px' }}>
                     <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                      {publicScenarios.length} public {viewMode === 'YTD Detailed' ? 'YTD' : 'Multi-Year'} scenario{publicScenarios.length !== 1 ? 's' : ''}
+                      {filterScenariosByType(publicScenarios).length} of {publicScenarios.length} public {viewMode === 'YTD Detailed' ? 'YTD' : 'Multi-Year'} scenario{publicScenarios.length !== 1 ? 's' : ''}
                     </div>
                   </div>
                   <ScenarioList
-                    scenarios={publicScenarios}
+                    scenarios={filterScenariosByType(publicScenarios)}
                     currentUserId={profile?.id}
                     onLoad={handleLoadScenario}
                     onClone={handleCloneScenario}
