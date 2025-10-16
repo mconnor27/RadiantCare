@@ -1328,10 +1328,10 @@ function addSummaryRows(data: YearlyData, projectionRatio: number): any[] {
   }
   
   const medDirTotal = medDirSharedValues.map((v, i) => v + medDirPRCSValues[i])
-  // Calculate Total Gross Income excluding Interest Income for 2016 only
+  // Calculate Total Gross Income - ONLY operating income sources (therapy, medical director, consulting)
+  // Interest is NOT included here - it goes to Other Income
   const totalGrossIncome = therapyValues.map((v, i) => {
-    const interestForCalculation = i === 0 ? 0 : interestValues[i] // Exclude 2016 Interest (index 0)
-    return v + medDirTotal[i] + consultingValues[i] + interestForCalculation
+    return v + medDirTotal[i] + consultingValues[i]
   })
 
   summaryRows.push({
@@ -1459,6 +1459,24 @@ function addSummaryRows(data: YearlyData, projectionRatio: number): any[] {
     group: 'SummaryCosts'
   })
 
+  // OTHER INCOME SECTION
+  // Interest values already extracted above and properly projected
+  const otherIncomeValues = interestValues
+  const totalOtherIncome = otherIncomeValues
+  
+  summaryRows.push({
+    Header: { ColData: [ { value: 'Other Income' }, ...Array.from({ length: numYears }, () => ({ value: '' })) ] },
+    Rows: {
+      Row: [
+        { ColData: createCalculatedRow('    Interest', otherIncomeValues, numYears).colData, computed: true }
+      ]
+    },
+    Summary: { ColData: createCalculatedRow('Total Other Income', totalOtherIncome, numYears, 0, 'Summary').colData },
+    computed: true,
+    type: 'Section',
+    group: 'SummaryOtherIncome'
+  })
+
   // FINAL SUMMARY ROW
   const netIncomeValues = normalize(findAccountValues(data, /^Net Income$/i))
   const guaranteedPaymentsValues = normalize(findAccountValues(data, /8343.*Guaranteed.*Payments/i))
@@ -1471,12 +1489,13 @@ function addSummaryRows(data: YearlyData, projectionRatio: number): any[] {
     guaranteedPaymentsValues[projectedIndex] = guaranteedPaymentsValues[ytdIndex] * projectionRatio
   }
   
-  // Adjust Net Income by removing the Asset Disposal gain and Interest Income
-  const adjustedNetIncomeValues = netIncomeValues.map((v, i) => v + assetDisposalForCalculations[i] - interestIncomeForCalculations[i])
+  // Adjust Net Income by removing the Asset Disposal gain (2016 only exclusion)
+  // Interest is now properly handled separately in Other Income section
+  const adjustedNetIncomeValues = netIncomeValues.map((v, i) => v + assetDisposalForCalculations[i])
   const netIncomeForMDs = adjustedNetIncomeValues.map((v, i) => v + mdSalaryValues[i] + mdBenefitsValues[i] + locumsSalaryValues[i] + guaranteedPaymentsValues[i])
   summaryRows.push({
     Summary: { ColData: createCalculatedRow('Net Income for MDs', netIncomeForMDs, numYears, 0, 'Summary').colData },
-    computed: true,  // Mark as computed so grid transform uses special calculation logic (lines 889-898)
+    computed: true,  // Mark as computed so grid transform uses special calculation logic
     type: 'Section',
     group: 'SummaryNetIncome'
   })

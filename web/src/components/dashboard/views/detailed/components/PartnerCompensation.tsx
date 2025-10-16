@@ -326,14 +326,27 @@ export default function PartnerCompensation({
   const projectedData = useMemo(() => {
     const result = parseProjectedData(physicians, fy2025)
     
-    // DEBUG: Log when projected data changes
-    if (isMobile) {
-      console.log('[PartnerComp] 📊 Projected data recalculated:', {
-        isRefreshing,
-        therapyIncome: fy2025?.therapyIncome,
-        totalComp: Object.values(result.totals).reduce((sum, val) => sum + val, 0)
-      })
-    }
+    // DEBUG: Comprehensive logging for compensation debugging
+    console.group('🧮 [PartnerComp] Compensation Calculation Summary')
+    console.log('📊 Input Parameters from store.ytdData:', {
+      therapyIncome: fy2025?.therapyIncome,
+      nonEmploymentCosts: fy2025?.nonEmploymentCosts,
+      nonMdEmploymentCosts: fy2025?.nonMdEmploymentCosts,
+      miscEmploymentCosts: fy2025?.miscEmploymentCosts,
+      locumCosts: fy2025?.locumCosts,
+      medicalDirectorHours: fy2025?.medicalDirectorHours,
+      prcsMedicalDirectorHours: fy2025?.prcsMedicalDirectorHours,
+      consultingServicesAgreement: fy2025?.consultingServicesAgreement,
+      benefitCostsGrowthPct: 5
+    })
+    
+    console.log('👥 Partner Compensations:', result.totals)
+    
+    const totalPartnerComp = Object.values(result.totals).reduce((sum, val) => sum + val, 0)
+    console.log('💰 Total Partner Compensation (sum):', totalPartnerComp.toLocaleString('en-US', { style: 'currency', currency: 'USD' }))
+    
+    console.log('ℹ️ Compare this total to "Net Income" in the grid!')
+    console.groupEnd()
     
     return result
   }, [

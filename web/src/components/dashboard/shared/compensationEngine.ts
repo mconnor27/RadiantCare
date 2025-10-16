@@ -87,9 +87,10 @@ export function calculateAllCompensations(params: CompensationParams): Compensat
   // === STEP 2: Calculate buyout costs ===
   const totalBuyoutCosts = partners.reduce((sum, p) => {
     if (p.type === 'partnerToRetire') {
-      const weight = getPartnerFTEWeightProper(p)
-      // Only subtract buyout if the partner worked part of the year
-      return sum + (weight > 0 ? (p.buyoutCost ?? 0) : 0)
+      // Include buyout regardless of FTE weight - it's a real cost to the company
+      // For year-round retirees (weight > 0), it's part of normal costs
+      // For prior-year retirees (weight = 0), it's still owed and should reduce the pool
+      return sum + (p.buyoutCost ?? 0)
     }
     return sum
   }, 0)

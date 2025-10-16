@@ -382,6 +382,18 @@ export function calculateMDAssociatesCosts(physicians: Physician[], year: number
 
   for (const physician of relevantPhysicians) {
     const employeePortion = getEmployeePortionOfYear(physician)
+    
+    // For employeeToPartner with 0 employee portion, only process delayed W2 payments
+    if (physician.type === 'employeeToPartner' && employeePortion === 0) {
+      const delayedW2 = calculateDelayedW2Payment(physician, year)
+      if (delayedW2.amount > 0 || delayedW2.taxes > 0) {
+        totalSalary += delayedW2.amount
+        totalPayrollTaxes += delayedW2.taxes
+      }
+      continue
+    }
+    
+    // Skip other physician types with no employee portion
     if (employeePortion <= 0) continue
 
     let salary = physician.salary || 0
@@ -423,7 +435,7 @@ export function calculateMDAssociatesCosts(physicians: Physician[], year: number
     // Calculate employer payroll taxes on the salary amount
     payrollTaxes = calculateEmployerPayrollTaxes(salary, year)
 
-    // Add delayed W2 payments for employeeToPartner physicians
+    // Add delayed W2 payments for employeeToPartner physicians (with employee portion > 0)
     if (physician.type === 'employeeToPartner') {
       const delayedW2 = calculateDelayedW2Payment(physician, year)
       totalSalary += delayedW2.amount  // Add delayed W2 amount to salary total
