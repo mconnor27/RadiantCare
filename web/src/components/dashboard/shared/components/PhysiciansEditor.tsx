@@ -96,7 +96,7 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
     if (mode === 'ytd') {
       store.upsertYtdPhysician(physician)
     } else {
-      handleUpsertPhysician( physician)
+      store.upsertPhysician(scenario, year, physician)
     }
   }
 

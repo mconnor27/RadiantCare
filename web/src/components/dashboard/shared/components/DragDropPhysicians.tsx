@@ -81,16 +81,20 @@ export function DragDropPhysicians({ children, physicians, onReorder }: DragDrop
   const [items, setItems] = useState(physicians)
   const [isDragging, setIsDragging] = useState(false)
 
-  // Update items when physicians prop changes (but not during drag)
+  // Sync items with physicians prop when it changes, but NOT during an active drag
+  // During drag, visual updates happen via handleDragOver
+  // After drag ends and parent updates physicians, this syncs the final state
   React.useEffect(() => {
+    console.log('[Effect] Physicians changed, isDragging:', isDragging)
+    console.log('[Effect] New physicians order:', physicians.map(p => p.name))
+    console.log('[Effect] Current items order:', items.map(p => p.name))
     if (!isDragging) {
+      console.log('[Effect] Syncing items with physicians')
       setItems(physicians)
+    } else {
+      console.log('[Effect] Skipping sync (dragging in progress)')
     }
-  }, [physicians]) // Remove isDragging dependency to avoid immediate reset
-
-  // When not dragging, render the latest physicians prop directly to avoid
-  // any transient mismatch during year switches (prevents flash of empty list).
-  const renderItems = isDragging ? items : physicians
+  }, [physicians]) // Don't depend on isDragging - only sync when physicians actually changes
 
   // Cleanup: remove dragging class on unmount or if dragging state gets out of sync
   React.useEffect(() => {
@@ -108,6 +112,7 @@ export function DragDropPhysicians({ children, physicians, onReorder }: DragDrop
   )
 
   function handleDragStart() {
+    console.log('[DragStart] Starting drag')
     setIsDragging(true)
     document.body.classList.add('dragging')
   }
@@ -127,21 +132,27 @@ export function DragDropPhysicians({ children, physicians, onReorder }: DragDrop
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
-    setIsDragging(false)
-    document.body.classList.remove('dragging')
-
+    
     if (active.id !== over?.id && over) {
-      // Find indices in original physicians array
+      // oldIndex: where the item was in the original physicians array
       const oldIndex = physicians.findIndex((p) => p.id === active.id)
-      const newIndex = physicians.findIndex((p) => p.id === over.id)
+      // newIndex: where the item ended up in the visually reordered items array
+      const newIndex = items.findIndex((p) => p.id === active.id)
+      
+      console.log('[DragEnd] Calling onReorder:', { oldIndex, newIndex, activeId: active.id })
+      console.log('[DragEnd] Items order:', items.map(p => p.name))
+      console.log('[DragEnd] Physicians order:', physicians.map(p => p.name))
       
       if (oldIndex !== -1 && newIndex !== -1) {
         onReorder(oldIndex, newIndex)
       }
     }
+    
+    setIsDragging(false)
+    document.body.classList.remove('dragging')
   }
 
-  const physicianIds = renderItems.map(p => p.id)
+  const physicianIds = items.map(p => p.id)
 
   // Create a mapping of physician ID to child component
   const childrenArray = React.Children.toArray(children)
@@ -161,7 +172,7 @@ export function DragDropPhysicians({ children, physicians, onReorder }: DragDrop
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={physicianIds} strategy={verticalListSortingStrategy}>
-        {renderItems.map((physician) => {
+        {items.map((physician) => {
           const child = childrenMap[physician.id]
           if (child) {
             return (
