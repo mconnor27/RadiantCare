@@ -226,7 +226,7 @@ function calculateProjectionRatio(data2025: MonthlyData): number {
 }
 
 // Function to merge 2025 data into the historical data structure
-function merge2025Data(historicalData: YearlyData, data2025: Record<string, number>, projectionRatio: number, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number }): YearlyData {
+function merge2025Data(historicalData: YearlyData, data2025: Record<string, number>, projectionRatio: number, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number, medicalDirectorHours?: number, consultingServicesAgreement?: number }): YearlyData {
   // Add 2025 YTD column
   historicalData.Columns.Column.push({
     ColTitle: '2025 (YTD)',
@@ -281,6 +281,12 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
                 value2025Default = (physicianData.prcsDirectorPhysicianId !== null && physicianData.prcsDirectorPhysicianId !== undefined)
                   ? (physicianData.prcsMedicalDirectorHours ?? 0)
                   : 0
+                break
+              case 'medicalDirectorHoursShared':
+                value2025Default = physicianData.medicalDirectorHours ?? 0
+                break
+              case 'consultingServicesAgreement':
+                value2025Default = physicianData.consultingServicesAgreement ?? 0
                 break
             }
             isCalculated = true
@@ -341,6 +347,12 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
                 value2025Default = (physicianData.prcsDirectorPhysicianId !== null && physicianData.prcsDirectorPhysicianId !== undefined)
                   ? (physicianData.prcsMedicalDirectorHours ?? 0)
                   : 0
+                break
+              case 'medicalDirectorHoursShared':
+                value2025Default = physicianData.medicalDirectorHours ?? 0
+                break
+              case 'consultingServicesAgreement':
+                value2025Default = physicianData.consultingServicesAgreement ?? 0
                 break
             }
             isCalculated = true
@@ -475,8 +487,11 @@ function filterCollapsedRows(rows: any[], collapsedSections: CollapsibleState): 
   return processedRows
 }
 
-// Helper function to check if account is a calculated row (MD Associates, Guaranteed Payments, Locums, or PRCS Medical Director Hours)
-const isCalculatedRow = (accountName: string): { isCalculated: boolean; type: 'mdSalary' | 'mdBenefits' | 'mdPayrollTax' | 'guaranteedPayments' | 'locumsSalary' | 'prcsMedicalDirectorHours' | null } => {
+// Helper function to check if account is a calculated row (MD Associates, Guaranteed Payments, Locums, Medical Director Hours, Consulting)
+const isCalculatedRow = (accountName: string): { 
+  isCalculated: boolean; 
+  type: 'mdSalary' | 'mdBenefits' | 'mdPayrollTax' | 'guaranteedPayments' | 'locumsSalary' | 'prcsMedicalDirectorHours' | 'medicalDirectorHoursShared' | 'consultingServicesAgreement' | null 
+} => {
   const normalized = accountName.replace(/\s+/g, ' ').trim()
 
   if (normalized.match(/8322.*MD.*Associates.*Salary/i)) {
@@ -491,6 +506,10 @@ const isCalculatedRow = (accountName: string): { isCalculated: boolean; type: 'm
     return { isCalculated: true, type: 'locumsSalary' }
   } else if (normalized.match(/Medical Director Hours.*PRCS/i)) {
     return { isCalculated: true, type: 'prcsMedicalDirectorHours' }
+  } else if (normalized.match(/Medical Director Hours.*Shared/i)) {
+    return { isCalculated: true, type: 'medicalDirectorHoursShared' }
+  } else if (normalized.match(/Consulting Agreement/i)) {
+    return { isCalculated: true, type: 'consultingServicesAgreement' }
   }
 
   // console.log('isCalculatedRow check:', { original: accountName, normalized })
@@ -498,7 +517,7 @@ const isCalculatedRow = (accountName: string): { isCalculated: boolean; type: 'm
 }
 
 // Helper function to get tooltip text for calculated rows
-const getTooltipForCalculatedRow = (type: 'mdSalary' | 'mdBenefits' | 'mdPayrollTax' | 'guaranteedPayments' | 'locumsSalary' | 'prcsMedicalDirectorHours'): string => {
+const getTooltipForCalculatedRow = (type: 'mdSalary' | 'mdBenefits' | 'mdPayrollTax' | 'guaranteedPayments' | 'locumsSalary' | 'prcsMedicalDirectorHours' | 'medicalDirectorHoursShared' | 'consultingServicesAgreement'): string => {
   switch (type) {
     case 'mdSalary':
       return 'This value is automatically calculated from the sum of employee and part-employee physician salaries in the physician panel. This row is not editable.'
@@ -512,10 +531,16 @@ const getTooltipForCalculatedRow = (type: 'mdSalary' | 'mdBenefits' | 'mdPayroll
       return 'This value is automatically calculated from the locums costs setting in the physician panel. This row is not editable.'
     case 'prcsMedicalDirectorHours':
       return 'This value is set in the physician panel. This row is not editable.'
+    case 'medicalDirectorHoursShared':
+      return 'This value is set in the physician panel. This row is not editable.'
+    case 'consultingServicesAgreement':
+      return 'This value is set in the physician panel. This row is not editable.'
+    default:
+      return ''
   }
 }
 
-export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, _physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number }): { rows: Row[], columns: any[], allRows: Row[] } {
+export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, _physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number, medicalDirectorHours?: number, consultingServicesAgreement?: number }): { rows: Row[], columns: any[], allRows: Row[] } {
   // Helper to get the absolute 2016 Asset Disposal amount from raw data
   const getAssetDisposal2016Amount = (source: YearlyData): number => {
     const search = (rows: any[]): number => {
@@ -582,8 +607,8 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
   // Labels that should be adjusted at display-time for asset disposal and interest income
   const adjustSubtractNames = new Set<string>(['Total 8500 Capital Expense', 'Total Cost of Goods Sold'])
   const adjustAddNames = new Set<string>(['Gross Profit', 'Net Operating Income', 'Net Income'])
-  // Labels that should be adjusted to exclude Interest Income
-  const interestSubtractNames = new Set<string>(['Total Other Income', 'Net Other Income', 'Net Income'])
+  // Labels that should be adjusted to exclude Interest Income (2016 ONLY - big sale anomaly)
+  const interestSubtractNames = new Set<string>(['Gross Profit', 'Total Other Income', 'Net Other Income', 'Net Income'])
   
   // Currency formatting function
   const formatCurrency = (value: string, accountName?: string): string => {
@@ -865,19 +890,19 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
 
         if (/^net\s+operating\s+income$/i.test(accountName)) {
           // console.log(`  🧮 Using SPECIAL calculation: Net Operating Income`)
-          const totalGrossIncome = computeSummaryByName(/^total\s+gross\s+income$/i)
+          const totalIncome = computeSummaryByName(/^total\s+income$/i)
           const totalCOGS = computeSummaryByName(/^total\s+cost\s+of\s+goods\s+sold$/i)
-          const grossProfit = totalGrossIncome - totalCOGS
+          const grossProfit = totalIncome - totalCOGS
           const totalExpenses = computeSummaryByName(/^total\s+expenses$/i)
           const result = grossProfit - totalExpenses
           // console.log(`    Gross Profit: ${grossProfit} - Total Expenses: ${totalExpenses} = ${result}`)
           value = result.toString()
         } else if (/^gross\s+profit$/i.test(accountName)) {
           // console.log(`  🧮 Using SPECIAL calculation: Gross Profit`)
-          const totalGrossIncome = computeSummaryByName(/^total\s+gross\s+income$/i)
+          const totalIncome = computeSummaryByName(/^total\s+income$/i)
           const totalCOGS = computeSummaryByName(/^total\s+cost\s+of\s+goods\s+sold$/i)
-          const result = totalGrossIncome - totalCOGS
-          // console.log(`    Total Gross Income: ${totalGrossIncome} - Total COGS: ${totalCOGS} = ${result}`)
+          const result = totalIncome - totalCOGS
+          // console.log(`    Total Income: ${totalIncome} - Total COGS: ${totalCOGS} = ${result}`)
           value = result.toString()
         } else if (/^net\s+other\s+income$/i.test(accountName)) {
           // console.log(`  🧮 Using SPECIAL calculation: Net Other Income`)
@@ -900,9 +925,9 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
           // console.log(`  🧮 Using SPECIAL calculation: Net Income`)
           // compute from NOI and Net Other Income
           // Compute NOI
-          const totalGrossIncome = computeSummaryByName(/^total\s+gross\s+income$/i)
+          const totalIncome = computeSummaryByName(/^total\s+income$/i)
           const totalCOGS = computeSummaryByName(/^total\s+cost\s+of\s+goods\s+sold$/i)
-          const grossProfit = totalGrossIncome - totalCOGS
+          const grossProfit = totalIncome - totalCOGS
           const totalExpenses = computeSummaryByName(/^total\s+expenses$/i)
           const noi = grossProfit - totalExpenses
           // Compute Net Other Income
@@ -982,7 +1007,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
           }
         }
         
-        // Apply Interest Income exclusions for 2016 only (like Asset Disposal)
+        // Apply Interest Income exclusions for 2016 ONLY (big sale anomaly)
         if (cellIndex === 1 && interestSubtractNames.has(accountName)) {
           const interestAmount2016 = interestAmounts[0] || 0 // 2016 is index 0
           adjustedValue -= interestAmount2016
@@ -1459,24 +1484,6 @@ function addSummaryRows(data: YearlyData, projectionRatio: number): any[] {
     group: 'SummaryCosts'
   })
 
-  // OTHER INCOME SECTION
-  // Interest values already extracted above and properly projected
-  const otherIncomeValues = interestValues
-  const totalOtherIncome = otherIncomeValues
-  
-  summaryRows.push({
-    Header: { ColData: [ { value: 'Other Income' }, ...Array.from({ length: numYears }, () => ({ value: '' })) ] },
-    Rows: {
-      Row: [
-        { ColData: createCalculatedRow('    Interest', otherIncomeValues, numYears).colData, computed: true }
-      ]
-    },
-    Summary: { ColData: createCalculatedRow('Total Other Income', totalOtherIncome, numYears, 0, 'Summary').colData },
-    computed: true,
-    type: 'Section',
-    group: 'SummaryOtherIncome'
-  })
-
   // FINAL SUMMARY ROW
   const netIncomeValues = normalize(findAccountValues(data, /^Net Income$/i))
   const guaranteedPaymentsValues = normalize(findAccountValues(data, /8343.*Guaranteed.*Payments/i))
@@ -1535,7 +1542,7 @@ export function debugSummaryCalculations(gridData: { rows: Row[], columns: any[]
 }
 
 // Load and transform the yearly data
-export async function loadYearlyGridData(collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number }, cached2025Summary?: any): Promise<{ rows: Row[], allRows: Row[], columns: any[] }> {
+export async function loadYearlyGridData(collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number, medicalDirectorHours?: number, consultingServicesAgreement?: number }, cached2025Summary?: any): Promise<{ rows: Row[], allRows: Row[], columns: any[] }> {
   try {
     // Import the JSON data
     const yearlyDataPromise = import('../../../../../historical_data/2016-2024_yearly.json')

@@ -348,33 +348,43 @@ export default function YearlyDataGrid({
     '8330 MD Associates - Payroll Taxes': 'This value is automatically calculated from the sum of employee and part-employee physician payroll taxes in the physician panel. This row is not editable.',
     '8343 Guaranteed Payments': 'This value is automatically calculated from the sum of retiring partner buyout costs in the physician panel. This row is not editable.',
     '8322 Locums - Salary': 'This value is automatically calculated from the locums costs setting in the physician panel. This row is not editable.',
+    'Medical Director Hours (Shared)': 'This value is set in the physician panel. This row is not editable.',
+    'Medical Director Hours (PRCS)': 'This value is set in the physician panel. This row is not editable.',
+    'Consulting Agreement/Other': 'This value is set in the physician panel. This row is not editable.',
     '-$5,760,796': 'This 2016 asset disposal gain is displayed but excluded from all calculations and summaries to maintain operational focus.',
     '$5,760,796': 'This 2016 asset disposal gain is displayed but excluded from all calculations and summaries to maintain operational focus.',
     '$462,355': 'This 2016 interest income is displayed but excluded from all calculations and summaries to maintain operational focus.'
   }
 
-  // Helper function to check if account is a calculated row (MD Associates, Guaranteed Payments, or Locums)
+  // Helper function to check if account is a calculated row (MD Associates, Guaranteed Payments, Locums, Medical Director Hours, Consulting)
   const isCalculatedAccount = (accountName: string): boolean => {
     const normalized = normalizeAccountName(accountName)
     return normalized.match(/8322.*MD.*Associates.*Salary/i) ||
            normalized.match(/8325.*MD.*Associates.*Benefits/i) ||
            normalized.match(/8330.*MD.*Associates.*Payroll.*Tax/i) ||
            normalized.match(/8343.*Guaranteed.*Payments/i) ||
-           normalized.match(/8322.*Locums.*Salary/i) ? true : false
+           normalized.match(/8322.*Locums.*Salary/i) ||
+           normalized.match(/Medical Director Hours.*Shared/i) ||
+           normalized.match(/Medical Director Hours.*PRCS/i) ||
+           normalized.match(/Consulting Agreement/i) ? true : false
   }
   
 
   // Track last loaded data signature to prevent redundant loads
   const lastLoadRef = useRef<string>('')
   
-  // Extract key physician values for dependency tracking
-  const fy2025 = store.scenarioA.future.find((f: any) => f.year === 2025)
+  // Extract key physician values for dependency tracking based on mode
+  const fy2025 = mode === 'ytd' 
+    ? store.ytdData 
+    : store.scenarioA.future.find((f: any) => f.year === 2025)
   const prcsDirectorId = fy2025?.prcsDirectorPhysicianId
   const prcsMdHours = fy2025?.prcsMedicalDirectorHours
+  const mdSharedHours = fy2025?.medicalDirectorHours
+  const consultingAgreement = fy2025?.consultingServicesAgreement
   const locumCosts = fy2025?.locumCosts
   
   // Create a signature of physician data that affects calculated grid rows
-  // (MD Associates Salary/Benefits/Payroll Tax, Guaranteed Payments, Shared MD Hours)
+  // (MD Associates Salary/Benefits/Payroll Tax, Guaranteed Payments, Shared MD Hours, PRCS MD Hours, Consulting, Locums)
   const physicianDataSignature = JSON.stringify(
     fy2025?.physicians.map((p: any) => ({
       type: p.type,
@@ -385,7 +395,8 @@ export default function YearlyDataGrid({
       startPortionOfYear: p.startPortionOfYear,
       terminatePortionOfYear: p.terminatePortionOfYear,
       buyoutCost: p.buyoutCost,
-      trailingSharedMdAmount: p.trailingSharedMdAmount
+      trailingSharedMdAmount: p.trailingSharedMdAmount,
+      medicalDirectorHoursPercentage: p.medicalDirectorHoursPercentage
     }))
   )
   
@@ -398,14 +409,21 @@ export default function YearlyDataGrid({
         return
       }
       
-      // Get 2025 physician data and benefit growth rate from store
-      const fy2025 = store.scenarioA.future.find((f: any) => f.year === 2025)
+      // Get 2025 physician data and benefit growth rate from store based on mode
+      const fy2025 = mode === 'ytd' 
+        ? store.ytdData 
+        : store.scenarioA.future.find((f: any) => f.year === 2025)
+      const benefitGrowthPct = mode === 'ytd'
+        ? store.scenarioA.projection.benefitCostsGrowthPct  // YTD mode still uses scenario projection settings
+        : store.scenarioA.projection.benefitCostsGrowthPct
       const physicianData = fy2025 ? {
         physicians: fy2025.physicians,
-        benefitGrowthPct: store.scenarioA.projection.benefitCostsGrowthPct,
+        benefitGrowthPct,
         locumCosts: fy2025.locumCosts,
         prcsDirectorPhysicianId: fy2025.prcsDirectorPhysicianId,
-        prcsMedicalDirectorHours: fy2025.prcsMedicalDirectorHours
+        prcsMedicalDirectorHours: fy2025.prcsMedicalDirectorHours,
+        medicalDirectorHours: fy2025.medicalDirectorHours,
+        consultingServicesAgreement: fy2025.consultingServicesAgreement
       } : undefined
 
       // Create a signature of the data that would affect the load
@@ -488,9 +506,9 @@ export default function YearlyDataGrid({
     }
   // CRITICAL: Do NOT include store objects in dependencies - causes infinite loops
   // We read store values fresh inside the function, but track key primitive values
-  // that affect calculated grid rows (MD Associates, Guaranteed Payments, Locums, PRCS MD Hours)
+  // that affect calculated grid rows (MD Associates, Guaranteed Payments, Locums, PRCS MD Hours, Shared MD Hours, Consulting)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collapsedSections, environment, cachedSummary, isLoadingCache, prcsDirectorId, prcsMdHours, locumCosts, physicianDataSignature])
+  }, [collapsedSections, environment, cachedSummary, isLoadingCache, mode, prcsDirectorId, prcsMdHours, mdSharedHours, consultingAgreement, locumCosts, physicianDataSignature])
 
   useEffect(() => {
     loadData()
