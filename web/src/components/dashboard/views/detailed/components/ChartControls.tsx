@@ -144,6 +144,7 @@ export default function ChartControls({
   // Historical data popup state
   const [isHistoricalPopupOpen, setIsHistoricalPopupOpen] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
+  const userInteractionRef = useRef(false)
   const years = Array.from({ length: 9 }, (_, i) => 2024 - i) // 2024-2016 (reverse order)
   
   // Auto-clamp smoothing when chart mode or selected years change
@@ -156,9 +157,19 @@ export default function ChartControls({
   // Auto-clear mean/median and error selections when only one year is selected
   useEffect(() => {
     if (selectedYears.length <= 1 && (combineStatistic !== null || combineError !== null)) {
-      setCombineStatistic(null)
-      setCombineError(null)
-      setShowCombined(false)
+      // Don't clear if user is actively interacting with checkboxes
+      if (userInteractionRef.current) {
+        return
+      }
+      
+      // Add small delay to prevent interference with user interactions
+      const timeoutId = setTimeout(() => {
+        setCombineStatistic(null)
+        setCombineError(null)
+        setShowCombined(false)
+      }, 100)
+      
+      return () => clearTimeout(timeoutId)
     }
   }, [selectedYears, combineStatistic, combineError, setCombineStatistic, setCombineError, setShowCombined])
 
@@ -929,6 +940,7 @@ export default function ChartControls({
                   checked={combineStatistic === 'mean'}
                   disabled={chartMode === 'proportion' || selectedYears.length <= 1}
                   onChange={(e) => {
+                    userInteractionRef.current = true
                     if (e.target.checked) {
                       setCombineStatistic('mean')
                       // Auto-select std dev as default if no error type selected
@@ -942,6 +954,10 @@ export default function ChartControls({
                       setCombineError(null)
                       setShowCombined(false)
                     }
+                    // Reset interaction flag after a short delay
+                    setTimeout(() => {
+                      userInteractionRef.current = false
+                    }, 200)
                   }}
                   style={{ margin: 0, cursor: (chartMode === 'proportion' || selectedYears.length <= 1) ? 'not-allowed' : 'pointer' }}
                 />
@@ -960,6 +976,7 @@ export default function ChartControls({
                   checked={combineStatistic === 'median'}
                   disabled={chartMode === 'proportion' || selectedYears.length <= 1}
                   onChange={(e) => {
+                    userInteractionRef.current = true
                     if (e.target.checked) {
                       setCombineStatistic('median')
                       // Auto-select std dev as default if no error type selected
@@ -973,6 +990,10 @@ export default function ChartControls({
                       setCombineError(null)
                       setShowCombined(false)
                     }
+                    // Reset interaction flag after a short delay
+                    setTimeout(() => {
+                      userInteractionRef.current = false
+                    }, 200)
                   }}
                   style={{ margin: 0, cursor: (chartMode === 'proportion' || selectedYears.length <= 1) ? 'not-allowed' : 'pointer' }}
                 />
@@ -995,11 +1016,16 @@ export default function ChartControls({
                   checked={combineError === 'std'}
                   disabled={!combineStatistic || chartMode === 'proportion' || selectedYears.length <= 1}
                   onChange={(e) => {
+                    userInteractionRef.current = true
                     if (e.target.checked) {
                       setCombineError('std')
                     } else {
                       setCombineError(null)
                     }
+                    // Reset interaction flag after a short delay
+                    setTimeout(() => {
+                      userInteractionRef.current = false
+                    }, 200)
                   }}
                   style={{ margin: 0, cursor: (combineStatistic && chartMode !== 'proportion' && selectedYears.length > 1) ? 'pointer' : 'not-allowed' }}
                 />
@@ -1018,11 +1044,16 @@ export default function ChartControls({
                   checked={combineError === 'ci'}
                   disabled={!combineStatistic || chartMode === 'proportion' || selectedYears.length <= 1}
                   onChange={(e) => {
+                    userInteractionRef.current = true
                     if (e.target.checked) {
                       setCombineError('ci')
                     } else {
                       setCombineError(null)
                     }
+                    // Reset interaction flag after a short delay
+                    setTimeout(() => {
+                      userInteractionRef.current = false
+                    }, 200)
                   }}
                   style={{ margin: 0, cursor: (combineStatistic && chartMode !== 'proportion' && selectedYears.length > 1) ? 'pointer' : 'not-allowed' }}
                 />
