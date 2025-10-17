@@ -293,51 +293,52 @@ export const useDashboardStore = create<Store>()(
                   target.medicalDirectorHoursPercentage = Math.round(maxActivePartnersPct * 1e6) / 1e6
                   target.hasMedicalDirectorHours = target.medicalDirectorHoursPercentage > 0
                 } else {
-                  // Distribute the NEGATIVE delta among others
-                  const sumOtherCurrent = others.reduce((s, p) => s + (p.medicalDirectorHoursPercentage ?? 0), 0)
-                  
-                  if (sumOtherCurrent > 0) {
-                    // Distribute delta weighted by current percentages
-                    for (const p of others) {
+                  // Distribute the NEGATIVE delta EVENLY among all others (not by FTE or current %)
+                  // Handle case where some physicians might go negative and need iterative redistribution
+                  let remainingDelta = delta
+                  let availableOthers = [...others]
+
+                  while (Math.abs(remainingDelta) > 0.000001 && availableOthers.length > 0) {
+                    const equalAdjustment = -remainingDelta / availableOthers.length
+                    let actuallyAbsorbed = 0
+                    const nowZeroed: typeof availableOthers = []
+
+                    for (const p of availableOthers) {
                       const currentPct = p.medicalDirectorHoursPercentage ?? 0
-                      const weight = currentPct / sumOtherCurrent
-                      const adjustment = -delta * weight
-                      const newPct = currentPct + adjustment
-                      // Round to 6 decimal places to avoid floating point drift
-                      p.medicalDirectorHoursPercentage = Math.round(Math.max(0, newPct) * 1e6) / 1e6
-                      p.hasMedicalDirectorHours = p.medicalDirectorHoursPercentage > 0
+                      const newPct = currentPct + equalAdjustment
+
+                      if (newPct < 0) {
+                        // This physician can't absorb the full adjustment - take what we can
+                        actuallyAbsorbed += currentPct // Track what was actually absorbed
+                        p.medicalDirectorHoursPercentage = 0
+                        p.hasMedicalDirectorHours = false
+                        nowZeroed.push(p)
+                      } else {
+                        // This physician can absorb the full adjustment
+                        actuallyAbsorbed += -equalAdjustment // Track what was actually absorbed
+                        p.medicalDirectorHoursPercentage = Math.round(newPct * 1e6) / 1e6
+                        p.hasMedicalDirectorHours = p.medicalDirectorHoursPercentage > 0
+                      }
                     }
-                  } else {
-                    // No current percentages - distribute by partner portion weights
-                    const weights = others.map(p => ({ p, w: getPartnerPortionOfYear(p) }))
-                    const sumW = weights.reduce((s, x) => s + x.w, 0)
-                    
-                    if (sumW > 0) {
-                      for (const { p, w } of weights) {
-                        const weight = w / sumW
-                        const adjustment = -delta * weight
-                        const newPct = (p.medicalDirectorHoursPercentage ?? 0) + adjustment
-                        // Round to 6 decimal places to avoid floating point drift
-                        p.medicalDirectorHoursPercentage = Math.round(Math.max(0, newPct) * 1e6) / 1e6
-                        p.hasMedicalDirectorHours = p.medicalDirectorHoursPercentage > 0
-                      }
-                    } else {
-                      // Equal distribution as fallback
-                      const equalAdjustment = -delta / others.length
-                      for (const p of others) {
-                        const newPct = (p.medicalDirectorHoursPercentage ?? 0) + equalAdjustment
-                        // Round to 6 decimal places to avoid floating point drift
-                        p.medicalDirectorHoursPercentage = Math.round(Math.max(0, newPct) * 1e6) / 1e6
-                        p.hasMedicalDirectorHours = p.medicalDirectorHoursPercentage > 0
-                      }
+
+                    // Update remaining delta based on what was actually absorbed
+                    remainingDelta -= actuallyAbsorbed
+
+                    // Remove zeroed physicians from available list for next iteration
+                    availableOthers = availableOthers.filter(p => !nowZeroed.includes(p))
+
+                    // If we zeroed anyone, we have remaining delta to redistribute
+                    if (nowZeroed.length === 0 || availableOthers.length === 0) {
+                      // Either everyone absorbed their share, or everyone is zeroed
+                      break
                     }
                   }
-                  
+
                   // Set target to the new value
                   target.medicalDirectorHoursPercentage = Math.round(desiredTargetPct * 1e6) / 1e6
                   target.hasMedicalDirectorHours = target.medicalDirectorHoursPercentage > 0
                 }
-                
+
                 // Log final state after redistribution
                 console.log(`[Store Redistribution] AFTER - Target ${target.name}: ${target.medicalDirectorHoursPercentage?.toFixed(6)}%`)
                 console.log(`[Store Redistribution] AFTER - Others:`, others.map(p => `${p.name}: ${p.medicalDirectorHoursPercentage?.toFixed(6)}%`))
@@ -614,43 +615,44 @@ export const useDashboardStore = create<Store>()(
                   target.medicalDirectorHoursPercentage = Math.round(maxActivePartnersPct * 1e6) / 1e6
                   target.hasMedicalDirectorHours = target.medicalDirectorHoursPercentage > 0
                 } else {
-                  // Distribute the NEGATIVE delta among others
-                  const sumOtherCurrent = others.reduce((s, p) => s + (p.medicalDirectorHoursPercentage ?? 0), 0)
+                  // Distribute the NEGATIVE delta EVENLY among all others (not by FTE or current %)
+                  // Handle case where some physicians might go negative and need iterative redistribution
+                  let remainingDelta = delta
+                  let availableOthers = [...others]
 
-                  if (sumOtherCurrent > 0) {
-                    // Distribute delta weighted by current percentages
-                    for (const p of others) {
+                  while (Math.abs(remainingDelta) > 0.000001 && availableOthers.length > 0) {
+                    const equalAdjustment = -remainingDelta / availableOthers.length
+                    let actuallyAbsorbed = 0
+                    const nowZeroed: typeof availableOthers = []
+
+                    for (const p of availableOthers) {
                       const currentPct = p.medicalDirectorHoursPercentage ?? 0
-                      const weight = currentPct / sumOtherCurrent
-                      const adjustment = -delta * weight
-                      const newPct = currentPct + adjustment
-                      // Round to 6 decimal places to avoid floating point drift
-                      p.medicalDirectorHoursPercentage = Math.round(Math.max(0, newPct) * 1e6) / 1e6
-                      p.hasMedicalDirectorHours = p.medicalDirectorHoursPercentage > 0
-                    }
-                  } else {
-                    // No current percentages - distribute by partner portion weights
-                    const weights = others.map(p => ({ p, w: getPartnerPortionOfYear(p) }))
-                    const sumW = weights.reduce((s, x) => s + x.w, 0)
+                      const newPct = currentPct + equalAdjustment
 
-                    if (sumW > 0) {
-                      for (const { p, w } of weights) {
-                        const weight = w / sumW
-                        const adjustment = -delta * weight
-                        const newPct = (p.medicalDirectorHoursPercentage ?? 0) + adjustment
-                        // Round to 6 decimal places to avoid floating point drift
-                        p.medicalDirectorHoursPercentage = Math.round(Math.max(0, newPct) * 1e6) / 1e6
+                      if (newPct < 0) {
+                        // This physician can't absorb the full adjustment - take what we can
+                        actuallyAbsorbed += currentPct // Track what was actually absorbed
+                        p.medicalDirectorHoursPercentage = 0
+                        p.hasMedicalDirectorHours = false
+                        nowZeroed.push(p)
+                      } else {
+                        // This physician can absorb the full adjustment
+                        actuallyAbsorbed += -equalAdjustment // Track what was actually absorbed
+                        p.medicalDirectorHoursPercentage = Math.round(newPct * 1e6) / 1e6
                         p.hasMedicalDirectorHours = p.medicalDirectorHoursPercentage > 0
                       }
-                    } else {
-                      // Equal distribution as fallback
-                      const equalAdjustment = -delta / others.length
-                      for (const p of others) {
-                        const newPct = (p.medicalDirectorHoursPercentage ?? 0) + equalAdjustment
-                        // Round to 6 decimal places to avoid floating point drift
-                        p.medicalDirectorHoursPercentage = Math.round(Math.max(0, newPct) * 1e6) / 1e6
-                        p.hasMedicalDirectorHours = p.medicalDirectorHoursPercentage > 0
-                      }
+                    }
+
+                    // Update remaining delta based on what was actually absorbed
+                    remainingDelta -= actuallyAbsorbed
+
+                    // Remove zeroed physicians from available list for next iteration
+                    availableOthers = availableOthers.filter(p => !nowZeroed.includes(p))
+
+                    // If we zeroed anyone, we have remaining delta to redistribute
+                    if (nowZeroed.length === 0 || availableOthers.length === 0) {
+                      // Either everyone absorbed their share, or everyone is zeroed
+                      break
                     }
                   }
 
