@@ -3291,26 +3291,30 @@ export function Dashboard() {
 
   // Listen for unloadScenario event
   useEffect(() => {
-    const handleUnloadScenario = () => {
-      if (!store.currentScenarioName) return
+    const handleUnloadScenario = async () => {
+      if (!store.currentScenarioName && !store.currentYearSettingName) return
+
+      // For YTD view, check currentYearSettingName
+      const currentName = viewMode === 'YTD Detailed' ? store.currentYearSettingName : store.currentScenarioName
 
       // Cannot unload Default (A)
-      if (store.currentScenarioName === 'Default (A)') {
+      if (currentName === 'Default (A)') {
         alert('Cannot unload Default (A) scenario. It serves as the baseline for all projections.')
         return
       }
 
       // Cannot unload 2025 Default
-      if (store.currentScenarioName === '2025 Default') {
+      if (currentName === '2025 Default') {
         alert('Cannot unload 2025 Default scenario. It serves as the baseline for all projections.')
         return
       }
 
-      // Load Default (A) scenario (or 2025 Default for YTD view)
+      // Load Default scenario using proper methods
       if (viewMode === 'YTD Detailed') {
-        store.setCurrentScenario(null, '2025 Default')
-        // Reset YTD settings to defaults
-        setYtdSettings(DEFAULT_YTD_SETTINGS)
+        // Use NEW modular method to load "2025 Default" Current Year Settings scenario
+        // This follows the same flow as initial load: defaults → scenario → QBO cache sync
+        await store.loadDefaultYTDScenario()
+        // Note: Grid will automatically reload and sync because currentYearSettingId changed
       } else {
         store.setCurrentScenario(null, 'Default (A)')
       }
@@ -3320,7 +3324,7 @@ export function Dashboard() {
     return () => {
       window.removeEventListener('unloadScenario', handleUnloadScenario)
     }
-  }, [store, viewMode, setYtdSettings])
+  }, [store, viewMode])
 
   // Listen for unloadScenarioB event
   useEffect(() => {

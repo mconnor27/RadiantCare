@@ -465,7 +465,8 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
 
       // Load scenario A
       try {
-        await store.loadScenarioFromDatabase(data.scenario_a.id, 'A', true)
+        // Use NEW modular method to load Current Year Settings scenario
+        await store.loadCurrentYearSettings(data.scenario_a.id)
 
         // Apply view mode if it's YTD Detailed (mobile only supports this)
         if (data.view_mode === 'YTD Detailed') {
@@ -745,7 +746,10 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
       // Disable scenario B for mobile mode - only scenario A is supported
       store.setScenarioEnabled(false)
 
-      await store.loadScenarioFromDatabase(scenarioId, 'A', true)
+      // Use NEW modular method to load Current Year Settings scenario
+      // This follows the same flow as initial load: defaults → scenario → QBO cache sync
+      await store.loadCurrentYearSettings(scenarioId)
+
       setIsScenarioDirty(false)
       setShowLoadModal(false)
 

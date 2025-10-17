@@ -439,6 +439,7 @@ export default function YearlyDataGrid({
       const cachedSummaryData = (environment === 'production' && cachedSummary) ? cachedSummary : undefined
       const customValues = store.ytdCustomProjectedValues
       const dataSignature = JSON.stringify({
+        scenarioId: store.currentYearSettingId, // Include scenario ID to force reload on scenario change
         collapsed: collapsedSections,
         customs: customValues,
         physicians: physicianData?.physicians.length,
@@ -526,8 +527,9 @@ export default function YearlyDataGrid({
   // We read store values fresh inside the function, but track key primitive values
   // that affect calculated grid rows (MD Associates, Guaranteed Payments, Locums, PRCS MD Hours, Shared MD Hours, Consulting)
   // Also track custom projected values count so grid reloads with correct coloring when user changes values
+  // IMPORTANT: Include currentYearSettingId to force grid reload when scenario changes (even if data is identical)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collapsedSections, environment, cachedSummary, isLoadingCache, mode, prcsDirectorId, prcsMdHours, mdSharedHours, consultingAgreement, locumCosts, physicianDataSignature, customProjectedValuesCount])
+  }, [collapsedSections, environment, cachedSummary, isLoadingCache, mode, store.currentYearSettingId, prcsDirectorId, prcsMdHours, mdSharedHours, consultingAgreement, locumCosts, physicianDataSignature, customProjectedValuesCount])
 
   useEffect(() => {
     loadData()

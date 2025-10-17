@@ -730,7 +730,11 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         isOpen={showLoadModal}
         onClose={() => setShowLoadModal(false)}
         onLoad={async (id) => {
-          await store.loadScenarioFromDatabase(id, 'A', true)
+          // Use NEW modular method to load Current Year Settings scenario
+          // This follows the same flow as initial load: defaults → scenario → QBO cache sync
+          await store.loadCurrentYearSettings(id)
+          // Note: Compensation freeze is automatically triggered by the useEffect watching currentYearSettingId
+
           setShowLoadModal(false)
         }}
         viewMode="YTD Detailed"

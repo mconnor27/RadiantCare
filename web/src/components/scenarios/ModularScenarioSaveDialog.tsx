@@ -200,7 +200,7 @@ export default function ModularScenarioSaveDialog({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Conservative Growth"
+              placeholder="e.g., 8 weeks vacation"
               style={{
                 width: '100%',
                 padding: '8px 12px',
