@@ -351,7 +351,7 @@ export default function YearlyDataGrid({
     '8330 MD Associates - Payroll Taxes': 'This value is automatically calculated from the sum of employee and part-employee physician payroll taxes in the physician panel. This row is not editable.',
     '8343 Guaranteed Payments': 'This value is automatically calculated from the sum of retiring partner buyout costs in the physician panel. This row is not editable.',
     '8322 Locums - Salary': 'This value is automatically calculated from the locums costs setting in the physician panel. This row is not editable.',
-    'Medical Director Hours (Shared)': 'This value is set in the physician panel. This row is not editable.',
+    'Medical Director Hours (Shared)': 'Click to adjust the total shared medical director hours pool. Individual physician allocations are set in the physician panel and will be redistributed proportionally when the total changes.',
     'Medical Director Hours (PRCS)': 'This value is set in the physician panel. This row is not editable.',
     'Consulting Agreement/Other': 'This value is set in the physician panel. This row is not editable.',
     '-$5,760,796': 'This 2016 asset disposal gain is displayed but excluded from all calculations and summaries to maintain operational focus.',
@@ -359,7 +359,8 @@ export default function YearlyDataGrid({
     '$462,355': 'This 2016 interest income is displayed but excluded from all calculations and summaries to maintain operational focus.'
   }
 
-  // Helper function to check if account is a calculated row (MD Associates, Guaranteed Payments, Locums, Medical Director Hours, Consulting)
+  // Helper function to check if account is a calculated row (MD Associates, Guaranteed Payments, Locums, PRCS MD Hours, Consulting)
+  // NOTE: "Medical Director Hours (Shared)" is NOT included - it's editable in the grid
   const isCalculatedAccount = (accountName: string): boolean => {
     const normalized = normalizeAccountName(accountName)
     return normalized.match(/8322.*MD.*Associates.*Salary/i) ||
@@ -367,7 +368,6 @@ export default function YearlyDataGrid({
            normalized.match(/8330.*MD.*Associates.*Payroll.*Tax/i) ||
            normalized.match(/8343.*Guaranteed.*Payments/i) ||
            normalized.match(/8322.*Locums.*Salary/i) ||
-           normalized.match(/Medical Director Hours.*Shared/i) ||
            normalized.match(/Medical Director Hours.*PRCS/i) ||
            normalized.match(/Consulting Agreement/i) ? true : false
   }
@@ -437,12 +437,14 @@ export default function YearlyDataGrid({
 
       // Create a signature of the data that would affect the load
       const cachedSummaryData = (environment === 'production' && cachedSummary) ? cachedSummary : undefined
+      const customValues = mode === 'ytd' ? store.ytdCustomProjectedValues : store.customProjectedValues
       const dataSignature = JSON.stringify({
         collapsed: collapsedSections,
-        customs: store.customProjectedValues,
+        customs: customValues,
         physicians: physicianData?.physicians.length,
         prcsDirector: physicianData?.prcsDirectorPhysicianId,
         prcsMdHours: physicianData?.prcsMedicalDirectorHours,
+        mdSharedHours: physicianData?.medicalDirectorHours, // Add this so changes trigger reload
         locumCosts: physicianData?.locumCosts,
         hasCached: !!cachedSummaryData
       })
@@ -458,7 +460,7 @@ export default function YearlyDataGrid({
       setError(null)
 
       // Load both the grid data and the projection ratio
-      const customValues = mode === 'ytd' ? store.ytdCustomProjectedValues : store.customProjectedValues
+      // customValues already defined above for signature
       const [data, ratio] = await Promise.all([
         loadYearlyGridData(collapsedSections, customValues, physicianData, cachedSummaryData),
         calculateProjectionRatio(cachedSummaryData)
@@ -699,7 +701,8 @@ export default function YearlyDataGrid({
   }, [])
   
   const handleProjectedValueChange = useCallback((newValue: number) => {
-    const accountName = slider.accountName
+    // Normalize account name by removing info icons and extra whitespace
+    const accountName = normalizeAccountName(slider.accountName)
     const annualizedBaseline = slider.annualizedBaseline
     const defaultValue = getDefaultValue(accountName, annualizedBaseline)
 
@@ -710,25 +713,112 @@ export default function YearlyDataGrid({
       return
     }
 
-    // Update custom projected values using store methods
-    if (approximatelyEqual(newValue, defaultValue)) {
-      // Remove override if matching default value
-      if (customProjectedValues[accountName] !== undefined) {
+    // Special handling for "Medical Director Hours (Shared)" - redistribute physician percentages proportionally
+    const normalizedAccountName = normalizeAccountName(accountName)
+    if (normalizedAccountName === 'Medical Director Hours (Shared)') {
+      const oldTotal = slider.currentValue
+      const newTotal = newValue
+
+      console.log(`📊 [Shared MD Hours] ==== STARTING UPDATE ====`)
+      console.log(`📊 [Shared MD Hours] Total changing from ${oldTotal} to ${newTotal}`)
+      console.log(`📊 [Shared MD Hours] Mode: ${mode}`)
+
+      // Get current physician data
+      const fy = mode === 'ytd' ? store.ytdData : store.scenarioA.future.find((f: any) => f.year === 2025)
+
+      console.log(`📊 [Shared MD Hours] Current fy.medicalDirectorHours BEFORE update: ${fy?.medicalDirectorHours}`)
+
+      if (fy && fy.physicians) {
+        // Calculate current trailing total (for retired partners)
+        const trailingTotal = fy.physicians.reduce((sum: number, p: any) => {
+          const isPriorYearRetiree = (p.type === 'partnerToRetire') && ((p.partnerPortionOfYear ?? 0) === 0)
+          if (isPriorYearRetiree) {
+            // Get trailing amount (default function available in PhysiciansEditor context)
+            const trailingAmount = p.trailingSharedMdAmount ?? 0
+            return sum + trailingAmount
+          }
+          return sum
+        }, 0)
+
+        // The remainder after trailing is what gets distributed by percentage
+        const oldRemainder = Math.max(0, oldTotal - trailingTotal)
+        const newRemainder = Math.max(0, newTotal - trailingTotal)
+
+        console.log(`📊 [Shared MD Hours] Trailing: ${trailingTotal}, Old remainder: ${oldRemainder}, New remainder: ${newRemainder}`)
+
+        // Redistribute: keep the same percentage allocations, but scale to new total
+        // The percentage-based allocations will automatically scale to the new remainder
+        // No need to modify individual physician percentages - they stay the same!
+
+        console.log(`✅ [Shared MD Hours] Percentages remain unchanged, will scale to new total automatically`)
+      }
+
+      // Update the total in the store
+      console.log(`📊 [Shared MD Hours] Calling store.setYtdValue('medicalDirectorHours', ${newValue})`)
+      if (mode === 'ytd') {
+        store.setYtdValue('medicalDirectorHours', newValue)
+
+        // Verify the update (read from store again to get latest value)
+        const fyAfter = useDashboardStore.getState().ytdData
+        console.log(`📊 [Shared MD Hours] Current fy.medicalDirectorHours AFTER update: ${fyAfter?.medicalDirectorHours}`)
+      } else {
+        store.setFutureValue('A', 2025, 'medicalDirectorHours', newValue)
+        if (store.scenarioBEnabled) {
+          store.setFutureValue('B', 2025, 'medicalDirectorHours', newValue)
+        }
+
+        // Verify the update
+        const fyAfter = useDashboardStore.getState().scenarioA.future.find((f: any) => f.year === 2025)
+        console.log(`📊 [Shared MD Hours] Current fy.medicalDirectorHours AFTER update: ${fyAfter?.medicalDirectorHours}`)
+      }
+
+      // Also update custom projected value for grid persistence
+      console.log(`📊 [Shared MD Hours] Default value: ${defaultValue}, approximatelyEqual: ${approximatelyEqual(newValue, defaultValue)}`)
+      if (approximatelyEqual(newValue, defaultValue)) {
+        console.log(`📊 [Shared MD Hours] Removing custom projected value (matches default)`)
         if (mode === 'ytd') {
           store.removeYtdCustomProjectedValue(accountName)
         } else {
           store.removeCustomProjectedValue(accountName)
         }
-      }
-    } else {
-      // Set/replace override (including when set to annualized but different from default)
-      if (mode === 'ytd') {
-        store.setYtdCustomProjectedValue(accountName, newValue)
       } else {
-        store.setCustomProjectedValue(accountName, newValue)
+        console.log(`📊 [Shared MD Hours] Setting custom projected value: ${accountName} = ${newValue}`)
+        if (mode === 'ytd') {
+          store.setYtdCustomProjectedValue(accountName, newValue)
+        } else {
+          store.setCustomProjectedValue(accountName, newValue)
+        }
+      }
+
+      // Read custom projected values from store again
+      const currentCustomValues = mode === 'ytd'
+        ? useDashboardStore.getState().ytdCustomProjectedValues
+        : useDashboardStore.getState().customProjectedValues
+      console.log(`📊 [Shared MD Hours] Custom projected values:`, currentCustomValues)
+      console.log(`📊 [Shared MD Hours] Specifically for "${accountName}":`, currentCustomValues[accountName])
+      console.log(`📊 [Shared MD Hours] ==== UPDATE COMPLETE ====`)
+    } else {
+      // Standard handling for other accounts
+      // Update custom projected values using store methods
+      if (approximatelyEqual(newValue, defaultValue)) {
+        // Remove override if matching default value
+        if (customProjectedValues[accountName] !== undefined) {
+          if (mode === 'ytd') {
+            store.removeYtdCustomProjectedValue(accountName)
+          } else {
+            store.removeCustomProjectedValue(accountName)
+          }
+        }
+      } else {
+        // Set/replace override (including when set to annualized but different from default)
+        if (mode === 'ytd') {
+          store.setYtdCustomProjectedValue(accountName, newValue)
+        } else {
+          store.setCustomProjectedValue(accountName, newValue)
+        }
       }
     }
-    
+
       // Trigger immediate sync to multiyear store after value change
       // Use setTimeout to allow any dynamic recalculations to complete first
       setTimeout(() => {
@@ -738,7 +828,7 @@ export default function YearlyDataGrid({
           syncGridValuesToMultiyear(store, customValues, gridData, mode)
         }
       }, 50) // Short delay to allow dynamic calculations to complete
-  }, [slider.accountName, slider.currentValue, slider.annualizedBaseline, store.customProjectedValues, gridData, store])
+  }, [slider.accountName, slider.currentValue, slider.annualizedBaseline, store.customProjectedValues, gridData, store, mode])
 
   return (
     <CollapsibleSection 

@@ -254,45 +254,50 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
         let isCalculated = false
 
         if (physicianData) {
-          const calculatedInfo = isCalculatedRow(accountName)
-          if (calculatedInfo.isCalculated) {
-            const mdCosts = calculateMDAssociatesCosts(physicianData.physicians, 2025, physicianData.benefitGrowthPct)
-            const guaranteedPayments = calculateGuaranteedPayments(physicianData.physicians)
-            const locumsSalary = calculateLocumsSalary(physicianData.locumCosts)
-
-            switch (calculatedInfo.type) {
-              case 'mdSalary':
-                value2025Default = mdCosts.totalSalary
-                break
-              case 'mdBenefits':
-                value2025Default = mdCosts.totalBenefits
-                break
-              case 'mdPayrollTax':
-                value2025Default = mdCosts.totalPayrollTaxes
-                break
-              case 'guaranteedPayments':
-                value2025Default = guaranteedPayments
-                break
-              case 'locumsSalary':
-                value2025Default = locumsSalary
-                break
-              case 'prcsMedicalDirectorHours':
-                // Only show value if someone is actually selected (not null or undefined)
-                value2025Default = (physicianData.prcsDirectorPhysicianId !== null && physicianData.prcsDirectorPhysicianId !== undefined)
-                  ? (physicianData.prcsMedicalDirectorHours ?? 0)
-                  : 0
-                break
-              case 'medicalDirectorHoursShared':
-                value2025Default = physicianData.medicalDirectorHours ?? 0
-                break
-              case 'consultingServicesAgreement':
-                value2025Default = physicianData.consultingServicesAgreement ?? 0
-                break
-            }
-            isCalculated = true
+          // Check if this is "Medical Director Hours (Shared)" - special case (NOT calculated, but uses physician data)
+          const normalizedAccountName = accountName.replace(/\s+/g, ' ').trim()
+          if (normalizedAccountName.match(/Medical Director Hours.*Shared/i)) {
+            value2025Default = physicianData.medicalDirectorHours ?? value2025Annualized
+            console.log(`🔍 [Transformer] Medical Director Hours (Shared): physicianData.medicalDirectorHours = ${physicianData.medicalDirectorHours}, using value: ${value2025Default}`)
+            isCalculated = false // Not marked as calculated so it shows as editable (green)
           } else {
-            // Use config default or fallback to annualized for other accounts
-            value2025Default = getDefaultValue(accountName, value2025Annualized)
+            const calculatedInfo = isCalculatedRow(accountName)
+            if (calculatedInfo.isCalculated) {
+              const mdCosts = calculateMDAssociatesCosts(physicianData.physicians, 2025, physicianData.benefitGrowthPct)
+              const guaranteedPayments = calculateGuaranteedPayments(physicianData.physicians)
+              const locumsSalary = calculateLocumsSalary(physicianData.locumCosts)
+
+              switch (calculatedInfo.type) {
+                case 'mdSalary':
+                  value2025Default = mdCosts.totalSalary
+                  break
+                case 'mdBenefits':
+                  value2025Default = mdCosts.totalBenefits
+                  break
+                case 'mdPayrollTax':
+                  value2025Default = mdCosts.totalPayrollTaxes
+                  break
+                case 'guaranteedPayments':
+                  value2025Default = guaranteedPayments
+                  break
+                case 'locumsSalary':
+                  value2025Default = locumsSalary
+                  break
+                case 'prcsMedicalDirectorHours':
+                  // Only show value if someone is actually selected (not null or undefined)
+                  value2025Default = (physicianData.prcsDirectorPhysicianId !== null && physicianData.prcsDirectorPhysicianId !== undefined)
+                    ? (physicianData.prcsMedicalDirectorHours ?? 0)
+                    : 0
+                  break
+                case 'consultingServicesAgreement':
+                  value2025Default = physicianData.consultingServicesAgreement ?? 0
+                  break
+              }
+              isCalculated = true
+            } else {
+              // Use config default or fallback to annualized for other accounts
+              value2025Default = getDefaultValue(accountName, value2025Annualized)
+            }
           }
         } else {
           // Use config default or fallback to annualized
@@ -320,45 +325,50 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
         let isCalculated = false
 
         if (physicianData) {
-          const calculatedInfo = isCalculatedRow(accountName)
-          if (calculatedInfo.isCalculated) {
-            const mdCosts = calculateMDAssociatesCosts(physicianData.physicians, 2025, physicianData.benefitGrowthPct)
-            const guaranteedPayments = calculateGuaranteedPayments(physicianData.physicians)
-            const locumsSalary = calculateLocumsSalary(physicianData.locumCosts)
-
-            switch (calculatedInfo.type) {
-              case 'mdSalary':
-                value2025Default = mdCosts.totalSalary
-                break
-              case 'mdBenefits':
-                value2025Default = mdCosts.totalBenefits
-                break
-              case 'mdPayrollTax':
-                value2025Default = mdCosts.totalPayrollTaxes
-                break
-              case 'guaranteedPayments':
-                value2025Default = guaranteedPayments
-                break
-              case 'locumsSalary':
-                value2025Default = locumsSalary
-                break
-              case 'prcsMedicalDirectorHours':
-                // Only show value if someone is actually selected (not null or undefined)
-                value2025Default = (physicianData.prcsDirectorPhysicianId !== null && physicianData.prcsDirectorPhysicianId !== undefined)
-                  ? (physicianData.prcsMedicalDirectorHours ?? 0)
-                  : 0
-                break
-              case 'medicalDirectorHoursShared':
-                value2025Default = physicianData.medicalDirectorHours ?? 0
-                break
-              case 'consultingServicesAgreement':
-                value2025Default = physicianData.consultingServicesAgreement ?? 0
-                break
-            }
-            isCalculated = true
+          // Check if this is "Medical Director Hours (Shared)" - special case (NOT calculated, but uses physician data)
+          const normalizedAccountName = accountName.replace(/\s+/g, ' ').trim()
+          if (normalizedAccountName.match(/Medical Director Hours.*Shared/i)) {
+            value2025Default = physicianData.medicalDirectorHours ?? value2025Annualized
+            console.log(`🔍 [Transformer] Medical Director Hours (Shared): physicianData.medicalDirectorHours = ${physicianData.medicalDirectorHours}, using value: ${value2025Default}`)
+            isCalculated = false // Not marked as calculated so it shows as editable (green)
           } else {
-            // Use config default or fallback to annualized for other accounts
-            value2025Default = getDefaultValue(accountName, value2025Annualized)
+            const calculatedInfo = isCalculatedRow(accountName)
+            if (calculatedInfo.isCalculated) {
+              const mdCosts = calculateMDAssociatesCosts(physicianData.physicians, 2025, physicianData.benefitGrowthPct)
+              const guaranteedPayments = calculateGuaranteedPayments(physicianData.physicians)
+              const locumsSalary = calculateLocumsSalary(physicianData.locumCosts)
+
+              switch (calculatedInfo.type) {
+                case 'mdSalary':
+                  value2025Default = mdCosts.totalSalary
+                  break
+                case 'mdBenefits':
+                  value2025Default = mdCosts.totalBenefits
+                  break
+                case 'mdPayrollTax':
+                  value2025Default = mdCosts.totalPayrollTaxes
+                  break
+                case 'guaranteedPayments':
+                  value2025Default = guaranteedPayments
+                  break
+                case 'locumsSalary':
+                  value2025Default = locumsSalary
+                  break
+                case 'prcsMedicalDirectorHours':
+                  // Only show value if someone is actually selected (not null or undefined)
+                  value2025Default = (physicianData.prcsDirectorPhysicianId !== null && physicianData.prcsDirectorPhysicianId !== undefined)
+                    ? (physicianData.prcsMedicalDirectorHours ?? 0)
+                    : 0
+                  break
+                case 'consultingServicesAgreement':
+                  value2025Default = physicianData.consultingServicesAgreement ?? 0
+                  break
+              }
+              isCalculated = true
+            } else {
+              // Use config default or fallback to annualized for other accounts
+              value2025Default = getDefaultValue(accountName, value2025Annualized)
+            }
           }
         } else {
           // Use config default or fallback to annualized
@@ -506,11 +516,10 @@ const isCalculatedRow = (accountName: string): {
     return { isCalculated: true, type: 'locumsSalary' }
   } else if (normalized.match(/Medical Director Hours.*PRCS/i)) {
     return { isCalculated: true, type: 'prcsMedicalDirectorHours' }
-  } else if (normalized.match(/Medical Director Hours.*Shared/i)) {
-    return { isCalculated: true, type: 'medicalDirectorHoursShared' }
   } else if (normalized.match(/Consulting Agreement/i)) {
     return { isCalculated: true, type: 'consultingServicesAgreement' }
   }
+  // NOTE: "Medical Director Hours (Shared)" is NOT marked as calculated - it's editable in the grid
 
   // console.log('isCalculatedRow check:', { original: accountName, normalized })
   return { isCalculated: false, type: null }
@@ -1160,7 +1169,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
           tooltipText = getTooltipForCalculatedRow(calculatedInfo.type!)
           // console.log('Calculated tooltip set to:', tooltipText)
         } else if (isMedicalDirectorShared) {
-          tooltipText = 'Shared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners. Apportion in the Physician Panel.'
+          tooltipText = 'Shared contract terms: $270/hr up to $97,200 maximum annual. Click to adjust the total pool. Individual physician allocations are set in the physician panel and will be redistributed proportionally.'
         } else if (isMedicalDirectorPRCS) {
           tooltipText = 'PRCS contract terms: $250/hr up to $90,000 maximum annual. Applies if a PRCS Medical Director is specified in the Physicians section.'
         } else if (isMedicalDirectorTotal) {
