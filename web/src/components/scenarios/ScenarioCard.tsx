@@ -432,31 +432,40 @@ export default function ScenarioCard({
                 <span style={{ fontSize: '12px', fontWeight: 'bold' }}>A</span>
               </button>
             </>
-          ) : (
-            <button
-              onClick={() => onLoad(scenario.id)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#0ea5e9',
-                fontSize: 20,
-                cursor: 'pointer',
-                transition: 'opacity 0.2s',
-                padding: 2,
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = '0.7'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = '1'
-              }}
-              title="Load scenario"
-            >
-              <FontAwesomeIcon icon={faFolderOpen} style={{ transform: 'translateY(3px)' }} />
-            </button>
-          )}
+          ) : (() => {
+            // In YTD Detailed view, only allow loading Current Year Settings scenarios
+            const isLoadable = viewMode !== 'YTD Detailed' || isCurrentYearSettingsScenario(scenario)
+            return (
+              <button
+                onClick={() => isLoadable && onLoad(scenario.id)}
+                disabled={!isLoadable}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: isLoadable ? '#0ea5e9' : '#d1d5db',
+                  fontSize: 20,
+                  cursor: isLoadable ? 'pointer' : 'not-allowed',
+                  transition: isLoadable ? 'opacity 0.2s' : 'none',
+                  padding: 2,
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+                onMouseEnter={(e) => {
+                  if (isLoadable) {
+                    e.currentTarget.style.opacity = '0.7'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (isLoadable) {
+                    e.currentTarget.style.opacity = '1'
+                  }
+                }}
+                title={isLoadable ? "Load scenario" : "Load from Multi-Year View"}
+              >
+                <FontAwesomeIcon icon={faFolderOpen} style={{ transform: 'translateY(3px)' }} />
+              </button>
+            )
+          })()}
         </div>
       </div>
     </div>
