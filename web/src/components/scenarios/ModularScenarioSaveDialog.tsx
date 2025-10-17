@@ -5,16 +5,18 @@ interface ModularScenarioSaveDialogProps {
   onClose: () => void
   onSave: (saveType: 'current_year' | 'projection' | 'both', name: string, description: string, isPublic: boolean) => Promise<void>
   baselineMode: '2024 Data' | '2025 Data' | 'Custom'
+  forceCurrentYearOnly?: boolean // Force saving as Current Year Settings only (YTD view)
 }
 
 export default function ModularScenarioSaveDialog({
   isOpen,
   onClose,
   onSave,
-  baselineMode
+  baselineMode,
+  forceCurrentYearOnly = false
 }: ModularScenarioSaveDialogProps) {
   const [saveType, setSaveType] = useState<'current_year' | 'projection' | 'both'>(
-    baselineMode === '2025 Data' ? 'both' : 'projection'
+    forceCurrentYearOnly ? 'current_year' : (baselineMode === '2025 Data' ? 'both' : 'projection')
   )
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -39,7 +41,7 @@ export default function ModularScenarioSaveDialog({
       setName('')
       setDescription('')
       setIsPublic(false)
-      setSaveType(baselineMode === '2025 Data' ? 'both' : 'projection')
+      setSaveType(forceCurrentYearOnly ? 'current_year' : (baselineMode === '2025 Data' ? 'both' : 'projection'))
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
@@ -78,15 +80,15 @@ export default function ModularScenarioSaveDialog({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ margin: '0 0 16px 0', fontSize: 20, fontWeight: 600 }}>
+        <h2 style={{ margin: '0 0 16px 0', fontSize: 20, fontWeight: 600, textAlign: 'left' }}>
           Save Scenario
         </h2>
 
         <form onSubmit={handleSubmit}>
-          {/* Save Type Selection - only show if baseline mode is 2025 */}
-          {baselineMode === '2025 Data' && (
+          {/* Save Type Selection - only show if baseline mode is 2025 AND not forced to current year only */}
+          {baselineMode === '2025 Data' && !forceCurrentYearOnly && (
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500, textAlign: 'left' }}>
                 What do you want to save?
               </label>
               
@@ -94,7 +96,7 @@ export default function ModularScenarioSaveDialog({
                 <label
                   style={{
                     display: 'flex',
-                    alignItems: 'flex-start',
+                    alignItems: 'center',
                     gap: 8,
                     padding: 12,
                     border: saveType === 'projection' ? '2px solid #3b82f6' : '1px solid #d1d5db',
@@ -108,9 +110,9 @@ export default function ModularScenarioSaveDialog({
                     value="projection"
                     checked={saveType === 'projection'}
                     onChange={(e) => setSaveType(e.target.value as any)}
-                    style={{ marginTop: 2 }}
+                    style={{ flexShrink: 0 }}
                   />
-                  <div>
+                  <div style={{ textAlign: 'left' }}>
                     <div style={{ fontWeight: 500 }}>Projection only</div>
                     <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
                       Saves growth rates and 2026-2035 settings. Can be loaded on top of any Current Year Setting.
@@ -121,7 +123,7 @@ export default function ModularScenarioSaveDialog({
                 <label
                   style={{
                     display: 'flex',
-                    alignItems: 'flex-start',
+                    alignItems: 'center',
                     gap: 8,
                     padding: 12,
                     border: saveType === 'both' ? '2px solid #3b82f6' : '1px solid #d1d5db',
@@ -135,9 +137,9 @@ export default function ModularScenarioSaveDialog({
                     value="both"
                     checked={saveType === 'both'}
                     onChange={(e) => setSaveType(e.target.value as any)}
-                    style={{ marginTop: 2 }}
+                    style={{ flexShrink: 0 }}
                   />
-                  <div>
+                  <div style={{ textAlign: 'left' }}>
                     <div style={{ fontWeight: 500 }}>Projection + Current Year Settings</div>
                     <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
                       Saves two separate scenarios:
@@ -152,7 +154,7 @@ export default function ModularScenarioSaveDialog({
                 <label
                   style={{
                     display: 'flex',
-                    alignItems: 'flex-start',
+                    alignItems: 'center',
                     gap: 8,
                     padding: 12,
                     border: saveType === 'current_year' ? '2px solid #3b82f6' : '1px solid #d1d5db',
@@ -166,9 +168,9 @@ export default function ModularScenarioSaveDialog({
                     value="current_year"
                     checked={saveType === 'current_year'}
                     onChange={(e) => setSaveType(e.target.value as any)}
-                    style={{ marginTop: 2 }}
+                    style={{ flexShrink: 0 }}
                   />
-                  <div>
+                  <div style={{ textAlign: 'left' }}>
                     <div style={{ fontWeight: 500 }}>Current Year Settings only</div>
                     <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
                       Saves only the 2025 baseline (physicians, grid overrides).
@@ -191,7 +193,7 @@ export default function ModularScenarioSaveDialog({
 
           {/* Name */}
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, textAlign: 'left' }}>
               Name *
             </label>
             <input
@@ -212,7 +214,7 @@ export default function ModularScenarioSaveDialog({
 
           {/* Description */}
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, textAlign: 'left' }}>
               Description
             </label>
             <textarea

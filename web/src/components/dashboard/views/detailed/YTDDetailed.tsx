@@ -420,11 +420,12 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         isOpen={showModularSaveDialog}
         onClose={() => setShowModularSaveDialog(false)}
         onSave={async (_saveType, name, description, isPublic) => {
-          // In YTD view, always save as Current Year Settings
+          // In YTD view, always save as NEW Current Year Settings (forceNew: true)
           // Chart settings are NOT saved (ytdSettings = null)
-          await store.saveCurrentYearSettings(name, description, isPublic, null)
+          await store.saveCurrentYearSettings(name, description, isPublic, null, true)
         }}
         baselineMode="2025 Data"
+        forceCurrentYearOnly={true}
       />
 
       {/* Loading Modal - render FIRST before any content */}
@@ -606,8 +607,10 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         {currentScenarioName && currentScenarioName !== '2025 Default' && (
           <button
             onClick={() => {
-              const event = new CustomEvent('unloadScenario')
-              window.dispatchEvent(event)
+              if (confirm(`Unload "${currentScenarioName}"?\nAny unsaved changes will be lost. "2025 Default" will be loaded.`)) {
+                const event = new CustomEvent('unloadScenario')
+                window.dispatchEvent(event)
+              }
             }}
             style={{
               background: 'none',

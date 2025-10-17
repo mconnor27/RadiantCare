@@ -2186,7 +2186,8 @@ export const useDashboardStore = create<Store>()(
           name: string,
           description: string,
           isPublic: boolean,
-          _ytdSettings?: YTDSettings | null
+          _ytdSettings?: YTDSettings | null,
+          forceNew: boolean = false
         ) => {
           const state = get()
           // Use the already-imported supabase client (line 4)
@@ -2254,8 +2255,8 @@ export const useDashboardStore = create<Store>()(
             qbo_sync_timestamp: qboSyncTimestamp,
           }
 
-          // Check if updating existing Current Year Setting
-          if (state.currentYearSettingId) {
+          // Check if updating existing Current Year Setting (unless forceNew is true)
+          if (state.currentYearSettingId && !forceNew) {
             const { data, error } = await supabase
               .from('scenarios')
               .update(saveData)
@@ -3299,19 +3300,19 @@ export function Dashboard() {
         return
       }
 
-      const shouldUnload = confirm(
-        `Unload "${store.currentScenarioName}"?\n\nAny unsaved changes will be lost. Default (A) will be loaded.`
-      )
+      // Cannot unload 2025 Default
+      if (store.currentScenarioName === '2025 Default') {
+        alert('Cannot unload 2025 Default scenario. It serves as the baseline for all projections.')
+        return
+      }
 
-      if (shouldUnload) {
-        // Load Default (A) scenario
+      // Load Default (A) scenario (or 2025 Default for YTD view)
+      if (viewMode === 'YTD Detailed') {
+        store.setCurrentScenario(null, '2025 Default')
+        // Reset YTD settings to defaults
+        setYtdSettings(DEFAULT_YTD_SETTINGS)
+      } else {
         store.setCurrentScenario(null, 'Default (A)')
-
-        // Reset to defaults - for YTD view, reset to baseline 2025 data
-        if (viewMode === 'YTD Detailed') {
-          // Reset YTD settings to defaults
-          setYtdSettings(DEFAULT_YTD_SETTINGS)
-        }
       }
     }
 
