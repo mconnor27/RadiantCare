@@ -702,11 +702,8 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       if (isBottomCustomGroup(r)) continue
       const normalized = normalizeLabel(nm)
       if (pattern.test(normalized)) {
-        // Check both normalized and original names
-        const normalizedNm = normalizeForCustomValues(nm)
-        const customValueOverride = customProjectedValues[normalizedNm] ?? customProjectedValues[nm]
-        if (customValueOverride !== undefined) {
-          return Number(customValueOverride) || 0
+        if (customProjectedValues[nm] !== undefined) {
+          return Number(customProjectedValues[nm]) || 0
         }
         const raw = r.colData?.[lastIdx]?.value
         return parseFloat((raw ?? '0').toString().replace(/[,$\s]/g, '')) || 0
@@ -769,11 +766,8 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       return dynamicVal
     }
     // Prefer custom override
-    // Check both normalized and original names
-    const normalizedName = normalizeForCustomValues(name)
-    const customValueOverride = customProjectedValues[normalizedName] ?? customProjectedValues[name]
-    if (customValueOverride !== undefined) {
-      const customValue = Number(customValueOverride) || 0
+    if (customProjectedValues[name] !== undefined) {
+      const customValue = Number(customProjectedValues[name]) || 0
       // console.log(`    🎛️  Using custom override for "${name}": ${customValue}`)
       return customValue
     }
