@@ -203,7 +203,11 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
                       currentAmount = fy.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS // 2025 YTD mode
                     }
                     createPrcsAmountTooltip(p.id, currentAmount, e, (_pid, amount) => {
-                      store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
+                      if (mode === 'ytd') {
+                        store.setYtdValue('prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
+                      } else {
+                        store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
+                      }
                     }, msg, 120000)
                   }
                 }
@@ -247,7 +251,11 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
                     currentAmount = fy.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS // 2025 PRCS medical director amount
                   }
                   createPrcsAmountTooltip(p.id, currentAmount, e as any, (_pid, amount) => {
-                    store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
+                    if (mode === 'ytd') {
+                      store.setYtdValue('prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
+                    } else {
+                      store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
+                    }
                   }, msg, 120000)
                 } else {
                   // If deselecting, close any slider and show the basic unselected hover immediately
@@ -269,7 +277,11 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
                   currentAmount = fy.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS // 2025 PRCS medical director amount
                 }
                 createPrcsAmountTooltip(p.id, currentAmount, e, (_pid, amount) => {
-                  store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
+                  if (mode === 'ytd') {
+                    store.setYtdValue('prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
+                  } else {
+                    store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
+                  }
                 }, msg, 120000)
               }}
             />

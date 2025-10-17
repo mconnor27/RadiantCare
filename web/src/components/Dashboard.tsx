@@ -572,19 +572,110 @@ export const useDashboardStore = create<Store>()(
 
             // Determine if this edit was a manual MD percentage adjustment
             const mdPctChanged = !!prev && prev.medicalDirectorHoursPercentage !== physician.medicalDirectorHoursPercentage
-            
+
             // Check if partner portion changed (which affects MD redistribution)
             const prevPartnerPortion = prev ? getPartnerPortionOfYear(prev) : 0
             const newPartnerPortion = getPartnerPortionOfYear(physician)
             const partnerPortionChanged = prevPartnerPortion !== newPartnerPortion
-            
+
             console.log(`[Upsert YTD Physician] MD percentage changed: ${mdPctChanged}`)
             console.log(`[Upsert YTD Physician] Partner portion changed: ${partnerPortionChanged} (${prevPartnerPortion} -> ${newPartnerPortion})`)
-            
-            // Only redistribute MD percentages if:
-            // 1. User didn't manually change MD percentage
-            // 2. AND partner portion actually changed (type change, employee/partner transition, retirement date, etc.)
-            if (!mdPctChanged && partnerPortionChanged) {
+
+            if (mdPctChanged) {
+              // DELTA TRACKING: Redistribute based on change, not recalculation
+              // This is mathematically invertible and avoids floating point drift
+              const targetId = physician.id
+              const eligibles = state.ytdData.physicians.filter(p => getPartnerPortionOfYear(p) > 0)
+              const target = eligibles.find(p => p.id === targetId)
+              if (target) {
+                const others = eligibles.filter(p => p.id !== targetId)
+
+                // Calculate percentage taken by prior year retirees (fixed dollar amounts)
+                const totalMdBudget = state.ytdData.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS
+                const priorYearRetirees = state.ytdData.physicians.filter(p => p.type === 'partnerToRetire' && (p.partnerPortionOfYear ?? 0) === 0)
+                const retireeFixedDollars = priorYearRetirees.reduce((sum, p) =>
+                  sum + (p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)), 0)
+                const retireePct = totalMdBudget > 0 ? (retireeFixedDollars / totalMdBudget) * 100 : 0
+
+                // Active partners must share the remaining percentage (100% - retiree%)
+                const maxActivePartnersPct = 100 - retireePct
+                const oldTargetPct = prev?.medicalDirectorHoursPercentage ?? 0
+                const desiredTargetPct = Math.max(0, Math.min(maxActivePartnersPct, physician.medicalDirectorHoursPercentage ?? 0))
+
+                // Calculate the DELTA
+                const delta = desiredTargetPct - oldTargetPct
+
+                console.log(`[YTD Store Redistribution - DELTA] Total MD Budget: $${totalMdBudget}, Retiree Fixed: $${retireeFixedDollars} (${retireePct.toFixed(6)}%)`)
+                console.log(`[YTD Store Redistribution - DELTA] Target ${target.name}: ${oldTargetPct.toFixed(6)}% → ${desiredTargetPct.toFixed(6)}% (Δ = ${delta.toFixed(6)}%)`)
+                console.log(`[YTD Store Redistribution - DELTA] BEFORE - Others:`, others.map(p => `${p.name}: ${p.medicalDirectorHoursPercentage?.toFixed(6)}%`))
+
+                if (others.length === 0) {
+                  // Only one active partner - they get all available percentage
+                  target.medicalDirectorHoursPercentage = Math.round(maxActivePartnersPct * 1e6) / 1e6
+                  target.hasMedicalDirectorHours = target.medicalDirectorHoursPercentage > 0
+                } else {
+                  // Distribute the NEGATIVE delta among others
+                  const sumOtherCurrent = others.reduce((s, p) => s + (p.medicalDirectorHoursPercentage ?? 0), 0)
+
+                  if (sumOtherCurrent > 0) {
+                    // Distribute delta weighted by current percentages
+                    for (const p of others) {
+                      const currentPct = p.medicalDirectorHoursPercentage ?? 0
+                      const weight = currentPct / sumOtherCurrent
+                      const adjustment = -delta * weight
+                      const newPct = currentPct + adjustment
+                      // Round to 6 decimal places to avoid floating point drift
+                      p.medicalDirectorHoursPercentage = Math.round(Math.max(0, newPct) * 1e6) / 1e6
+                      p.hasMedicalDirectorHours = p.medicalDirectorHoursPercentage > 0
+                    }
+                  } else {
+                    // No current percentages - distribute by partner portion weights
+                    const weights = others.map(p => ({ p, w: getPartnerPortionOfYear(p) }))
+                    const sumW = weights.reduce((s, x) => s + x.w, 0)
+
+                    if (sumW > 0) {
+                      for (const { p, w } of weights) {
+                        const weight = w / sumW
+                        const adjustment = -delta * weight
+                        const newPct = (p.medicalDirectorHoursPercentage ?? 0) + adjustment
+                        // Round to 6 decimal places to avoid floating point drift
+                        p.medicalDirectorHoursPercentage = Math.round(Math.max(0, newPct) * 1e6) / 1e6
+                        p.hasMedicalDirectorHours = p.medicalDirectorHoursPercentage > 0
+                      }
+                    } else {
+                      // Equal distribution as fallback
+                      const equalAdjustment = -delta / others.length
+                      for (const p of others) {
+                        const newPct = (p.medicalDirectorHoursPercentage ?? 0) + equalAdjustment
+                        // Round to 6 decimal places to avoid floating point drift
+                        p.medicalDirectorHoursPercentage = Math.round(Math.max(0, newPct) * 1e6) / 1e6
+                        p.hasMedicalDirectorHours = p.medicalDirectorHoursPercentage > 0
+                      }
+                    }
+                  }
+
+                  // Set target to the new value
+                  target.medicalDirectorHoursPercentage = Math.round(desiredTargetPct * 1e6) / 1e6
+                  target.hasMedicalDirectorHours = target.medicalDirectorHoursPercentage > 0
+                }
+
+                // Log final state after redistribution
+                console.log(`[YTD Store Redistribution] AFTER - Target ${target.name}: ${target.medicalDirectorHoursPercentage?.toFixed(6)}%`)
+                console.log(`[YTD Store Redistribution] AFTER - Others:`, others.map(p => `${p.name}: ${p.medicalDirectorHoursPercentage?.toFixed(6)}%`))
+                const totalActivePct = target.medicalDirectorHoursPercentage! + others.reduce((s, p) => s + (p.medicalDirectorHoursPercentage ?? 0), 0)
+                console.log(`[YTD Store Redistribution] Total Active %: ${totalActivePct.toFixed(6)}%, Max Allowed: ${maxActivePartnersPct.toFixed(6)}%`)
+                console.log(`[YTD Store Redistribution] Grand Total %: ${(totalActivePct + retireePct).toFixed(6)}% (should be 100%)`)
+
+                // Log dollar amounts
+                const targetDollars = (target.medicalDirectorHoursPercentage! / 100) * totalMdBudget
+                console.log(`[YTD Store Redistribution] Target ${target.name} dollars: $${targetDollars.toFixed(2)}`)
+                others.forEach(p => {
+                  const dollars = ((p.medicalDirectorHoursPercentage ?? 0) / 100) * totalMdBudget
+                  console.log(`[YTD Store Redistribution] Other ${p.name} dollars: $${dollars.toFixed(2)}`)
+                })
+              }
+            } else if (partnerPortionChanged) {
+              // Only auto-redistribute when partner portion changes
               console.log(`[Upsert YTD Physician] Calling calculateMedicalDirectorHourPercentages (partner portion changed)`)
               const before = state.ytdData.physicians.map(p => ({ name: p.name, pct: p.medicalDirectorHoursPercentage }))
               state.ytdData.physicians = calculateMedicalDirectorHourPercentages(state.ytdData.physicians)
