@@ -42,6 +42,12 @@ import {
 } from '../tooltips'
 import { useDashboardStore, arePhysiciansChanged, hasChangesFromLoadedScenario } from '../../../Dashboard'
 
+// Helper function to check if a physician has significant medical director hours
+// Uses a threshold to avoid floating-point precision issues showing icons as "active" for tiny percentages
+const hasSignificantMdHours = (percentage: number | undefined) => {
+  return (percentage ?? 0) >= 0.01 // 0.01% threshold (about $10-$100 depending on total budget)
+}
+
 export default function PhysiciansEditor({ year, scenario, mode = 'scenario', readOnly = false, physiciansOverride, locumCosts, onLocumCostsChange, ytdLocumsMin }: { year: number; scenario: ScenarioKey; mode?: 'scenario' | 'ytd'; readOnly?: boolean; physiciansOverride?: Physician[]; locumCosts: number; onLocumCostsChange: (value: number) => void; ytdLocumsMin?: number }) {
   const store = useDashboardStore()
   
@@ -1627,9 +1633,9 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
                       const amount = p.trailingSharedMdAmount ?? getDefaultTrailingSharedMdAmount(p)
                       return amount > 0 ? '/hours_selected.png' : '/hours_unselected.png'
                     }
-                    return (p.medicalDirectorHoursPercentage ?? 0) > 0 ? '/hours_selected.png' : '/hours_unselected.png'
+                    return hasSignificantMdHours(p.medicalDirectorHoursPercentage) ? '/hours_selected.png' : '/hours_unselected.png'
                   })()}
-                  alt={`Medical Director Hours ${((p.medicalDirectorHoursPercentage ?? 0) > 0) ? 'enabled' : 'disabled'}`}
+                  alt={`Medical Director Hours ${hasSignificantMdHours(p.medicalDirectorHoursPercentage) ? 'enabled' : 'disabled'}`}
                   data-hours-id={p.id}
                   style={{
                     width: '20px',
@@ -1993,8 +1999,8 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
             </div>
             <div style={{ display: 'grid', gridTemplateRows: '20px 20px', gap: 8, alignItems: 'center', justifyItems: 'center' }}>
               <img
-                src={(p.medicalDirectorHoursPercentage ?? 0) > 0 ? '/hours_selected.png' : '/hours_unselected.png'}
-                alt={`Medical Director Hours ${((p.medicalDirectorHoursPercentage ?? 0) > 0) ? 'enabled' : 'disabled'}`}
+                src={hasSignificantMdHours(p.medicalDirectorHoursPercentage) ? '/hours_selected.png' : '/hours_unselected.png'}
+                alt={`Medical Director Hours ${hasSignificantMdHours(p.medicalDirectorHoursPercentage) ? 'enabled' : 'disabled'}`}
                 data-hours-id={p.id}
                 style={{
                   width: '20px',
@@ -2638,8 +2644,8 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
                 onTouchStart={(e) => createTooltip('benefits-tooltip-split', `Benefits: ${p.receivesBenefits ? 'Enabled' : 'Disabled'}`, e)}
               />
               <img
-                src={(p.medicalDirectorHoursPercentage ?? 0) > 0 ? '/hours_selected.png' : '/hours_unselected.png'}
-                alt={`Medical Director Hours ${((p.medicalDirectorHoursPercentage ?? 0) > 0) ? 'enabled' : 'disabled'}`}
+                src={hasSignificantMdHours(p.medicalDirectorHoursPercentage) ? '/hours_selected.png' : '/hours_unselected.png'}
+                alt={`Medical Director Hours ${hasSignificantMdHours(p.medicalDirectorHoursPercentage) ? 'enabled' : 'disabled'}`}
                 data-hours-id={p.id}
                 style={{
                   width: '20px',
