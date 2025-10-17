@@ -77,11 +77,16 @@ export default function ScenarioLoadModal({
       })
 
       // Merge favorites into scenario data
-      const myDataWithFavorites = (myData || []).map((s: any) => ({
+      let myDataWithFavorites = (myData || []).map((s: any) => ({
         ...s,
         is_favorite_a: favoritesMap.get(s.id)?.is_favorite_a || false,
         is_favorite_b: favoritesMap.get(s.id)?.is_favorite_b || false,
       }))
+
+      // Filter to only Current Year Settings scenarios for YTD views
+      if (viewMode === 'YTD Detailed' || viewMode === 'YTD Mobile') {
+        myDataWithFavorites = myDataWithFavorites.filter((s: any) => isCurrentYearSettingsScenario(s))
+      }
 
       // Sort scenarios: Default (A) > Default (B) > Favorite A > Favorite B > others
       const sortedMyData = myDataWithFavorites.sort((a, b) => {
@@ -134,12 +139,17 @@ export default function ScenarioLoadModal({
           .in('id', userIds)
 
         const emailMap = new Map(profilesData?.map((p: any) => [p.id, p.email]) || [])
-        const publicWithEmail = publicData.map((s: any) => ({
+        let publicWithEmail = publicData.map((s: any) => ({
           ...s,
           creator_email: emailMap.get(s.user_id),
           is_favorite_a: favoritesMap.get(s.id)?.is_favorite_a || false,
           is_favorite_b: favoritesMap.get(s.id)?.is_favorite_b || false,
         }))
+
+        // Filter to only Current Year Settings scenarios for YTD views
+        if (viewMode === 'YTD Detailed' || viewMode === 'YTD Mobile') {
+          publicWithEmail = publicWithEmail.filter((s: any) => isCurrentYearSettingsScenario(s))
+        }
 
         // Sort scenarios: Default (A) > Default (B) > Favorite A > Favorite B > others
         const sortedPublicData = publicWithEmail.sort((a, b) => {

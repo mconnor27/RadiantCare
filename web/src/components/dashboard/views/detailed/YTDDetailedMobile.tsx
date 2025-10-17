@@ -55,17 +55,10 @@ function MobileScenarioLoadModal({
 
       if (myError) throw myError
 
-      // Filter to only YTD scenarios OR Multi-Year scenarios with 2025 baseline
+      // Filter to only Current Year Settings scenarios (required for YTD Mobile view)
       const filteredData = (allData || []).filter((scenario: any) => {
-        // Include YTD scenarios (they don't have baseline_mode)
-        if (scenario.view_mode === 'YTD Detailed') {
-          return true
-        }
-        // Include Multi-Year scenarios with 2025 baseline
-        if (scenario.view_mode === 'Multi-Year' && scenario.baseline_mode === '2025 Data') {
-          return true
-        }
-        return false
+        // Only include Current Year Settings type scenarios
+        return 'scenario_type' in scenario && scenario.scenario_type === 'current_year'
       })
 
       setMyScenarios(filteredData)
