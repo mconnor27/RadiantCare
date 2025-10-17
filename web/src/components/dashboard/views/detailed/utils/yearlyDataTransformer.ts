@@ -254,11 +254,15 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
         let isCalculated = false
 
         if (physicianData) {
-          // Check if this is "Medical Director Hours (Shared)" - special case (NOT calculated, but uses physician data)
+          // Check if this is "Medical Director Hours (Shared)" or "Consulting Agreement/Other" - special cases (NOT calculated, but use physician data)
           const normalizedAccountName = accountName.replace(/\s+/g, ' ').trim()
           if (normalizedAccountName.match(/Medical Director Hours.*Shared/i)) {
             value2025Default = physicianData.medicalDirectorHours ?? value2025Annualized
             console.log(`🔍 [Transformer] Medical Director Hours (Shared): physicianData.medicalDirectorHours = ${physicianData.medicalDirectorHours}, using value: ${value2025Default}`)
+            isCalculated = false // Not marked as calculated so it shows as editable (green)
+          } else if (normalizedAccountName.match(/Consulting Agreement/i)) {
+            value2025Default = physicianData.consultingServicesAgreement ?? value2025Annualized
+            console.log(`🔍 [Transformer] Consulting Agreement/Other: physicianData.consultingServicesAgreement = ${physicianData.consultingServicesAgreement}, using value: ${value2025Default}`)
             isCalculated = false // Not marked as calculated so it shows as editable (green)
           } else {
             const calculatedInfo = isCalculatedRow(accountName)
@@ -325,11 +329,15 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
         let isCalculated = false
 
         if (physicianData) {
-          // Check if this is "Medical Director Hours (Shared)" - special case (NOT calculated, but uses physician data)
+          // Check if this is "Medical Director Hours (Shared)" or "Consulting Agreement/Other" - special cases (NOT calculated, but use physician data)
           const normalizedAccountName = accountName.replace(/\s+/g, ' ').trim()
           if (normalizedAccountName.match(/Medical Director Hours.*Shared/i)) {
             value2025Default = physicianData.medicalDirectorHours ?? value2025Annualized
             console.log(`🔍 [Transformer] Medical Director Hours (Shared): physicianData.medicalDirectorHours = ${physicianData.medicalDirectorHours}, using value: ${value2025Default}`)
+            isCalculated = false // Not marked as calculated so it shows as editable (green)
+          } else if (normalizedAccountName.match(/Consulting Agreement/i)) {
+            value2025Default = physicianData.consultingServicesAgreement ?? value2025Annualized
+            console.log(`🔍 [Transformer] Consulting Agreement/Other: physicianData.consultingServicesAgreement = ${physicianData.consultingServicesAgreement}, using value: ${value2025Default}`)
             isCalculated = false // Not marked as calculated so it shows as editable (green)
           } else {
             const calculatedInfo = isCalculatedRow(accountName)
@@ -518,7 +526,7 @@ const isCalculatedRow = (accountName: string): {
   } else if (normalized.match(/Medical Director Hours.*PRCS/i)) {
     return { isCalculated: true, type: 'prcsMedicalDirectorHours' }
   }
-  // NOTE: "Medical Director Hours (Shared)" is NOT marked as calculated - it's editable in the grid
+  // NOTE: "Medical Director Hours (Shared)" and "Consulting Agreement/Other" are NOT marked as calculated - they're editable in the grid
   // NOTE: "Consulting Agreement/Other" is NOT marked as calculated - it has a configured default and is editable
 
   // console.log('isCalculatedRow check:', { original: accountName, normalized })
@@ -1175,7 +1183,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
         } else if (isMedicalDirectorTotal) {
           tooltipText = 'Total Medical Director Hours includes:\n\nShared contract terms: $270/hr up to $97,200 maximum annual. Distributed evenly to partners.\n\nPRCS contract terms: $250/hr up to $90,000 maximum annual. Applies if a PRCS Medical Director is specified in the Physicians section.'
         } else if (isConsultingAgreement) {
-          tooltipText = '$26.20 per hour for work actually performed subject to a limit of $17,030 per year (25 hours per two-week pay period).'
+          tooltipText = '$26.20 per hour for work actually performed subject to a limit of $17,030 per year (25 hours per two-week pay period). Click to adjust this amount.'
         } else {
           tooltipText = row.tooltip
         }
