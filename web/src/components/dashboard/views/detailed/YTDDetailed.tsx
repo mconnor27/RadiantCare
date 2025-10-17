@@ -880,6 +880,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
           isLoadingCache={showLoadingModal}
           onSyncComplete={handleSyncComplete}
           mode="ytd"
+          shouldUpdateSnapshotOnFirstSync={true}
         />
       </div>
     </>

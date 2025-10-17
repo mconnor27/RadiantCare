@@ -231,6 +231,7 @@ interface YearlyDataGridProps {
   isLoadingCache?: boolean  // Add flag to indicate if cached data is still loading
   onSyncComplete?: () => void  // Callback when cache sync to store completes
   mode?: 'scenario' | 'ytd'  // Which state to sync to (default: 'scenario')
+  shouldUpdateSnapshotOnFirstSync?: boolean  // Whether to update snapshot after first cache sync
 }
 
 // Click detection coordinates for expand/collapse all icons in header
@@ -247,11 +248,13 @@ export default function YearlyDataGrid({
   cachedSummary,
   isLoadingCache = false,
   onSyncComplete,
-  mode = 'scenario'
+  mode = 'scenario',
+  shouldUpdateSnapshotOnFirstSync = false
 }: YearlyDataGridProps = {}) {
   const store = useDashboardStore()
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const [gridData, setGridData] = useState<{ rows: Row[], allRows: Row[], columns: any[] }>({ rows: [], allRows: [], columns: [] })
+  const hasCompletedFirstSync = useRef(false)
 
   // Add global style to prevent autofill
   useEffect(() => {
@@ -372,6 +375,12 @@ export default function YearlyDataGrid({
 
   // Track last loaded data signature to prevent redundant loads
   const lastLoadRef = useRef<string>('')
+
+  // Reset first sync flag when component mounts, mode changes, or scenario loads
+  useEffect(() => {
+    hasCompletedFirstSync.current = false
+    console.log('🔄 [Grid] Reset first sync flag (mode or scenario changed)')
+  }, [mode, store.currentYearSettingId, store.currentScenarioId])
   
   // Extract key physician values for dependency tracking based on mode
   const fy2025 = mode === 'ytd' 
@@ -472,29 +481,35 @@ export default function YearlyDataGrid({
       setTimeout(() => {
         const customValues = mode === 'ytd' ? store.ytdCustomProjectedValues : store.customProjectedValues
         syncGridValuesToMultiyear(store, customValues, data, mode)
-        
-        // Update the snapshot AFTER cache sync completes so reset goes to post-cache state
-        if (mode === 'ytd') {
-          console.log('📸 [YTD] Updating YTD snapshot after QBO cache sync')
-          console.log('📊 [YTD] Store state after sync:', {
-            therapyIncome: store.ytdData?.therapyIncome,
-            nonEmploymentCosts: store.ytdData?.nonEmploymentCosts,
-            locumCosts: store.ytdData?.locumCosts,
-            customValuesCount: Object.keys(store.ytdCustomProjectedValues || {}).length
-          })
-          store.updateCurrentYearSettingsSnapshot()
-        } else {
-          // Multi-Year mode: update scenario snapshots
-          if (store.loadedScenarioSnapshot && store.currentScenarioId) {
-            console.log('📸 [Multi-Year] Updating Scenario A snapshot after QBO cache sync')
-            store.updateScenarioSnapshot('A')
-          }
-          if (store.scenarioBEnabled && store.loadedScenarioBSnapshot && store.currentScenarioBId) {
-            console.log('📸 [Multi-Year] Updating Scenario B snapshot after QBO cache sync')
-            store.updateScenarioSnapshot('B')
+
+        // Update snapshot ONLY on first sync if requested (to capture QBO cache data)
+        // After that, never update it again until save/load
+        if (shouldUpdateSnapshotOnFirstSync && !hasCompletedFirstSync.current) {
+          hasCompletedFirstSync.current = true
+
+          if (mode === 'ytd') {
+            console.log('📸 [YTD] Updating YTD snapshot after first QBO cache sync')
+            console.log('📊 [YTD] Store state after sync:', {
+              therapyIncome: store.ytdData?.therapyIncome,
+              nonEmploymentCosts: store.ytdData?.nonEmploymentCosts,
+              locumCosts: store.ytdData?.locumCosts,
+              prcsMedicalDirectorHours: store.ytdData?.prcsMedicalDirectorHours,
+              customValuesCount: Object.keys(store.ytdCustomProjectedValues || {}).length
+            })
+            store.updateCurrentYearSettingsSnapshot()
+          } else {
+            // Multi-Year mode: update scenario snapshots
+            if (store.loadedScenarioSnapshot && store.currentScenarioId) {
+              console.log('📸 [Multi-Year] Updating Scenario A snapshot after first QBO cache sync')
+              store.updateScenarioSnapshot('A')
+            }
+            if (store.scenarioBEnabled && store.loadedScenarioBSnapshot && store.currentScenarioBId) {
+              console.log('📸 [Multi-Year] Updating Scenario B snapshot after first QBO cache sync')
+              store.updateScenarioSnapshot('B')
+            }
           }
         }
-        
+
         // Notify parent that sync is complete
         onSyncComplete?.()
       }, 200)
