@@ -339,7 +339,8 @@ export default function YearlyDataGrid({
   })
   
   // Get custom projected values from store (now persisted across navigation)
-  const customProjectedValues = store.customProjectedValues
+  // Grid is only used in YTD mode, so always use ytdCustomProjectedValues
+  const customProjectedValues = store.ytdCustomProjectedValues
 
   // Fallback tooltip mapping by visible label text (without trailing asterisks and info icons)
   const tooltipByLabel: Record<string, string> = {
@@ -382,15 +383,18 @@ export default function YearlyDataGrid({
     console.log('🔄 [Grid] Reset first sync flag (mode or scenario changed)')
   }, [mode, store.currentYearSettingId, store.currentScenarioId])
   
-  // Extract key physician values for dependency tracking based on mode
-  const fy2025 = mode === 'ytd' 
-    ? store.ytdData 
-    : store.scenarioA.future.find((f: any) => f.year === 2025)
+  // Extract key physician values for dependency tracking
+  // Grid is only used in YTD mode
+  const fy2025 = store.ytdData
   const prcsDirectorId = fy2025?.prcsDirectorPhysicianId
   const prcsMdHours = fy2025?.prcsMedicalDirectorHours
   const mdSharedHours = fy2025?.medicalDirectorHours
   const consultingAgreement = fy2025?.consultingServicesAgreement
   const locumCosts = fy2025?.locumCosts
+  
+  // Track count of custom projected values for dependency tracking
+  // This ensures the grid reloads with correct coloring when custom values change
+  const customProjectedValuesCount = Object.keys(customProjectedValues || {}).length
   
   // Create a signature of physician data that affects calculated grid rows
   // (MD Associates Salary/Benefits/Payroll Tax, Guaranteed Payments, Shared MD Hours, PRCS MD Hours, Consulting, Locums)
@@ -419,12 +423,8 @@ export default function YearlyDataGrid({
       }
       
       // Get 2025 physician data and benefit growth rate from store based on mode
-      const fy2025 = mode === 'ytd' 
-        ? store.ytdData 
-        : store.scenarioA.future.find((f: any) => f.year === 2025)
-      const benefitGrowthPct = mode === 'ytd'
-        ? store.scenarioA.projection.benefitCostsGrowthPct  // YTD mode still uses scenario projection settings
-        : store.scenarioA.projection.benefitCostsGrowthPct
+      const fy2025 = store.ytdData
+      const benefitGrowthPct = store.scenarioA.projection.benefitCostsGrowthPct
       const physicianData = fy2025 ? {
         physicians: fy2025.physicians,
         benefitGrowthPct,
@@ -437,7 +437,7 @@ export default function YearlyDataGrid({
 
       // Create a signature of the data that would affect the load
       const cachedSummaryData = (environment === 'production' && cachedSummary) ? cachedSummary : undefined
-      const customValues = mode === 'ytd' ? store.ytdCustomProjectedValues : store.customProjectedValues
+      const customValues = store.ytdCustomProjectedValues
       const dataSignature = JSON.stringify({
         collapsed: collapsedSections,
         customs: customValues,
@@ -482,8 +482,8 @@ export default function YearlyDataGrid({
       // Always sync grid values to store on initial load for compensation calculations
       // Use a longer delay to reduce redundant syncs during rapid state changes
       setTimeout(() => {
-        const customValues = mode === 'ytd' ? store.ytdCustomProjectedValues : store.customProjectedValues
-        syncGridValuesToMultiyear(store, customValues, data, mode)
+        const customValues = store.ytdCustomProjectedValues
+        syncGridValuesToMultiyear(store, customValues, data, 'ytd')
 
         // Update snapshot ONLY on first sync if requested (to capture QBO cache data)
         // After that, never update it again until save/load
@@ -525,8 +525,9 @@ export default function YearlyDataGrid({
   // CRITICAL: Do NOT include store objects in dependencies - causes infinite loops
   // We read store values fresh inside the function, but track key primitive values
   // that affect calculated grid rows (MD Associates, Guaranteed Payments, Locums, PRCS MD Hours, Shared MD Hours, Consulting)
+  // Also track custom projected values count so grid reloads with correct coloring when user changes values
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collapsedSections, environment, cachedSummary, isLoadingCache, mode, prcsDirectorId, prcsMdHours, mdSharedHours, consultingAgreement, locumCosts, physicianDataSignature])
+  }, [collapsedSections, environment, cachedSummary, isLoadingCache, mode, prcsDirectorId, prcsMdHours, mdSharedHours, consultingAgreement, locumCosts, physicianDataSignature, customProjectedValuesCount])
 
   useEffect(() => {
     loadData()
@@ -725,10 +726,9 @@ export default function YearlyDataGrid({
 
       console.log(`📊 [${normalizedAccountName}] ==== STARTING UPDATE ====`)
       console.log(`📊 [${normalizedAccountName}] Value changing from ${oldTotal} to ${newTotal}`)
-      console.log(`📊 [${normalizedAccountName}] Mode: ${mode}`)
 
-      // Get current physician data
-      const fy = mode === 'ytd' ? store.ytdData : store.scenarioA.future.find((f: any) => f.year === 2025)
+      // Get current physician data (grid is only used in YTD mode)
+      const fy = store.ytdData
 
       console.log(`📊 [${normalizedAccountName}] Current fy.${fieldName} BEFORE update: ${fy?.[fieldName]}`)
 
@@ -757,69 +757,39 @@ export default function YearlyDataGrid({
         console.log(`✅ [Shared MD Hours] Percentages remain unchanged, will scale to new total automatically`)
       }
 
-      // Update the value in the store
+      // Update the value in the store (grid is only used in YTD mode)
       console.log(`📊 [${normalizedAccountName}] Calling store.setYtdValue('${fieldName}', ${newValue})`)
-      if (mode === 'ytd') {
-        store.setYtdValue(fieldName as any, newValue)
+      store.setYtdValue(fieldName as any, newValue)
 
-        // Verify the update (read from store again to get latest value)
-        const fyAfter = useDashboardStore.getState().ytdData
-        console.log(`📊 [${normalizedAccountName}] Current fy.${fieldName} AFTER update: ${fyAfter?.[fieldName]}`)
-      } else {
-        store.setFutureValue('A', 2025, fieldName as any, newValue)
-        if (store.scenarioBEnabled) {
-          store.setFutureValue('B', 2025, fieldName as any, newValue)
-        }
+      // Verify the update (read from store again to get latest value)
+      const fyAfter = useDashboardStore.getState().ytdData
+      console.log(`📊 [${normalizedAccountName}] Current fy.${fieldName} AFTER update: ${fyAfter?.[fieldName]}`)
 
-        // Verify the update
-        const fyAfter = useDashboardStore.getState().scenarioA.future.find((f: any) => f.year === 2025)
-        console.log(`📊 [${normalizedAccountName}] Current fy.${fieldName} AFTER update: ${fyAfter?.[fieldName]}`)
-      }
-
-      // Also update custom projected value for grid persistence
+      // Also update custom projected value for grid persistence (grid is only used in YTD mode)
       console.log(`📊 [${normalizedAccountName}] Default value: ${defaultValue}, approximatelyEqual: ${approximatelyEqual(newValue, defaultValue)}`)
       if (approximatelyEqual(newValue, defaultValue)) {
         console.log(`📊 [${normalizedAccountName}] Removing custom projected value (matches default)`)
-        if (mode === 'ytd') {
-          store.removeYtdCustomProjectedValue(accountName)
-        } else {
-          store.removeCustomProjectedValue(accountName)
-        }
+        store.removeYtdCustomProjectedValue(accountName)
       } else {
         console.log(`📊 [${normalizedAccountName}] Setting custom projected value: ${accountName} = ${newValue}`)
-        if (mode === 'ytd') {
-          store.setYtdCustomProjectedValue(accountName, newValue)
-        } else {
-          store.setCustomProjectedValue(accountName, newValue)
-        }
+        store.setYtdCustomProjectedValue(accountName, newValue)
       }
 
       // Read custom projected values from store again
-      const currentCustomValues = mode === 'ytd'
-        ? useDashboardStore.getState().ytdCustomProjectedValues
-        : useDashboardStore.getState().customProjectedValues
+      const currentCustomValues = useDashboardStore.getState().ytdCustomProjectedValues
       console.log(`📊 [${normalizedAccountName}] Custom projected values:`, currentCustomValues)
       console.log(`📊 [${normalizedAccountName}] Specifically for "${accountName}":`, currentCustomValues[accountName])
       console.log(`📊 [${normalizedAccountName}] ==== UPDATE COMPLETE ====`)
     } else {
-      // Standard handling for other accounts
-      // Update custom projected values using store methods
+      // Standard handling for other accounts (grid is only used in YTD mode)
       if (approximatelyEqual(newValue, defaultValue)) {
         // Remove override if matching default value
         if (customProjectedValues[accountName] !== undefined) {
-          if (mode === 'ytd') {
-            store.removeYtdCustomProjectedValue(accountName)
-          } else {
-            store.removeCustomProjectedValue(accountName)
-          }
+          store.removeYtdCustomProjectedValue(accountName)
         }
       } else {
         // Set/replace override (including when set to annualized but different from default)
-        if (mode === 'ytd') {
-          store.setYtdCustomProjectedValue(accountName, newValue)
-        } else {
-          store.setCustomProjectedValue(accountName, newValue)
-        }
+        store.setYtdCustomProjectedValue(accountName, newValue)
       }
     }
 
@@ -828,11 +798,11 @@ export default function YearlyDataGrid({
       setTimeout(() => {
         if (gridData.rows.length > 0) {
           // console.log('🎯 Syncing after projected value change...')
-          const customValues = mode === 'ytd' ? store.ytdCustomProjectedValues : store.customProjectedValues
-          syncGridValuesToMultiyear(store, customValues, gridData, mode)
+          const customValues = store.ytdCustomProjectedValues
+          syncGridValuesToMultiyear(store, customValues, gridData, 'ytd')
         }
       }, 50) // Short delay to allow dynamic calculations to complete
-  }, [slider.accountName, slider.currentValue, slider.annualizedBaseline, store.customProjectedValues, gridData, store, mode])
+  }, [slider.accountName, slider.currentValue, slider.annualizedBaseline, customProjectedValues, gridData, store])
 
   return (
     <CollapsibleSection 
