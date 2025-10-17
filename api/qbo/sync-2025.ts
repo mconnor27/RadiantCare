@@ -276,7 +276,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Refresh token if needed
+    console.log('Token expires at:', new Date(Number(tokenData.expires_at) * 1000).toISOString())
     const token = await refreshTokenIfNeeded(tokenData)
+    console.log('Token refreshed, new expires at:', new Date(Number(token.expires_at) * 1000).toISOString())
 
     const now = new Date()
     const year = now.getFullYear()
@@ -297,6 +299,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     dailyUrl.searchParams.set('summarize_column_by', 'Days')
     dailyUrl.searchParams.set('minorversion', '75')
 
+    console.log('Fetching Daily P&L from:', dailyUrl.toString())
     const dailyRes = await fetch(dailyUrl.toString(), {
       method: 'GET',
       headers: {
@@ -308,14 +311,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!dailyRes.ok) {
       const text = await dailyRes.text()
       console.error('Daily P&L failed:', dailyRes.status, text)
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'daily_pl_failed',
         message: 'Failed to fetch daily P&L report',
-        details: text 
+        details: text,
+        url: dailyUrl.toString()
       })
     }
 
     const dailyData = await dailyRes.json()
+    console.log('Daily P&L fetched successfully, rows:', dailyData?.Rows?.Row?.length || 0)
 
     // 2. Class Summary P&L
     const summaryUrl = new URL(`${baseUrl}/v3/company/${encodeURIComponent(realmId)}/reports/ProfitAndLoss`)
@@ -324,6 +329,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     summaryUrl.searchParams.set('summarize_column_by', 'Classes')
     summaryUrl.searchParams.set('minorversion', '75')
 
+    console.log('Fetching Class P&L from:', summaryUrl.toString())
     const summaryRes = await fetch(summaryUrl.toString(), {
       method: 'GET',
       headers: {
@@ -335,20 +341,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!summaryRes.ok) {
       const text = await summaryRes.text()
       console.error('Class P&L failed:', summaryRes.status, text)
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'class_pl_failed',
         message: 'Failed to fetch class P&L report',
-        details: text 
+        details: text,
+        url: summaryUrl.toString()
       })
     }
 
     const summaryData = await summaryRes.json()
+    console.log('Class P&L fetched successfully, rows:', summaryData?.Rows?.Row?.length || 0)
 
     // 3. Balance Sheet
     const equityUrl = new URL(`${baseUrl}/v3/company/${encodeURIComponent(realmId)}/reports/BalanceSheet`)
     equityUrl.searchParams.set('date_macro', 'This Fiscal Year-to-date')
     equityUrl.searchParams.set('minorversion', '75')
 
+    console.log('Fetching Balance Sheet from:', equityUrl.toString())
     const equityRes = await fetch(equityUrl.toString(), {
       method: 'GET',
       headers: {
@@ -360,17 +369,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!equityRes.ok) {
       const text = await equityRes.text()
       console.error('Balance Sheet failed:', equityRes.status, text)
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'balance_sheet_failed',
         message: 'Failed to fetch balance sheet',
-        details: text 
+        details: text,
+        url: equityUrl.toString()
       })
     }
 
     const equityData = await equityRes.json()
+    console.log('Balance Sheet fetched successfully, rows:', equityData?.Rows?.Row?.length || 0)
 
     // Store in cache
     const lastSyncTimestamp = new Date().toISOString()
+    console.log('Updating cache with timestamp:', lastSyncTimestamp)
+    console.log('Cache data sizes - Daily:', JSON.stringify(dailyData).length, 'Summary:', JSON.stringify(summaryData).length, 'Equity:', JSON.stringify(equityData).length)
 
     const { error: cacheError } = await supabase
       .from('qbo_cache')
@@ -385,11 +398,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (cacheError) {
       console.error('Failed to cache data:', cacheError)
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'cache_failed',
-        message: 'Failed to cache QuickBooks data' 
+        message: 'Failed to cache QuickBooks data',
+        details: cacheError
       })
     }
+
+    console.log('Cache updated successfully')
 
     res.status(200).json({
       success: true,
