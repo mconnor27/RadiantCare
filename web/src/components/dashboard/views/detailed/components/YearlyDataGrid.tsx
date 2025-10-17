@@ -353,14 +353,15 @@ export default function YearlyDataGrid({
     '8322 Locums - Salary': 'This value is automatically calculated from the locums costs setting in the physician panel. This row is not editable.',
     'Medical Director Hours (Shared)': 'Click to adjust the total shared medical director hours pool. Individual physician allocations are set in the physician panel and will be redistributed proportionally when the total changes.',
     'Medical Director Hours (PRCS)': 'This value is set in the physician panel. This row is not editable.',
-    'Consulting Agreement/Other': 'This value is set in the physician panel. This row is not editable.',
+    'Consulting Agreement/Other': '$26.20 per hour for work actually performed subject to a limit of $17,030 per year (25 hours per two-week pay period).',
     '-$5,760,796': 'This 2016 asset disposal gain is displayed but excluded from all calculations and summaries to maintain operational focus.',
     '$5,760,796': 'This 2016 asset disposal gain is displayed but excluded from all calculations and summaries to maintain operational focus.',
     '$462,355': 'This 2016 interest income is displayed but excluded from all calculations and summaries to maintain operational focus.'
   }
 
-  // Helper function to check if account is a calculated row (MD Associates, Guaranteed Payments, Locums, PRCS MD Hours, Consulting)
+  // Helper function to check if account is a calculated row (MD Associates, Guaranteed Payments, Locums, PRCS MD Hours)
   // NOTE: "Medical Director Hours (Shared)" is NOT included - it's editable in the grid
+  // NOTE: "Consulting Agreement/Other" is NOT included - it has a configured default and is editable
   const isCalculatedAccount = (accountName: string): boolean => {
     const normalized = normalizeAccountName(accountName)
     return normalized.match(/8322.*MD.*Associates.*Salary/i) ||
@@ -368,8 +369,7 @@ export default function YearlyDataGrid({
            normalized.match(/8330.*MD.*Associates.*Payroll.*Tax/i) ||
            normalized.match(/8343.*Guaranteed.*Payments/i) ||
            normalized.match(/8322.*Locums.*Salary/i) ||
-           normalized.match(/Medical Director Hours.*PRCS/i) ||
-           normalized.match(/Consulting Agreement/i) ? true : false
+           normalized.match(/Medical Director Hours.*PRCS/i) ? true : false
   }
   
 

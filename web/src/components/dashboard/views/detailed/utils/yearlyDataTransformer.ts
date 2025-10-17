@@ -497,10 +497,11 @@ function filterCollapsedRows(rows: any[], collapsedSections: CollapsibleState): 
   return processedRows
 }
 
-// Helper function to check if account is a calculated row (MD Associates, Guaranteed Payments, Locums, Medical Director Hours, Consulting)
-const isCalculatedRow = (accountName: string): { 
-  isCalculated: boolean; 
-  type: 'mdSalary' | 'mdBenefits' | 'mdPayrollTax' | 'guaranteedPayments' | 'locumsSalary' | 'prcsMedicalDirectorHours' | 'medicalDirectorHoursShared' | 'consultingServicesAgreement' | null 
+// Helper function to check if account is a calculated row (MD Associates, Guaranteed Payments, Locums, Medical Director Hours PRCS only)
+// NOTE: "Consulting Agreement/Other" is NOT included - it has a configured default and is editable
+const isCalculatedRow = (accountName: string): {
+  isCalculated: boolean;
+  type: 'mdSalary' | 'mdBenefits' | 'mdPayrollTax' | 'guaranteedPayments' | 'locumsSalary' | 'prcsMedicalDirectorHours' | 'medicalDirectorHoursShared' | 'consultingServicesAgreement' | null
 } => {
   const normalized = accountName.replace(/\s+/g, ' ').trim()
 
@@ -516,10 +517,9 @@ const isCalculatedRow = (accountName: string): {
     return { isCalculated: true, type: 'locumsSalary' }
   } else if (normalized.match(/Medical Director Hours.*PRCS/i)) {
     return { isCalculated: true, type: 'prcsMedicalDirectorHours' }
-  } else if (normalized.match(/Consulting Agreement/i)) {
-    return { isCalculated: true, type: 'consultingServicesAgreement' }
   }
   // NOTE: "Medical Director Hours (Shared)" is NOT marked as calculated - it's editable in the grid
+  // NOTE: "Consulting Agreement/Other" is NOT marked as calculated - it has a configured default and is editable
 
   // console.log('isCalculatedRow check:', { original: accountName, normalized })
   return { isCalculated: false, type: null }
