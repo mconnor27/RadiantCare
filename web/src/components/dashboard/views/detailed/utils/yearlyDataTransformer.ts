@@ -736,19 +736,19 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
     // Dynamic calculation for bottom custom data rows
     if (isBottomCustomGroup(r) && r.type === 'Data') {
       const dynamicVal = calculateBottomCustomValue(name)
-      console.log(`    🔁 Bottom custom dynamic for "${normalizeLabel(name)}": ${dynamicVal}`)
+      // console.log(`    🔁 Bottom custom dynamic for "${normalizeLabel(name)}": ${dynamicVal}`)
       return dynamicVal
     }
     // Prefer custom override
     if (customProjectedValues[name] !== undefined) {
       const customValue = Number(customProjectedValues[name]) || 0
-      console.log(`    🎛️  Using custom override for "${name}": ${customValue}`)
+      // console.log(`    🎛️  Using custom override for "${name}": ${customValue}`)
       return customValue
     }
     const raw = r.colData?.[lastIdx]?.value
     const num = parseFloat((raw ?? '0').toString().replace(/[,$\s]/g, '')) || 0
     if (num !== 0) {
-      console.log(`    📊 Using calculated value for "${name}": ${num} (raw: "${raw}")`)
+      // console.log(`    📊 Using calculated value for "${name}": ${num} (raw: "${raw}")`)
     }
     return num
   }
@@ -846,7 +846,7 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       
       // Special calculated summaries (projected column only)
       if (isProjectedColumn && row.type === 'Summary') {
-        console.log('🔍 SUMMARY CALCULATION DEBUG:', accountName)
+        // console.log('🔍 SUMMARY CALCULATION DEBUG:', accountName)
         
         const computeSummaryByName = (pattern: RegExp): number => {
           // Find the summary row in flattenedRows and sum its section data
@@ -938,48 +938,48 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
           // console.log(`    NOI: ${noi} + Net Other Income: ${noiOther} = ${result}`)
           value = result.toString()
         } else {
-          console.log(`  🔄 Using REGULAR calculation (fallback)`)
+          // console.log(`  🔄 Using REGULAR calculation (fallback)`)
           // For Summary rows that don't match special cases, dynamically sum all Data rows in the same section
           // Find this summary row in the visibleRows array (not flattenedRows, since row is from visibleRows)
           const originalIndex = visibleRows.indexOf(row)
-          console.log('  📍 Summary row index:', originalIndex)
-          
+          // console.log('  📍 Summary row index:', originalIndex)
+
           let startIdx = 0
           if (originalIndex > -1) {
             // Search for section header
             for (let i = originalIndex - 1; i >= 0; i--) {
               const r = visibleRows[i]
-              console.log(`    Checking index ${i}: type=${r.type}, level=${r.level}, name="${r.colData?.[0]?.value}"`)
+              // console.log(`    Checking index ${i}: type=${r.type}, level=${r.level}, name="${r.colData?.[0]?.value}"`)
               if (r.type === 'Section' && r.level === row.level) {
                 startIdx = i
-                console.log(`  🎯 Found matching section at index ${i}: "${r.colData?.[0]?.value}" (level ${r.level})`)
+                // console.log(`  🎯 Found matching section at index ${i}: "${r.colData?.[0]?.value}" (level ${r.level})`)
                 break
               }
             }
-            
+
             // Sum Data rows between startIdx and originalIndex (exclusive)
             let sum = 0
             const includedRows = []
-            console.log(`  🔢 Summing data rows from index ${startIdx + 1} to ${originalIndex - 1}:`)
+            // console.log(`  🔢 Summing data rows from index ${startIdx + 1} to ${originalIndex - 1}:`)
             for (let i = startIdx + 1; i < originalIndex; i++) {
               const r = visibleRows[i]
-              console.log(`    Index ${i}: type="${r.type}", name="${r.colData?.[0]?.value}"`)
+              // console.log(`    Index ${i}: type="${r.type}", name="${r.colData?.[0]?.value}"`)
               if (r.type === 'Data') {
                 const rowValue = getProjectedNumericForRow(r)
                 sum += rowValue
-                includedRows.push({ 
-                  index: i, 
-                  name: r.colData?.[0]?.value, 
+                includedRows.push({
+                  index: i,
+                  name: r.colData?.[0]?.value,
                   value: rowValue,
                   hasCustomOverride: customProjectedValues[r.colData?.[0]?.value || ''] !== undefined
                 })
               }
             }
-            console.log('  📊 Included data rows:', includedRows)
-            console.log(`  💰 Final sum: ${sum}`)
+            // console.log('  📊 Included data rows:', includedRows)
+            // console.log(`  💰 Final sum: ${sum}`)
             value = sum.toString()
           } else {
-            console.log('  ❌ Summary row not found in visibleRows array')
+            // console.log('  ❌ Summary row not found in visibleRows array')
           }
         }
       }

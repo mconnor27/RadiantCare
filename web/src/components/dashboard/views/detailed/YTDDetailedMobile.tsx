@@ -547,13 +547,19 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
   // Parse 2025 data
   const historical2025Data = useMemo(() => parseTherapyIncome2025(), [])
 
-  // Get 2025 future year entry
-  const fy2025 = store.scenarioA.future.find((f) => f.year === 2025)
+  // Get YTD data (2025 current year) - same as desktop
+  const fy2025 = store.ytdData
 
-  // Ensure 2025 entry exists
+  // Ensure 2025 entry exists in the store (for PhysiciansEditor and other components)
   useEffect(() => {
     if (!fy2025) {
+      console.log('[Mobile] 🆕 Creating baseline year 2025 in YTD store')
       store.ensureBaselineYear('A', 2025)
+    } else {
+      console.log('[Mobile] ✅ YTD store has 2025 data:', {
+        therapyIncome: fy2025.therapyIncome,
+        physicians: fy2025.physicians?.length
+      })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fy2025])
@@ -618,8 +624,19 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
 
   // Post-load resync: wait for scenarios to load, then sync from cache once
   useEffect(() => {
+    console.group('🔄 [Mobile] Post-load resync effect triggered')
+    console.log('State check:', {
+      hasCachedSummary: !!cachedData?.summary,
+      hasLoadedSnapshot: !!store.loadedScenarioSnapshot,
+      currentScenarioId: store.currentScenarioId,
+      isInitialScenarioLoadComplete,
+      refreshTrigger,
+      lastSyncState: lastSyncRef.current
+    })
+
     // Reset sync tracking when refresh happens
     if (refreshTrigger > 0) {
+      console.log('🔃 Manual refresh detected, resetting sync tracking')
       lastSyncRef.current = { scenarioId: null, syncTimestamp: null }
       setIsResyncingCompensation(true) // Re-freeze on manual refresh
     }
@@ -628,20 +645,40 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
     if (!cachedData?.summary || !store.loadedScenarioSnapshot || !store.currentScenarioId || !isInitialScenarioLoadComplete) {
       // Keep frozen while waiting
       if (!isInitialScenarioLoadComplete && cachedData?.summary && store.loadedScenarioSnapshot) {
-        console.log('[Mobile] 🔒 Waiting for Dashboard initial scenario load to complete...')
+        console.log('⏸️  Waiting for Dashboard initial scenario load to complete...')
+      } else {
+        console.log('⏸️  Missing prerequisites:', {
+          cachedSummary: !!cachedData?.summary,
+          loadedSnapshot: !!store.loadedScenarioSnapshot,
+          scenarioId: !!store.currentScenarioId,
+          initialLoadComplete: isInitialScenarioLoadComplete
+        })
       }
+      console.groupEnd()
       return
     }
 
+    // Log current store state BEFORE sync
+    console.log('📊 Store state BEFORE sync:', {
+      dataSource: 'store.ytdData',
+      therapyIncome: store.ytdData?.therapyIncome,
+      nonEmploymentCosts: store.ytdData?.nonEmploymentCosts,
+      nonMdEmploymentCosts: store.ytdData?.nonMdEmploymentCosts,
+      locumCosts: store.ytdData?.locumCosts,
+      medicalDirectorHours: store.ytdData?.medicalDirectorHours,
+      prcsMedicalDirectorHours: store.ytdData?.prcsMedicalDirectorHours,
+      physicians: store.ytdData?.physicians?.length,
+      ytdCustomProjectedValuesCount: Object.keys(store.ytdCustomProjectedValues || {}).length
+    })
+
     // Scenarios are loaded, check if we need to sync
     const syncKey = `${store.currentScenarioId}|${cachedData.lastSyncTimestamp || 'unknown'}`
+    const lastSyncKey = `${lastSyncRef.current.scenarioId}|${lastSyncRef.current.syncTimestamp}`
 
     // If this is a new scenario or different cache version, run the sync
-    if (syncKey !== lastSyncRef.current.scenarioId + '|' + lastSyncRef.current.syncTimestamp) {
-      console.log('🔄 [Mobile] Post-load resync: scenarios loaded, applying QBO cache values', {
-        currentTherapyIncome: store.scenarioA?.future?.find(f => f.year === 2025)?.therapyIncome
-      })
-      
+    if (syncKey !== lastSyncKey) {
+      console.log('🔄 Sync needed (keys differ):', { syncKey, lastSyncKey })
+
       lastSyncRef.current = {
         scenarioId: store.currentScenarioId,
         syncTimestamp: cachedData.lastSyncTimestamp || null
@@ -649,19 +686,33 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
 
       syncStoreFrom2025Cache(store, cachedData.summary)
         .then(() => {
+          // Log store state AFTER sync
+          console.log('📊 Store state AFTER sync:', {
+            dataSource: 'store.ytdData',
+            therapyIncome: store.ytdData?.therapyIncome,
+            nonEmploymentCosts: store.ytdData?.nonEmploymentCosts,
+            nonMdEmploymentCosts: store.ytdData?.nonMdEmploymentCosts,
+            locumCosts: store.ytdData?.locumCosts,
+            medicalDirectorHours: store.ytdData?.medicalDirectorHours,
+            prcsMedicalDirectorHours: store.ytdData?.prcsMedicalDirectorHours
+          })
+
           // Small delay to let React propagate the state updates
           setTimeout(() => {
-            console.log('[Mobile] ✅ QBO sync complete, unfreezing')
+            console.log('✅ QBO sync complete, unfreezing compensation')
+            console.groupEnd()
             setIsResyncingCompensation(false)
           }, 100)
         })
         .catch(error => {
-          console.error('❌ [Mobile] Post-load resync failed:', error)
+          console.error('❌ Post-load resync failed:', error)
+          console.groupEnd()
           setIsResyncingCompensation(false)
         })
     } else {
       // Sync already complete, unfreeze
-      console.log('[Mobile] ✅ Sync already complete, unfreezing')
+      console.log('✅ Sync already complete (keys match), unfreezing')
+      console.groupEnd()
       setIsResyncingCompensation(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

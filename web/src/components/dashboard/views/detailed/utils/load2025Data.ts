@@ -208,25 +208,28 @@ export async function syncStoreFrom2025Cache(
     return
   }
 
-  const fy2025 = store.scenarioA.future.find((f: any) => f.year === 2025)
-  if (!fy2025) {
-    console.log('⏭️  No 2025 baseline found, skipping store sync')
+  // Use store.ytdData (the YTD store, not scenarioA.future)
+  const ytdData = store.ytdData
+  if (!ytdData) {
+    console.log('⏭️  No YTD data found, skipping store sync')
     return
   }
 
-  console.log('🔄 [Mobile] Syncing QBO cache → store')
+  console.log('🔄 [Mobile] Syncing QBO cache → store.ytdData')
 
   try {
-    // IMPORTANT: Pass customProjectedValues to preserve user overrides from scenarios/desktop
+    // IMPORTANT: Pass ytdCustomProjectedValues to preserve user overrides from scenarios/desktop
     const gridData = await loadYearlyGridData(
       {}, // collapsed sections
-      store.customProjectedValues || {}, // custom projected values - preserve these!
+      store.ytdCustomProjectedValues || {}, // YTD custom projected values - preserve these!
       {
-        physicians: fy2025.physicians,
+        physicians: ytdData.physicians,
         benefitGrowthPct: store.scenarioA.projection.benefitCostsGrowthPct,
-        locumCosts: fy2025.locumCosts,
-        prcsDirectorPhysicianId: fy2025.prcsDirectorPhysicianId,
-        prcsMedicalDirectorHours: fy2025.prcsMedicalDirectorHours
+        locumCosts: ytdData.locumCosts,
+        prcsDirectorPhysicianId: ytdData.prcsDirectorPhysicianId,
+        prcsMedicalDirectorHours: ytdData.prcsMedicalDirectorHours,
+        medicalDirectorHours: ytdData.medicalDirectorHours,  // ADD THIS!
+        consultingServicesAgreement: ytdData.consultingServicesAgreement  // ADD THIS TOO!
       },
       cachedSummary
     )
@@ -234,10 +237,10 @@ export async function syncStoreFrom2025Cache(
     // Helper to extract value, respecting custom overrides (same logic as desktop grid)
     const extractValue = (accountName: string): number => {
       // First check if there's a custom value (preserve user overrides)
-      const customProjectedValues = store.customProjectedValues || {}
-      if (customProjectedValues[accountName] !== undefined) {
-        console.log(`  ✓ Using custom value for "${accountName}": $${customProjectedValues[accountName].toLocaleString()}`)
-        return customProjectedValues[accountName]
+      const ytdCustomProjectedValues = store.ytdCustomProjectedValues || {}
+      if (ytdCustomProjectedValues[accountName] !== undefined) {
+        console.log(`  ✓ Using custom value for "${accountName}": $${ytdCustomProjectedValues[accountName].toLocaleString()}`)
+        return ytdCustomProjectedValues[accountName]
       }
 
       // Otherwise, extract from grid (QBO cache value)
@@ -250,8 +253,11 @@ export async function syncStoreFrom2025Cache(
       if (row) {
         const projectedCell = row.cells?.[projectedColIndex] as any
         const cellText = projectedCell?.text || '0'
-        return parseFloat(cellText.replace(/[$,\s]/g, '')) || 0
+        const value = parseFloat(cellText.replace(/[$,\s]/g, '')) || 0
+        console.log(`  📊 Extracted "${accountName}": ${value} (from cell text: "${cellText}")`)
+        return value
       }
+      console.log(`  ⚠️  Row not found for "${accountName}"`)
       return 0
     }
 
@@ -267,23 +273,43 @@ export async function syncStoreFrom2025Cache(
     const prcsMedicalDirectorHours = extractValue('Medical Director Hours (PRCS)')
     const consultingServicesAgreement = extractValue('Consulting Agreement/Other')
 
-    // Update store with values (custom overrides already applied in extractValue)
-    store.setFutureValue('A', 2025, 'therapyIncome', therapyIncome)
-    store.setFutureValue('A', 2025, 'nonEmploymentCosts', nonEmploymentCosts)
-    store.setFutureValue('A', 2025, 'nonMdEmploymentCosts', nonMdEmploymentCosts)
-    store.setFutureValue('A', 2025, 'locumCosts', locumCosts)
-    store.setFutureValue('A', 2025, 'miscEmploymentCosts', miscEmploymentCosts)
-    store.setFutureValue('A', 2025, 'medicalDirectorHours', medicalDirectorHours)
-    store.setFutureValue('A', 2025, 'prcsMedicalDirectorHours', prcsMedicalDirectorHours)
-    store.setFutureValue('A', 2025, 'consultingServicesAgreement', consultingServicesAgreement)
-
-    const customCount = Object.keys(store.customProjectedValues || {}).length
-    console.log('✅ [Mobile] Store synced with QBO values (respecting', customCount, 'custom overrides):', {
+    console.log('🔍 [Mobile Sync] Extracted values from grid:', {
+      therapyIncomeTotal,
+      otherIncomeTotal,
       therapyIncome,
       nonEmploymentCosts,
       nonMdEmploymentCosts,
       locumCosts,
-      miscEmploymentCosts
+      miscEmploymentCosts,
+      medicalDirectorHours,
+      prcsMedicalDirectorHours,
+      consultingServicesAgreement
+    })
+
+    // IMPORTANT: Update store.ytdData (which PartnerCompensation reads from)
+    // NOT store.scenarioA.future[2025] (which is only for multi-year projections)
+    console.log('🔧 [Mobile Sync] Calling setYtdValue for each field...')
+    store.setYtdValue('therapyIncome', therapyIncome)
+    store.setYtdValue('nonEmploymentCosts', nonEmploymentCosts)
+    store.setYtdValue('nonMdEmploymentCosts', nonMdEmploymentCosts)
+    store.setYtdValue('locumCosts', locumCosts)
+    store.setYtdValue('miscEmploymentCosts', miscEmploymentCosts)
+    store.setYtdValue('medicalDirectorHours', medicalDirectorHours)
+    store.setYtdValue('prcsMedicalDirectorHours', prcsMedicalDirectorHours)
+    store.setYtdValue('consultingServicesAgreement', consultingServicesAgreement)
+
+    console.log('✅ [Mobile Sync] setYtdValue calls completed (Zustand state will update on next render)')
+
+    const customCount = Object.keys(store.ytdCustomProjectedValues || {}).length
+    console.log('✅ [Mobile] Store synced with QBO values to store.ytdData (respecting', customCount, 'YTD custom overrides):', {
+      therapyIncome,
+      nonEmploymentCosts,
+      nonMdEmploymentCosts,
+      locumCosts,
+      miscEmploymentCosts,
+      medicalDirectorHours,
+      prcsMedicalDirectorHours,
+      consultingServicesAgreement
     })
   } catch (error) {
     console.error('❌ [Mobile] Failed to sync store from cache:', error)
