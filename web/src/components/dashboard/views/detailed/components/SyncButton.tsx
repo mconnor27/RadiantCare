@@ -182,6 +182,27 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
     return `${month} ${day}, ${year} at ${time}`
   }
 
+  const getDataCurrentThroughDate = (timestamp: string | null) => {
+    if (!timestamp) return null
+    const syncDate = new Date(timestamp)
+    
+    // Determine what date the data actually covers
+    let dataCoveredThrough: Date
+    if (syncDate.getHours() < 17) {
+      // Synced before 5pm - data covers through prior business day
+      dataCoveredThrough = getPriorBusinessDay(syncDate)
+    } else {
+      // Synced after 5pm - data covers through same day (if it's a business day)
+      dataCoveredThrough = new Date(syncDate)
+    }
+    
+    const month = dataCoveredThrough.toLocaleString('en-US', { month: 'short' })
+    const day = dataCoveredThrough.getDate()
+    const year = dataCoveredThrough.getFullYear()
+    
+    return `${month} ${day}, ${year}`
+  }
+
   const getPriorBusinessDay = (date: Date) => {
     const prior = new Date(date)
     prior.setDate(prior.getDate() - 1)
@@ -297,11 +318,16 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
   const getButtonTooltip = () => {
     if (syncing) return 'Sync in progress...'
     if (lastSyncTimestamp === undefined) return 'Loading sync status...'
+    
+    const dataThroughDate = getDataCurrentThroughDate(lastSyncTimestamp)
+    const dataInfo = dataThroughDate ? `\nData current through: ${dataThroughDate}` : ''
+    
     if (syncAvailable) {
-      return isAdmin ? 'Available to Sync (Admin)' : 'Available to Sync'
+      const baseMsg = isAdmin ? 'Available to Sync (Admin)' : 'Available to Sync'
+      return baseMsg + dataInfo
     } else {
       const nextTime = formatNextAllowedTime(lastSyncTimestamp)
-      return `Next sync allowed: ${nextTime}`
+      return `Next sync allowed: ${nextTime}${dataInfo}`
     }
   }
 
@@ -539,11 +565,15 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
                 strokeLinejoin="round"
                 style={{ cursor: 'pointer' }}
                 onMouseEnter={(e) => {
+                  const dataThroughDate = lastSyncTimestamp ? getDataCurrentThroughDate(lastSyncTimestamp) : null
+                  const dataInfo = dataThroughDate ? `<div style="padding: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-bottom: 12px;"><strong>Data current through: ${dataThroughDate}</strong></div>` : ''
+                  
                   const tooltip = document.createElement('div')
                   tooltip.id = 'sync-info-tooltip'
                   tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 12px 16px; border-radius: 6px; font-size: 13px; white-space: nowrap; text-align: left; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.3); pointer-events: none; line-height: 1.4;`
                   tooltip.innerHTML = `
                     <strong>QuickBooks Sync Schedule</strong><br><br>
+                    ${dataInfo}
                     Synced following every business day (M-F) at 1:00 AM PT<br><br>
 
                     For additional syncs or issues:<br>

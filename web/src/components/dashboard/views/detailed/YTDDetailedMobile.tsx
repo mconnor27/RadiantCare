@@ -1349,72 +1349,47 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
       )}
 
       {/* Sync Info Modal */}
-      {showSyncInfoModal && (
-        <>
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0,0,0,0.5)',
-              zIndex: 10000,
-              animation: 'fadeIn 0.2s ease-in',
-              WebkitTapHighlightColor: 'rgba(0,0,0,0)'
-            }}
-            onTouchEnd={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              setShowSyncInfoModal(false)
-            }}
-            onClick={(e) => {
-              e.stopPropagation()
-              setShowSyncInfoModal(false)
-            }}
-          />
-          <div
-            style={{
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              background: '#fff',
-              borderRadius: '8px',
-              padding: '24px',
-              maxWidth: '90%',
-              width: '400px',
-              zIndex: 10001,
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-              animation: 'slideIn 0.3s ease-out',
-              WebkitTapHighlightColor: 'rgba(0,0,0,0)'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 600 }}>
-              QuickBooks Sync Schedule
-            </h3>
-            <p style={{ margin: '0 0 16px 0', fontSize: '14px', lineHeight: 1.5, color: '#666', textAlign: 'left' }}>
-              QuickBooks data is automatically synced every business day (Monday-Friday) at 1:00 AM Pacific Time.
-              <br/><br/>
-              The sync captures through the previous business day's data, excluding weekends and federal holidays.
-            </p>
-            <p style={{ margin: '0 0 16px 0', fontSize: '14px', lineHeight: 1.5, color: '#666', textAlign: 'left' }}>
-              To request additional syncs or report sync issues, please contact:
-            </p>
-            <p style={{ margin: '0 0 16px 0', fontSize: '14px', textAlign: 'center' }}>
-              <a
-                href="mailto:connor@radiantcare.com"
-                style={{
-                  color: '#0ea5e9',
-                  textDecoration: 'none',
-                  fontWeight: 500
-                }}
-              >
-                connor@radiantcare.com
-              </a>
-            </p>
-            <button
+      {showSyncInfoModal && (() => {
+        // Calculate data current through date
+        const getPriorBusinessDay = (date: Date) => {
+          const prior = new Date(date)
+          prior.setDate(prior.getDate() - 1)
+          while (prior.getDay() === 0 || prior.getDay() === 6) {
+            prior.setDate(prior.getDate() - 1)
+          }
+          return prior
+        }
+        
+        let dataThroughText = ''
+        if (lastSyncTimestamp) {
+          const syncDate = new Date(lastSyncTimestamp)
+          let dataCoveredThrough: Date
+          if (syncDate.getHours() < 17) {
+            dataCoveredThrough = getPriorBusinessDay(syncDate)
+          } else {
+            dataCoveredThrough = new Date(syncDate)
+          }
+          dataThroughText = dataCoveredThrough.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          })
+        }
+        
+        return (
+          <>
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0,0,0,0.5)',
+                zIndex: 10000,
+                animation: 'fadeIn 0.2s ease-in',
+                WebkitTapHighlightColor: 'rgba(0,0,0,0)'
+              }}
               onTouchEnd={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
@@ -1424,25 +1399,92 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
                 e.stopPropagation()
                 setShowSyncInfoModal(false)
               }}
+            />
+            <div
               style={{
-                width: '100%',
-                padding: '10px',
-                background: '#0ea5e9',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '14px',
-                fontWeight: 500,
-                cursor: 'pointer',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
+                position: 'fixed',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                background: '#fff',
+                borderRadius: '8px',
+                padding: '24px',
+                maxWidth: '90%',
+                width: '400px',
+                zIndex: 10001,
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                animation: 'slideIn 0.3s ease-out',
+                WebkitTapHighlightColor: 'rgba(0,0,0,0)'
               }}
+              onClick={(e) => e.stopPropagation()}
             >
-              Close
-            </button>
-          </div>
-        </>
-      )}
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 600 }}>
+                QuickBooks Sync Schedule
+              </h3>
+              {dataThroughText && (
+                <p style={{ 
+                  margin: '0 0 16px 0', 
+                  fontSize: '14px', 
+                  fontWeight: 600, 
+                  color: '#0f172a',
+                  padding: '12px',
+                  background: '#f1f5f9',
+                  borderRadius: '6px',
+                  textAlign: 'center'
+                }}>
+                  Data current through: {dataThroughText}
+                </p>
+              )}
+              <p style={{ margin: '0 0 16px 0', fontSize: '14px', lineHeight: 1.5, color: '#666', textAlign: 'left' }}>
+                QuickBooks data is automatically synced every business day (Monday-Friday) at 1:00 AM Pacific Time.
+                <br/><br/>
+                The sync captures through the previous business day's data, excluding weekends and federal holidays.
+              </p>
+              <p style={{ margin: '0 0 16px 0', fontSize: '14px', lineHeight: 1.5, color: '#666', textAlign: 'left' }}>
+                To request additional syncs or report sync issues, please contact:
+              </p>
+              <p style={{ margin: '0 0 16px 0', fontSize: '14px', textAlign: 'center' }}>
+                <a
+                  href="mailto:connor@radiantcare.com"
+                  style={{
+                    color: '#0ea5e9',
+                    textDecoration: 'none',
+                    fontWeight: 500
+                  }}
+                >
+                  connor@radiantcare.com
+                </a>
+              </p>
+              <button
+                onTouchEnd={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setShowSyncInfoModal(false)
+                }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowSyncInfoModal(false)
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  background: '#0ea5e9',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </>
+        )
+      })()}
     </>
   )
 }
