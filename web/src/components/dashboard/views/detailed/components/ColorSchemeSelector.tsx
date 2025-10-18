@@ -19,16 +19,20 @@ export default function ColorSchemeSelector({
   const [isOpen, setIsOpen] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
 
-  // Close popup when clicking outside
+  // Close popup when clicking/tapping outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    const handleOutside = (event: Event) => {
       if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
         setIsOpen(false)
       }
     }
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+      document.addEventListener('mousedown', handleOutside)
+      document.addEventListener('touchstart', handleOutside, { passive: true })
+      return () => {
+        document.removeEventListener('mousedown', handleOutside)
+        document.removeEventListener('touchstart', handleOutside)
+      }
     }
   }, [isOpen])
 

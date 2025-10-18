@@ -217,16 +217,20 @@ export default function ChartControls({
     }
   }, [chartMode, setTimeframe, setIncomeMode])
   
-  // Close popup when clicking outside
+  // Close popup when clicking/tapping outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    const handleOutside = (event: Event) => {
       if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
         setIsHistoricalPopupOpen(false)
       }
     }
     if (isHistoricalPopupOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+      document.addEventListener('mousedown', handleOutside)
+      document.addEventListener('touchstart', handleOutside, { passive: true })
+      return () => {
+        document.removeEventListener('mousedown', handleOutside)
+        document.removeEventListener('touchstart', handleOutside)
+      }
     }
   }, [isHistoricalPopupOpen])
   
@@ -652,8 +656,8 @@ export default function ChartControls({
               ref={popupRef}
               style={{
                 position: 'absolute',
-                top: '37%',
-                left: '30%',
+                top: isMobile ? '-100%' : '35%',
+                left: isMobile ? '40%' : undefined,
                 marginTop: 4,
                 background: '#fff',
                 border: '1px solid #ccc',
