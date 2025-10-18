@@ -239,10 +239,22 @@ export const buildBarChartData = ({
       // Use the full-year combined total as the denominator for normalization
       const annualTotal2025 = projectedQuarterly2025.reduce((sum, q) => sum + q.income, 0)
 
+      let finalCombined = normalizeCombinedBarData(combinedQuarterlyStats.mean, isNormalized)
+      let finalCurrent = normalizeCombinedBarData(quarterly2025.map(q => ({ period: q.quarter, income: q.income })), isNormalized, annualTotal2025)
+      let finalProjected = normalizeCombinedBarData(projectedQuarterlyData, isNormalized, annualTotal2025)
+
+      // In mobile mode, filter to show only the current quarter
+      if (isMobile && currentPeriod?.quarter) {
+        const targetQuarter = `Q${currentPeriod.quarter}`
+        finalCombined = finalCombined.filter((item: any) => item.period === targetQuarter || item.quarter === targetQuarter)
+        finalCurrent = finalCurrent.filter((item: any) => item.period === targetQuarter || item.quarter === targetQuarter)
+        finalProjected = finalProjected.filter((item: any) => item.period === targetQuarter || item.quarter === targetQuarter)
+      }
+
       return {
-        combined: normalizeCombinedBarData(combinedQuarterlyStats.mean, isNormalized),
-        current: normalizeCombinedBarData(quarterly2025.map(q => ({ period: q.quarter, income: q.income })), isNormalized, annualTotal2025),
-        projected: normalizeCombinedBarData(projectedQuarterlyData, isNormalized, annualTotal2025),
+        combined: finalCombined,
+        current: finalCurrent,
+        projected: finalProjected,
         individual: []
       }
     }

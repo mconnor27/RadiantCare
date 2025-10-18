@@ -721,9 +721,11 @@ export default function PartnerCompensation({
                                   'Draws - Additional Days Worked': 'Internal Locums'
                                 }
 
-                                // Special handling for Buy In/Buy Out - show "Buy In" for positive, "Buy Out" for negative
+                                // Special handling for Buy In/Buy Out
+                                // Connor is buying in (paying money), Werner is being bought out (receiving money)
+                                // Both are stored as negative values, so check the physician name
                                 if (rowName === 'Buy In/Buy Out') {
-                                  return value > 0 ? 'Buy In' : 'Buy Out'
+                                  return selectedPhysician === 'Connor' ? 'Buy In' : 'Buy Out'
                                 }
 
                                 return shortNames[rowName] || rowName

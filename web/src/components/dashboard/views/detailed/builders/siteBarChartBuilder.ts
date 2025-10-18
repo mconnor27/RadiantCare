@@ -3,13 +3,15 @@ import type { SiteData, FutureYear } from '../../../shared/types'
 import {
   estimateSiteBreakdownForYear,
   generateProjectedSiteData,
-  parseSiteIncomeFromSummary
+  parseSiteIncomeFromSummary,
+  get2025SiteMonthlyEndPoints,
+  generateProjectedSiteMonthlyPoints
 } from '../../../../../historical_data/siteIncomeParser'
 import { getSiteColors, SITE_PROJECTED_PATTERNS, desaturateColor, CURRENT_BAR_BORDER, SITE_DESATURATION } from '../config/chartConfig'
 import { getSiteYearTotals, getSiteQuarterTotals, getSiteMonthTotals } from '../../../../../historical_data/siteIncomeParser'
-import { 
-  getYearlyTotals, 
-  getQuarterlyTotals, 
+import {
+  getYearlyTotals,
+  getQuarterlyTotals,
   getMonthlyTotals
 } from '../utils/aggregations'
 import { getTotalIncome } from '../../../shared/calculations'
@@ -237,17 +239,41 @@ export const buildSiteBarChartData = ({
         }
       })
       
-      // Current 2025 quarterly data with REAL site breakdown
-      const current2025SiteQuarters = getSiteQuarterTotals('2025')
-      
-      // Get projected quarterly data using the proper projected data (not naive division)
-      const projectedQuarterly2025 = getQuarterlyTotals(projectedIncomeData)
+      // Get projected quarterly data using site-specific projections that properly handle end-of-month logic
+      const actual2025SiteData = get2025SiteMonthlyEndPoints()
+      const projectedSiteMonthlyData = fy2025 ? generateProjectedSiteMonthlyPoints(actual2025SiteData, fy2025) : []
+      const projectedQuarterly2025 = getQuarterlyTotals(projectedSiteMonthlyData)
       
       // Calculate projected increment per quarter using PROJECTED site data from grid/store
       // Only show projections for incomplete quarters (current quarter if incomplete + future quarters)
       const currentDate = new Date()
       const currentQuarter = Math.floor(currentDate.getMonth() / 3) + 1
       const currentMonth = currentDate.getMonth() + 1
+      
+      // Current 2025 quarterly data with REAL site breakdown - only include complete months
+      // Build quarters from complete months only to avoid showing partial month data
+      const lastCompleteSiteMonth = actual2025SiteData.length > 0 
+        ? new Date(actual2025SiteData[actual2025SiteData.length - 1].date + 'T00:00:00').getMonth() + 1
+        : 0
+      const allSiteMonths = getSiteMonthTotals('2025')
+      const completeSiteMonths = allSiteMonths.filter((_, index) => (index + 1) <= lastCompleteSiteMonth)
+      
+      // Aggregate complete months into quarters
+      const current2025SiteQuarters = [
+        { quarter: 'Q1' as const, sites: { lacey: 0, centralia: 0, aberdeen: 0 } },
+        { quarter: 'Q2' as const, sites: { lacey: 0, centralia: 0, aberdeen: 0 } },
+        { quarter: 'Q3' as const, sites: { lacey: 0, centralia: 0, aberdeen: 0 } },
+        { quarter: 'Q4' as const, sites: { lacey: 0, centralia: 0, aberdeen: 0 } }
+      ]
+      
+      completeSiteMonths.forEach((monthData, monthIndex) => {
+        const quarterIndex = Math.floor(monthIndex / 3)
+        if (quarterIndex < 4 && monthData.sites) {
+          current2025SiteQuarters[quarterIndex].sites.lacey += monthData.sites.lacey || 0
+          current2025SiteQuarters[quarterIndex].sites.centralia += monthData.sites.centralia || 0
+          current2025SiteQuarters[quarterIndex].sites.aberdeen += monthData.sites.aberdeen || 0
+        }
+      })
       
       // Get projected site data from grid/store (same as year mode)
       const current2025SitesQuarter = parseSiteIncomeFromSummary()[0]?.sites || { lacey: 0, centralia: 0, aberdeen: 0 }
@@ -302,10 +328,22 @@ export const buildSiteBarChartData = ({
         }
       })
       
+      let finalHistorical = historicalSiteQuarters
+      let finalCurrent = current2025SiteQuarters
+      let finalProjected = projectedSiteQuarters
+
+      // Filter to show only the current quarter in mobile mode
+      if (isMobile && currentPeriod?.quarter) {
+        const targetQuarter = `Q${currentPeriod.quarter}`
+        finalHistorical = historicalSiteQuarters.filter((item: any) => item.quarter === targetQuarter)
+        finalCurrent = current2025SiteQuarters.filter((item: any) => item.quarter === targetQuarter)
+        finalProjected = projectedSiteQuarters.filter((item: any) => item.quarter === targetQuarter)
+      }
+
       return {
-        historical: historicalSiteQuarters,
-        current: current2025SiteQuarters, 
-        projected: projectedSiteQuarters
+        historical: finalHistorical,
+        current: finalCurrent,
+        projected: finalProjected
       }
     }
     
@@ -318,16 +356,40 @@ export const buildSiteBarChartData = ({
       }))
     }))
     
-    // Add 2025 current data with REAL site breakdown
+    // Calculate projected increments for 2025 using site-specific projections that properly handle end-of-month logic
+    const actual2025SiteDataQuarter = get2025SiteMonthlyEndPoints()
+    const projectedSiteMonthlyDataQuarter = fy2025 ? generateProjectedSiteMonthlyPoints(actual2025SiteDataQuarter, fy2025) : []
+    const projectedQuarterly2025 = getQuarterlyTotals(projectedSiteMonthlyDataQuarter)
+    
+    // Add 2025 current data with REAL site breakdown - only include complete months
+    // Build quarters from complete months only to avoid showing partial month data
+    const lastCompleteSiteMonthQuarter = actual2025SiteDataQuarter.length > 0 
+      ? new Date(actual2025SiteDataQuarter[actual2025SiteDataQuarter.length - 1].date + 'T00:00:00').getMonth() + 1
+      : 0
+    const allSiteMonthsQuarter = getSiteMonthTotals('2025')
+    const completeSiteMonthsQuarter = allSiteMonthsQuarter.filter((_, index) => (index + 1) <= lastCompleteSiteMonthQuarter)
+    
+    // Aggregate complete months into quarters
+    const current2025SiteQuarters = [
+      { quarter: 'Q1' as const, sites: { lacey: 0, centralia: 0, aberdeen: 0 } },
+      { quarter: 'Q2' as const, sites: { lacey: 0, centralia: 0, aberdeen: 0 } },
+      { quarter: 'Q3' as const, sites: { lacey: 0, centralia: 0, aberdeen: 0 } },
+      { quarter: 'Q4' as const, sites: { lacey: 0, centralia: 0, aberdeen: 0 } }
+    ]
+    
+    completeSiteMonthsQuarter.forEach((monthData, monthIndex) => {
+      const quarterIndex = Math.floor(monthIndex / 3)
+      if (quarterIndex < 4 && monthData.sites) {
+        current2025SiteQuarters[quarterIndex].sites.lacey += monthData.sites.lacey || 0
+        current2025SiteQuarters[quarterIndex].sites.centralia += monthData.sites.centralia || 0
+        current2025SiteQuarters[quarterIndex].sites.aberdeen += monthData.sites.aberdeen || 0
+      }
+    })
+    
     const current2025Data = {
       year: '2025',
-      quarters: getSiteQuarterTotals('2025')
+      quarters: current2025SiteQuarters
     }
-    
-    // Calculate projected increments for 2025 using proper projected data
-    const projectedQuarterly2025 = getQuarterlyTotals(projectedIncomeData)
-    
-    const current2025SiteQuarters = getSiteQuarterTotals('2025')
     
     // Only show projections for incomplete quarters using PROJECTED site data from grid/store
     const currentDate = new Date()
@@ -414,9 +476,7 @@ export const buildSiteBarChartData = ({
   
   if (timeframe === 'month') {
     // Month mode: each month is an x-axis tick with 3 stacked bars per site
-    const actualData2025 = data.filter(p => p.date !== 'Total')
-    const current2025MonthlyTotals = getMonthlyTotals(actualData2025)
-
+    
     // Get monthly totals for historical data using RAW data (not filtered by current month)
     const historicalDataRaw = [
       { year: '2016', data: historical2016Data },
@@ -480,16 +540,33 @@ export const buildSiteBarChartData = ({
         }
       })
       
-      // Current 2025 monthly data with REAL site breakdown
-      const current2025SiteMonths = getSiteMonthTotals('2025')
-      
-      // Get projected monthly data using the proper projected data (not naive division)
-      const projectedMonthly2025 = getMonthlyTotals(projectedIncomeData)
-      
+      // Get projected monthly data using site-specific projections that properly handle end-of-month logic
+      const actual2025SiteData = get2025SiteMonthlyEndPoints()
+      console.log('[Monthly Combined] actual2025SiteData length:', actual2025SiteData.length)
+      if (actual2025SiteData.length > 0) {
+        console.log('[Monthly Combined] Last actual site data point:', actual2025SiteData[actual2025SiteData.length - 1])
+      }
+      const projectedSiteMonthlyData = fy2025 ? generateProjectedSiteMonthlyPoints(actual2025SiteData, fy2025) : []
+      console.log('[Monthly Combined] projectedSiteMonthlyData length:', projectedSiteMonthlyData.length)
+      if (projectedSiteMonthlyData.length > 0) {
+        console.log('[Monthly Combined] First projected site data point:', projectedSiteMonthlyData[0])
+        console.log('[Monthly Combined] Last projected site data point:', projectedSiteMonthlyData[projectedSiteMonthlyData.length - 1])
+      }
+      const projectedMonthly2025 = getMonthlyTotals(projectedSiteMonthlyData)
+      console.log('[Monthly Combined] projectedMonthly2025:', projectedMonthly2025)
+
       // Calculate projected increment per month using PROJECTED site data from grid/store
       // Only show projections for incomplete months (current month if incomplete + future months)
       const currentDate = new Date()
       const currentMonth = currentDate.getMonth() + 1 // 1-based
+      
+      // Current 2025 monthly data with REAL site breakdown - only include complete months
+      // For per-site data, we only trust complete months since site breakdown is not available intra-month
+      const lastCompleteSiteMonth = actual2025SiteData.length > 0 
+        ? new Date(actual2025SiteData[actual2025SiteData.length - 1].date + 'T00:00:00').getMonth() + 1
+        : 0
+      const allSiteMonths = getSiteMonthTotals('2025')
+      const current2025SiteMonths = allSiteMonths.filter((_, index) => (index + 1) <= lastCompleteSiteMonth)
       
       // Get projected site data from grid/store (same as year mode)
       const current2025SitesMonth = parseSiteIncomeFromSummary()[0]?.sites || { lacey: 0, centralia: 0, aberdeen: 0 }
@@ -510,10 +587,18 @@ export const buildSiteBarChartData = ({
       }
       
       const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-      const actualByMonth = new Map(current2025MonthlyTotals.map(m => [m.month, m.income]))
+      
+      // Build map of actual site income by month (only complete months)
+      const actualSiteIncomeByMonthCombined = new Map(
+        current2025SiteMonths.map(m => [
+          m.month,
+          (m.sites?.lacey || 0) + (m.sites?.centralia || 0) + (m.sites?.aberdeen || 0)
+        ])
+      )
+      
       const projectedSiteMonths = monthOrder.map((month, index) => {
         const projectedIncome = projectedMonthly2025.find(p => p.month === month)?.income || 0
-        const actualIncome = actualByMonth.get(month) || 0
+        const actualIncome = actualSiteIncomeByMonthCombined.get(month) || 0
         const monthIncrementTotal = Math.max(0, projectedIncome - actualIncome)
         
         // Determine if this month needs projection
@@ -572,17 +657,33 @@ export const buildSiteBarChartData = ({
       }))
     }))
     
-    // Add 2025 current data with REAL site breakdown
+    // Calculate projected increments for 2025 using site-specific projections that properly handle end-of-month logic
+    const actual2025SiteData = get2025SiteMonthlyEndPoints()
+    console.log('[Monthly Individual] actual2025SiteData length:', actual2025SiteData.length)
+    if (actual2025SiteData.length > 0) {
+      console.log('[Monthly Individual] Last actual site data point:', actual2025SiteData[actual2025SiteData.length - 1])
+    }
+    const projectedSiteMonthlyData = fy2025 ? generateProjectedSiteMonthlyPoints(actual2025SiteData, fy2025) : []
+    console.log('[Monthly Individual] projectedSiteMonthlyData length:', projectedSiteMonthlyData.length)
+    if (projectedSiteMonthlyData.length > 0) {
+      console.log('[Monthly Individual] First projected site data point:', projectedSiteMonthlyData[0])
+      console.log('[Monthly Individual] Last projected site data point:', projectedSiteMonthlyData[projectedSiteMonthlyData.length - 1])
+    }
+    const projectedMonthly2025 = getMonthlyTotals(projectedSiteMonthlyData)
+    console.log('[Monthly Individual] projectedMonthly2025:', projectedMonthly2025)
+    
+    // Add 2025 current data with REAL site breakdown - only include complete months
+    // For per-site data, we only trust complete months since site breakdown is not available intra-month
+    const lastCompleteSiteMonthIndividual = actual2025SiteData.length > 0 
+      ? new Date(actual2025SiteData[actual2025SiteData.length - 1].date + 'T00:00:00').getMonth() + 1
+      : 0
+    const allSiteMonthsIndividual = getSiteMonthTotals('2025')
     const current2025Data = {
       year: '2025',
-      months: getSiteMonthTotals('2025')
+      months: allSiteMonthsIndividual.filter((_, index) => (index + 1) <= lastCompleteSiteMonthIndividual)
     }
     
-    // Calculate projected increments for 2025 using proper projected data across all 12 months
-    const projectedMonthly2025 = getMonthlyTotals(projectedIncomeData)
-    
     const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    const actualByMonth = new Map(current2025MonthlyTotals.map(m => [m.month, m.income]))
     
     // Only show projections for incomplete months using PROJECTED site data from grid/store
     const currentDate = new Date()
@@ -606,11 +707,19 @@ export const buildSiteBarChartData = ({
       aberdeen: projected2025Sites.aberdeen - current2025SitesMonthIndividual.aberdeen
     }
     
+    // Build map of actual site income by month (only complete months)
+    const actualSiteIncomeByMonth = new Map(
+      current2025Data.months.map(m => [
+        m.month,
+        (m.sites?.lacey || 0) + (m.sites?.centralia || 0) + (m.sites?.aberdeen || 0)
+      ])
+    )
+    
     const projected2025Data = {
       year: '2025 Projected',
       months: monthOrder.map((month, index) => {
         const projectedIncome = projectedMonthly2025.find(p => p.month === month)?.income || 0
-        const actualIncome = actualByMonth.get(month) || 0
+        const actualIncome = actualSiteIncomeByMonth.get(month) || 0
         const monthIncrementTotal = Math.max(0, projectedIncome - actualIncome)
         
         // Determine if this month needs projection
@@ -720,10 +829,13 @@ export const buildSiteBarChartTraces = (
         const siteKey = site.toLowerCase() as keyof SiteData
         
         if (siteBarChartData.historical?.length > 0) {
-          const quarters = ['Q1', 'Q2', 'Q3', 'Q4']
+          const allQuarters = ['Q1', 'Q2', 'Q3', 'Q4']
+          const quarters = (isMobile && currentPeriod?.quarter)
+            ? [`Q${currentPeriod.quarter}`]
+            : allQuarters
           const historicalValues: number[] = []
           const historicalErrors: number[] = []
-          
+
           quarters.forEach(quarter => {
             const quarterData = siteBarChartData.historical.find((h: any) => h.quarter === quarter)
             if (quarterData) {
@@ -782,9 +894,12 @@ export const buildSiteBarChartTraces = (
         
         // 2025 actual quarterly data (base of stack)
         if (siteBarChartData.current?.length > 0) {
-          const quarters = ['Q1', 'Q2', 'Q3', 'Q4']
+          const allQuarters = ['Q1', 'Q2', 'Q3', 'Q4']
+          const quarters = (isMobile && currentPeriod?.quarter)
+            ? [`Q${currentPeriod.quarter}`]
+            : allQuarters
           const currentValues: number[] = []
-          
+
           quarters.forEach(quarter => {
             const quarterData = siteBarChartData.current.find((c: any) => c.quarter === quarter)
             const denom = getQuarterDenom2025(quarter)
@@ -811,7 +926,10 @@ export const buildSiteBarChartTraces = (
         
         // 2025 projected quarterly increment (stacked on top)
         if (siteBarChartData.projected?.length > 0) {
-          const quarters = ['Q1', 'Q2', 'Q3', 'Q4']
+          const allQuarters = ['Q1', 'Q2', 'Q3', 'Q4']
+          const quarters = (isMobile && currentPeriod?.quarter)
+            ? [`Q${currentPeriod.quarter}`]
+            : allQuarters
           const projectedValues: number[] = []
           const totalValues: number[] = []
 
@@ -853,7 +971,10 @@ export const buildSiteBarChartTraces = (
       // INVISIBLE OVERLAY BAR with border - Quarter combined mode
       // Calculate total stack height per quarter (only visible sites)
       if (siteBarChartData.current?.length > 0) {
-        const quarters = ['Q1', 'Q2', 'Q3', 'Q4']
+        const allQuarters = ['Q1', 'Q2', 'Q3', 'Q4']
+        const quarters = (isMobile && currentPeriod?.quarter)
+          ? [`Q${currentPeriod.quarter}`]
+          : allQuarters
         const totalHeights = quarters.map(quarter => {
           const currentQ = siteBarChartData.current?.find((c: any) => c.quarter === quarter)
           const projectedQ = siteBarChartData.projected?.find((p: any) => p.quarter === quarter)

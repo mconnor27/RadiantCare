@@ -550,8 +550,8 @@ export const buildChartLayout = ({
         : (chartMode === 'line' && is2025Visible
           ? calculateRadarMargin(processedCurrentData, staticLineTraces, currentX, unfilteredCurrentData)
           : CHART_CONFIG.margins.rightDefault),
-      t: CHART_CONFIG.margins.top,
-      b: isMobile && (timeframe === 'year' || (timeframe === 'quarter' && chartMode === 'bar' && showCombined)) ? 40 : CHART_CONFIG.margins.bottom,
+      t: isMobile ? 50 : CHART_CONFIG.margins.top,
+      b: isMobile && timeframe === 'year' ? 40 : (isMobile && ((timeframe === 'quarter' && chartMode === 'bar' && showCombined) || (timeframe === 'quarter' && chartMode === 'bar')) ? 60 : CHART_CONFIG.margins.bottom),
       autoexpand: false
     },
     annotations: periodAnnotations,

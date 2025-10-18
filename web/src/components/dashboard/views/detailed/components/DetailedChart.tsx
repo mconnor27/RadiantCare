@@ -38,6 +38,7 @@ import { buildProportionData, buildProportionTraces, buildProportionLayout } fro
 import { buildChartLayout } from '../builders/layoutBuilder'
 import { RADAR_CONFIG, CHART_CONFIG } from '../config/chartConfig'
 import type { IncomeMode } from '../../../shared/types'
+import { get2025SiteMonthlyEndPoints, generateProjectedSiteMonthlyPoints } from '../../../../../historical_data/siteIncomeParser'
 
 interface DetailedChartProps {
   data: YTDPoint[]
@@ -100,6 +101,21 @@ export default function DetailedChart({
   const historical2018Data = useMemo(() => parseTherapyIncome2018(), [])
   const historical2017Data = useMemo(() => parseTherapyIncome2017(), [])
   const historical2016Data = useMemo(() => parseTherapyIncome2016(), [])
+
+  // Memoize site data parsing to prevent infinite loops
+  // These expensive operations should only run once since they parse static JSON files
+  const actual2025SiteData = useMemo(() => {
+    // Only call if we're in per-site mode
+    if (incomeMode !== 'per-site') return []
+    return get2025SiteMonthlyEndPoints()
+  }, [incomeMode])
+
+  const projectedSiteData = useMemo(() => {
+    // Only compute if we're in per-site mode and have fy2025 data
+    if (incomeMode !== 'per-site' || !fy2025 || actual2025SiteData.length === 0) return []
+    // Only regenerate if actual inputs change
+    return generateProjectedSiteMonthlyPoints(actual2025SiteData, fy2025)
+  }, [incomeMode, fy2025?.therapyLacey, fy2025?.therapyCentralia, fy2025?.therapyAberdeen, fy2025?.therapyProjection, actual2025SiteData])
 
   // Track container width for aspect ratio using ResizeObserver
   useEffect(() => {
@@ -524,7 +540,9 @@ export default function DetailedChart({
         visibleSites,
         selectedYears,
         colorScheme,
-        siteColorScheme
+        siteColorScheme,
+        actual2025SiteData,
+        projectedSiteData
       })
     } else {
       // Use total income line traces
@@ -567,7 +585,9 @@ export default function DetailedChart({
         fy2025,
         visibleSites,
         colorScheme,
-        siteColorScheme
+        siteColorScheme,
+        actual2025SiteData,
+        projectedSiteData
       )
     } else {
       // Use total income pulsing traces

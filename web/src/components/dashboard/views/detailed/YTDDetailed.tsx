@@ -283,24 +283,26 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
       return Math.min(36, totalMonths)
     }
 
-    const currentSmoothing = getCurrentSmoothing()
+    const currentSmoothing = smoothingByMode[chartMode]
 
     if (chartMode === 'proportion') {
       // When in proportion mode, clamp smoothing to available months
       const maxSmoothing = calculateAvailableMonths()
       if (currentSmoothing > maxSmoothing) {
-        setCurrentSmoothing(maxSmoothing)
+        setSmoothingByMode(prev => ({ ...prev, [chartMode]: maxSmoothing }))
       }
     } else if (chartMode === 'line') {
       // Line mode: ensure smoothing is reasonable (max 10)
       if (currentSmoothing > 10) {
-        setCurrentSmoothing(10)
+        setSmoothingByMode(prev => ({ ...prev, [chartMode]: 10 }))
       }
     } else if (chartMode === 'bar') {
       // Bar mode: smoothing doesn't apply, but keep at 0
-      setCurrentSmoothing(0)
+      if (currentSmoothing !== 0) {
+        setSmoothingByMode(prev => ({ ...prev, [chartMode]: 0 }))
+      }
     }
-  }, [chartMode, selectedYears, getCurrentSmoothing, setCurrentSmoothing])
+  }, [chartMode, selectedYears, smoothingByMode[chartMode]])
 
 
   // Reset 2025 visibility when switching chart modes

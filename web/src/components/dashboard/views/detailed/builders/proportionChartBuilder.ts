@@ -413,7 +413,8 @@ export function buildProportionLayout(
       gridcolor: 'rgba(0,0,0,0.1)',
       range: [0, 100],
       tickformat: '.0f',
-      dtick: 10,
+      tickmode: 'array' as const,
+      tickvals: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
       side: 'left' as const
     },
     yaxis2: {
@@ -421,7 +422,8 @@ export function buildProportionLayout(
       showgrid: false,
       range: [0, 100],
       tickformat: '.0f',
-      dtick: 10,
+      tickmode: 'array' as const,
+      tickvals: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
       side: 'right' as const,
       overlaying: 'y'
     },
@@ -431,7 +433,7 @@ export function buildProportionLayout(
       bordercolor: '#ccc',
       font: { color: 'black' }
     },
-    margin: { l: 60, r: 30, t: 60, b: 60 },
+    margin: { l: 60, r: 30, t: 50, b: 50 },
     plot_bgcolor: 'rgba(0,0,0,0)',
     paper_bgcolor: 'rgba(0,0,0,0)',
     showlegend: false,

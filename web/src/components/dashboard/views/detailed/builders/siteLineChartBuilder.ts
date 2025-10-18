@@ -24,6 +24,8 @@ interface SiteLineChartBuilderProps {
   selectedYears?: number[]
   colorScheme?: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'
   siteColorScheme?: 'rgb' | 'radiantCare' | 'jama'
+  actual2025SiteData?: YTDPointWithSites[]
+  projectedSiteData?: YTDPointWithSites[]
 }
 
 // Helper function to process site data for different timeframes
@@ -409,7 +411,9 @@ export const buildSiteLineTraces = ({
   visibleSites,
   selectedYears = [],
   colorScheme = 'gray',
-  siteColorScheme = 'rgb'
+  siteColorScheme = 'rgb',
+  actual2025SiteData: precomputedActual2025,
+  projectedSiteData: precomputedProjected
 }: SiteLineChartBuilderProps) => {
   // Note: colorScheme parameter reserved for future use
   void colorScheme
@@ -423,11 +427,11 @@ export const buildSiteLineTraces = ({
 
   // Use thicker line if only one year is selected
   const lineWidth = selectedYears.length === 1 ? 3 : HISTORICAL_YEAR_LINE_WIDTH
-  
+
   // Get historical site data for all years
   const allHistoricalSiteData: YTDPointWithSites[][] = []
   const historicalYearLabels: string[] = []
-  
+
   // Extract site data for each historical year (2016-2024)
   for (const { year } of processedHistoricalData) {
     if (parseInt(year) >= 2016 && parseInt(year) <= 2024) {
@@ -439,12 +443,10 @@ export const buildSiteLineTraces = ({
       }
     }
   }
-  
-  // Get 2025 actual site data
-  const actual2025SiteData = get2025SiteMonthlyEndPoints()
-  
-  // Get projected site data
-  const projectedSiteData = generateProjectedSiteMonthlyPoints(actual2025SiteData, fy2025)
+
+  // Use precomputed data if available, otherwise compute on-the-fly (fallback)
+  const actual2025SiteData = precomputedActual2025 || get2025SiteMonthlyEndPoints()
+  const projectedSiteData = precomputedProjected || generateProjectedSiteMonthlyPoints(actual2025SiteData, fy2025)
   
   // Compute projected total for the relevant period using combined actual+projected series
   const projectedPeriodTotal = computeProjectedPeriodTotal(
@@ -699,7 +701,9 @@ export const buildSitePulsingTraces = (
   fy2025: any,
   visibleSites?: { lacey: boolean, centralia: boolean, aberdeen: boolean },
   colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray',
-  siteColorScheme: 'rgb' | 'radiantCare' | 'jama' = 'rgb'
+  siteColorScheme: 'rgb' | 'radiantCare' | 'jama' = 'rgb',
+  actual2025SiteDataPrecomputed?: YTDPointWithSites[],
+  projectedSiteDataPrecomputed?: YTDPointWithSites[]
 ) => {
   // Note: colorScheme parameter reserved for future use
   void colorScheme
@@ -711,10 +715,9 @@ export const buildSitePulsingTraces = (
     return visibleSites ? visibleSites[siteKey] : true
   }
 
-  const actual2025SiteData = get2025SiteMonthlyEndPoints()
-  
-  // Calculate projected total for normalization using combined series (same as line traces)
-  const projectedSiteData = generateProjectedSiteMonthlyPoints(actual2025SiteData, fy2025)
+  // Use precomputed data if available, otherwise compute on-the-fly (fallback)
+  const actual2025SiteData = actual2025SiteDataPrecomputed || get2025SiteMonthlyEndPoints()
+  const projectedSiteData = projectedSiteDataPrecomputed || generateProjectedSiteMonthlyPoints(actual2025SiteData, fy2025)
   const projectedPeriodTotal = computeProjectedPeriodTotal(
     actual2025SiteData,
     projectedSiteData,
