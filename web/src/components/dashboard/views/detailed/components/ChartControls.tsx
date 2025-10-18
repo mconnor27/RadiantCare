@@ -570,7 +570,7 @@ export default function ChartControls({
               fontSize: buttonFontSize,
               cursor: 'pointer',
               transition: 'all 0.2s',
-              minWidth: isMobile ? '180px' : '120px',
+              //minWidth: isMobile ? '180px' : '120px',
               textAlign: 'left'
             }}
           >
@@ -598,8 +598,8 @@ export default function ChartControls({
               ref={popupRef}
               style={{
                 position: 'absolute',
-                top: '100%',
-                left: 0,
+                top: '37%',
+                left: '30%',
                 marginTop: 4,
                 background: '#fff',
                 border: '1px solid #ccc',
