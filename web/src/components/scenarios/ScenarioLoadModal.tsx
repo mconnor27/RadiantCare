@@ -9,7 +9,8 @@ import {
 } from '../dashboard/shared/types'
 import { useAuth } from '../auth/AuthProvider'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faFolderOpen, faStar as faSolidStar } from '@fortawesome/free-solid-svg-icons'
+import { faFolderOpen, faStar as faSolidStar, faStar as faRegularStar } from '@fortawesome/free-solid-svg-icons'
+import { faStar as faRegularStarOutline } from '@fortawesome/free-regular-svg-icons'
 
 interface ScenarioLoadModalProps {
   isOpen: boolean
@@ -33,6 +34,7 @@ export default function ScenarioLoadModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [favoritesMap, setFavoritesMap] = useState<Map<string, { is_favorite_a: boolean, is_favorite_b: boolean, is_favorite_current: boolean }>>(new Map())
 
   useEffect(() => {
     if (isOpen && profile) {
@@ -66,23 +68,24 @@ export default function ScenarioLoadModal({
         .eq('user_id', profile?.id)
 
       // Create a map of scenario_id -> favorite types
-      const favoritesMap = new Map<string, { is_favorite_a: boolean, is_favorite_b: boolean, is_favorite_current: boolean }>()
+      const newFavoritesMap = new Map<string, { is_favorite_a: boolean, is_favorite_b: boolean, is_favorite_current: boolean }>()
       favoritesData?.forEach((fav: any) => {
-        if (!favoritesMap.has(fav.scenario_id)) {
-          favoritesMap.set(fav.scenario_id, { is_favorite_a: false, is_favorite_b: false, is_favorite_current: false })
+        if (!newFavoritesMap.has(fav.scenario_id)) {
+          newFavoritesMap.set(fav.scenario_id, { is_favorite_a: false, is_favorite_b: false, is_favorite_current: false })
         }
-        const current = favoritesMap.get(fav.scenario_id)!
+        const current = newFavoritesMap.get(fav.scenario_id)!
         if (fav.favorite_type === 'A') current.is_favorite_a = true
         if (fav.favorite_type === 'B') current.is_favorite_b = true
         if (fav.favorite_type === 'CURRENT') current.is_favorite_current = true
       })
+      setFavoritesMap(newFavoritesMap)
 
       // Merge favorites into scenario data
       let myDataWithFavorites = (myData || []).map((s: any) => ({
         ...s,
-        is_favorite_a: favoritesMap.get(s.id)?.is_favorite_a || false,
-        is_favorite_b: favoritesMap.get(s.id)?.is_favorite_b || false,
-        is_favorite_current: favoritesMap.get(s.id)?.is_favorite_current || false,
+        is_favorite_a: newFavoritesMap.get(s.id)?.is_favorite_a || false,
+        is_favorite_b: newFavoritesMap.get(s.id)?.is_favorite_b || false,
+        is_favorite_current: newFavoritesMap.get(s.id)?.is_favorite_current || false,
       }))
 
       // Filter to only Current Year Settings scenarios for YTD views
@@ -144,9 +147,9 @@ export default function ScenarioLoadModal({
         let publicWithEmail = publicData.map((s: any) => ({
           ...s,
           creator_email: emailMap.get(s.user_id),
-          is_favorite_a: favoritesMap.get(s.id)?.is_favorite_a || false,
-          is_favorite_b: favoritesMap.get(s.id)?.is_favorite_b || false,
-          is_favorite_current: favoritesMap.get(s.id)?.is_favorite_current || false,
+          is_favorite_a: newFavoritesMap.get(s.id)?.is_favorite_a || false,
+          is_favorite_b: newFavoritesMap.get(s.id)?.is_favorite_b || false,
+          is_favorite_current: newFavoritesMap.get(s.id)?.is_favorite_current || false,
         }))
 
         // Filter to only Current Year Settings scenarios for YTD views
@@ -219,6 +222,88 @@ export default function ScenarioLoadModal({
       day: 'numeric',
       year: 'numeric',
     })
+  }
+
+  const handleToggleFavorite = async (scenarioId: string, favoriteType: 'A' | 'B' | 'CURRENT') => {
+    if (!profile?.id) return
+
+    try {
+      const currentFavorites = favoritesMap.get(scenarioId) || { is_favorite_a: false, is_favorite_b: false, is_favorite_current: false }
+      const isCurrentlyFavorite = currentFavorites[`is_favorite_${favoriteType.toLowerCase()}` as keyof typeof currentFavorites]
+
+      if (isCurrentlyFavorite) {
+        // Remove favorite
+        const { error } = await supabase
+          .from('user_favorites')
+          .delete()
+          .eq('user_id', profile.id)
+          .eq('scenario_id', scenarioId)
+          .eq('favorite_type', favoriteType)
+
+        if (error) throw error
+
+        // Update local state
+        setFavoritesMap(prev => {
+          const newMap = new Map(prev)
+          const current = newMap.get(scenarioId) || { is_favorite_a: false, is_favorite_b: false, is_favorite_current: false }
+          newMap.set(scenarioId, { ...current, [`is_favorite_${favoriteType.toLowerCase()}` as keyof typeof current]: false })
+          return newMap
+        })
+
+        // Update scenario lists
+        setMyScenarios(prev => prev.map(s => 
+          s.id === scenarioId 
+            ? { ...s, [`is_favorite_${favoriteType.toLowerCase()}` as keyof typeof s]: false }
+            : s
+        ))
+        setPublicScenarios(prev => prev.map(s => 
+          s.id === scenarioId 
+            ? { ...s, [`is_favorite_${favoriteType.toLowerCase()}` as keyof typeof s]: false }
+            : s
+        ))
+      } else {
+        // Add favorite - first remove any existing favorite of this type for this user
+        await supabase
+          .from('user_favorites')
+          .delete()
+          .eq('user_id', profile.id)
+          .eq('favorite_type', favoriteType)
+
+        // Then add the new favorite
+        const { error } = await supabase
+          .from('user_favorites')
+          .insert({
+            user_id: profile.id,
+            scenario_id: scenarioId,
+            favorite_type: favoriteType
+          })
+
+        if (error) throw error
+
+        // Update local state
+        setFavoritesMap(prev => {
+          const newMap = new Map(prev)
+          const current = newMap.get(scenarioId) || { is_favorite_a: false, is_favorite_b: false, is_favorite_current: false }
+          newMap.set(scenarioId, { ...current, [`is_favorite_${favoriteType.toLowerCase()}` as keyof typeof current]: true })
+          return newMap
+        })
+
+        // Update scenario lists
+        setMyScenarios(prev => prev.map(s => 
+          s.id === scenarioId 
+            ? { ...s, [`is_favorite_${favoriteType.toLowerCase()}` as keyof typeof s]: true }
+            : s
+        ))
+        setPublicScenarios(prev => prev.map(s => 
+          s.id === scenarioId 
+            ? { ...s, [`is_favorite_${favoriteType.toLowerCase()}` as keyof typeof s]: true }
+            : s
+        ))
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error)
+      setError('Failed to update favorite. Please try again.')
+    }
   }
 
   const getViewModeInfo = (scenario: SavedScenario) => {
@@ -458,62 +543,97 @@ export default function ScenarioLoadModal({
                           {scenario.is_public ? '🌐 Public' : '🔒 Private'}
                         </span>
 
-                        {/* Favorite stars (read-only) */}
+                        {/* Favorite stars (clickable) */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           {/* Projection scenarios: Show A/B stars */}
                           {isProjectionScenario(scenario) && (
                             <>
                               {/* Star A */}
-                              {scenario.is_favorite_a && (
-                                <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                                  <FontAwesomeIcon
-                                    icon={faSolidStar}
-                                    style={{
-                                      color: '#fbbf24',
-                                      fontSize: '16px'
-                                    }}
-                                  />
-                                  <sup style={{
-                                    fontSize: '8px',
-                                    fontWeight: 'bold',
-                                    position: 'absolute',
-                                    top: '-7px',
-                                    right: '0px',
-                                    color: '#374151'
-                                  }}>A</sup>
-                                </div>
-                              )}
+                              <div 
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  handleToggleFavorite(scenario.id, 'A') 
+                                }}
+                                style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  position: 'relative',
+                                  cursor: 'pointer',
+                                  padding: '2px'
+                                }}
+                                title={scenario.is_favorite_a ? 'Remove from favorites A' : 'Add to favorites A'}
+                              >
+                                <FontAwesomeIcon
+                                  icon={scenario.is_favorite_a ? faSolidStar : faRegularStarOutline}
+                                  style={{
+                                    color: scenario.is_favorite_a ? '#fbbf24' : '#d1d5db',
+                                    fontSize: '16px'
+                                  }}
+                                />
+                                <sup style={{
+                                  fontSize: '8px',
+                                  fontWeight: 'bold',
+                                  position: 'absolute',
+                                  top: '-7px',
+                                  right: '0px',
+                                  color: '#374151'
+                                }}>A</sup>
+                              </div>
 
                               {/* Star B */}
-                              {scenario.is_favorite_b && (
-                                <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                                  <FontAwesomeIcon
-                                    icon={faSolidStar}
-                                    style={{
-                                      color: '#fbbf24',
-                                      fontSize: '16px'
-                                    }}
-                                  />
-                                  <sup style={{
-                                    fontSize: '8px',
-                                    fontWeight: 'bold',
-                                    position: 'absolute',
-                                    top: '-7px',
-                                    right: '0px',
-                                    color: '#374151'
-                                  }}>B</sup>
-                                </div>
-                              )}
+                              <div 
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  handleToggleFavorite(scenario.id, 'B') 
+                                }}
+                                style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  position: 'relative',
+                                  cursor: 'pointer',
+                                  padding: '2px'
+                                }}
+                                title={scenario.is_favorite_b ? 'Remove from favorites B' : 'Add to favorites B'}
+                              >
+                                <FontAwesomeIcon
+                                  icon={scenario.is_favorite_b ? faSolidStar : faRegularStarOutline}
+                                  style={{
+                                    color: scenario.is_favorite_b ? '#fbbf24' : '#d1d5db',
+                                    fontSize: '16px'
+                                  }}
+                                />
+                                <sup style={{
+                                  fontSize: '8px',
+                                  fontWeight: 'bold',
+                                  position: 'absolute',
+                                  top: '-7px',
+                                  right: '0px',
+                                  color: '#374151'
+                                }}>B</sup>
+                              </div>
                             </>
                           )}
 
                           {/* Current Year scenarios: Show single star */}
-                          {isCurrentYearSettingsScenario(scenario) && scenario.is_favorite_current && (
-                            <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          {isCurrentYearSettingsScenario(scenario) && (
+                            <div 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                handleToggleFavorite(scenario.id, 'CURRENT') 
+                              }}
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                position: 'relative',
+                                cursor: 'pointer',
+                                padding: '2px'
+                              }}
+                              title={scenario.is_favorite_current ? 'Remove from current favorites' : 'Add to current favorites'}
+                            >
                               <FontAwesomeIcon
-                                icon={faSolidStar}
+                                icon={scenario.is_favorite_current ? faSolidStar : faRegularStarOutline}
                                 style={{
-                                  color: '#fbbf24',
+                                  color: scenario.is_favorite_current ? '#fbbf24' : '#d1d5db',
                                   fontSize: '16px'
                                 }}
                               />
