@@ -293,19 +293,26 @@ export const useDashboardStore = create<Store>()(
                   target.medicalDirectorHoursPercentage = Math.round(maxActivePartnersPct * 1e6) / 1e6
                   target.hasMedicalDirectorHours = target.medicalDirectorHoursPercentage > 0
                 } else {
-                  // Distribute the NEGATIVE delta EVENLY among all others (not by FTE or current %)
+                  // Distribute the NEGATIVE delta PROPORTIONALLY among all others based on partner portion of year
                   // Handle case where some physicians might go negative and need iterative redistribution
                   let remainingDelta = delta
                   let availableOthers = [...others]
 
                   while (Math.abs(remainingDelta) > 0.000001 && availableOthers.length > 0) {
-                    const equalAdjustment = -remainingDelta / availableOthers.length
+                    // Calculate total partner portions for available others
+                    const totalPartnerPortions = availableOthers.reduce((sum, p) => sum + getPartnerPortionOfYear(p), 0)
+
                     let actuallyAbsorbed = 0
                     const nowZeroed: typeof availableOthers = []
 
                     for (const p of availableOthers) {
+                      const partnerPortion = getPartnerPortionOfYear(p)
+                      // Distribute proportionally based on partner portion of year
+                      const proportionalWeight = totalPartnerPortions > 0 ? partnerPortion / totalPartnerPortions : 1 / availableOthers.length
+                      const proportionalAdjustment = -remainingDelta * proportionalWeight
+
                       const currentPct = p.medicalDirectorHoursPercentage ?? 0
-                      const newPct = currentPct + equalAdjustment
+                      const newPct = currentPct + proportionalAdjustment
 
                       if (newPct < 0) {
                         // This physician can't absorb the full adjustment - take what we can
@@ -315,7 +322,7 @@ export const useDashboardStore = create<Store>()(
                         nowZeroed.push(p)
                       } else {
                         // This physician can absorb the full adjustment
-                        actuallyAbsorbed += -equalAdjustment // Track what was actually absorbed
+                        actuallyAbsorbed += -proportionalAdjustment // Track what was actually absorbed
                         p.medicalDirectorHoursPercentage = Math.round(newPct * 1e6) / 1e6
                         p.hasMedicalDirectorHours = p.medicalDirectorHoursPercentage > 0
                       }
@@ -615,19 +622,26 @@ export const useDashboardStore = create<Store>()(
                   target.medicalDirectorHoursPercentage = Math.round(maxActivePartnersPct * 1e6) / 1e6
                   target.hasMedicalDirectorHours = target.medicalDirectorHoursPercentage > 0
                 } else {
-                  // Distribute the NEGATIVE delta EVENLY among all others (not by FTE or current %)
+                  // Distribute the NEGATIVE delta PROPORTIONALLY among all others based on partner portion of year
                   // Handle case where some physicians might go negative and need iterative redistribution
                   let remainingDelta = delta
                   let availableOthers = [...others]
 
                   while (Math.abs(remainingDelta) > 0.000001 && availableOthers.length > 0) {
-                    const equalAdjustment = -remainingDelta / availableOthers.length
+                    // Calculate total partner portions for available others
+                    const totalPartnerPortions = availableOthers.reduce((sum, p) => sum + getPartnerPortionOfYear(p), 0)
+
                     let actuallyAbsorbed = 0
                     const nowZeroed: typeof availableOthers = []
 
                     for (const p of availableOthers) {
+                      const partnerPortion = getPartnerPortionOfYear(p)
+                      // Distribute proportionally based on partner portion of year
+                      const proportionalWeight = totalPartnerPortions > 0 ? partnerPortion / totalPartnerPortions : 1 / availableOthers.length
+                      const proportionalAdjustment = -remainingDelta * proportionalWeight
+
                       const currentPct = p.medicalDirectorHoursPercentage ?? 0
-                      const newPct = currentPct + equalAdjustment
+                      const newPct = currentPct + proportionalAdjustment
 
                       if (newPct < 0) {
                         // This physician can't absorb the full adjustment - take what we can
@@ -637,7 +651,7 @@ export const useDashboardStore = create<Store>()(
                         nowZeroed.push(p)
                       } else {
                         // This physician can absorb the full adjustment
-                        actuallyAbsorbed += -equalAdjustment // Track what was actually absorbed
+                        actuallyAbsorbed += -proportionalAdjustment // Track what was actually absorbed
                         p.medicalDirectorHoursPercentage = Math.round(newPct * 1e6) / 1e6
                         p.hasMedicalDirectorHours = p.medicalDirectorHoursPercentage > 0
                       }
