@@ -75,24 +75,33 @@ export default function ChartControls({
         const target = e.target as HTMLElement
         // Handle checkbox and radio inputs specifically
         if (target && (target.tagName === 'INPUT' && (target.getAttribute('type') === 'checkbox' || target.getAttribute('type') === 'radio'))) {
-          // Trigger click immediately on touch end for form controls
-          setTimeout(() => {
-            target.click()
-          }, 0)
+          // Only trigger click if the target is not already being handled by a click event
+          // This prevents double-firing that can cause state reversion
+          const input = target as HTMLInputElement
+          if (input && !input.disabled) {
+            // Use requestAnimationFrame to ensure we're not interfering with the native click
+            requestAnimationFrame(() => {
+              if (!input.disabled) {
+                input.click()
+              }
+            })
+          }
         }
         // Also handle labels containing checkboxes/radios
         else if (target && target.tagName === 'LABEL' && target.querySelector('input[type="checkbox"], input[type="radio"]')) {
           const input = target.querySelector('input[type="checkbox"], input[type="radio"]') as HTMLInputElement
-          if (input) {
-            setTimeout(() => {
-              input.click()
-            }, 0)
+          if (input && !input.disabled) {
+            requestAnimationFrame(() => {
+              if (!input.disabled) {
+                input.click()
+              }
+            })
           }
         }
       }
-      
+
       document.addEventListener('touchend', handleTouchEnd, { passive: true })
-      
+
       return () => {
         document.removeEventListener('touchend', handleTouchEnd)
       }
