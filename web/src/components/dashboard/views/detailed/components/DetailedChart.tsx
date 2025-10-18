@@ -115,7 +115,7 @@ export default function DetailedChart({
     if (incomeMode !== 'per-site' || !fy2025 || actual2025SiteData.length === 0) return []
     // Only regenerate if actual inputs change
     return generateProjectedSiteMonthlyPoints(actual2025SiteData, fy2025)
-  }, [incomeMode, fy2025?.therapyLacey, fy2025?.therapyCentralia, fy2025?.therapyAberdeen, fy2025?.therapyProjection, actual2025SiteData])
+  }, [incomeMode, fy2025?.therapyLacey, fy2025?.therapyCentralia, fy2025?.therapyAberdeen, actual2025SiteData])
 
   // Track container width for aspect ratio using ResizeObserver
   useEffect(() => {

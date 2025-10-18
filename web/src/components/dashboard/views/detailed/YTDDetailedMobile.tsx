@@ -1097,22 +1097,19 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
           gap: 12,
           position: 'relative'
         }}>
-          {currentScenarioName && (
-            <div style={{
-              padding: '4px 8px',
-              background: '#f0f9ff',
-              border: '1px solid #bae6fd',
-              borderRadius: 6,
-              display: 'inline-flex',
-              alignItems: 'center',
-              fontSize: 12,
-              fontWeight: 500,
-              color: '#0369a1'
-            }}>
-              <span>Current Scenario: {currentScenarioName}</span>
-            </div>
-          )}
-
+          <div style={{
+            padding: '4px 8px',
+            background: currentScenarioName ? '#f0f9ff' : '#f9fafb',
+            border: currentScenarioName ? '1px solid #bae6fd' : '1px solid #e5e7eb',
+            borderRadius: 6,
+            display: 'inline-flex',
+            alignItems: 'center',
+            fontSize: 12,
+            fontWeight: 500,
+            color: currentScenarioName ? '#0369a1' : '#6b7280'
+          }}>
+            <span>{currentScenarioName ? `Current Scenario: ${currentScenarioName}` : 'Loading Scenario...'}</span>
+          </div>
         </div>
       </div>
 
@@ -1125,6 +1122,26 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
       }}>
         {error ? (
           <div style={{ color: '#991b1b', textAlign: 'center', padding: 20 }}>{error}</div>
+        ) : isResyncingCompensation ? (
+          // Show loading placeholder during resync to prevent flash of incorrect data
+          <div style={{
+            width: '100%',
+            border: '1px solid #d1d5db',
+            borderRadius: 6,
+            background: '#f9fafb',
+            boxShadow: '0 6px 10px rgba(0, 0, 0, 0.15)',
+            position: 'relative',
+            minHeight: 400
+          }}>
+            <div style={{ 
+              padding: '40px 20px', 
+              textAlign: 'center', 
+              color: '#666', 
+              fontSize: 14
+            }}>
+              Loading chart data...
+            </div>
+          </div>
         ) : (
           <div style={{ width: '100%'}}>
             <DetailedChart
@@ -1165,7 +1182,8 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
             padding: 6,
             background: '#ffffff',
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-            position: 'relative'
+            position: 'relative',
+            minHeight: 200
           }}>
             <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 17 }}>Physician Compensation</div>
             <div style={{ padding: '40px 20px', textAlign: 'center', color: '#666', fontSize: 14 }}>
