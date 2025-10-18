@@ -590,7 +590,7 @@ export default function ChartControls({
 
               return `${selectedYears.length} selected`;
             })()}
-            <span style={{ float: 'right' }}>▾</span>
+            <span style={{ marginLeft: '4px' }}>▾</span>
           </button>
 
           {isHistoricalPopupOpen && (
