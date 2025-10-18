@@ -67,37 +67,7 @@ export default function ChartControls({
   fullWidth = false
 }: ChartControlsProps) {
   
-  // iOS Safari touch fix for checkboxes and radio buttons
-  useEffect(() => {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-    if (isIOS) {
-      const handleTouchEnd = (e: TouchEvent) => {
-        const target = e.target as HTMLElement
-        // Handle checkbox and radio inputs specifically
-        if (target && (target.tagName === 'INPUT' && (target.getAttribute('type') === 'checkbox' || target.getAttribute('type') === 'radio'))) {
-          // Trigger click immediately on touch end for form controls
-          setTimeout(() => {
-            target.click()
-          }, 0)
-        }
-        // Also handle labels containing checkboxes/radios
-        else if (target && target.tagName === 'LABEL' && target.querySelector('input[type="checkbox"], input[type="radio"]')) {
-          const input = target.querySelector('input[type="checkbox"], input[type="radio"]') as HTMLInputElement
-          if (input) {
-            setTimeout(() => {
-              input.click()
-            }, 0)
-          }
-        }
-      }
-
-      document.addEventListener('touchend', handleTouchEnd, { passive: true })
-
-      return () => {
-        document.removeEventListener('touchend', handleTouchEnd)
-      }
-    }
-  }, [])
+  
   
   // Calculate available months for projection mode based on selected years
   const calculateAvailableMonths = () => {
@@ -147,6 +117,37 @@ export default function ChartControls({
   const userInteractionRef = useRef(false)
   const years = Array.from({ length: 9 }, (_, i) => 2024 - i) // 2024-2016 (reverse order)
   
+  // iOS Safari touch handling scoped to the historical popup to avoid double toggles
+  useEffect(() => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    if (!isIOS) return
+    const popupEl = popupRef.current
+    if (!popupEl || !isHistoricalPopupOpen) return
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const target = e.target as HTMLElement | null
+      if (!target) return
+
+      const isInput = target.tagName === 'INPUT' && (target.getAttribute('type') === 'checkbox' || target.getAttribute('type') === 'radio')
+      const label = target.tagName === 'LABEL' ? (target as HTMLLabelElement) : target.closest('label')
+      const inputInLabel = label ? (label.querySelector('input[type="checkbox"], input[type="radio"]') as HTMLInputElement | null) : null
+      const inputEl = (isInput ? (target as HTMLInputElement) : inputInLabel)
+
+      if (inputEl && !inputEl.disabled) {
+        // Prevent the native synthetic click from firing later and toggling twice
+        e.preventDefault()
+        inputEl.focus()
+        inputEl.click()
+      }
+    }
+
+    popupEl.addEventListener('touchend', handleTouchEnd, { passive: false })
+
+    return () => {
+      popupEl.removeEventListener('touchend', handleTouchEnd)
+    }
+  }, [isHistoricalPopupOpen])
+
   // Auto-clamp smoothing when chart mode or selected years change
   useEffect(() => {
     if (smoothing > maxSmoothing) {
@@ -161,14 +162,14 @@ export default function ChartControls({
       if (userInteractionRef.current) {
         return
       }
-
+      
       // Add longer delay to prevent interference with user interactions
       const timeoutId = setTimeout(() => {
         setCombineStatistic(null)
         setCombineError(null)
         setShowCombined(false)
       }, 250)
-
+      
       return () => clearTimeout(timeoutId)
     }
   }, [selectedYears, combineStatistic, combineError, setCombineStatistic, setCombineError, setShowCombined])
