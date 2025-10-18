@@ -161,14 +161,14 @@ export default function ChartControls({
       if (userInteractionRef.current) {
         return
       }
-      
-      // Add small delay to prevent interference with user interactions
+
+      // Add longer delay to prevent interference with user interactions
       const timeoutId = setTimeout(() => {
         setCombineStatistic(null)
         setCombineError(null)
         setShowCombined(false)
-      }, 100)
-      
+      }, 250)
+
       return () => clearTimeout(timeoutId)
     }
   }, [selectedYears, combineStatistic, combineError, setCombineStatistic, setCombineError, setShowCombined])
@@ -200,14 +200,20 @@ export default function ChartControls({
 
   // Year selection handlers
   const handleYearToggle = (year: number) => {
+    userInteractionRef.current = true
     if (selectedYears.includes(year)) {
       setSelectedYears(selectedYears.filter(y => y !== year))
     } else {
       setSelectedYears([...selectedYears, year])
     }
+    // Reset interaction flag after delay
+    setTimeout(() => {
+      userInteractionRef.current = false
+    }, 200)
   }
 
   const handleRangeChange = (start: number) => {
+    userInteractionRef.current = true
     if (start > 2024) {
       // If moved all the way to the right, select nothing
       setSelectedYears([])
@@ -218,14 +224,26 @@ export default function ChartControls({
       }
       setSelectedYears(range)
     }
+    // Reset interaction flag after delay
+    setTimeout(() => {
+      userInteractionRef.current = false
+    }, 200)
   }
 
   const handleSelectAll = () => {
+    userInteractionRef.current = true
     setSelectedYears([...years])
+    setTimeout(() => {
+      userInteractionRef.current = false
+    }, 200)
   }
 
   const handleSelectNone = () => {
+    userInteractionRef.current = true
     setSelectedYears([])
+    setTimeout(() => {
+      userInteractionRef.current = false
+    }, 200)
   }
 
   return (
