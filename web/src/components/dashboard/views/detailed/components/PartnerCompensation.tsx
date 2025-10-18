@@ -179,17 +179,10 @@ function parseYTDPhysicianData(physicians: Physician[], equityData: any, summary
             }
             
             // Store the value for this partner
-            let adjustedValue = value
-            
-            // Manual override: reduce Connor's Member Draw by buy-in amount
-            if (partnerName === 'Connor' && cleanName === 'Member Draw') {
-              adjustedValue = value - 48304.76
-            }
-            
-            data[cleanName][partnerName] = adjustedValue
+            data[cleanName][partnerName] = value
             // Only add to totals if it's not Beginning Equity (since that's shown separately in main table)
             if (cleanName !== 'Beginning Equity') {
-              totals[partnerName] += adjustedValue
+              totals[partnerName] += value
             }
           }
         }
@@ -257,13 +250,13 @@ function parseYTDPhysicianData(physicians: Physician[], equityData: any, summary
       totals[physician.name] -= physician.buyoutCost
     }
     
-    // Manual override for Connor's buy-in (positive - money coming IN)
+    // Manual override for Connor's buy-in (negative - money paid OUT, reduces remaining comp)
     if (physician.name === 'Connor') {
       if (!data['Buy In/Buy Out']) {
         data['Buy In/Buy Out'] = {}
       }
-      data['Buy In/Buy Out'][physician.name] = 48304.76
-      totals[physician.name] += 48304.76
+      data['Buy In/Buy Out'][physician.name] = -48304.76
+      totals[physician.name] -= 48304.76
     }
     
     // Add medical director amounts
