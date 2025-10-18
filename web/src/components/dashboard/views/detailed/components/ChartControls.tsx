@@ -114,6 +114,7 @@ export default function ChartControls({
   // Historical data popup state
   const [isHistoricalPopupOpen, setIsHistoricalPopupOpen] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
+  const controlsRef = useRef<HTMLDivElement>(null)
   const userInteractionRef = useRef(false)
   const years = Array.from({ length: 9 }, (_, i) => 2024 - i) // 2024-2016 (reverse order)
   
@@ -147,6 +148,40 @@ export default function ChartControls({
       popupEl.removeEventListener('touchend', handleTouchEnd)
     }
   }, [isHistoricalPopupOpen])
+
+  // iOS Safari touch handling for main controls (Mean/Median & Std/CI) to avoid double toggles
+  useEffect(() => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    if (!isIOS) return
+    const root = controlsRef.current
+    if (!root) return
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const target = e.target as HTMLElement | null
+      if (!target) return
+
+      // Ignore events inside the popup (handled separately)
+      if (popupRef.current && popupRef.current.contains(target)) return
+      // Ignore range slider interactions
+      if (target.closest('input[type="range"]')) return
+
+      const isInput = target.tagName === 'INPUT' && (target.getAttribute('type') === 'checkbox' || target.getAttribute('type') === 'radio')
+      const label = target.tagName === 'LABEL' ? (target as HTMLLabelElement) : target.closest('label')
+      const inputInLabel = label ? (label.querySelector('input[type="checkbox"], input[type="radio"]') as HTMLInputElement | null) : null
+      const inputEl = (isInput ? (target as HTMLInputElement) : inputInLabel)
+
+      if (inputEl && !inputEl.disabled) {
+        e.preventDefault()
+        inputEl.focus()
+        inputEl.click()
+      }
+    }
+
+    root.addEventListener('touchend', handleTouchEnd, { passive: false })
+    return () => {
+      root.removeEventListener('touchend', handleTouchEnd)
+    }
+  }, [])
 
   // Auto-clamp smoothing when chart mode or selected years change
   useEffect(() => {
@@ -261,7 +296,7 @@ export default function ChartControls({
           }
         }
       `}</style>
-      <div style={{
+      <div ref={controlsRef} style={{
         marginBottom: isSidebar ? 0 : 16,
         border: '1px solid #ccc',
         borderRadius: 4,
