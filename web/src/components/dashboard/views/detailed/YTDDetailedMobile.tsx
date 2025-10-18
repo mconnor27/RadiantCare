@@ -558,6 +558,11 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fy2025])
 
+  // Load "2025 Default" scenario on mount (only once)
+  useEffect(() => {
+    store.loadDefaultYTDScenario()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Register refresh callback with parent
   useEffect(() => {
     if (onRefreshRequest) {
@@ -621,8 +626,8 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
     console.group('🔄 [Mobile] Post-load resync effect triggered')
     console.log('State check:', {
       hasCachedSummary: !!cachedData?.summary,
-      hasLoadedSnapshot: !!store.loadedScenarioSnapshot,
-      currentScenarioId: store.currentScenarioId,
+      hasLoadedSnapshot: !!store.loadedCurrentYearSettingsSnapshot,
+      currentYearSettingId: store.currentYearSettingId,
       isInitialScenarioLoadComplete,
       refreshTrigger,
       lastSyncState: lastSyncRef.current
@@ -636,15 +641,16 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
     }
 
     // Only run if we have cached data, scenarios are loaded, AND initial scenario load is complete
-    if (!cachedData?.summary || !store.loadedScenarioSnapshot || !store.currentScenarioId || !isInitialScenarioLoadComplete) {
+    // NOTE: Use NEW modular fields (currentYearSettingId, loadedCurrentYearSettingsSnapshot) not legacy ones
+    if (!cachedData?.summary || !store.loadedCurrentYearSettingsSnapshot || !store.currentYearSettingId || !isInitialScenarioLoadComplete) {
       // Keep frozen while waiting
-      if (!isInitialScenarioLoadComplete && cachedData?.summary && store.loadedScenarioSnapshot) {
+      if (!isInitialScenarioLoadComplete && cachedData?.summary && store.loadedCurrentYearSettingsSnapshot) {
         console.log('⏸️  Waiting for Dashboard initial scenario load to complete...')
       } else {
         console.log('⏸️  Missing prerequisites:', {
           cachedSummary: !!cachedData?.summary,
-          loadedSnapshot: !!store.loadedScenarioSnapshot,
-          scenarioId: !!store.currentScenarioId,
+          loadedSnapshot: !!store.loadedCurrentYearSettingsSnapshot,
+          scenarioId: !!store.currentYearSettingId,
           initialLoadComplete: isInitialScenarioLoadComplete
         })
       }
@@ -666,7 +672,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
     })
 
     // Scenarios are loaded, check if we need to sync
-    const syncKey = `${store.currentScenarioId}|${cachedData.lastSyncTimestamp || 'unknown'}`
+    const syncKey = `${store.currentYearSettingId}|${cachedData.lastSyncTimestamp || 'unknown'}`
     const lastSyncKey = `${lastSyncRef.current.scenarioId}|${lastSyncRef.current.syncTimestamp}`
 
     // If this is a new scenario or different cache version, run the sync
@@ -674,7 +680,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
       console.log('🔄 Sync needed (keys differ):', { syncKey, lastSyncKey })
 
       lastSyncRef.current = {
-        scenarioId: store.currentScenarioId,
+        scenarioId: store.currentYearSettingId,
         syncTimestamp: cachedData.lastSyncTimestamp || null
       }
 
@@ -710,7 +716,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
       setIsResyncingCompensation(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cachedData?.summary, cachedData?.lastSyncTimestamp, store.loadedScenarioSnapshot, store.currentScenarioId, refreshTrigger, isInitialScenarioLoadComplete])
+  }, [cachedData?.summary, cachedData?.lastSyncTimestamp, store.loadedCurrentYearSettingsSnapshot, store.currentYearSettingId, refreshTrigger, isInitialScenarioLoadComplete])
 
   // Load last sync timestamp
   useEffect(() => {
@@ -766,8 +772,8 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
     }
   }
 
-  // Get current scenario info from store
-  const currentScenarioName = store.currentScenarioName
+  // Get current scenario info from store (using NEW modular field for YTD)
+  const currentScenarioName = store.currentYearSettingName
 
   // Keep current period in sync with timeframe on mobile
   useEffect(() => {
