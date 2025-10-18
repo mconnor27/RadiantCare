@@ -450,7 +450,7 @@ export const buildChartLayout = ({
 
     // Estimate character width at 13px font size (roughly 7.5px per character for bold Inter)
     const baseCharWidth = 7.5
-    const baseFontSize = 13
+    //const baseFontSize = 13
     const estimatedWidth = titleText.length * baseCharWidth
 
     // Assume available width is roughly 280px (minimum mobile width) minus some padding
