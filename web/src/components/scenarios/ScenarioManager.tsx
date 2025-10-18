@@ -104,14 +104,15 @@ export default function ScenarioManager({
         .eq('user_id', profile?.id)
 
       // Create a map of scenario_id -> favorite types
-      const favoritesMap = new Map<string, { is_favorite_a: boolean, is_favorite_b: boolean }>()
+      const favoritesMap = new Map<string, { is_favorite_a: boolean, is_favorite_b: boolean, is_favorite_current: boolean }>()
       favoritesData?.forEach((fav: any) => {
         if (!favoritesMap.has(fav.scenario_id)) {
-          favoritesMap.set(fav.scenario_id, { is_favorite_a: false, is_favorite_b: false })
+          favoritesMap.set(fav.scenario_id, { is_favorite_a: false, is_favorite_b: false, is_favorite_current: false })
         }
         const current = favoritesMap.get(fav.scenario_id)!
         if (fav.favorite_type === 'A') current.is_favorite_a = true
         if (fav.favorite_type === 'B') current.is_favorite_b = true
+        if (fav.favorite_type === 'CURRENT') current.is_favorite_current = true
       })
 
       // Merge favorites into scenario data
@@ -119,6 +120,7 @@ export default function ScenarioManager({
         ...s,
         is_favorite_a: favoritesMap.get(s.id)?.is_favorite_a || false,
         is_favorite_b: favoritesMap.get(s.id)?.is_favorite_b || false,
+        is_favorite_current: favoritesMap.get(s.id)?.is_favorite_current || false,
       }))
 
       // Sort scenarios: Default (A) > Default (B) > Favorite A > Favorite B > others
@@ -178,6 +180,7 @@ export default function ScenarioManager({
           creator_email: emailMap.get(s.user_id),
           is_favorite_a: favoritesMap.get(s.id)?.is_favorite_a || false,
           is_favorite_b: favoritesMap.get(s.id)?.is_favorite_b || false,
+          is_favorite_current: favoritesMap.get(s.id)?.is_favorite_current || false,
         }))
         
         // Sort scenarios: Default (A) > Default (B) > Favorite A > Favorite B > others
@@ -448,13 +451,15 @@ export default function ScenarioManager({
     }
   }
 
-  async function handleToggleFavorite(id: string, favoriteType: 'A' | 'B') {
+  async function handleToggleFavorite(id: string, favoriteType: 'A' | 'B' | 'CURRENT') {
     try {
       // Get the scenario being favorited
       const scenario = [...myScenarios, ...publicScenarios].find(s => s.id === id)
       if (!scenario) return
 
-      const currentFavoriteValue = favoriteType === 'A' ? scenario.is_favorite_a : (isMultiYearScenario(scenario) ? scenario.is_favorite_b : false)
+      const currentFavoriteValue = favoriteType === 'A' ? scenario.is_favorite_a : 
+                                   favoriteType === 'B' ? (isMultiYearScenario(scenario) ? scenario.is_favorite_b : false) :
+                                   scenario.is_favorite_current
       const newFavoriteValue = !currentFavoriteValue
 
       // Validate favorite rules
@@ -475,7 +480,9 @@ export default function ScenarioManager({
       }
 
       // Optimistically update the local state immediately
-      const fieldToUpdate = favoriteType === 'A' ? 'is_favorite_a' : 'is_favorite_b'
+      const fieldToUpdate = favoriteType === 'A' ? 'is_favorite_a' : 
+                           favoriteType === 'B' ? 'is_favorite_b' : 
+                           'is_favorite_current'
 
       // Update myScenarios state
       setMyScenarios(prev => prev.map(s => {

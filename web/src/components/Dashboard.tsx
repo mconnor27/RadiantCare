@@ -2600,21 +2600,24 @@ export const useDashboardStore = create<Store>()(
           return data as any
         },
 
-        loadDefaultYTDScenario: async () => {
+        loadDefaultYTDScenario: async (year?: number) => {
           try {
-            // Try to find and load "2025 Default" scenario
+            const currentYear = year || new Date().getFullYear()
+            const defaultName = `${currentYear} Default`
+            
+            // Try to find and load the current year's default scenario
             const { data, error } = await supabase
               .from('scenarios')
               .select('*')
               .eq('scenario_type', 'current_year')
-              .eq('name', '2025 Default')
+              .eq('name', defaultName)
               .single()
 
             if (data && !error) {
-              console.log('📥 Loading "2025 Default" scenario on initialization')
+              console.log(`📥 Loading "${defaultName}" scenario on initialization`)
               await get().loadCurrentYearSettings(data.id)
             } else {
-              console.log('📝 No "2025 Default" scenario found, using defaults')
+              console.log(`📝 No "${defaultName}" scenario found, using defaults`)
             }
           } catch (err) {
             console.log('📝 Could not load default scenario, using defaults:', err)

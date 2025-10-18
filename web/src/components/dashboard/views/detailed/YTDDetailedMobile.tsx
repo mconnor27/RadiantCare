@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faSignOutAlt, faKey, faFolderOpen } from '@fortawesome/free-solid-svg-icons'
+import { faUser, faSignOutAlt, faKey, faFolderOpen, faStar as faSolidStar } from '@fortawesome/free-solid-svg-icons'
+import { faStar as faRegularStar } from '@fortawesome/free-regular-svg-icons'
 import {
   parseTherapyIncome2025,
   type YTDPoint
@@ -30,6 +31,7 @@ function MobileScenarioLoadModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [, setFavoritesMap] = useState<Map<string, { is_favorite_a: boolean, is_favorite_b: boolean, is_favorite_current: boolean }>>(new Map())
 
   useEffect(() => {
     if (isOpen && profile) {
@@ -55,18 +57,132 @@ function MobileScenarioLoadModal({
 
       if (myError) throw myError
 
+      // Fetch favorites for current user
+      const { data: favoritesData } = await supabase
+        .from('user_favorites')
+        .select('scenario_id, favorite_type')
+        .eq('user_id', profile.id)
+
+      // Create a map of scenario_id -> favorite types
+      const favoritesMap = new Map<string, { is_favorite_a: boolean, is_favorite_b: boolean, is_favorite_current: boolean }>()
+      favoritesData?.forEach((fav: any) => {
+        if (!favoritesMap.has(fav.scenario_id)) {
+          favoritesMap.set(fav.scenario_id, { is_favorite_a: false, is_favorite_b: false, is_favorite_current: false })
+        }
+        const current = favoritesMap.get(fav.scenario_id)!
+        if (fav.favorite_type === 'A') current.is_favorite_a = true
+        if (fav.favorite_type === 'B') current.is_favorite_b = true
+        if (fav.favorite_type === 'CURRENT') current.is_favorite_current = true
+      })
+
       // Filter to only Current Year Settings scenarios (required for YTD Mobile view)
       const filteredData = (allData || []).filter((scenario: any) => {
         // Only include Current Year Settings type scenarios
         return 'scenario_type' in scenario && scenario.scenario_type === 'current_year'
       })
 
-      setMyScenarios(filteredData)
+      // Merge favorites into scenario data
+      const dataWithFavorites = filteredData.map((s: any) => ({
+        ...s,
+        is_favorite_a: favoritesMap.get(s.id)?.is_favorite_a || false,
+        is_favorite_b: favoritesMap.get(s.id)?.is_favorite_b || false,
+        is_favorite_current: favoritesMap.get(s.id)?.is_favorite_current || false,
+      }))
+
+      setMyScenarios(dataWithFavorites)
+      setFavoritesMap(favoritesMap)
     } catch (err) {
       console.error('Error loading scenarios:', err)
       setError(err instanceof Error ? err.message : 'Failed to load scenarios')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleToggleFavorite(id: string) {
+    try {
+      const { supabase } = await import('../../../../lib/supabase')
+      
+      const scenario = myScenarios.find(s => s.id === id)
+      if (!scenario) return
+
+      const currentFavoriteValue = scenario.is_favorite_current
+      const newFavoriteValue = !currentFavoriteValue
+
+      // Optimistically update the local state immediately
+      setMyScenarios(prev => prev.map(s => {
+        if (s.id === id) {
+          return { ...s, is_favorite_current: newFavoriteValue }
+        }
+        // If setting as favorite, clear other scenarios with this favorite type
+        if (newFavoriteValue && s.is_favorite_current) {
+          return { ...s, is_favorite_current: false }
+        }
+        return s
+      }))
+
+      // Update favorites map
+      setFavoritesMap(prev => {
+        const newMap = new Map(prev)
+        if (!newMap.has(id)) {
+          newMap.set(id, { is_favorite_a: false, is_favorite_b: false, is_favorite_current: false })
+        }
+        const current = newMap.get(id)!
+        current.is_favorite_current = newFavoriteValue
+        
+        // Clear other scenarios with this favorite type
+        if (newFavoriteValue) {
+          for (const [scenarioId, favData] of newMap.entries()) {
+            if (scenarioId !== id) {
+              favData.is_favorite_current = false
+            }
+          }
+        }
+        
+        return newMap
+      })
+
+      // Then update the database in the background
+      if (newFavoriteValue) {
+        // First, delete any existing CURRENT favorite for this user
+        await supabase
+          .from('user_favorites')
+          .delete()
+          .eq('user_id', profile?.id)
+          .eq('favorite_type', 'CURRENT')
+
+        // Insert new favorite
+        const { error: insertError } = await supabase
+          .from('user_favorites')
+          .insert({
+            user_id: profile?.id,
+            scenario_id: id,
+            favorite_type: 'CURRENT'
+          })
+
+        if (insertError) {
+          // If database update fails, reload to get correct state
+          await loadScenarios()
+          throw insertError
+        }
+      } else {
+        // Remove favorite
+        const { error: deleteError } = await supabase
+          .from('user_favorites')
+          .delete()
+          .eq('user_id', profile?.id)
+          .eq('scenario_id', id)
+          .eq('favorite_type', 'CURRENT')
+
+        if (deleteError) {
+          // If database update fails, reload to get correct state
+          await loadScenarios()
+          throw deleteError
+        }
+      }
+    } catch (err) {
+      console.error('Error toggling favorite:', err)
+      setError(err instanceof Error ? err.message : 'Failed to toggle favorite')
     }
   }
 
@@ -272,7 +388,7 @@ function MobileScenarioLoadModal({
                     onClose()
                   }}
                 >
-                  {/* Header: Title + Public/Private */}
+                  {/* Header: Title + Public/Private + Favorite Star */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
                       <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#111' }}>
@@ -290,6 +406,31 @@ function MobileScenarioLoadModal({
                       >
                         {scenario.is_public ? '🌐 Public' : '🔒 Private'}
                       </span>
+                      
+                      {/* Favorite Star */}
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleToggleFavorite(scenario.id)
+                        }}
+                        style={{
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          position: 'relative',
+                          touchAction: 'manipulation',
+                          WebkitTapHighlightColor: 'transparent'
+                        }}
+                        title={scenario.is_favorite_current ? 'Remove from Current Year Favorite' : 'Set as Current Year Favorite'}
+                      >
+                        <FontAwesomeIcon
+                          icon={scenario.is_favorite_current ? faSolidStar : faRegularStar}
+                          style={{
+                            color: '#fbbf24',
+                            fontSize: '16px'
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -345,7 +486,7 @@ interface YTDDetailedMobileProps {
 
 export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, isInitialScenarioLoadComplete = false }: YTDDetailedMobileProps) {
   const store = useDashboardStore()
-  const { signOut } = useAuth()
+  const { signOut, profile } = useAuth()
   
   // iOS Safari touch fix - prevent double-tap zoom and ensure single-tap works
   useEffect(() => {
@@ -558,10 +699,41 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fy2025])
 
-  // Load "2025 Default" scenario on mount (only once)
+  // Load favorite current year scenario or default scenario on mount (only once)
   useEffect(() => {
-    store.loadDefaultYTDScenario()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    const loadInitialScenario = async () => {
+      if (!profile?.id) return
+
+      try {
+        const { supabase } = await import('../../../../lib/supabase')
+        
+        // First, check for a CURRENT favorite scenario
+        const { data: favoriteData } = await supabase
+          .from('user_favorites')
+          .select('scenario_id')
+          .eq('user_id', profile.id)
+          .eq('favorite_type', 'CURRENT')
+          .single()
+
+        if (favoriteData?.scenario_id) {
+          // Load the favorite scenario
+          await store.loadCurrentYearSettings(favoriteData.scenario_id)
+          return
+        }
+
+        // No favorite found, load the current year's default scenario
+        const currentYear = new Date().getFullYear()
+        await store.loadDefaultYTDScenario(currentYear)
+      } catch (error) {
+        console.error('Error loading initial scenario:', error)
+        // Fallback to current year default
+        const currentYear = new Date().getFullYear()
+        await store.loadDefaultYTDScenario(currentYear)
+      }
+    }
+
+    loadInitialScenario()
+  }, [profile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Register refresh callback with parent
   useEffect(() => {

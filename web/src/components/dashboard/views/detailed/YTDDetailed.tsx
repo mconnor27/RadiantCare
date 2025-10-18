@@ -234,10 +234,39 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     })
   }, [])
 
-  // Load "2025 Default" scenario on mount (only once)
+  // Load favorite current year scenario or default scenario on mount (only once)
   useEffect(() => {
-    store.loadDefaultYTDScenario()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    const loadInitialScenario = async () => {
+      if (!profile?.id) return
+
+      try {
+        // First, check for a CURRENT favorite scenario
+        const { data: favoriteData } = await supabase
+          .from('user_favorites')
+          .select('scenario_id')
+          .eq('user_id', profile.id)
+          .eq('favorite_type', 'CURRENT')
+          .single()
+
+        if (favoriteData?.scenario_id) {
+          // Load the favorite scenario
+          await store.loadCurrentYearSettings(favoriteData.scenario_id)
+          return
+        }
+
+        // No favorite found, load the current year's default scenario
+        const currentYear = new Date().getFullYear()
+        await store.loadDefaultYTDScenario(currentYear)
+      } catch (error) {
+        console.error('Error loading initial scenario:', error)
+        // Fallback to current year default
+        const currentYear = new Date().getFullYear()
+        await store.loadDefaultYTDScenario(currentYear)
+      }
+    }
+
+    loadInitialScenario()
+  }, [profile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Watch for scenario loads and freeze compensation until grid re-syncs
   useEffect(() => {
@@ -606,10 +635,10 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         </button>
 
         {/* Unload Button - only show if scenario is loaded and not Default */}
-        {currentScenarioName && currentScenarioName !== '2025 Default' && (
+        {currentScenarioName && currentScenarioName !== `${new Date().getFullYear()} Default` && (
           <button
             onClick={() => {
-              if (confirm(`Unload "${currentScenarioName}"?\nAny unsaved changes will be lost. "2025 Default" will be loaded.`)) {
+              if (confirm(`Unload "${currentScenarioName}"?\nAny unsaved changes will be lost. "${new Date().getFullYear()} Default" will be loaded.`)) {
                 const event = new CustomEvent('unloadScenario')
                 window.dispatchEvent(event)
               }

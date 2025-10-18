@@ -16,7 +16,7 @@ interface ScenarioCardProps {
   onEdit: (scenario: SavedScenario) => void
   onDelete: (id: string) => void
   onUpdateBaseline?: (id: string) => void
-  onToggleFavorite?: (id: string, favoriteType: 'A' | 'B') => void
+  onToggleFavorite?: (id: string, favoriteType: 'A' | 'B' | 'CURRENT') => void
   isOwner: boolean
   viewMode?: 'YTD Detailed' | 'Multi-Year' | 'YTD Mobile'
 }
@@ -126,48 +126,85 @@ export default function ScenarioCard({
 
           {/* Favorite stars */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {/* Star A */}
-            {(viewMode === 'Multi-Year' || viewMode === 'YTD Detailed') && onToggleFavorite && isOwner && (
-              <div
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onToggleFavorite(scenario.id, 'A')
-                }}
-                style={{
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  position: 'relative',
-                  touchAction: 'manipulation',
-                  WebkitTapHighlightColor: 'transparent'
-                }}
-                title={scenario.is_favorite_a ? 'Remove from Favorite A' : 'Set as Favorite A'}
-              >
-                <FontAwesomeIcon
-                  icon={scenario.is_favorite_a ? faSolidStar : faRegularStar}
-                  style={{
-                    color: '#fbbf24',
-                    fontSize: '16px'
+            {/* Projection scenarios: Show A/B stars */}
+            {isProjectionScenario(scenario) && onToggleFavorite && (
+              <>
+                {/* Star A */}
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onToggleFavorite(scenario.id, 'A')
                   }}
-                />
-                <sup style={{
-                  fontSize: '8px',
-                  fontWeight: 'bold',
-                  position: 'absolute',
-                  top: '-7px',
-                  right: '0px',
-                  color: '#374151',
-                  pointerEvents: 'none'
-                }}>A</sup>
-              </div>
+                  style={{
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    position: 'relative',
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                  title={scenario.is_favorite_a ? 'Remove from Favorite A' : 'Set as Favorite A'}
+                >
+                  <FontAwesomeIcon
+                    icon={scenario.is_favorite_a ? faSolidStar : faRegularStar}
+                    style={{
+                      color: '#fbbf24',
+                      fontSize: '16px'
+                    }}
+                  />
+                  <sup style={{
+                    fontSize: '8px',
+                    fontWeight: 'bold',
+                    position: 'absolute',
+                    top: '-7px',
+                    right: '0px',
+                    color: '#374151',
+                    pointerEvents: 'none'
+                  }}>A</sup>
+                </div>
+
+                {/* Star B */}
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onToggleFavorite(scenario.id, 'B')
+                  }}
+                  style={{
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    position: 'relative',
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                  title={scenario.is_favorite_b ? 'Remove from Favorite B' : 'Set as Favorite B'}
+                >
+                  <FontAwesomeIcon
+                    icon={scenario.is_favorite_b ? faSolidStar : faRegularStar}
+                    style={{
+                      color: '#fbbf24',
+                      fontSize: '16px'
+                    }}
+                  />
+                  <sup style={{
+                    fontSize: '8px',
+                    fontWeight: 'bold',
+                    position: 'absolute',
+                    top: '-7px',
+                    right: '0px',
+                    color: '#374151',
+                    pointerEvents: 'none'
+                  }}>B</sup>
+                </div>
+              </>
             )}
 
-            {/* Star B - Only show in Multi-Year view */}
-            {viewMode === 'Multi-Year' && isMultiYearScenario(scenario) && onToggleFavorite && isOwner && (
+            {/* Current Year scenarios: Show single star */}
+            {isCurrentYearSettingsScenario(scenario) && onToggleFavorite && (
               <div
                 onClick={(e) => {
                   e.stopPropagation()
-                  onToggleFavorite(scenario.id, 'B')
+                  onToggleFavorite(scenario.id, 'CURRENT')
                 }}
                 style={{
                   cursor: 'pointer',
@@ -177,24 +214,15 @@ export default function ScenarioCard({
                   touchAction: 'manipulation',
                   WebkitTapHighlightColor: 'transparent'
                 }}
-                title={scenario.is_favorite_b ? 'Remove from Favorite B' : 'Set as Favorite B'}
+                title={scenario.is_favorite_current ? 'Remove from Current Year Favorite' : 'Set as Current Year Favorite'}
               >
                 <FontAwesomeIcon
-                  icon={scenario.is_favorite_b ? faSolidStar : faRegularStar}
+                  icon={scenario.is_favorite_current ? faSolidStar : faRegularStar}
                   style={{
                     color: '#fbbf24',
                     fontSize: '16px'
                   }}
                 />
-                <sup style={{
-                  fontSize: '8px',
-                  fontWeight: 'bold',
-                  position: 'absolute',
-                  top: '-7px',
-                  right: '0px',
-                  color: '#374151',
-                  pointerEvents: 'none'
-                }}>B</sup>
               </div>
             )}
           </div>

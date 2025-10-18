@@ -66,14 +66,15 @@ export default function ScenarioLoadModal({
         .eq('user_id', profile?.id)
 
       // Create a map of scenario_id -> favorite types
-      const favoritesMap = new Map<string, { is_favorite_a: boolean, is_favorite_b: boolean }>()
+      const favoritesMap = new Map<string, { is_favorite_a: boolean, is_favorite_b: boolean, is_favorite_current: boolean }>()
       favoritesData?.forEach((fav: any) => {
         if (!favoritesMap.has(fav.scenario_id)) {
-          favoritesMap.set(fav.scenario_id, { is_favorite_a: false, is_favorite_b: false })
+          favoritesMap.set(fav.scenario_id, { is_favorite_a: false, is_favorite_b: false, is_favorite_current: false })
         }
         const current = favoritesMap.get(fav.scenario_id)!
         if (fav.favorite_type === 'A') current.is_favorite_a = true
         if (fav.favorite_type === 'B') current.is_favorite_b = true
+        if (fav.favorite_type === 'CURRENT') current.is_favorite_current = true
       })
 
       // Merge favorites into scenario data
@@ -81,6 +82,7 @@ export default function ScenarioLoadModal({
         ...s,
         is_favorite_a: favoritesMap.get(s.id)?.is_favorite_a || false,
         is_favorite_b: favoritesMap.get(s.id)?.is_favorite_b || false,
+        is_favorite_current: favoritesMap.get(s.id)?.is_favorite_current || false,
       }))
 
       // Filter to only Current Year Settings scenarios for YTD views
@@ -144,6 +146,7 @@ export default function ScenarioLoadModal({
           creator_email: emailMap.get(s.user_id),
           is_favorite_a: favoritesMap.get(s.id)?.is_favorite_a || false,
           is_favorite_b: favoritesMap.get(s.id)?.is_favorite_b || false,
+          is_favorite_current: favoritesMap.get(s.id)?.is_favorite_current || false,
         }))
 
         // Filter to only Current Year Settings scenarios for YTD views
@@ -457,31 +460,55 @@ export default function ScenarioLoadModal({
 
                         {/* Favorite stars (read-only) */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          {/* Star A */}
-                          {(viewMode === 'Multi-Year' || viewMode === 'YTD Detailed') && (scenario.is_favorite_a) && (
-                            <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                              <FontAwesomeIcon
-                                icon={faSolidStar}
-                                style={{
-                                  color: '#fbbf24',
-                                  fontSize: '16px'
-                                }}
-                              />
-                              {viewMode === 'Multi-Year' && (
-                                <sup style={{
-                                  fontSize: '8px',
-                                  fontWeight: 'bold',
-                                  position: 'absolute',
-                                  top: '-7px',
-                                  right: '0px',
-                                  color: '#374151'
-                                }}>A</sup>
+                          {/* Projection scenarios: Show A/B stars */}
+                          {isProjectionScenario(scenario) && (
+                            <>
+                              {/* Star A */}
+                              {scenario.is_favorite_a && (
+                                <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                  <FontAwesomeIcon
+                                    icon={faSolidStar}
+                                    style={{
+                                      color: '#fbbf24',
+                                      fontSize: '16px'
+                                    }}
+                                  />
+                                  <sup style={{
+                                    fontSize: '8px',
+                                    fontWeight: 'bold',
+                                    position: 'absolute',
+                                    top: '-7px',
+                                    right: '0px',
+                                    color: '#374151'
+                                  }}>A</sup>
+                                </div>
                               )}
-                            </div>
+
+                              {/* Star B */}
+                              {scenario.is_favorite_b && (
+                                <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                  <FontAwesomeIcon
+                                    icon={faSolidStar}
+                                    style={{
+                                      color: '#fbbf24',
+                                      fontSize: '16px'
+                                    }}
+                                  />
+                                  <sup style={{
+                                    fontSize: '8px',
+                                    fontWeight: 'bold',
+                                    position: 'absolute',
+                                    top: '-7px',
+                                    right: '0px',
+                                    color: '#374151'
+                                  }}>B</sup>
+                                </div>
+                              )}
+                            </>
                           )}
 
-                          {/* Star B - Only show in Multi-Year view */}
-                          {viewMode === 'Multi-Year' && isMultiYearScenario(scenario) && scenario.is_favorite_b && (
+                          {/* Current Year scenarios: Show single star */}
+                          {isCurrentYearSettingsScenario(scenario) && scenario.is_favorite_current && (
                             <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                               <FontAwesomeIcon
                                 icon={faSolidStar}
@@ -490,14 +517,6 @@ export default function ScenarioLoadModal({
                                   fontSize: '16px'
                                 }}
                               />
-                              <sup style={{
-                                fontSize: '8px',
-                                fontWeight: 'bold',
-                                position: 'absolute',
-                                top: '-7px',
-                                right: '0px',
-                                color: '#374151'
-                              }}>B</sup>
                             </div>
                           )}
                         </div>

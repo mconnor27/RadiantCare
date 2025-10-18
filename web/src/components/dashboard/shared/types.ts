@@ -131,6 +131,7 @@ export type YTDScenario = {
   year_2025_data: FutureYear // Physician panel settings for 2025
   custom_projected_values: Record<string, number> // User's grid overrides for 2025
   is_favorite_a?: boolean // Populated by JOIN with user_favorites
+  is_favorite_current?: boolean // Populated by JOIN with user_favorites
   created_at: string
   updated_at: string
   creator_email?: string
@@ -155,6 +156,7 @@ export type MultiYearScenario = {
   }
   is_favorite_a?: boolean // Populated by JOIN with user_favorites
   is_favorite_b?: boolean // Populated by JOIN with user_favorites
+  is_favorite_current?: boolean // Populated by JOIN with user_favorites
   created_at: string
   updated_at: string
   creator_email?: string
@@ -177,6 +179,7 @@ export type CurrentYearSettingsScenario = {
   baseline_date: string // ISO date (YYYY-MM-DD)
   qbo_sync_timestamp: string | null
   is_favorite_a?: boolean
+  is_favorite_current?: boolean
   created_at: string
   updated_at: string
   creator_email?: string
@@ -200,6 +203,7 @@ export type ProjectionScenario = {
   qbo_sync_timestamp: string | null
   is_favorite_a?: boolean
   is_favorite_b?: boolean
+  is_favorite_current?: boolean
   created_at: string
   updated_at: string
   creator_email?: string
@@ -353,5 +357,5 @@ export type Store = {
   ) => Promise<ProjectionScenario>
   loadCurrentYearSettings: (id: string) => Promise<CurrentYearSettingsScenario>
   loadProjection: (id: string, target?: 'A' | 'B') => Promise<ProjectionScenario>
-  loadDefaultYTDScenario: () => Promise<void>
+  loadDefaultYTDScenario: (year?: number) => Promise<void>
 }
