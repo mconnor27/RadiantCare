@@ -507,7 +507,7 @@ export const buildChartLayout = ({
           ? calculateRadarMargin(processedCurrentData, staticLineTraces, currentX, unfilteredCurrentData)
           : CHART_CONFIG.margins.rightDefault),
       t: CHART_CONFIG.margins.top,
-      b: CHART_CONFIG.margins.bottom,
+      b: isMobile && timeframe === 'year' ? 40 : CHART_CONFIG.margins.bottom,
       autoexpand: false
     },
     annotations: periodAnnotations,
