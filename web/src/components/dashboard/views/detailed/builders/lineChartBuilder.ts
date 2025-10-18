@@ -28,6 +28,7 @@ interface LineChartBuilderProps {
   combineError?: 'std' | 'ci' | null
   selectedYears?: number[]
   colorScheme?: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'
+  isMobile?: boolean
 }
 
 export const buildStaticLineTraces = ({
@@ -43,7 +44,8 @@ export const buildStaticLineTraces = ({
   combineStatistic = null,
   combineError = null,
   selectedYears = [],
-  colorScheme = 'gray'
+  colorScheme = 'gray',
+  isMobile = false
 }: LineChartBuilderProps) => {
   const colors = getColorScheme(colorScheme)
   const HISTORICAL_COLORS = colors.historical
@@ -199,18 +201,31 @@ export const buildStaticLineTraces = ({
     // Add annotation for current YTD value (last point)
     if (is2025Visible && smoothedCurrentData.length > 0) {
       const lastPoint = smoothedCurrentData[smoothedCurrentData.length - 1]
+
+      // Calculate position of last point in data space to prevent y-axis overlap
+      // If the point is close to the left edge, snap annotation to y-axis instead
+      const allXValues = traces.flatMap(t => t.x || []).filter(x => x !== undefined)
+      const uniqueXValues = [...new Set(allXValues)].sort()
+      const lastPointIndex = uniqueXValues.indexOf(lastPoint.monthDay)
+      // In mobile mode, be more conservative (30% threshold), otherwise use 15%
+      const threshold = isMobile ? 0.30 : 0.15
+      const isNearLeftEdge = lastPointIndex < uniqueXValues.length * threshold
+
+      // Format text - always use 2 decimal places for dollar amounts
+      const formattedText = isNormalized
+        ? `${lastPoint.cumulativeIncome.toFixed(1)}%`
+        : `$${(lastPoint.cumulativeIncome / 1000000).toFixed(2)}M`
+
       annotations.push({
-        x: lastPoint.monthDay,
+        x: isNearLeftEdge ? 0 : lastPoint.monthDay,
         y: lastPoint.cumulativeIncome,
-        xref: 'x',
+        xref: isNearLeftEdge ? 'paper' : 'x',
         yref: 'y',
-        text: isNormalized
-          ? `${lastPoint.cumulativeIncome.toFixed(1)}%`
-          : `$${(lastPoint.cumulativeIncome / 1000000).toFixed(2)}M`,
+        text: formattedText,
         showarrow: false,
-        xanchor: 'right',
-        xshift: -8,
-        yshift: 14,
+        xanchor: isNearLeftEdge ? 'left' : 'right',
+        xshift: isNearLeftEdge ? 2 : -8,
+        yshift: isNearLeftEdge ? 24 : 14,
         font: {
           size: 14,
           color: CURRENT_YEAR_COLOR,
@@ -256,14 +271,18 @@ export const buildStaticLineTraces = ({
     // Add annotation for projected 12-31 value (last point of projection)
     if (is2025Visible && projectedIncomeData.length > 0) {
       const lastPoint = projectedIncomeData[projectedIncomeData.length - 1]
+
+      // Format text - always use 2 decimal places for dollar amounts
+      const formattedText = isNormalized
+        ? `${lastPoint.cumulativeIncome.toFixed(1)}%`
+        : `$${(lastPoint.cumulativeIncome / 1000000).toFixed(2)}M`
+
       annotations.push({
         x: lastPoint.monthDay,
         y: lastPoint.cumulativeIncome,
         xref: 'x',
         yref: 'y',
-        text: isNormalized
-          ? `${lastPoint.cumulativeIncome.toFixed(1)}%`
-          : `$${(lastPoint.cumulativeIncome / 1000000).toFixed(2)}M`,
+        text: formattedText,
         showarrow: false,
         xanchor: 'right',
         xshift: 0,

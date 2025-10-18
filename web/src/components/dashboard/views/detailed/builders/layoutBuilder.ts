@@ -121,36 +121,50 @@ export const buildChartLayout = ({
       tickformat: isNormalized ? '.1f' : (useMillionsFormat ? '.1f' : (isMobile ? '~s' : ',.0f')),
       rangemode: 'tozero' as const,
       automargin: true,
+      showgrid: true,
+      gridcolor: 'rgba(0,0,0,0.1)',
     }
 
     // Helper function to generate custom tick values and labels for mobile LINE mode
     const generateMobileTicks = (minVal: number, maxVal: number) => {
       if (!isMobile || isNormalized || chartMode !== 'line') return {}
-      
+
       // Convert to millions
       const minM = minVal / 1000000
       const maxM = maxVal / 1000000
       const rangeM = maxM - minM
-      
-      // Determine appropriate tick interval
+
+      // Determine appropriate tick interval - smaller intervals for month mode
       let tickInterval: number
-      if (rangeM <= 2) tickInterval = 0.2
-      else if (rangeM <= 5) tickInterval = 0.5
-      else if (rangeM <= 10) tickInterval = 1
-      else if (rangeM <= 20) tickInterval = 2
-      else tickInterval = 5
-      
+      if (timeframe === 'month') {
+        // For month mode, use finer granularity to show more grid lines
+        if (rangeM <= 0.3) tickInterval = 0.05
+        else if (rangeM <= 0.6) tickInterval = 0.1
+        else if (rangeM <= 1.5) tickInterval = 0.2
+        else if (rangeM <= 3) tickInterval = 0.5
+        else tickInterval = 1
+      } else {
+        // For year/quarter mode, use standard intervals
+        if (rangeM <= 2) tickInterval = 0.2
+        else if (rangeM <= 5) tickInterval = 0.5
+        else if (rangeM <= 10) tickInterval = 1
+        else if (rangeM <= 20) tickInterval = 2
+        else tickInterval = 5
+      }
+
       // Generate tick positions in millions
       const firstTick = Math.floor(minM / tickInterval) * tickInterval
       const ticks: number[] = []
       for (let tick = firstTick; tick <= maxM + tickInterval; tick += tickInterval) {
         ticks.push(tick * 1000000) // Convert back to actual values
       }
-      
+
       // Generate tick labels in millions format with $ prefix and M suffix
       // Skip labeling 0 to avoid crowding
-      const tickLabels = ticks.map(val => val === 0 ? '' : `$${(val / 1000000).toFixed(1)}M`)
-      
+      // Use 2 decimals for month mode with fine intervals, 1 decimal otherwise
+      const decimals = (timeframe === 'month' && tickInterval <= 0.1) ? 2 : 1
+      const tickLabels = ticks.map(val => val === 0 ? '' : `$${(val / 1000000).toFixed(decimals)}M`)
+
       return {
         tickmode: 'array' as const,
         tickvals: ticks,
@@ -234,8 +248,8 @@ export const buildChartLayout = ({
 
   const getXAxisConfig = () => {
     // Special handling for SINGLE month bar mode - no title, horizontal labels, larger/bold font
-    // Only apply these changes when viewing a single month (showAllMonths = false)
-    const isSingleMonthBarMode = chartMode === 'bar' && timeframe === 'month' && !showAllMonths
+    // Only apply these changes when viewing a single month (showAllMonths = false OR mobile combined mode)
+    const isSingleMonthBarMode = chartMode === 'bar' && timeframe === 'month' && (!showAllMonths || (isMobile && showCombined))
     
     // Map abbreviated month names to full month names for single month bar mode display
     const monthMapping: Record<string, string> = {
@@ -373,6 +387,26 @@ export const buildChartLayout = ({
       }
     }
 
+    // For single month bar mode, constrain to show only one month category
+    if (isSingleMonthBarMode) {
+      return {
+        ...baseConfig,
+        automargin: true,
+        autorange: false,
+        range: [-0.5, 0.5] // Show only the single month at index 0
+      }
+    }
+
+    // For single quarter bar mode in mobile, constrain to show only one quarter category
+    if (chartMode === 'bar' && timeframe === 'quarter' && isMobile) {
+      return {
+        ...baseConfig,
+        automargin: true,
+        autorange: false,
+        range: [-0.5, 0.5] // Show only the single quarter at index 0
+      }
+    }
+
     return {
       ...baseConfig,
       automargin: true
@@ -410,28 +444,38 @@ export const buildChartLayout = ({
     return `${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Comparison`
   }
 
-  // Calculate dynamic font size for mobile to prevent title overflow
-  const calculateMobileFontSize = (titleText: string): number => {
-    if (!isMobile) return 24
-    
-    // Estimate character width at 15px font size (roughly 8.5px per character for bold Inter)
-    const baseCharWidth = 8.5
-    const baseFontSize = 15
+  // Format title for mobile: wrap at colon if needed, or split intelligently
+  const formatMobileTitleText = (titleText: string): string => {
+    if (!isMobile) return titleText
+
+    // Estimate character width at 13px font size (roughly 7.5px per character for bold Inter)
+    const baseCharWidth = 7.5
+    const baseFontSize = 13
     const estimatedWidth = titleText.length * baseCharWidth
-    
+
     // Assume available width is roughly 280px (minimum mobile width) minus some padding
     const availableWidth = 260
-    
+
+    // If it fits on one line, keep it as-is
     if (estimatedWidth <= availableWidth) {
-      return baseFontSize
+      return titleText
     }
-    
-    // Calculate scaled font size to fit
-    const scaleFactor = availableWidth / estimatedWidth
-    const scaledSize = Math.floor(baseFontSize * scaleFactor)
-    
-    // Constrain between 10px (minimum readable) and 15px (maximum)
-    return Math.max(10, Math.min(15, scaledSize))
+
+    // Check if there's a colon - prefer to break after it
+    const colonIndex = titleText.indexOf(':')
+    if (colonIndex !== -1 && colonIndex > 0) {
+      // Replace colon with line break (Plotly uses <br> for line breaks)
+      return titleText.substring(0, colonIndex) + ':<br>' + titleText.substring(colonIndex + 1).trim()
+    }
+
+    // If no colon, check for opening parenthesis - break before it
+    const parenIndex = titleText.indexOf('(')
+    if (parenIndex !== -1 && parenIndex > 0) {
+      return titleText.substring(0, parenIndex).trim() + '<br>' + titleText.substring(parenIndex)
+    }
+
+    // Otherwise, just return as-is and let it wrap naturally (though it may overflow)
+    return titleText
   }
 
   const titleText = chartMode === 'line'
@@ -495,8 +539,8 @@ export const buildChartLayout = ({
 
   return {
     title: {
-      text: titleText,
-      font: { size: calculateMobileFontSize(titleText), weight: 700, family: 'Inter, system-ui, Arial' }
+      text: formatMobileTitleText(titleText),
+      font: { size: isMobile ? 13 : 24, weight: 700, family: 'Inter, system-ui, Arial' }
     },
     dragmode: false as any,
     margin: {
@@ -507,7 +551,7 @@ export const buildChartLayout = ({
           ? calculateRadarMargin(processedCurrentData, staticLineTraces, currentX, unfilteredCurrentData)
           : CHART_CONFIG.margins.rightDefault),
       t: CHART_CONFIG.margins.top,
-      b: isMobile && timeframe === 'year' ? 40 : CHART_CONFIG.margins.bottom,
+      b: isMobile && (timeframe === 'year' || (timeframe === 'quarter' && chartMode === 'bar' && showCombined)) ? 40 : CHART_CONFIG.margins.bottom,
       autoexpand: false
     },
     annotations: periodAnnotations,

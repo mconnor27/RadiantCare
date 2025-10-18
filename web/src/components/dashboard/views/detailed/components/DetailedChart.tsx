@@ -469,9 +469,11 @@ export default function DetailedChart({
       isNormalized,
       projectedIncomeData: projectedIncomeDataForBars,
       combineStatistic: combineStatistic,
-      combineError: combineError
+      combineError: combineError,
+      currentPeriod,
+      isMobile
     })
-  }, [timeframe, processedHistoricalData, showCombined, chartMode, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, currentPeriod, showAllMonths, projectedIncomeDataForBars, combineStatistic, combineError, selectedYears])
+  }, [timeframe, processedHistoricalData, showCombined, chartMode, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, currentPeriod, showAllMonths, projectedIncomeDataForBars, combineStatistic, combineError, selectedYears, isMobile])
 
 
   // Site-specific bar chart data processing
@@ -497,9 +499,11 @@ export default function DetailedChart({
       combineStatistic: combineStatistic,
       combineError: combineError,
       selectedYears: selectedYears,
-      colorScheme
+      colorScheme,
+      currentPeriod,
+      isMobile
     })
-  }, [incomeMode, timeframe, currentYearData, processedHistoricalData, showCombined, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, projectedIncomeDataForBars, fy2025, combineStatistic, combineError, selectedYears, colorScheme])
+  }, [incomeMode, timeframe, currentYearData, processedHistoricalData, showCombined, data, historical2016Data, historical2017Data, historical2018Data, historical2019Data, historical2020Data, historical2021Data, historical2022Data, historical2023Data, historical2024Data, isNormalized, projectedIncomeDataForBars, fy2025, combineStatistic, combineError, selectedYears, colorScheme, currentPeriod, isMobile])
 
   // Create stable static traces (memoized separately from animated traces)
   const staticLineTraces = useMemo(() => {
@@ -537,14 +541,15 @@ export default function DetailedChart({
         combineStatistic,
         combineError,
         selectedYears,
-        colorScheme
+        colorScheme,
+        isMobile
       })
       return result.traces
     }
   }, [
     chartMode, incomeMode, showCombined, combinedStats, processedHistoricalData,
     processedCurrentData, projectedIncomeData, isNormalized, is2025Visible, timeframe, currentPeriod, fy2025, smoothing,
-    combineStatistic, combineError, visibleSites, selectedYears, colorScheme, siteColorScheme
+    combineStatistic, combineError, visibleSites, selectedYears, colorScheme, siteColorScheme, isMobile
   ])
 
   // Create animated pulsing traces (separate from static traces)
@@ -594,13 +599,14 @@ export default function DetailedChart({
       combineStatistic,
       combineError,
       selectedYears,
-      colorScheme
+      colorScheme,
+      isMobile
     })
     return result.annotations || []
   }, [
     chartMode, incomeMode, showCombined, combinedStats, processedHistoricalData,
     processedCurrentData, projectedIncomeData, isNormalized, is2025Visible, timeframe, smoothing,
-    combineStatistic, combineError, selectedYears, colorScheme
+    combineStatistic, combineError, selectedYears, colorScheme, isMobile
   ])
 
   // Build chart layout
@@ -687,6 +693,8 @@ export default function DetailedChart({
   // Check if we should show navigation controls
   const shouldShowControls = chartMode !== 'proportion' && (
     (chartMode === 'line' && (timeframe === 'quarter' || timeframe === 'month')) ||
+    (chartMode === 'bar' && isMobile && timeframe === 'quarter') ||
+    (chartMode === 'bar' && isMobile && timeframe === 'month' && showCombined) ||
     (chartMode === 'bar' && timeframe === 'month' && !showCombined && !showAllMonths)
   )
 
@@ -880,7 +888,8 @@ export default function DetailedChart({
                 showAllMonths,
                 currentPeriod,
                 colorScheme,
-                siteColorScheme
+                siteColorScheme,
+                isMobile
               )
             : buildBarChartTraces(
                 barChartData,
@@ -891,7 +900,8 @@ export default function DetailedChart({
                 currentPeriod,
                 combineStatistic,
                 combineError,
-                colorScheme
+                colorScheme,
+                isMobile
               )) as any}
         layout={chartMode === 'proportion' ? buildProportionLayout(isMobile, selectedYears, proportionData, visibleSites, smoothing, siteColorScheme) : (chartLayout || {}) as any}
         config={{

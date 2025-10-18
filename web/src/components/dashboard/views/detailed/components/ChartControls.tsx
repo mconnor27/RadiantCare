@@ -97,7 +97,17 @@ export default function ChartControls({
   const clampedSmoothing = Math.min(smoothing, maxSmoothing)
   const isSidebar = variant === 'sidebar'
   const isMobile = variant === 'mobile'
-  
+
+  // Enforce restrictions: normalized + year + bar cannot all three be true
+  // If any 2 are selected, disable the 3rd
+  const isNormalizedSelected = isNormalized
+  const isBarSelected = chartMode === 'bar'
+  const isYearSelected = timeframe === 'year'
+
+  const shouldDisableNormalized = isBarSelected && isYearSelected
+  const shouldDisableBar = isNormalizedSelected && isYearSelected
+  const shouldDisableYear = isNormalizedSelected && isBarSelected
+
   // Mobile-friendly sizing
   const labelFontSize = isMobile ? 14 : 14
   const buttonFontSize = isMobile ? 13 : 14
@@ -475,8 +485,8 @@ export default function ChartControls({
                   alignItems: 'center',
                   gap: 4,
                   fontSize: checkboxFontSize,
-                  cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
-                  opacity: chartMode === 'proportion' ? 0.5 : 1,
+                  cursor: (chartMode === 'proportion' || shouldDisableNormalized) ? 'not-allowed' : 'pointer',
+                  opacity: (chartMode === 'proportion' || shouldDisableNormalized) ? 0.5 : 1,
                   position: 'relative'
                 }}
                 onMouseEnter={(e) => {
@@ -527,9 +537,9 @@ export default function ChartControls({
                 <input
                   type="radio"
                   checked={chartMode === 'proportion' ? true : isNormalized}
-                  onChange={() => chartMode !== 'proportion' && setIsNormalized(true)}
-                  disabled={chartMode === 'proportion'}
-                  style={{ margin: 0, cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer' }}
+                  onChange={() => chartMode !== 'proportion' && !shouldDisableNormalized && setIsNormalized(true)}
+                  disabled={chartMode === 'proportion' || shouldDisableNormalized}
+                  style={{ margin: 0, cursor: (chartMode === 'proportion' || shouldDisableNormalized) ? 'not-allowed' : 'pointer' }}
                 />
                 Normalized
               </label>
@@ -1162,15 +1172,17 @@ export default function ChartControls({
               Line
             </button>
             <button
-              onClick={() => setChartMode('bar')}
+              onClick={() => !shouldDisableBar && setChartMode('bar')}
+              disabled={shouldDisableBar}
               style={{
                 padding: buttonPadding,
                 border: 'none',
                 background: chartMode === 'bar' ? '#1e40af' : '#fff',
                 color: chartMode === 'bar' ? '#fff' : '#333',
                 fontSize: buttonFontSize,
-                cursor: 'pointer',
-                transition: 'all 0.2s'
+                cursor: shouldDisableBar ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: shouldDisableBar ? 0.5 : 1
               }}
             >
               Bar
@@ -1247,17 +1259,17 @@ export default function ChartControls({
           }}>
             <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
             <button
-              onClick={() => chartMode !== 'proportion' && setTimeframe('year')}
-              disabled={chartMode === 'proportion'}
+              onClick={() => chartMode !== 'proportion' && !shouldDisableYear && setTimeframe('year')}
+              disabled={chartMode === 'proportion' || shouldDisableYear}
               style={{
                 padding: buttonPadding,
                 border: 'none',
                 background: timeframe === 'year' ? '#1e40af' : '#fff',
                 color: timeframe === 'year' ? '#fff' : '#333',
                 fontSize: buttonFontSize,
-                cursor: chartMode === 'proportion' ? 'not-allowed' : 'pointer',
+                cursor: (chartMode === 'proportion' || shouldDisableYear) ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s',
-                opacity: chartMode === 'proportion' ? 0.5 : 1
+                opacity: (chartMode === 'proportion' || shouldDisableYear) ? 0.5 : 1
               }}
             >
               Year

@@ -34,6 +34,8 @@ interface SiteBarChartDataProps {
   combineError?: 'std' | 'ci' | null
   selectedYears?: number[]
   colorScheme?: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare'
+  currentPeriod?: { year: number, quarter?: number, month?: number }
+  isMobile?: boolean
 }
 
 
@@ -55,7 +57,9 @@ export const buildSiteBarChartData = ({
   fy2025,
   combineStatistic = null,
   combineError = null,
-  selectedYears = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]
+  selectedYears = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024],
+  currentPeriod,
+  isMobile = false
 }: SiteBarChartDataProps) => {
 
   // Filter processedHistoricalData by selectedYears
@@ -385,10 +389,26 @@ export const buildSiteBarChartData = ({
         }
       })
     }
-    
+
+    // In mobile mode, filter to show only the current quarter
+    let finalIndividual = [...allYearQuarterData, current2025Data]
+    let finalProjected = [projected2025Data]
+
+    if (isMobile && currentPeriod?.quarter) {
+      const targetQuarter = `Q${currentPeriod.quarter}`
+      finalIndividual = finalIndividual.map(yearData => ({
+        ...yearData,
+        quarters: yearData.quarters.filter((q: any) => q.quarter === targetQuarter)
+      }))
+      finalProjected = finalProjected.map(yearData => ({
+        ...yearData,
+        quarters: yearData.quarters.filter((q: any) => q.quarter === targetQuarter)
+      }))
+    }
+
     return {
-      individual: [...allYearQuarterData, current2025Data],
-      projected: [projected2025Data]
+      individual: finalIndividual,
+      projected: finalProjected
     }
   }
   
@@ -522,11 +542,24 @@ export const buildSiteBarChartData = ({
           }
         }
       })
-      
+
+      // In mobile mode, filter to show only the current month
+      let finalHistorical = historicalSiteMonths
+      let finalCurrent = current2025SiteMonths
+      let finalProjected = projectedSiteMonths
+
+      if (isMobile && currentPeriod?.month) {
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        const targetMonth = monthNames[currentPeriod.month - 1]
+        finalHistorical = historicalSiteMonths.filter(item => item.month === targetMonth)
+        finalCurrent = current2025SiteMonths.filter(item => item.month === targetMonth)
+        finalProjected = projectedSiteMonths.filter(item => item.month === targetMonth)
+      }
+
       return {
-        historical: historicalSiteMonths,
-        current: current2025SiteMonths, 
-        projected: projectedSiteMonths
+        historical: finalHistorical,
+        current: finalCurrent,
+        projected: finalProjected
       }
     }
     
@@ -634,7 +667,8 @@ export const buildSiteBarChartTraces = (
   showAllMonths?: boolean,
   currentPeriod?: { year: number, quarter?: number, month?: number },
   colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray',
-  siteColorScheme: 'rgb' | 'radiantCare' | 'jama' = 'rgb'
+  siteColorScheme: 'rgb' | 'radiantCare' | 'jama' = 'rgb',
+  isMobile: boolean = false
 ) => {
   // Note: colorScheme parameter reserved for future use
   void colorScheme
@@ -855,16 +889,21 @@ export const buildSiteBarChartTraces = (
     } else {
       // Individual mode: Show each historical year as separate bars + 2025 actual + 2025 projected
       const sites = ['Lacey', 'Centralia', 'Aberdeen']
-      
+
+      // Filter quarters based on mobile mode
+      const allQuarters = ['Q1', 'Q2', 'Q3', 'Q4']
+      const quarters = (isMobile && currentPeriod?.quarter)
+        ? [`Q${currentPeriod.quarter}`]
+        : allQuarters
+
       sites.forEach(site => {
         const siteKey = site.toLowerCase() as keyof SiteData
-        
+
         // Add each historical year as separate bars
         if (siteBarChartData.individual?.length > 0) {
           const historicalYears = siteBarChartData.individual.filter((item: any) => item.year !== '2025' && item.year !== '2025 Projected')
-          
+
           historicalYears.forEach((yearData: any) => {
-            const quarters = ['Q1', 'Q2', 'Q3', 'Q4']
             const yearValues: number[] = []
             
             quarters.forEach(quarter => {
@@ -1009,9 +1048,9 @@ export const buildSiteBarChartTraces = (
   }
   
   if (timeframe === 'month') {
-    // Filter months based on showAllMonths flag
+    // Filter months based on showAllMonths flag or mobile combined mode
     const allMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    const months = (!showCombined && !showAllMonths && currentPeriod?.month)
+    const months = ((!showCombined && !showAllMonths && currentPeriod?.month) || (isMobile && showCombined && currentPeriod?.month))
       ? [allMonths[currentPeriod.month - 1]]
       : allMonths
 

@@ -26,6 +26,8 @@ interface BarChartDataProps {
   projectedIncomeData: YTDPoint[]
   combineStatistic?: 'mean' | 'median' | null
   combineError?: 'std' | 'ci' | null
+  currentPeriod?: { year: number, quarter?: number, month?: number }
+  isMobile?: boolean
 }
 
 // Helper function to calculate median
@@ -98,7 +100,9 @@ export const buildBarChartData = ({
   isNormalized,
   projectedIncomeData,
   combineStatistic = null,
-  combineError = null
+  combineError = null,
+  currentPeriod,
+  isMobile = false
 }: BarChartDataProps) => {
   // If only one historical year is selected, disable error bars
   const hasMultipleYears = processedHistoricalData.length > 1
@@ -270,11 +274,22 @@ export const buildBarChartData = ({
     yearAnnualTotals['2025'] = annualTotal2025
     yearAnnualTotals['2025 Projected'] = annualTotal2025
 
+    let finalIndividual = normalizeBarData(individualQuarterly.concat(projectedIndividualQuarterly), 'quarter', isNormalized, yearAnnualTotals)
+
+    // In mobile mode, filter to show only the current quarter
+    if (isMobile && !showCombined && currentPeriod?.quarter) {
+      const targetQuarter = `Q${currentPeriod.quarter}`
+      finalIndividual = finalIndividual.map(yearData => ({
+        ...yearData,
+        quarters: yearData.quarters.filter((q: any) => q.quarter === targetQuarter)
+      }))
+    }
+
     return {
       combined: [],
       current: [],
       projected: projectedIndividualQuarterly,
-      individual: normalizeBarData(individualQuarterly.concat(projectedIndividualQuarterly), 'quarter', isNormalized, yearAnnualTotals)
+      individual: finalIndividual
     }
   } else if (timeframe === 'month') {
     // Month mode - use raw historical data (not smoothed/normalized) for bar charts
@@ -317,10 +332,23 @@ export const buildBarChartData = ({
       // Use the full-year combined total as the denominator for normalization
       const annualTotal2025 = projectedMonthly2025.reduce((sum, m) => sum + m.income, 0)
 
+      let finalCombined = normalizeCombinedBarData(combinedMonthlyStats.mean, isNormalized)
+      let finalCurrent = normalizeCombinedBarData(monthly2025.map(m => ({ period: m.month, income: m.income })), isNormalized, annualTotal2025)
+      let finalProjected = normalizeCombinedBarData(projectedMonthlyData, isNormalized, annualTotal2025)
+
+      // In mobile mode, filter to show only the current month
+      if (isMobile && currentPeriod?.month) {
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        const targetMonth = monthNames[currentPeriod.month - 1]
+        finalCombined = finalCombined.filter((item: any) => item.period === targetMonth || item.month === targetMonth)
+        finalCurrent = finalCurrent.filter((item: any) => item.period === targetMonth || item.month === targetMonth)
+        finalProjected = finalProjected.filter((item: any) => item.period === targetMonth || item.month === targetMonth)
+      }
+
       return {
-        combined: normalizeCombinedBarData(combinedMonthlyStats.mean, isNormalized),
-        current: normalizeCombinedBarData(monthly2025.map(m => ({ period: m.month, income: m.income })), isNormalized, annualTotal2025),
-        projected: normalizeCombinedBarData(projectedMonthlyData, isNormalized, annualTotal2025),
+        combined: finalCombined,
+        current: finalCurrent,
+        projected: finalProjected,
         individual: []
       }
     }
@@ -372,7 +400,8 @@ export const buildBarChartTraces = (
   currentPeriod: { year: number, quarter?: number, month?: number },
   combineStatistic: 'mean' | 'median' | null = null,
   combineError: 'std' | 'ci' | null = null,
-  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray'
+  colorScheme: 'ggplot2' | 'gray' | 'blueGreen' | 'radiantCare' = 'gray',
+  isMobile: boolean = false
 ) => {
   const colors = getColorScheme(colorScheme)
   const HISTORICAL_COLORS = colors.historical
@@ -394,11 +423,20 @@ export const buildBarChartTraces = (
     const labelSuffix = combineStatistic === 'median' ? 'Median' : 'Mean'
     const errorLabel = combineError === 'ci' ? '95% CI' : combineError === 'std' ? 'σ' : ''
 
+    // Format x-axis label for historical bar in mobile year mode
+    const formatHistoricalLabel = (label: string) => {
+      if (isMobile && timeframe === 'year' && label.startsWith('Historical')) {
+        // Split "Historical Median" or "Historical Mean" into two lines
+        return label.replace('Historical ', 'Historical<br>')
+      }
+      return label
+    }
+
     return [
       // Historical Mean/Median with error bars (if combineError is not null)
       ...(barChartData.combined.length > 0 ? [
         {
-          x: barChartData.combined.map((item: any) => item.period || item.month || item.quarter),
+          x: barChartData.combined.map((item: any) => formatHistoricalLabel(item.period || item.month || item.quarter)),
           y: barChartData.combined.map((item: any) => item.income),
           type: 'bar' as const,
           name: `Historical ${labelSuffix} (2016-2024)`,
