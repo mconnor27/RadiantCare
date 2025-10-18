@@ -2,15 +2,18 @@
 
 ## Overview
 Automated daily QuickBooks syncing runs Tuesday-Saturday at 1am Pacific Time, syncing data from Monday-Friday business days. The cron automatically:
-- Skips weekends and federal holidays
+- Runs Saturday morning to capture Friday's data (allows Friday night/Saturday morning execution)
+- Skips when target date is a weekend or federal holiday
 - Warns active users before syncing
-- Only syncs on valid business days
+- Logs all executions to Supabase for permanent records (bypassing Vercel's 30-minute log limit)
 
 ## Setup Steps
 
-### 1. Create Supabase Table for Notifications
+### 1. Create Supabase Tables
 
 Run this SQL in your Supabase SQL Editor:
+
+**A. Sync Notifications Table** (for real-time user warnings):
 
 ```sql
 -- Create sync_notifications table
@@ -52,6 +55,15 @@ $$ LANGUAGE plpgsql;
 -- Create a cron job to clean up old notifications (if pg_cron is enabled)
 -- SELECT cron.schedule('delete-old-sync-notifications', '0 * * * *', 'SELECT delete_old_sync_notifications()');
 ```
+
+**B. Cron Logs Table** (for permanent execution logs):
+
+```sql
+-- Run the migration file
+-- OR copy/paste from: supabase-cron-logs-migration.sql
+```
+
+See `supabase-cron-logs-migration.sql` for the complete cron logs table setup.
 
 ### 2. Set Environment Variable in Vercel
 
@@ -121,10 +133,13 @@ Two cron expressions handle seasonal time changes to ensure consistent 1:00 AM P
 
 1. **Cron Trigger**: Vercel triggers the endpoint at 1am Pacific Time
 2. **Authentication**: Endpoint checks for `Authorization: Bearer ${CRON_SECRET}` header
-3. **Business Day Check**: Skips if not a business day (weekend/holiday)
+3. **Business Day Check**: Checks if TARGET date (prior business day) is valid
+   - Allows Saturday morning execution to sync Friday's data
+   - Skips if target date is a weekend or federal holiday
 4. **User Warning**: Inserts notification into Supabase (active users see toast)
 5. **Sync**: Fetches QuickBooks data and updates cache
-6. **Frontend Refresh**: Active users' dashboards refresh automatically
+6. **Logging**: Records execution to `cron_logs` table with status, timing, and details
+7. **Frontend Refresh**: Active users' dashboards refresh automatically
 
 ## User Experience
 
@@ -137,12 +152,54 @@ Active users at 1am Pacific will see:
 
 Users can still manually trigger sync via the "Sync QuickBooks" button in the dashboard. Manual syncs follow the same business day restrictions (admins can override).
 
+## Viewing Cron Logs
+
+Since Vercel free tier only keeps 30 minutes of logs, we persist all cron executions to Supabase.
+
+### Query Recent Executions
+
+```sql
+-- View last 20 executions (uses the helpful view)
+SELECT * FROM cron_logs_recent LIMIT 20;
+
+-- Or query directly with Pacific timezone
+SELECT 
+  status,
+  details,
+  created_at AT TIME ZONE 'America/Los_Angeles' as pacific_time
+FROM cron_logs
+ORDER BY created_at DESC
+LIMIT 50;
+
+-- Check for errors
+SELECT * FROM cron_logs WHERE status = 'error' ORDER BY created_at DESC;
+
+-- See skip reasons
+SELECT 
+  created_at AT TIME ZONE 'America/Los_Angeles' as pacific_time,
+  details->>'reason' as skip_reason,
+  details->>'targetDate' as target_date
+FROM cron_logs 
+WHERE status = 'skipped'
+ORDER BY created_at DESC;
+
+-- Calculate average execution time
+SELECT 
+  AVG((details->>'executionTimeMs')::float) as avg_ms,
+  MAX((details->>'executionTimeMs')::float) as max_ms,
+  MIN((details->>'executionTimeMs')::float) as min_ms
+FROM cron_logs 
+WHERE status = 'success'
+  AND details->>'executionTimeMs' IS NOT NULL;
+```
+
 ## Troubleshooting
 
 ### Cron not running
 - Check Vercel Dashboard → Crons tab for status
 - Verify `CRON_SECRET` environment variable is set
-- Check Vercel Function Logs for errors
+- Query `cron_logs` table to see if executions are being logged
+- Check Vercel Function Logs for errors (remember: only 30 min history)
 
 ### Users not seeing notifications
 - Verify `sync_notifications` table exists in Supabase
@@ -150,9 +207,14 @@ Users can still manually trigger sync via the "Sync QuickBooks" button in the da
 - Ensure RLS policies are correct
 
 ### Sync skipping business days
-- Check Vercel Function Logs for skip reason
-- Verify holiday list is up to date
-- Check timezone (cron runs in UTC)
+- Query `cron_logs` table: `SELECT * FROM cron_logs WHERE status = 'skipped'`
+- Check the `details` column for skip reason and target date
+- Verify holiday list is up to date in `api/qbo/sync-2025.ts`
+- Remember: Cron runs in UTC but checks Pacific time target dates
+
+### Saturday morning runs failing
+- This should now work correctly - the cron checks if the TARGET date (Friday) is a business day
+- Query: `SELECT * FROM cron_logs WHERE details->>'dayOfWeek' = '6'` to see Saturday executions
 
 ## Testing
 

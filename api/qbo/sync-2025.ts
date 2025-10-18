@@ -115,6 +115,23 @@ function canSyncNow(lastSyncTimestamp: string | null): boolean {
   return lastSyncCoveredThrough < needDataThrough
 }
 
+async function logCronExecution(
+  supabase: any,
+  status: 'success' | 'skipped' | 'error',
+  details: Record<string, any>
+): Promise<void> {
+  try {
+    await supabase.from('cron_logs').insert({
+      status,
+      details,
+      created_at: new Date().toISOString()
+    })
+  } catch (err) {
+    // Log to console if Supabase insert fails
+    console.error('Failed to log to cron_logs table:', err)
+  }
+}
+
 function getPriorBusinessDayEnd(now: Date): string {
   const queryDate = new Date(now)
 
@@ -201,20 +218,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   let user = null
+  const supabase = getSupabaseAdmin()
+  
   if (isCronRequest) {
-    // Cron authentication - check if it's a business day
+    // Cron authentication - check if the TARGET sync date (prior business day) is valid
+    // This allows Saturday morning runs to sync Friday's data
     const now = new Date()
-    if (!isBusinessDay(now)) {
-      console.log('Cron skipped: Not a business day')
+    const targetDate = getPriorBusinessDay(now)
+    
+    if (!isBusinessDay(targetDate)) {
+      const skipDetails = {
+        reason: 'target_not_business_day',
+        executionTime: now.toISOString(),
+        targetDate: targetDate.toISOString(),
+        dayOfWeek: now.getDay(),
+        timezone: 'Pacific'
+      }
+      console.log('Cron skipped: Target date is not a business day', targetDate.toISOString())
+      await logCronExecution(supabase, 'skipped', skipDetails)
+      
       return res.status(200).json({
         skipped: true,
-        reason: 'not_business_day',
-        message: 'Sync skipped - not a business day'
+        ...skipDetails,
+        message: 'Sync skipped - target date is not a business day'
       })
     }
 
     // Broadcast warning to active users via Supabase
-    const supabase = getSupabaseAdmin()
     try {
       await supabase
         .from('sync_notifications')
@@ -237,7 +267,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const supabase = getSupabaseAdmin()
+    const startTime = Date.now()
 
     // Get QBO token
     const { data: tokenData, error: tokenError } = await supabase
@@ -407,6 +437,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('Cache updated successfully')
 
+    // Log successful cron execution
+    if (isCronRequest) {
+      const endTime = Date.now()
+      const executionTime = endTime - startTime
+      await logCronExecution(supabase, 'success', {
+        lastSyncTimestamp,
+        executionTime,
+        executionTimeMs: executionTime,
+        executionTimeSec: (executionTime / 1000).toFixed(2),
+        targetDateRange: { start, end },
+        timezone: 'Pacific',
+        dataFetched: {
+          dailyPL: true,
+          classPL: true,
+          balanceSheet: true
+        }
+      })
+    }
+
     res.status(200).json({
       success: true,
       lastSyncTimestamp,
@@ -414,6 +463,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   } catch (error) {
     console.error('Sync error:', error)
+    
+    // Log error for cron executions
+    if (isCronRequest) {
+      await logCronExecution(supabase, 'error', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString()
+      })
+    }
+    
     return res.status(500).json({ 
       error: 'server_error',
       message: error instanceof Error ? error.message : 'An error occurred' 
