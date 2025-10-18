@@ -180,8 +180,8 @@ function parseYTDPhysicianData(physicians: Physician[], equityData: any, summary
             
             // Store the value for this partner
             data[cleanName][partnerName] = value
-            // Only add to totals if it's not Beginning Equity (since that's shown separately in main table)
-            if (cleanName !== 'Beginning Equity') {
+            // Only add to totals if it's not Beginning Equity or Member Contribution (capital items, not compensation)
+            if (cleanName !== 'Beginning Equity' && cleanName !== 'Member Contribution') {
               totals[partnerName] += value
             }
           }
@@ -249,7 +249,7 @@ function parseYTDPhysicianData(physicians: Physician[], equityData: any, summary
       data['Buy In/Buy Out'][physician.name] = -physician.buyoutCost
       totals[physician.name] -= physician.buyoutCost
     }
-    
+
     // Manual override for Connor's buy-in (negative - money paid OUT, reduces remaining comp)
     if (physician.name === 'Connor') {
       if (!data['Buy In/Buy Out']) {
@@ -1026,7 +1026,7 @@ export default function PartnerCompensation({
           {physicianNames.map(physician => {
             const value = getValue('Beginning Equity', physician, ytdData.data)
             return (
-              <div key={physician} style={{ 
+              <div key={physician} style={{
                 textAlign: 'right',
                 color: value < 0 ? '#dc3545' : value > 0 ? '#28a745' : '#6c757d'
               }}>
@@ -1036,7 +1036,7 @@ export default function PartnerCompensation({
           })}
         </div>
       )}
-      
+
       {/* Remaining row - sum of 2025 Projected + Paid to Date + Beginning Equity */}
       <div
         style={{
