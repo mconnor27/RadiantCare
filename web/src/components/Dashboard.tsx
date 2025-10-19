@@ -2484,27 +2484,34 @@ export const useDashboardStore = create<Store>()(
             const currentFuture = scenario.future.filter(f => f.year >= 2026 && f.year <= 2035)
 
             for (const currentYear of currentFuture) {
-              // Check if this year has any overrides marked
-              if (!currentYear._overrides || Object.keys(currentYear._overrides).length === 0) {
-                console.log(`💾 [saveProjection] Year ${currentYear.year} has no overrides, skipping`)
+              // Check if this year has any overrides marked (but ALWAYS save physicians!)
+              const hasOverrides = currentYear._overrides && Object.keys(currentYear._overrides).length > 0
+              const hasPhysicians = currentYear.physicians && currentYear.physicians.length > 0
+
+              if (!hasOverrides && !hasPhysicians) {
+                console.log(`💾 [saveProjection] Year ${currentYear.year} has no overrides or physicians, skipping`)
                 continue
               }
 
-              // Build a sparse year object with only flagged overrides
-              const sparse: Partial<FutureYear> & { year: number, _overrides?: Record<string, boolean> } = {
+              // Build a sparse year object with only flagged overrides + physicians
+              const sparse: Partial<FutureYear> & { year: number, physicians: Physician[], _overrides?: Record<string, boolean> } = {
                 year: currentYear.year,
+                physicians: currentYear.physicians,  // ALWAYS save physicians (unique per-year config)
                 _overrides: currentYear._overrides  // Preserve override flags
               }
 
               // Include only fields that are marked as overridden
-              for (const [field, isOverridden] of Object.entries(currentYear._overrides)) {
-                if (isOverridden) {
-                  const key = field as keyof FutureYear;
-                  (sparse as Record<string, unknown>)[field] = currentYear[key]
-                  console.log(`💾 [saveProjection] Year ${currentYear.year} ${field} marked as override, saving`)
+              if (hasOverrides) {
+                for (const [field, isOverridden] of Object.entries(currentYear._overrides!)) {
+                  if (isOverridden && field !== 'physicians') {  // Skip physicians - already included above
+                    const key = field as keyof FutureYear;
+                    (sparse as Record<string, unknown>)[field] = currentYear[key]
+                    console.log(`💾 [saveProjection] Year ${currentYear.year} ${field} marked as override, saving`)
+                  }
                 }
               }
 
+              console.log(`💾 [saveProjection] Year ${currentYear.year} saving ${currentYear.physicians.length} physicians`)
               future2026Plus.push(sparse as FutureYear)
             }
 
@@ -3169,24 +3176,26 @@ export const useDashboardStore = create<Store>()(
             if (state.scenarioBEnabled && state.scenarioB && state.scenarioB.dataMode === '2025 Data') {
               console.log('🔄 [recomputeProjectionsFromBaseline] Recomputing Scenario B')
 
+              const scenarioB = state.scenarioB
+
               // Update year 2025 from baseline
-              const year2025Index = state.scenarioB.future.findIndex(f => f.year === 2025)
+              const year2025Index = scenarioB.future.findIndex(f => f.year === 2025)
               if (year2025Index >= 0) {
-                state.scenarioB.future[year2025Index] = JSON.parse(JSON.stringify(baseline2025))
+                scenarioB.future[year2025Index] = JSON.parse(JSON.stringify(baseline2025))
               }
 
               // Recompute 2026-2035 from new baseline
               const expectedFuture = get().computeExpectedFromBaseline({
                 baseline2025,
-                projection: state.scenarioB.projection,
-                baselineMode: state.scenarioB.dataMode
+                projection: scenarioB.projection,
+                baselineMode: scenarioB.dataMode
               })
 
               // Update each year 2026-2035 with recomputed values, PRESERVING user overrides
               expectedFuture.forEach(expectedYear => {
-                const yearIndex = state.scenarioB.future.findIndex(f => f.year === expectedYear.year)
+                const yearIndex = scenarioB.future.findIndex(f => f.year === expectedYear.year)
                 if (yearIndex >= 0) {
-                  const currentYear = state.scenarioB.future[yearIndex]
+                  const currentYear = scenarioB.future[yearIndex]
                   const overrides = currentYear._overrides
 
                   // Start with fresh computed values
@@ -3204,7 +3213,7 @@ export const useDashboardStore = create<Store>()(
                     updated._overrides = JSON.parse(JSON.stringify(overrides))
                   }
 
-                  state.scenarioB.future[yearIndex] = updated
+                  scenarioB.future[yearIndex] = updated
                 }
               })
 

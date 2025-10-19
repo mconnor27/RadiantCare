@@ -87,6 +87,9 @@ export type FutureYear = {
     medicalDirectorHours?: boolean
     prcsMedicalDirectorHours?: boolean
     consultingServicesAgreement?: boolean
+    therapyLacey?: boolean
+    therapyCentralia?: boolean
+    therapyAberdeen?: boolean
     physicians?: boolean
     prcsDirectorPhysicianId?: boolean
   }
