@@ -240,18 +240,23 @@ export default function ScenarioManager({
 
       // Handle Scenario B saves
       if (view === 'formB' || view === 'editB') {
-        if (view === 'formB') {
-          store.setCurrentScenarioB(null, null) // Temporarily clear to force new scenario creation
-        }
-        await store.saveScenarioBToDatabase(name, description, isPublic)
+        const forceNew = view === 'formB' // Force new scenario for "Save As"
+        await store.saveProjection(name, description, isPublic, 'B', forceNew)
       } else {
         // Handle Scenario A saves
-        if (view === 'form') {
-          store.setCurrentScenario(null, null) // Temporarily clear to force new scenario creation
-          await store.saveScenarioToDatabase(name, description, isPublic, viewMode, ytdSettings)
+        if (viewMode === 'Multi-Year') {
+          // For Multi-Year view, use saveProjection to save in new Projection format
+          const forceNew = view === 'form' // Force new scenario for "Save As"
+          await store.saveProjection(name, description, isPublic, 'A', forceNew)
         } else {
-          // In edit mode, keep the current scenario ID to update existing
-          await store.saveScenarioToDatabase(name, description, isPublic, viewMode, ytdSettings)
+          // For YTD view, use saveScenarioToDatabase (saves as Current Year Settings)
+          if (view === 'form') {
+            store.setCurrentScenario(null, null) // Temporarily clear to force new scenario creation
+            await store.saveScenarioToDatabase(name, description, isPublic, viewMode, ytdSettings)
+          } else {
+            // In edit mode, keep the current scenario ID to update existing
+            await store.saveScenarioToDatabase(name, description, isPublic, viewMode, ytdSettings)
+          }
         }
       }
       await loadScenarios()

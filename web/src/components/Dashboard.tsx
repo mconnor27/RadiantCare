@@ -2561,24 +2561,33 @@ export const useDashboardStore = create<Store>()(
             qbo_sync_timestamp: qboSyncTimestamp,
           }
 
+          // Determine which projection ID to check based on target
+          const currentId = target === 'A' ? state.currentScenarioId : state.currentScenarioBId
+
           // Check if updating existing Projection (unless forceNew is true for "Save As")
-          if (state.currentProjectionId && !forceNew) {
-            console.log('💾 [saveProjection] Updating existing projection:', state.currentProjectionId)
+          if (currentId && !forceNew) {
+            console.log(`💾 [saveProjection] Updating existing projection ${target}:`, currentId)
             const { data, error } = await supabase
               .from('scenarios')
               .update(saveData)
-              .eq('id', state.currentProjectionId)
+              .eq('id', currentId)
               .select()
               .single()
 
             if (error) throw error
 
-            get().setCurrentProjection(data.id, name, session.user.id)
-            get().updateProjectionSnapshot()
+            // Update the correct scenario ID/name based on target
+            if (target === 'A') {
+              get().setCurrentScenario(data.id, name, session.user.id)
+              get().updateScenarioSnapshot('A')
+            } else {
+              get().setCurrentScenarioB(data.id, name, session.user.id)
+              get().updateScenarioSnapshot('B')
+            }
 
             return data
           } else {
-            console.log('💾 [saveProjection] Creating new projection scenario')
+            console.log(`💾 [saveProjection] Creating new projection scenario ${target}`)
             const { data, error } = await supabase
               .from('scenarios')
               .insert({
@@ -2590,8 +2599,14 @@ export const useDashboardStore = create<Store>()(
 
             if (error) throw error
 
-            get().setCurrentProjection(data.id, name, session.user.id)
-            get().updateProjectionSnapshot()
+            // Update the correct scenario ID/name based on target
+            if (target === 'A') {
+              get().setCurrentScenario(data.id, name, session.user.id)
+              get().updateScenarioSnapshot('A')
+            } else {
+              get().setCurrentScenarioB(data.id, name, session.user.id)
+              get().updateScenarioSnapshot('B')
+            }
 
             return data
           }
@@ -2760,9 +2775,16 @@ export const useDashboardStore = create<Store>()(
                 Object.assign(state.customProjectedValues, data.future_custom_values)
               }
 
-              state.currentProjectionId = data.id
-              state.currentProjectionName = data.name
-              state.currentProjectionUserId = data.user_id
+              // Update the correct scenario ID/name based on target
+              if (target === 'A') {
+                state.currentScenarioId = data.id
+                state.currentScenarioName = data.name
+                state.currentScenarioUserId = data.user_id
+              } else {
+                state.currentScenarioBId = data.id
+                state.currentScenarioBName = data.name
+                state.currentScenarioBUserId = data.user_id
+              }
             })
 
             // Step 5: Snapshot the LOADED state as expected (don't recompute)
@@ -2790,10 +2812,14 @@ export const useDashboardStore = create<Store>()(
               console.log(`📸 [loadProjection] Snapshotted LOADED state as expected for ${target}`)
             })
 
-            // Step 6: Update loaded snapshot (for legacy dirty detection)
-            get().updateProjectionSnapshot()
+            // Step 6: Update loaded snapshot based on target
+            if (target === 'A') {
+              get().updateScenarioSnapshot('A')
+            } else {
+              get().updateScenarioSnapshot('B')
+            }
 
-            console.log('✅ [loadProjection] Loaded PROJECTION with 2025 baseline successfully')
+            console.log(`✅ [loadProjection] Loaded PROJECTION ${target} with 2025 baseline successfully`)
 
             return data
           }
@@ -2866,13 +2892,24 @@ export const useDashboardStore = create<Store>()(
               }
             }
 
-            state.currentProjectionId = data.id
-            state.currentProjectionName = data.name
-            state.currentProjectionUserId = data.user_id
+            // Update the correct scenario ID/name based on target
+            if (target === 'A') {
+              state.currentScenarioId = data.id
+              state.currentScenarioName = data.name
+              state.currentScenarioUserId = data.user_id
+            } else {
+              state.currentScenarioBId = data.id
+              state.currentScenarioBName = data.name
+              state.currentScenarioBUserId = data.user_id
+            }
           })
 
-          // Update snapshot
-          get().updateProjectionSnapshot()
+          // Update snapshot based on target
+          if (target === 'A') {
+            get().updateScenarioSnapshot('A')
+          } else {
+            get().updateScenarioSnapshot('B')
+          }
 
           return data
         },
@@ -3931,7 +3968,13 @@ export function Dashboard() {
       // For YTD view, check currentYearSettingName
       const currentName = viewMode === 'YTD Detailed' ? store.currentYearSettingName : store.currentScenarioName
 
-      // Cannot unload Default (A)
+      // Cannot unload Default (Optimistic) in Multi-Year view
+      if (viewMode === 'Multi-Year' && currentName === 'Default (Optimistic)') {
+        alert('Cannot unload Default (Optimistic) scenario. It serves as the baseline for Scenario A.')
+        return
+      }
+
+      // Cannot unload Default (A) - legacy support
       if (currentName === 'Default (A)') {
         alert('Cannot unload Default (A) scenario. It serves as the baseline for all projections.')
         return
@@ -3943,14 +3986,45 @@ export function Dashboard() {
         return
       }
 
-      // Load Default scenario using proper methods
+      // Load fallback scenario using proper methods
       if (viewMode === 'YTD Detailed') {
         // Use NEW modular method to load "2025 Default" Current Year Settings scenario
         // This follows the same flow as initial load: defaults → scenario → QBO cache sync
         await store.loadDefaultYTDScenario()
         // Note: Grid will automatically reload and sync because currentYearSettingId changed
       } else {
-        store.setCurrentScenario(null, 'Default (A)')
+        // Multi-Year view: Load favorite A or Default (Optimistic)
+        try {
+          const { data: scenarios, error } = await supabase
+            .from('scenarios')
+            .select('*')
+            .or(`user_id.eq.${profile?.id},is_public.eq.true`)
+
+          if (error) throw error
+
+          // Fetch user's favorite A
+          const { data: favoritesData } = await supabase
+            .from('user_favorites')
+            .select('scenario_id, favorite_type')
+            .eq('user_id', profile?.id)
+            .eq('favorite_type', 'A')
+
+          const favoriteAId = favoritesData?.[0]?.scenario_id
+          const favoriteA = scenarios?.find(s => s.id === favoriteAId && s.id !== store.currentScenarioId)
+          const defaultOptimistic = scenarios?.find(s => s.name === 'Default (Optimistic)')
+          const fallbackScenario = favoriteA || defaultOptimistic
+
+          if (fallbackScenario) {
+            console.log(`[Unload A] Loading fallback: ${fallbackScenario.name}`)
+            await store.loadScenarioFromDatabase(fallbackScenario.id, 'A', true)
+          } else {
+            // Ultimate fallback: just clear the name
+            store.setCurrentScenario(null, 'Default (A)')
+          }
+        } catch (err) {
+          console.error('[Unload A] Error loading fallback scenario:', err)
+          store.setCurrentScenario(null, 'Default (A)')
+        }
       }
     }
 
@@ -3958,26 +4032,62 @@ export function Dashboard() {
     return () => {
       window.removeEventListener('unloadScenario', handleUnloadScenario)
     }
-  }, [store, viewMode])
+  }, [store, viewMode, profile?.id])
 
   // Listen for unloadScenarioB event
   useEffect(() => {
-    const handleUnloadScenarioB = () => {
+    const handleUnloadScenarioB = async () => {
       if (!store.currentScenarioBName) return
 
-      // Cannot unload Default (B)
+      // Cannot unload Default (Pessimistic)
+      if (store.currentScenarioBName === 'Default (Pessimistic)') {
+        alert('Cannot unload Default (Pessimistic) scenario. It serves as the baseline for Scenario B.')
+        return
+      }
+
+      // Cannot unload Default (B) - legacy support
       if (store.currentScenarioBName === 'Default (B)') {
         alert('Cannot unload Default (B) scenario. It serves as the baseline for Scenario B.')
         return
       }
 
       const shouldUnload = confirm(
-        `Unload "${store.currentScenarioBName}" from Scenario B?\n\nAny unsaved changes will be lost. Default (B) will be loaded.`
+        `Unload "${store.currentScenarioBName}" from Scenario B?\n\nAny unsaved changes will be lost.`
       )
 
       if (shouldUnload) {
-        // Load Default (B) scenario
-        store.setCurrentScenarioB(null, 'Default (B)')
+        // Load favorite B or Default (Pessimistic)
+        try {
+          const { data: scenarios, error } = await supabase
+            .from('scenarios')
+            .select('*')
+            .or(`user_id.eq.${profile?.id},is_public.eq.true`)
+
+          if (error) throw error
+
+          // Fetch user's favorite B
+          const { data: favoritesData } = await supabase
+            .from('user_favorites')
+            .select('scenario_id, favorite_type')
+            .eq('user_id', profile?.id)
+            .eq('favorite_type', 'B')
+
+          const favoriteBId = favoritesData?.[0]?.scenario_id
+          const favoriteB = scenarios?.find(s => s.id === favoriteBId && s.id !== store.currentScenarioBId)
+          const defaultPessimistic = scenarios?.find(s => s.name === 'Default (Pessimistic)')
+          const fallbackScenario = favoriteB || defaultPessimistic
+
+          if (fallbackScenario) {
+            console.log(`[Unload B] Loading fallback: ${fallbackScenario.name}`)
+            await store.loadScenarioFromDatabase(fallbackScenario.id, 'B', false)
+          } else {
+            // Ultimate fallback: just clear the name
+            store.setCurrentScenarioB(null, 'Default (B)')
+          }
+        } catch (err) {
+          console.error('[Unload B] Error loading fallback scenario:', err)
+          store.setCurrentScenarioB(null, 'Default (B)')
+        }
       }
     }
 
@@ -3985,7 +4095,7 @@ export function Dashboard() {
     return () => {
       window.removeEventListener('unloadScenarioB', handleUnloadScenarioB)
     }
-  }, [store])
+  }, [store, profile?.id])
 
   // Load from shareable URL hash if present
   useEffect(() => {

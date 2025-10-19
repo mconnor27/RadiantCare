@@ -72,6 +72,65 @@ export default function MultiYearView() {
     console.log('🚀 Multi-Year: View initializing')
   }, [])
 
+  // Auto-load favorite or default scenarios on mount
+  useEffect(() => {
+    if (!profile?.id) return
+
+    const loadInitialScenarios = async () => {
+      try {
+        // Query all user's scenarios and public scenarios
+        const { data: scenarios, error } = await supabase
+          .from('scenarios')
+          .select('*')
+          .or(`user_id.eq.${profile.id},is_public.eq.true`)
+
+        if (error) throw error
+
+        // Fetch user's favorites
+        const { data: favoritesData } = await supabase
+          .from('user_favorites')
+          .select('scenario_id, favorite_type')
+          .eq('user_id', profile.id)
+
+        // Create a map of favorites
+        const favoriteAId = favoritesData?.find(f => f.favorite_type === 'A')?.scenario_id
+        const favoriteBId = favoritesData?.find(f => f.favorite_type === 'B')?.scenario_id
+
+        // Find favorite A or fallback to "Default (Optimistic)"
+        const favoriteA = scenarios?.find(s => s.id === favoriteAId)
+        const defaultOptimistic = scenarios?.find(s => s.name === 'Default (Optimistic)')
+        const scenarioA = favoriteA || defaultOptimistic
+
+        // Find favorite B or fallback to "Default (Pessimistic)"
+        const favoriteB = scenarios?.find(s => s.id === favoriteBId)
+        const defaultPessimistic = scenarios?.find(s => s.name === 'Default (Pessimistic)')
+        const scenarioB = favoriteB || defaultPessimistic
+
+        // Load scenario A if found and not already loaded
+        if (scenarioA && store.currentScenarioId !== scenarioA.id) {
+          console.log(`[Multi-Year Init] Loading ${favoriteA ? 'favorite A' : 'Default (Optimistic)'}...`, scenarioA.name)
+          await store.loadScenarioFromDatabase(scenarioA.id, 'A', true)
+        }
+
+        // Load scenario B if found and not already loaded
+        if (scenarioB && store.currentScenarioBId !== scenarioB.id) {
+          console.log(`[Multi-Year Init] Loading ${favoriteB ? 'favorite B' : 'Default (Pessimistic)'}...`, scenarioB.name)
+          await store.loadScenarioFromDatabase(scenarioB.id, 'B', false)
+
+          // Enable scenario B if it's a favorite, otherwise keep it disabled
+          if (favoriteB) {
+            store.setScenarioEnabled(true)
+            console.log('[Multi-Year Init] Enabled scenario B visibility (favorite)')
+          }
+        }
+      } catch (err) {
+        console.error('[Multi-Year Init] Error loading default scenarios:', err)
+      }
+    }
+
+    loadInitialScenarios()
+  }, [profile?.id]) // Only run when profile changes (on mount/login)
+
   // Memoized summaries that update when projection settings change
   const projectionSummaryA = useMemo(() =>
     createProjectionSummary('A', store),
@@ -468,16 +527,14 @@ export default function MultiYearView() {
     }
   }
 
-  // Get current scenario info from store
+  // Get current scenario info from store using selectors for reactivity
   // For modular (2025 Data), show projection name; for legacy, show scenario name
-  const currentScenarioName = store.scenarioA.dataMode === '2025 Data'
-    ? store.currentProjectionName
-    : store.currentScenarioName
-  const currentScenarioUserId = store.currentScenarioUserId
+  const currentScenarioName = useDashboardStore(state => state.currentScenarioName)
+  const currentScenarioUserId = useDashboardStore(state => state.currentScenarioUserId)
   const isScenarioOwner = currentScenarioUserId && profile?.id === currentScenarioUserId
 
-  const currentScenarioBName = store.currentScenarioBName
-  const currentScenarioBUserId = store.currentScenarioBUserId
+  const currentScenarioBName = useDashboardStore(state => state.currentScenarioBName)
+  const currentScenarioBUserId = useDashboardStore(state => state.currentScenarioBUserId)
   const isScenarioBOwner = currentScenarioBUserId && profile?.id === currentScenarioBUserId
 
   // Reset Scenario B to original state
@@ -741,8 +798,10 @@ export default function MultiYearView() {
                     <FontAwesomeIcon icon={faCopy} />
                   </button>
 
-                  {/* Unload Button - only show if scenario is loaded and not Default (A) */}
-                  {currentScenarioName && currentScenarioName !== 'Default (A)' && (
+                  {/* Unload Button - only show if scenario is loaded and not a default scenario */}
+                  {currentScenarioName &&
+                   currentScenarioName !== 'Default (A)' &&
+                   currentScenarioName !== 'Default (Optimistic)' && (
                     <button
                       onClick={() => {
                         const event = new CustomEvent('unloadScenario')
@@ -950,8 +1009,10 @@ export default function MultiYearView() {
                       <FontAwesomeIcon icon={faCopy} />
                     </button>
 
-                    {/* Unload Button - only show if scenario B is loaded and not Default (B) */}
-                    {currentScenarioBName && currentScenarioBName !== 'Default (B)' && (
+                    {/* Unload Button - only show if scenario B is loaded and not a default scenario */}
+                    {currentScenarioBName &&
+                     currentScenarioBName !== 'Default (B)' &&
+                     currentScenarioBName !== 'Default (Pessimistic)' && (
                       <button
                         onClick={() => {
                           const event = new CustomEvent('unloadScenarioB')
