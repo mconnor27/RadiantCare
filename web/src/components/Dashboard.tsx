@@ -117,6 +117,9 @@ export const useDashboardStore = create<Store>()(
         // NEW: Split snapshots
         loadedCurrentYearSettingsSnapshot: null,
         loadedProjectionSnapshot: null,
+        // NEW: Expected projection snapshots (for dirty detection)
+        expectedProjectionSnapshotA: null,
+        expectedProjectionSnapshotB: null,
         setScenarioEnabled: (enabled) => {
           set((state) => {
             state.scenarioBEnabled = enabled
@@ -182,11 +185,18 @@ export const useDashboardStore = create<Store>()(
               if (!physicianId) {
                 // Deselect in future years - use null to explicitly mark as deselected
                 f.prcsDirectorPhysicianId = null
-                continue
+              } else {
+                // Map by name to each year's physician id, if present
+                const match = f.physicians.find((p) => p.name === selectedName && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+                f.prcsDirectorPhysicianId = match ? match.id : null
               }
-              // Map by name to each year's physician id, if present
-              const match = f.physicians.find((p) => p.name === selectedName && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
-              f.prcsDirectorPhysicianId = match ? match.id : null
+
+              // NEW: Mark as overridden for future years (2026+)
+              if (f.year >= 2026) {
+                if (!f._overrides) f._overrides = {}
+                f._overrides.prcsDirectorPhysicianId = true
+                console.log(`🏷️ [Override] Marked prcsDirectorPhysicianId as overridden for year ${f.year}`)
+              }
             }
           }),
         setFutureValue: (scenario, year, field, value) =>
@@ -206,6 +216,14 @@ export const useDashboardStore = create<Store>()(
               }
 
               fy[field] = value
+
+              // NEW: Mark this field as user-overridden (for sparse saving)
+              // Only mark as override for future years (2026+), not baseline year (2025)
+              if (year >= 2026) {
+                if (!fy._overrides) fy._overrides = {}
+                fy._overrides[field] = true
+                console.log(`🏷️ [Override] Marked ${field} as overridden for year ${year}`)
+              }
 
               // If we're updating a 2025 baseline value, trigger projection recalculation
               // for future years without switching to Custom mode
@@ -229,6 +247,12 @@ export const useDashboardStore = create<Store>()(
             }
 
             state.ytdData[field] = value
+
+            // NEW: Trigger recomputation of projections if baseline changed
+            // Use setTimeout to avoid infinite loops and batch updates
+            setTimeout(() => {
+              get().recomputeProjectionsFromBaseline()
+            }, 0)
           }),
         upsertPhysician: (scenario, year, physician) =>
           set((state) => {
@@ -515,6 +539,13 @@ export const useDashboardStore = create<Store>()(
                 fut.physicians = calculateMedicalDirectorHourPercentages(fut.physicians)
               }
             }
+
+            // NEW: Mark physicians as overridden for the edited year (2026+)
+            if (year >= 2026) {
+              if (!fy._overrides) fy._overrides = {}
+              fy._overrides.physicians = true
+              console.log(`🏷️ [Override] Marked physicians as overridden for year ${year}`)
+            }
           }),
         removePhysician: (scenario, year, physicianId) =>
           set((state) => {
@@ -701,6 +732,11 @@ export const useDashboardStore = create<Store>()(
             } else {
               console.log(`[Upsert YTD Physician] Skipping MD redistribution (mdPctChanged=${mdPctChanged}, partnerPortionChanged=${partnerPortionChanged})`)
             }
+
+            // NEW: Trigger recomputation of projections if baseline changed
+            setTimeout(() => {
+              get().recomputeProjectionsFromBaseline()
+            }, 0)
           }),
         
         removeYtdPhysician: (physicianId) =>
@@ -708,6 +744,11 @@ export const useDashboardStore = create<Store>()(
             state.ytdData.physicians = state.ytdData.physicians.filter((p) => p.id !== physicianId)
             // Re-distribute medical director hours after removal
             state.ytdData.physicians = calculateMedicalDirectorHourPercentages(state.ytdData.physicians)
+
+            // NEW: Trigger recomputation of projections if baseline changed
+            setTimeout(() => {
+              get().recomputeProjectionsFromBaseline()
+            }, 0)
           }),
         
         reorderYtdPhysicians: (fromIndex, toIndex) =>
@@ -1127,6 +1168,14 @@ export const useDashboardStore = create<Store>()(
               miscEmploymentCostsPct: defaultProjection.miscEmploymentCostsPct,
               benefitCostsGrowthPct: defaultProjection.benefitCostsGrowthPct
             }
+
+            // NEW: Clear all override flags - everything will be recomputed from formulas
+            console.log('🧹 [resetProjectionSettings] Clearing all override flags')
+            scenarioState.future.forEach(fy => {
+              if (fy.year >= 2026) {
+                delete fy._overrides
+              }
+            })
           })
 
           // Recalculate projections after resetting settings (applyProjectionFromLastActual already skips 2025)
@@ -1835,6 +1884,18 @@ export const useDashboardStore = create<Store>()(
           if (!data) throw new Error('Scenario not found')
 
           // Handle based on scenario type
+          // NEW: Route modular PROJECTION scenarios to loadProjection()
+          if ('scenario_type' in data && data.scenario_type === 'projection') {
+            console.log('🔄 [loadScenarioFromDatabase] Detected PROJECTION scenario, routing to loadProjection()')
+            return await get().loadProjection(id, target)
+          }
+
+          // NEW: Route modular CURRENT_YEAR scenarios to loadCurrentYearSettings()
+          if ('scenario_type' in data && data.scenario_type === 'current_year') {
+            console.log('🔄 [loadScenarioFromDatabase] Detected CURRENT_YEAR scenario, routing to loadCurrentYearSettings()')
+            return await get().loadCurrentYearSettings(id)
+          }
+
           if (data.view_mode === 'YTD Detailed') {
             // YTD Scenario - restore 2025 baseline customizations
             set((state) => {
@@ -2067,6 +2128,83 @@ export const useDashboardStore = create<Store>()(
           const state = get()
           if (!state.loadedProjectionSnapshot) return false
 
+          // NEW: If we're in 2025 Data mode with expected snapshot, use baseline-aware dirty detection
+          if (state.scenarioA.dataMode === '2025 Data' && state.expectedProjectionSnapshotA) {
+            console.log('🔍 [isProjectionDirty] Using baseline-aware dirty detection with snapshot')
+
+            // Step 1: Compare projection INPUTS (not outputs) to detect user changes
+            // Compare projection settings
+            const projectionDirty = Object.keys(state.scenarioA.projection).some(key => {
+              const k = key as keyof typeof state.scenarioA.projection
+              return Math.abs(state.scenarioA.projection[k] - state.loadedProjectionSnapshot!.projection[k]) > 0.001
+            })
+
+            if (projectionDirty) {
+              console.log('✏️ [isProjectionDirty] Projection settings changed')
+              return true
+            }
+
+            // Step 2: Compare 2026-2035 years against EXPECTED SNAPSHOT (what was loaded/last recomputed)
+            // Only mark dirty if user made explicit changes beyond what the snapshot contains
+            const current2026Plus = state.scenarioA.future.filter(f => f.year >= 2026 && f.year <= 2035)
+
+            // Compare against expected snapshot (not fresh recomputation!)
+            for (let i = 0; i < current2026Plus.length; i++) {
+              const currentYear = current2026Plus[i]
+              const expectedYear = state.expectedProjectionSnapshotA.future_2026_2035.find(e => e.year === currentYear.year)
+
+              if (!expectedYear) continue
+
+              // Check for meaningful differences in projection-controlled fields
+              const fields: (keyof FutureYear)[] = [
+                'therapyIncome', 'nonEmploymentCosts', 'nonMdEmploymentCosts',
+                'miscEmploymentCosts', 'locumCosts', 'medicalDirectorHours',
+                'prcsMedicalDirectorHours', 'consultingServicesAgreement'
+              ]
+
+              for (const field of fields) {
+                const currentVal = currentYear[field as keyof typeof currentYear] as number
+                const expectedVal = expectedYear[field as keyof typeof expectedYear] as number
+
+                if (typeof currentVal === 'number' && typeof expectedVal === 'number') {
+                  if (Math.abs(currentVal - expectedVal) > 0.01) {
+                    console.log(`✏️ [isProjectionDirty] Year ${currentYear.year} ${field} differs from expected:`, {
+                      current: currentVal,
+                      expected: expectedVal
+                    })
+                    return true
+                  }
+                }
+              }
+
+              // Check physicians array
+              if (JSON.stringify(currentYear.physicians) !== JSON.stringify(expectedYear.physicians)) {
+                console.log(`✏️ [isProjectionDirty] Year ${currentYear.year} physicians changed`)
+                return true
+              }
+            }
+
+            // Step 4: Compare future grid overrides (non-2025 keys)
+            const currentFutureKeys = Object.keys(state.customProjectedValues).filter(k => !k.startsWith('2025-'))
+            const snapshotFutureKeys = Object.keys(state.loadedProjectionSnapshot.custom_projected_values_future)
+
+            if (currentFutureKeys.length !== snapshotFutureKeys.length) {
+              console.log('✏️ [isProjectionDirty] Grid override count changed')
+              return true
+            }
+
+            for (const key of currentFutureKeys) {
+              if (Math.abs(state.customProjectedValues[key] - (state.loadedProjectionSnapshot.custom_projected_values_future[key] || 0)) > 0.01) {
+                console.log('✏️ [isProjectionDirty] Grid override changed:', key)
+                return true
+              }
+            }
+
+            console.log('✅ [isProjectionDirty] No projection-specific changes detected (clean)')
+            return false
+          }
+
+          // LEGACY: Non-2025 baseline modes - use old logic
           // Compare projection settings
           const projectionDirty = Object.keys(state.scenarioA.projection).some(key => {
             const k = key as keyof typeof state.scenarioA.projection
@@ -2097,7 +2235,7 @@ export const useDashboardStore = create<Store>()(
 
           // Compare baseline years (for 2024/Custom modes)
           if (state.loadedProjectionSnapshot.baseline_years) {
-            const currentBaselineYears = state.scenarioA.future.filter(f => 
+            const currentBaselineYears = state.scenarioA.future.filter(f =>
               state.loadedProjectionSnapshot!.baseline_years!.some(by => by.year === f.year)
             )
             if (JSON.stringify(currentBaselineYears) !== JSON.stringify(state.loadedProjectionSnapshot.baseline_years)) {
@@ -2283,7 +2421,7 @@ export const useDashboardStore = create<Store>()(
             get().setCurrentYearSetting(data.id, name, session.user.id)
             get().updateCurrentYearSettingsSnapshot()
 
-            return data as any
+            return data
           } else {
             const { data, error } = await supabase
               .from('scenarios')
@@ -2299,7 +2437,7 @@ export const useDashboardStore = create<Store>()(
             get().setCurrentYearSetting(data.id, name, session.user.id)
             get().updateCurrentYearSettingsSnapshot()
 
-            return data as any
+            return data
           }
         },
 
@@ -2307,7 +2445,8 @@ export const useDashboardStore = create<Store>()(
           name: string,
           description: string,
           isPublic: boolean,
-          target: 'A' | 'B' = 'A'
+          target: 'A' | 'B' = 'A',
+          forceNew: boolean = false
         ) => {
           const state = get()
           // Use the already-imported supabase client (line 4)
@@ -2336,8 +2475,44 @@ export const useDashboardStore = create<Store>()(
           // Extract projection settings
           const projectionSettings = scenario.projection
 
-          // Extract 2026-2035 years
-          const future2026Plus = scenario.future.filter(f => f.year >= 2026 && f.year <= 2035)
+          // NEW: For 2025 Data mode, use override flags to identify what to save
+          let future2026Plus: FutureYear[] = []
+
+          if (scenario.dataMode === '2025 Data') {
+            console.log('💾 [saveProjection] 2025 Data mode - using override flags for sparse saving')
+
+            const currentFuture = scenario.future.filter(f => f.year >= 2026 && f.year <= 2035)
+
+            for (const currentYear of currentFuture) {
+              // Check if this year has any overrides marked
+              if (!currentYear._overrides || Object.keys(currentYear._overrides).length === 0) {
+                console.log(`💾 [saveProjection] Year ${currentYear.year} has no overrides, skipping`)
+                continue
+              }
+
+              // Build a sparse year object with only flagged overrides
+              const sparse: Partial<FutureYear> & { year: number, _overrides?: Record<string, boolean> } = {
+                year: currentYear.year,
+                _overrides: currentYear._overrides  // Preserve override flags
+              }
+
+              // Include only fields that are marked as overridden
+              for (const [field, isOverridden] of Object.entries(currentYear._overrides)) {
+                if (isOverridden) {
+                  const key = field as keyof FutureYear;
+                  (sparse as Record<string, unknown>)[field] = currentYear[key]
+                  console.log(`💾 [saveProjection] Year ${currentYear.year} ${field} marked as override, saving`)
+                }
+              }
+
+              future2026Plus.push(sparse as FutureYear)
+            }
+
+            console.log(`💾 [saveProjection] Saving ${future2026Plus.length} years with overrides (out of ${currentFuture.length} total)`)
+          } else {
+            // Legacy: For non-2025 modes, save all years as before
+            future2026Plus = scenario.future.filter(f => f.year >= 2026 && f.year <= 2035)
+          }
 
           // Extract future grid overrides (non-2025 keys)
           const customFutureValues: Record<string, number> = {}
@@ -2377,8 +2552,9 @@ export const useDashboardStore = create<Store>()(
             qbo_sync_timestamp: qboSyncTimestamp,
           }
 
-          // Check if updating existing Projection
-          if (state.currentProjectionId) {
+          // Check if updating existing Projection (unless forceNew is true for "Save As")
+          if (state.currentProjectionId && !forceNew) {
+            console.log('💾 [saveProjection] Updating existing projection:', state.currentProjectionId)
             const { data, error } = await supabase
               .from('scenarios')
               .update(saveData)
@@ -2391,8 +2567,9 @@ export const useDashboardStore = create<Store>()(
             get().setCurrentProjection(data.id, name, session.user.id)
             get().updateProjectionSnapshot()
 
-            return data as any
+            return data
           } else {
+            console.log('💾 [saveProjection] Creating new projection scenario')
             const { data, error } = await supabase
               .from('scenarios')
               .insert({
@@ -2407,7 +2584,7 @@ export const useDashboardStore = create<Store>()(
             get().setCurrentProjection(data.id, name, session.user.id)
             get().updateProjectionSnapshot()
 
-            return data as any
+            return data
           }
         },
 
@@ -2503,7 +2680,12 @@ export const useDashboardStore = create<Store>()(
           // Update snapshot
           get().updateCurrentYearSettingsSnapshot()
 
-          return data as any
+          // NEW: Trigger recomputation of projections since baseline changed
+          setTimeout(() => {
+            get().recomputeProjectionsFromBaseline()
+          }, 0)
+
+          return data
         },
 
         loadProjection: async (id: string, target: 'A' | 'B' = 'A') => {
@@ -2522,6 +2704,92 @@ export const useDashboardStore = create<Store>()(
             throw new Error('Not a Projection scenario')
           }
 
+          const baselineMode = data.baseline_mode || '2025 Data'
+
+          // NEW: Handle PROJECTION scenarios with 2025 baseline
+          if (baselineMode === '2025 Data') {
+            console.log('🔄 [loadProjection] Loading PROJECTION scenario with 2025 baseline:', data.name)
+
+            // Step 1: Ensure YTD baseline is loaded
+            await get().ensureYtdBaseline2025()
+
+            // Step 2: Get baseline 2025 from YTD store
+            const baseline2025 = get().getYtdBaselineFutureYear2025()
+
+            // Step 3: Build scenario by overlaying projection on baseline
+            const { future } = get().buildScenarioFromProjection({
+              projection: data.projection_settings,
+              futureYearsFromScenario: data.future_years || [],
+              baseline2025,
+              baselineMode
+            })
+
+            // Step 4: Apply to target scenario
+            set((state) => {
+              const targetScenario = target === 'A' ? state.scenarioA : state.scenarioB
+              if (!targetScenario && target === 'B') {
+                throw new Error('Scenario B not initialized')
+              }
+
+              if (target === 'A') {
+                state.scenarioA.projection = data.projection_settings
+                state.scenarioA.future = future
+                state.scenarioA.dataMode = '2025 Data'
+              } else if (state.scenarioB) {
+                state.scenarioB.projection = data.projection_settings
+                state.scenarioB.future = future
+                state.scenarioB.dataMode = '2025 Data'
+              }
+
+              // Restore future grid overrides (replace existing non-2025 keys)
+              Object.keys(state.customProjectedValues).forEach(key => {
+                if (!key.startsWith('2025-')) {
+                  delete state.customProjectedValues[key]
+                }
+              })
+              if (data.future_custom_values) {
+                Object.assign(state.customProjectedValues, data.future_custom_values)
+              }
+
+              state.currentProjectionId = data.id
+              state.currentProjectionName = data.name
+              state.currentProjectionUserId = data.user_id
+            })
+
+            // Step 5: Snapshot the LOADED state as expected (don't recompute)
+            // This captures what was actually loaded (computed + saved overrides merged)
+            set((state) => {
+              const scenario = target === 'A' ? state.scenarioA : state.scenarioB
+              if (!scenario) return
+
+              const baseline2025 = state.scenarioA.future.find(f => f.year === 2025)
+              if (!baseline2025) return
+
+              const future_2026_2035 = scenario.future.filter(f => f.year >= 2026 && f.year <= 2035)
+
+              const snapshot = {
+                baseline2025: JSON.parse(JSON.stringify(baseline2025)),
+                future_2026_2035: JSON.parse(JSON.stringify(future_2026_2035))
+              }
+
+              if (target === 'A') {
+                state.expectedProjectionSnapshotA = snapshot
+              } else {
+                state.expectedProjectionSnapshotB = snapshot
+              }
+
+              console.log(`📸 [loadProjection] Snapshotted LOADED state as expected for ${target}`)
+            })
+
+            // Step 6: Update loaded snapshot (for legacy dirty detection)
+            get().updateProjectionSnapshot()
+
+            console.log('✅ [loadProjection] Loaded PROJECTION with 2025 baseline successfully')
+
+            return data
+          }
+
+          // LEGACY: Handle non-2025 baselines (2024/Custom) - existing behavior
           set((state) => {
             const targetScenario = target === 'A' ? state.scenarioA : state.scenarioB
             if (!targetScenario && target === 'B') {
@@ -2579,7 +2847,7 @@ export const useDashboardStore = create<Store>()(
                   }
                 }
               })
-              
+
               if (target === 'A') {
                 state.scenarioA.future.sort((a, b) => a.year - b.year)
                 state.scenarioA.dataMode = data.baseline_mode || '2025 Data'
@@ -2597,14 +2865,14 @@ export const useDashboardStore = create<Store>()(
           // Update snapshot
           get().updateProjectionSnapshot()
 
-          return data as any
+          return data
         },
 
         loadDefaultYTDScenario: async (year?: number) => {
           try {
             const currentYear = year || new Date().getFullYear()
             const defaultName = `${currentYear} Default`
-            
+
             // Try to find and load the current year's default scenario
             const { data, error } = await supabase
               .from('scenarios')
@@ -2622,6 +2890,330 @@ export const useDashboardStore = create<Store>()(
           } catch (err) {
             console.log('📝 Could not load default scenario, using defaults:', err)
           }
+        },
+
+        // NEW: Projection overlay methods for 2025 baseline
+
+        ensureYtdBaseline2025: async () => {
+          const state = get()
+
+          // If we already have a current year setting loaded, we're done
+          if (state.currentYearSettingId) {
+            console.log('✅ [ensureYtdBaseline2025] YTD baseline already loaded:', state.currentYearSettingName)
+            return
+          }
+
+          console.log('🔍 [ensureYtdBaseline2025] No YTD baseline loaded, attempting to load default...')
+
+          try {
+            // Try to find user's favorite CURRENT scenario
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session) {
+              const { data: favorites } = await supabase
+                .from('user_favorites')
+                .select('scenario_id, favorite_type')
+                .eq('user_id', session.user.id)
+                .eq('favorite_type', 'CURRENT')
+                .single()
+
+              if (favorites?.scenario_id) {
+                console.log('📥 [ensureYtdBaseline2025] Loading user favorite CURRENT:', favorites.scenario_id)
+                await get().loadCurrentYearSettings(favorites.scenario_id)
+                return
+              }
+            }
+
+            // Fallback: try to load "2025 Default"
+            await get().loadDefaultYTDScenario(2025)
+
+            // If still no baseline, log warning but continue (will use store defaults)
+            if (!get().currentYearSettingId) {
+              console.warn('⚠️ [ensureYtdBaseline2025] No YTD baseline found, using store defaults')
+            }
+          } catch (err) {
+            console.warn('⚠️ [ensureYtdBaseline2025] Error loading YTD baseline:', err)
+          }
+        },
+
+        getYtdBaselineFutureYear2025: () => {
+          const state = get()
+
+          // Return a normalized 2025 FutureYear from YTD store
+          const baseline2025: FutureYear = {
+            year: 2025,
+            therapyIncome: state.ytdData.therapyIncome,
+            nonEmploymentCosts: state.ytdData.nonEmploymentCosts,
+            nonMdEmploymentCosts: state.ytdData.nonMdEmploymentCosts,
+            locumCosts: state.ytdData.locumCosts,
+            miscEmploymentCosts: state.ytdData.miscEmploymentCosts,
+            medicalDirectorHours: state.ytdData.medicalDirectorHours,
+            prcsMedicalDirectorHours: state.ytdData.prcsMedicalDirectorHours,
+            consultingServicesAgreement: state.ytdData.consultingServicesAgreement,
+            prcsDirectorPhysicianId: state.ytdData.prcsDirectorPhysicianId,
+            physicians: JSON.parse(JSON.stringify(state.ytdData.physicians)), // Deep copy
+            therapyLacey: state.ytdData.therapyLacey,
+            therapyCentralia: state.ytdData.therapyCentralia,
+            therapyAberdeen: state.ytdData.therapyAberdeen,
+          }
+
+          console.log('📦 [getYtdBaselineFutureYear2025] Returning 2025 baseline:', {
+            therapyIncome: baseline2025.therapyIncome,
+            physicians: baseline2025.physicians?.length,
+            locumCosts: baseline2025.locumCosts,
+            medicalDirectorHours: baseline2025.medicalDirectorHours,
+          })
+
+          return baseline2025
+        },
+
+        computeExpectedFromBaseline: ({ baseline2025, projection }) => {
+          // Compute what the projected years (2026-2035) should look like
+          // given the current baseline and projection settings
+
+          console.log('🧮 [computeExpectedFromBaseline] Computing expected projections from baseline')
+
+          const expectedFuture: FutureYear[] = []
+
+          // Convert percentage growth rates to decimal multipliers
+          const incomeGpct = projection.incomeGrowthPct / 100
+          const nonEmploymentGpct = projection.nonEmploymentCostsPct / 100
+          const nonMdEmploymentGpct = projection.nonMdEmploymentCostsPct / 100
+          const miscEmploymentGpct = projection.miscEmploymentCostsPct / 100
+          const benefitGrowthPct = projection.benefitCostsGrowthPct
+
+          // Starting values from baseline
+          let income = baseline2025.therapyIncome
+          let nonEmploymentCosts = baseline2025.nonEmploymentCosts
+          let miscEmploymentCosts = baseline2025.miscEmploymentCosts
+
+          // For staff costs, decompose base (2025) into wages+taxes vs benefits
+          const baseStaff2025 = baseline2025.nonMdEmploymentCosts
+          const baseWagesTaxes2025 = Math.max(0, baseStaff2025 - ANNUAL_BENEFITS_FULLTIME)
+
+          // Project years 2026-2035
+          for (let year = 2026; year <= 2035; year++) {
+            income = income * (1 + incomeGpct)
+            nonEmploymentCosts = nonEmploymentCosts * (1 + nonEmploymentGpct)
+            miscEmploymentCosts = miscEmploymentCosts * (1 + miscEmploymentGpct)
+
+            // Compute staff employment costs using split growth
+            const yearsSince2025 = year - 2025
+            const wagesAndTaxes = baseWagesTaxes2025 * Math.pow(1 + nonMdEmploymentGpct, yearsSince2025)
+            const benefits = getBenefitCostsForYear(year, benefitGrowthPct)
+            const staffEmploymentCosts = wagesAndTaxes + benefits
+
+            // Get physicians for this year by rolling forward from baseline
+            // Use scenarioADefaultsByYear as the template
+            const physicians = scenarioADefaultsByYear(year)
+
+            const futureYear: FutureYear = {
+              year,
+              therapyIncome: income,
+              nonEmploymentCosts: nonEmploymentCosts,
+              nonMdEmploymentCosts: staffEmploymentCosts,
+              miscEmploymentCosts: miscEmploymentCosts,
+              locumCosts: year === 2026 ? DEFAULT_LOCUM_COSTS_2026 : projection.locumsCosts,
+              medicalDirectorHours: projection.medicalDirectorHours,
+              prcsMedicalDirectorHours: projection.prcsMedicalDirectorHours,
+              consultingServicesAgreement: projection.consultingServicesAgreement,
+              physicians: JSON.parse(JSON.stringify(physicians)), // Deep copy
+              prcsDirectorPhysicianId: undefined, // Use default per year
+            }
+
+            expectedFuture.push(futureYear)
+          }
+
+          console.log('✅ [computeExpectedFromBaseline] Computed', expectedFuture.length, 'expected years')
+
+          return expectedFuture
+        },
+
+        buildScenarioFromProjection: ({ projection, futureYearsFromScenario, baseline2025, baselineMode }) => {
+          console.log('🏗️ [buildScenarioFromProjection] Building scenario from projection overlay')
+
+          // Compute expected derived years from baseline
+          const expectedDerived = get().computeExpectedFromBaseline({
+            baseline2025,
+            projection,
+            baselineMode
+          })
+
+          // Start with baseline 2025 as year 0
+          const future: FutureYear[] = [JSON.parse(JSON.stringify(baseline2025))]
+
+          // For 2026-2035, merge sparse user overrides with expected computed values
+          for (let year = 2026; year <= 2035; year++) {
+            const sparseOverrides = futureYearsFromScenario.find(f => f.year === year)
+            const expectedYear = expectedDerived.find(f => f.year === year)
+
+            if (!expectedYear) continue
+
+            // Start with expected (computed) values
+            const mergedYear = JSON.parse(JSON.stringify(expectedYear)) as FutureYear
+
+            // Apply sparse overrides if present
+            if (sparseOverrides) {
+              console.log(`🏗️ [buildScenarioFromProjection] Year ${year}: Merging user overrides into computed values`)
+
+              // Merge each field from sparse overrides
+              const overrideKeys = Object.keys(sparseOverrides) as (keyof FutureYear)[]
+              for (const key of overrideKeys) {
+                if (key !== 'year' && sparseOverrides[key] !== undefined) {
+                  (mergedYear as Record<string, unknown>)[key] = sparseOverrides[key]
+                  console.log(`  - ${String(key)}: using override value`)
+                }
+              }
+            }
+
+            future.push(mergedYear)
+          }
+
+          console.log('✅ [buildScenarioFromProjection] Built scenario with', future.length, 'years')
+
+          return { future }
+        },
+
+        snapshotExpectedProjection: (which: 'A' | 'B') => {
+          set((state) => {
+            const scenario = which === 'A' ? state.scenarioA : state.scenarioB
+            if (!scenario) return
+
+            // Only snapshot if we're in 2025 Data mode (baseline-driven)
+            if (scenario.dataMode !== '2025 Data') {
+              console.log(`⏭️ [snapshotExpectedProjection] Skipping snapshot for ${which} (not in 2025 Data mode)`)
+              return
+            }
+
+            // Get baseline from YTD store
+            const baseline2025 = get().getYtdBaselineFutureYear2025()
+
+            // Compute expected future years from baseline
+            const expectedFuture = get().computeExpectedFromBaseline({
+              baseline2025,
+              projection: scenario.projection,
+              baselineMode: scenario.dataMode
+            })
+
+            // Store snapshot
+            const snapshot = {
+              baseline2025: JSON.parse(JSON.stringify(baseline2025)),
+              future_2026_2035: JSON.parse(JSON.stringify(expectedFuture))
+            }
+
+            if (which === 'A') {
+              state.expectedProjectionSnapshotA = snapshot
+            } else {
+              state.expectedProjectionSnapshotB = snapshot
+            }
+
+            console.log(`📸 [snapshotExpectedProjection] Snapshotted expected projection for ${which}`)
+          })
+        },
+
+        // Helper: Recompute projection years from current baseline (baseline change observer)
+        recomputeProjectionsFromBaseline: () => {
+          set((state) => {
+            console.log('🔄 [recomputeProjectionsFromBaseline] Baseline changed, recomputing projections...')
+
+            // Get current baseline from YTD store
+            const baseline2025 = get().getYtdBaselineFutureYear2025()
+
+            // Recompute Scenario A if in 2025 Data mode
+            if (state.scenarioA.dataMode === '2025 Data') {
+              console.log('🔄 [recomputeProjectionsFromBaseline] Recomputing Scenario A')
+
+              // Update year 2025 from baseline
+              const year2025Index = state.scenarioA.future.findIndex(f => f.year === 2025)
+              if (year2025Index >= 0) {
+                state.scenarioA.future[year2025Index] = JSON.parse(JSON.stringify(baseline2025))
+              }
+
+              // Recompute 2026-2035 from new baseline
+              const expectedFuture = get().computeExpectedFromBaseline({
+                baseline2025,
+                projection: state.scenarioA.projection,
+                baselineMode: state.scenarioA.dataMode
+              })
+
+              // Update each year 2026-2035 with recomputed values, PRESERVING user overrides
+              expectedFuture.forEach(expectedYear => {
+                const yearIndex = state.scenarioA.future.findIndex(f => f.year === expectedYear.year)
+                if (yearIndex >= 0) {
+                  const currentYear = state.scenarioA.future[yearIndex]
+                  const overrides = currentYear._overrides
+
+                  // Start with fresh computed values
+                  const updated = JSON.parse(JSON.stringify(expectedYear)) as FutureYear
+
+                  // Restore user-overridden fields
+                  if (overrides) {
+                    for (const [field, isOverridden] of Object.entries(overrides)) {
+                      if (isOverridden && field in currentYear) {
+                        (updated as Record<string, unknown>)[field] = (currentYear as Record<string, unknown>)[field]
+                        console.log(`🔒 [recompute] Preserving override for year ${updated.year} field ${field}`)
+                      }
+                    }
+                    // Preserve the override flags
+                    updated._overrides = JSON.parse(JSON.stringify(overrides))
+                  }
+
+                  state.scenarioA.future[yearIndex] = updated
+                }
+              })
+
+              // Re-snapshot expected (DON'T mark dirty - this is baseline-driven)
+              get().snapshotExpectedProjection('A')
+            }
+
+            // Recompute Scenario B if enabled and in 2025 Data mode
+            if (state.scenarioBEnabled && state.scenarioB && state.scenarioB.dataMode === '2025 Data') {
+              console.log('🔄 [recomputeProjectionsFromBaseline] Recomputing Scenario B')
+
+              // Update year 2025 from baseline
+              const year2025Index = state.scenarioB.future.findIndex(f => f.year === 2025)
+              if (year2025Index >= 0) {
+                state.scenarioB.future[year2025Index] = JSON.parse(JSON.stringify(baseline2025))
+              }
+
+              // Recompute 2026-2035 from new baseline
+              const expectedFuture = get().computeExpectedFromBaseline({
+                baseline2025,
+                projection: state.scenarioB.projection,
+                baselineMode: state.scenarioB.dataMode
+              })
+
+              // Update each year 2026-2035 with recomputed values, PRESERVING user overrides
+              expectedFuture.forEach(expectedYear => {
+                const yearIndex = state.scenarioB.future.findIndex(f => f.year === expectedYear.year)
+                if (yearIndex >= 0) {
+                  const currentYear = state.scenarioB.future[yearIndex]
+                  const overrides = currentYear._overrides
+
+                  // Start with fresh computed values
+                  const updated = JSON.parse(JSON.stringify(expectedYear)) as FutureYear
+
+                  // Restore user-overridden fields
+                  if (overrides) {
+                    for (const [field, isOverridden] of Object.entries(overrides)) {
+                      if (isOverridden && field in currentYear) {
+                        (updated as Record<string, unknown>)[field] = (currentYear as Record<string, unknown>)[field]
+                        console.log(`🔒 [recompute] Preserving override for year ${updated.year} field ${field} in Scenario B`)
+                      }
+                    }
+                    // Preserve the override flags
+                    updated._overrides = JSON.parse(JSON.stringify(overrides))
+                  }
+
+                  state.scenarioB.future[yearIndex] = updated
+                }
+              })
+
+              // Re-snapshot expected
+              get().snapshotExpectedProjection('B')
+            }
+
+            console.log('✅ [recomputeProjectionsFromBaseline] Recomputation complete')
+          })
         },
       }
     }),
@@ -2945,7 +3537,7 @@ export function hasChangesFromLoadedScenario(
     const isDifferent = Object.values(checks).some(v => v)
     
     if (isDifferent) {
-      const failedChecks = Object.entries(checks).filter(([_, v]) => v).map(([k]) => k)
+      const failedChecks = Object.entries(checks).filter(([, v]) => v).map(([k]) => k)
       console.log(`[DIRTY CHECK A] Physician ${current.name} differs on:`, failedChecks)
       console.log('  Current:', { 
         ...failedChecks.reduce((acc, k) => ({ ...acc, [k]: current[k as keyof typeof current] }), {})

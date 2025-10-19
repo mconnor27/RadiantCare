@@ -108,12 +108,22 @@ export default function MultiYearView() {
   useEffect(() => {
     console.log('[DIRTY CHECK A] Running dirty check', {
       hasScenarioId: !!store.currentScenarioId,
+      hasProjectionId: !!store.currentProjectionId,
       hasSnapshot: !!store.loadedScenarioSnapshot,
       currentDataMode: store.scenarioA.dataMode,
       snapshotDataMode: store.loadedScenarioSnapshot?.scenarioA?.dataMode,
       futureYearsCount: store.scenarioA.future.length
     })
 
+    // NEW: For modular projection scenarios, use the new dirty detection system
+    if (store.currentProjectionId && store.scenarioA.dataMode === '2025 Data') {
+      const projectionDirty = store.isProjectionDirty()
+      console.log('[DIRTY CHECK A] Using new projection dirty detection:', projectionDirty)
+      setIsScenarioDirty(projectionDirty)
+      return
+    }
+
+    // LEGACY: For non-modular scenarios, use the old snapshot comparison
     if (!store.currentScenarioId || !store.loadedScenarioSnapshot) {
       setIsScenarioDirty(false)
       return
@@ -237,6 +247,7 @@ export default function MultiYearView() {
     JSON.stringify(store.scenarioA.projection),
     store.scenarioA.dataMode,
     store.currentScenarioId,
+    store.currentProjectionId, // NEW: Trigger when projection ID changes
     // Serialize snapshot to detect changes
     store.loadedScenarioSnapshot ? JSON.stringify(store.loadedScenarioSnapshot) : null
   ])
@@ -485,15 +496,15 @@ export default function MultiYearView() {
         onClose={() => setShowModularSaveDialog(false)}
         onSave={async (saveType, name, description, isPublic) => {
           if (saveType === 'both') {
-            // Save Current Year Settings first
-            await store.saveCurrentYearSettings(name + ' - Current Year', description, isPublic)
-            // Then save Projection
-            await store.saveProjection(name + ' - Projection', description, isPublic, 'A')
+            // Save Current Year Settings first (forceNew: true to create new copy)
+            await store.saveCurrentYearSettings(name + ' - Current Year', description, isPublic, null, true)
+            // Then save Projection (forceNew: true to create new copy)
+            await store.saveProjection(name + ' - Projection', description, isPublic, 'A', true)
           } else if (saveType === 'current_year') {
-            await store.saveCurrentYearSettings(name, description, isPublic)
+            await store.saveCurrentYearSettings(name, description, isPublic, null, true)
           } else {
-            // Save projection only
-            await store.saveProjection(name, description, isPublic, 'A')
+            // Save projection only (forceNew: true to create new copy)
+            await store.saveProjection(name, description, isPublic, 'A', true)
           }
         }}
         baselineMode={store.scenarioA.dataMode}
@@ -575,35 +586,48 @@ export default function MultiYearView() {
 
           {/* NEW: Show loaded Current Year Setting and Projection (when in 2025 Data mode) */}
           {store.scenarioA.dataMode === '2025 Data' && (store.currentYearSettingName || store.currentProjectionName) && (
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 16, 
-              padding: '12px 16px', 
-              background: '#eff6ff', 
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              padding: '12px 16px',
+              background: '#eff6ff',
               border: '1px solid #bfdbfe',
               borderRadius: 8,
               marginTop: 8,
               fontSize: 14
             }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, color: '#1e40af', marginBottom: 2, fontWeight: 500 }}>
-                  Current Year Settings:
+              <div style={{ display: 'flex', gap: 16 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, color: '#1e40af', marginBottom: 2, fontWeight: 500 }}>
+                    Current Year Settings:
+                  </div>
+                  <div style={{ color: '#1e3a8a' }}>
+                    {store.currentYearSettingName || 'Not loaded'}
+                    {store.isCurrentYearSettingsDirty() && <span style={{ marginLeft: 8, color: '#f59e0b' }}>• Modified</span>}
+                  </div>
                 </div>
-                <div style={{ color: '#1e3a8a' }}>
-                  {store.currentYearSettingName || 'Not loaded'}
-                  {store.isCurrentYearSettingsDirty() && <span style={{ marginLeft: 8, color: '#f59e0b' }}>• Modified</span>}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, color: '#1e40af', marginBottom: 2, fontWeight: 500 }}>
+                    Projection:
+                  </div>
+                  <div style={{ color: '#1e3a8a' }}>
+                    {store.currentProjectionName || 'Not loaded'}
+                    {store.isProjectionDirty() && <span style={{ marginLeft: 8, color: '#f59e0b' }}>• Modified</span>}
+                  </div>
                 </div>
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, color: '#1e40af', marginBottom: 2, fontWeight: 500 }}>
-                  Projection:
+              {store.currentProjectionName && (
+                <div style={{
+                  fontSize: 12,
+                  color: '#3730a3',
+                  fontStyle: 'italic',
+                  paddingTop: 4,
+                  borderTop: '1px solid #dbeafe'
+                }}>
+                  💡 Projection years (2026-2035) are built on top of the 2025 YTD baseline. Changes to Current Year Settings will automatically update all projection years.
                 </div>
-                <div style={{ color: '#1e3a8a' }}>
-                  {store.currentProjectionName || 'Not loaded'}
-                  {store.isProjectionDirty() && <span style={{ marginLeft: 8, color: '#f59e0b' }}>• Modified</span>}
-                </div>
-              </div>
+              )}
             </div>
           )}
         </div>

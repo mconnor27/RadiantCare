@@ -77,6 +77,19 @@ export type FutureYear = {
   consultingServicesAgreement?: number // Consulting Services Agreement annual amount (overrides projection)
   prcsDirectorPhysicianId?: string | null // null = explicitly deselected, undefined = use default
   physicians: Physician[]
+  // NEW: Track which fields have been explicitly overridden by the user (not computed from formulas)
+  _overrides?: {
+    therapyIncome?: boolean
+    nonEmploymentCosts?: boolean
+    nonMdEmploymentCosts?: boolean
+    miscEmploymentCosts?: boolean
+    locumCosts?: boolean
+    medicalDirectorHours?: boolean
+    prcsMedicalDirectorHours?: boolean
+    consultingServicesAgreement?: boolean
+    physicians?: boolean
+    prcsDirectorPhysicianId?: boolean
+  }
 }
 
 export type Projection = {
@@ -275,6 +288,15 @@ export type Store = {
     future_2026_2035: FutureYear[]
     custom_projected_values_future: Record<string, number> // Only non-'2025-*' keys
   } | null
+  // Expected projection snapshots (for dirty detection against baseline changes)
+  expectedProjectionSnapshotA: {
+    baseline2025: FutureYear
+    future_2026_2035: FutureYear[]
+  } | null
+  expectedProjectionSnapshotB: {
+    baseline2025: FutureYear
+    future_2026_2035: FutureYear[]
+  } | null
   setScenarioEnabled: (enabled: boolean) => void
   setFutureValue: (
     scenario: ScenarioKey,
@@ -353,9 +375,26 @@ export type Store = {
     name: string,
     description: string,
     isPublic: boolean,
-    target?: 'A' | 'B'
+    target?: 'A' | 'B',
+    forceNew?: boolean  // Force creating a new scenario (for "Save As")
   ) => Promise<ProjectionScenario>
   loadCurrentYearSettings: (id: string) => Promise<CurrentYearSettingsScenario>
   loadProjection: (id: string, target?: 'A' | 'B') => Promise<ProjectionScenario>
   loadDefaultYTDScenario: (year?: number) => Promise<void>
+  // NEW: Projection overlay methods for 2025 baseline
+  ensureYtdBaseline2025: () => Promise<void>
+  getYtdBaselineFutureYear2025: () => FutureYear
+  buildScenarioFromProjection: (params: {
+    projection: Projection
+    futureYearsFromScenario: FutureYear[]
+    baseline2025: FutureYear
+    baselineMode: BaselineMode
+  }) => { future: FutureYear[] }
+  computeExpectedFromBaseline: (params: {
+    baseline2025: FutureYear
+    projection: Projection
+    baselineMode: BaselineMode
+  }) => FutureYear[]
+  snapshotExpectedProjection: (which: 'A' | 'B') => void
+  recomputeProjectionsFromBaseline: () => void
 }
