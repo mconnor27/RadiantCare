@@ -10,7 +10,7 @@ interface ScenarioListProps {
   onEdit: (scenario: SavedScenario) => void
   onDelete: (id: string) => void
   onUpdateBaseline?: (id: string) => void
-  onToggleFavorite?: (id: string, favoriteType: 'A' | 'B') => void
+  onToggleFavorite?: (id: string, favoriteType: 'A' | 'B' | 'CURRENT') => void
   loading?: boolean
   viewMode?: 'YTD Detailed' | 'Multi-Year' | 'YTD Mobile'
 }

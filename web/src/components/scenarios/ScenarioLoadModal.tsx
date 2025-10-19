@@ -9,7 +9,7 @@ import {
 } from '../dashboard/shared/types'
 import { useAuth } from '../auth/AuthProvider'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faFolderOpen, faStar as faSolidStar, faStar as faRegularStar } from '@fortawesome/free-solid-svg-icons'
+import { faFolderOpen, faStar as faSolidStar } from '@fortawesome/free-solid-svg-icons'
 import { faStar as faRegularStarOutline } from '@fortawesome/free-regular-svg-icons'
 
 interface ScenarioLoadModalProps {
