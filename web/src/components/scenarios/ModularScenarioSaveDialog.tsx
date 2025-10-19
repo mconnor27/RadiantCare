@@ -115,7 +115,7 @@ export default function ModularScenarioSaveDialog({
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ fontWeight: 500 }}>Projection only</div>
                     <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
-                      Saves growth rates and 2026-2035 settings. Can be loaded on top of any Current Year Setting.
+                      Saves growth rates and 2026-2030 settings. Can be loaded on top of any Current Year Setting.
                     </div>
                   </div>
                 </label>
@@ -145,7 +145,7 @@ export default function ModularScenarioSaveDialog({
                       Saves two separate scenarios:
                       <ul style={{ margin: '4px 0 0 0', paddingLeft: 20 }}>
                         <li>Current Year Setting (2025 baseline)</li>
-                        <li>Projection (2026-2035)</li>
+                        <li>Projection (2026-2030)</li>
                       </ul>
                     </div>
                   </div>

@@ -30,10 +30,10 @@ ALTER COLUMN scenario_a_id DROP NOT NULL,
 ALTER COLUMN scenario_b_id DROP NOT NULL;
 
 -- Step 6: Add comment to explain new structure
-COMMENT ON COLUMN scenarios.scenario_type IS 'Type of scenario: current_year (2025 baseline) or projection (2026-2035 settings)';
+COMMENT ON COLUMN scenarios.scenario_type IS 'Type of scenario: current_year (2025 baseline) or projection (2026-2030 settings)';
 COMMENT ON COLUMN scenarios.projection_settings IS 'Projection settings (growth rates, global params) for projection scenarios';
-COMMENT ON COLUMN scenarios.future_years IS 'Future years data (2026-2035) for projection scenarios';
-COMMENT ON COLUMN scenarios.future_custom_values IS 'Grid overrides for future years (2026-2035) for projection scenarios';
+COMMENT ON COLUMN scenarios.future_years IS 'Future years data (2026-2030) for projection scenarios';
+COMMENT ON COLUMN scenarios.future_custom_values IS 'Grid overrides for future years (2026-2030) for projection scenarios';
 COMMENT ON COLUMN scenarios.baseline_years IS 'Baseline years data (e.g., 2024) for projections with 2024/Custom baseline modes';
 COMMENT ON COLUMN shared_links.snapshot_data IS 'Complete immutable snapshot of scenario state (QBO data, current year settings, projection)';
 

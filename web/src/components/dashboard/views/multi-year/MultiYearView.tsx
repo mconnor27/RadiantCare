@@ -469,7 +469,10 @@ export default function MultiYearView() {
   }
 
   // Get current scenario info from store
-  const currentScenarioName = store.currentScenarioName
+  // For modular (2025 Data), show projection name; for legacy, show scenario name
+  const currentScenarioName = store.scenarioA.dataMode === '2025 Data'
+    ? store.currentProjectionName
+    : store.currentScenarioName
   const currentScenarioUserId = store.currentScenarioUserId
   const isScenarioOwner = currentScenarioUserId && profile?.id === currentScenarioUserId
 

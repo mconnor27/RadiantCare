@@ -201,7 +201,7 @@ export type CurrentYearSettingsScenario = {
   creator_email?: string
 }
 
-// Projection Scenario (projection settings + 2026-2035, optionally 2024/Custom baseline)
+// Projection Scenario (projection settings + 2026-2030, optionally 2024/Custom baseline)
 export type ProjectionScenario = {
   id: string
   user_id: string
@@ -213,8 +213,8 @@ export type ProjectionScenario = {
   baseline_mode: BaselineMode
   baseline_years: FutureYear[] | null // For 2024/Custom modes (basic data, no grid overrides)
   projection_settings: Projection // Growth rates, global params
-  future_years: FutureYear[] // 2026-2035 only
-  future_custom_values: Record<string, number> // Grid overrides for 2026-2035 ONLY
+  future_years: FutureYear[] // 2026-2030 only
+  future_custom_values: Record<string, number> // Grid overrides for 2026-2030 ONLY
   baseline_date: string // ISO date (YYYY-MM-DD)
   qbo_sync_timestamp: string | null
   is_favorite_a?: boolean
@@ -288,17 +288,17 @@ export type Store = {
     baseline_mode: BaselineMode
     baseline_years?: FutureYear[] // For 2024/Custom modes
     projection: Projection
-    future_2026_2035: FutureYear[]
+    future_2026_2030: FutureYear[]
     custom_projected_values_future: Record<string, number> // Only non-'2025-*' keys
   } | null
   // Expected projection snapshots (for dirty detection against baseline changes)
   expectedProjectionSnapshotA: {
     baseline2025: FutureYear
-    future_2026_2035: FutureYear[]
+    future_2026_2030: FutureYear[]
   } | null
   expectedProjectionSnapshotB: {
     baseline2025: FutureYear
-    future_2026_2035: FutureYear[]
+    future_2026_2030: FutureYear[]
   } | null
   setScenarioEnabled: (enabled: boolean) => void
   setFutureValue: (

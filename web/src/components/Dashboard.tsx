@@ -856,7 +856,8 @@ export const useDashboardStore = create<Store>()(
 
             // For staff costs, decompose base (2025) into wages+taxes vs benefits.
             // Always anchor benefits to 2025 base and grow by benefit slider separately from wages+taxes.
-            const baseStaff2025 = computeDefaultNonMdEmploymentCosts(2025)
+            // Use the actual baseline value from the scenario, not the hardcoded default
+            const baseStaff2025 = baselineData.nonMdEmploymentCosts
             const baseWagesTaxes2025 = Math.max(0, baseStaff2025 - ANNUAL_BENEFITS_FULLTIME)
             
             // Apply projections to each future year (SKIP baseline year 2025)
@@ -953,7 +954,8 @@ export const useDashboardStore = create<Store>()(
             let miscEmploymentCosts = baselineData.miscEmploymentCosts
 
             // For staff costs, decompose base (2025) into wages+taxes vs benefits.
-            const baseStaff2025 = computeDefaultNonMdEmploymentCosts(2025)
+            // Use the actual baseline value from the scenario, not the hardcoded default
+            const baseStaff2025 = baselineData.nonMdEmploymentCosts
             const baseWagesTaxes2025 = Math.max(0, baseStaff2025 - ANNUAL_BENEFITS_FULLTIME)
             
             // Apply projections to each future year (SKIP baseline year 2025)
@@ -2144,14 +2146,14 @@ export const useDashboardStore = create<Store>()(
               return true
             }
 
-            // Step 2: Compare 2026-2035 years against EXPECTED SNAPSHOT (what was loaded/last recomputed)
+            // Step 2: Compare 2026-2030 years against EXPECTED SNAPSHOT (what was loaded/last recomputed)
             // Only mark dirty if user made explicit changes beyond what the snapshot contains
-            const current2026Plus = state.scenarioA.future.filter(f => f.year >= 2026 && f.year <= 2035)
+            const current2026Plus = state.scenarioA.future.filter(f => f.year >= 2026 && f.year <= 2030)
 
             // Compare against expected snapshot (not fresh recomputation!)
             for (let i = 0; i < current2026Plus.length; i++) {
               const currentYear = current2026Plus[i]
-              const expectedYear = state.expectedProjectionSnapshotA.future_2026_2035.find(e => e.year === currentYear.year)
+              const expectedYear = state.expectedProjectionSnapshotA.future_2026_2030.find(e => e.year === currentYear.year)
 
               if (!expectedYear) continue
 
@@ -2213,9 +2215,9 @@ export const useDashboardStore = create<Store>()(
 
           if (projectionDirty) return true
 
-          // Compare 2026-2035 years
-          const current2026Plus = state.scenarioA.future.filter(f => f.year >= 2026 && f.year <= 2035)
-          const snapshot2026Plus = state.loadedProjectionSnapshot.future_2026_2035
+          // Compare 2026-2030 years
+          const current2026Plus = state.scenarioA.future.filter(f => f.year >= 2026 && f.year <= 2030)
+          const snapshot2026Plus = state.loadedProjectionSnapshot.future_2026_2030
 
           if (JSON.stringify(current2026Plus) !== JSON.stringify(snapshot2026Plus)) {
             return true
@@ -2263,10 +2265,10 @@ export const useDashboardStore = create<Store>()(
             // Revert projection settings
             state.scenarioA.projection = JSON.parse(JSON.stringify(state.loadedProjectionSnapshot.projection))
 
-            // Revert 2026-2035 years
+            // Revert 2026-2030 years
             state.scenarioA.future = [
               ...state.scenarioA.future.filter(f => f.year < 2026),
-              ...JSON.parse(JSON.stringify(state.loadedProjectionSnapshot.future_2026_2035))
+              ...JSON.parse(JSON.stringify(state.loadedProjectionSnapshot.future_2026_2030))
             ].sort((a, b) => a.year - b.year)
 
             // Revert future grid overrides
@@ -2304,7 +2306,7 @@ export const useDashboardStore = create<Store>()(
 
         updateProjectionSnapshot: () => {
           set((state) => {
-            const future2026Plus = state.scenarioA.future.filter(f => f.year >= 2026 && f.year <= 2035)
+            const future2026Plus = state.scenarioA.future.filter(f => f.year >= 2026 && f.year <= 2030)
             
             const customFutureValues: Record<string, number> = {}
             Object.keys(state.customProjectedValues).forEach(key => {
@@ -2328,7 +2330,7 @@ export const useDashboardStore = create<Store>()(
               baseline_mode: state.scenarioA.dataMode,
               baseline_years: baselineYears,
               projection: JSON.parse(JSON.stringify(state.scenarioA.projection)),
-              future_2026_2035: JSON.parse(JSON.stringify(future2026Plus)),
+              future_2026_2030: JSON.parse(JSON.stringify(future2026Plus)),
               custom_projected_values_future: customFutureValues
             }
           })
@@ -2481,7 +2483,7 @@ export const useDashboardStore = create<Store>()(
           if (scenario.dataMode === '2025 Data') {
             console.log('💾 [saveProjection] 2025 Data mode - using override flags for sparse saving')
 
-            const currentFuture = scenario.future.filter(f => f.year >= 2026 && f.year <= 2035)
+            const currentFuture = scenario.future.filter(f => f.year >= 2026 && f.year <= 2030)
 
             for (const currentYear of currentFuture) {
               // Check if this year has any overrides marked (but ALWAYS save physicians!)
@@ -2518,7 +2520,7 @@ export const useDashboardStore = create<Store>()(
             console.log(`💾 [saveProjection] Saving ${future2026Plus.length} years with overrides (out of ${currentFuture.length} total)`)
           } else {
             // Legacy: For non-2025 modes, save all years as before
-            future2026Plus = scenario.future.filter(f => f.year >= 2026 && f.year <= 2035)
+            future2026Plus = scenario.future.filter(f => f.year >= 2026 && f.year <= 2030)
           }
 
           // Extract future grid overrides (non-2025 keys)
@@ -2772,11 +2774,11 @@ export const useDashboardStore = create<Store>()(
               const baseline2025 = state.scenarioA.future.find(f => f.year === 2025)
               if (!baseline2025) return
 
-              const future_2026_2035 = scenario.future.filter(f => f.year >= 2026 && f.year <= 2035)
+              const future_2026_2030 = scenario.future.filter(f => f.year >= 2026 && f.year <= 2030)
 
               const snapshot = {
                 baseline2025: JSON.parse(JSON.stringify(baseline2025)),
-                future_2026_2035: JSON.parse(JSON.stringify(future_2026_2035))
+                future_2026_2030: JSON.parse(JSON.stringify(future_2026_2030))
               }
 
               if (target === 'A') {
@@ -2810,7 +2812,7 @@ export const useDashboardStore = create<Store>()(
               state.scenarioB.projection = data.projection_settings
             }
 
-            // Restore 2026-2035 years
+            // Restore 2026-2030 years
             const future2026Plus = data.future_years || []
             if (target === 'A') {
               state.scenarioA.future = [
@@ -2974,7 +2976,7 @@ export const useDashboardStore = create<Store>()(
         },
 
         computeExpectedFromBaseline: ({ baseline2025, projection }) => {
-          // Compute what the projected years (2026-2035) should look like
+          // Compute what the projected years (2026-2030) should look like
           // given the current baseline and projection settings
 
           console.log('🧮 [computeExpectedFromBaseline] Computing expected projections from baseline')
@@ -2997,8 +2999,8 @@ export const useDashboardStore = create<Store>()(
           const baseStaff2025 = baseline2025.nonMdEmploymentCosts
           const baseWagesTaxes2025 = Math.max(0, baseStaff2025 - ANNUAL_BENEFITS_FULLTIME)
 
-          // Project years 2026-2035
-          for (let year = 2026; year <= 2035; year++) {
+          // Project years 2026-2030
+          for (let year = 2026; year <= 2030; year++) {
             income = income * (1 + incomeGpct)
             nonEmploymentCosts = nonEmploymentCosts * (1 + nonEmploymentGpct)
             miscEmploymentCosts = miscEmploymentCosts * (1 + miscEmploymentGpct)
@@ -3048,8 +3050,8 @@ export const useDashboardStore = create<Store>()(
           // Start with baseline 2025 as year 0
           const future: FutureYear[] = [JSON.parse(JSON.stringify(baseline2025))]
 
-          // For 2026-2035, merge sparse user overrides with expected computed values
-          for (let year = 2026; year <= 2035; year++) {
+          // For 2026-2030, merge sparse user overrides with expected computed values
+          for (let year = 2026; year <= 2030; year++) {
             const sparseOverrides = futureYearsFromScenario.find(f => f.year === year)
             const expectedYear = expectedDerived.find(f => f.year === year)
 
@@ -3104,7 +3106,7 @@ export const useDashboardStore = create<Store>()(
             // Store snapshot
             const snapshot = {
               baseline2025: JSON.parse(JSON.stringify(baseline2025)),
-              future_2026_2035: JSON.parse(JSON.stringify(expectedFuture))
+              future_2026_2030: JSON.parse(JSON.stringify(expectedFuture))
             }
 
             if (which === 'A') {
@@ -3135,14 +3137,14 @@ export const useDashboardStore = create<Store>()(
                 state.scenarioA.future[year2025Index] = JSON.parse(JSON.stringify(baseline2025))
               }
 
-              // Recompute 2026-2035 from new baseline
+              // Recompute 2026-2030 from new baseline
               const expectedFuture = get().computeExpectedFromBaseline({
                 baseline2025,
                 projection: state.scenarioA.projection,
                 baselineMode: state.scenarioA.dataMode
               })
 
-              // Update each year 2026-2035 with recomputed values, PRESERVING user overrides
+              // Update each year 2026-2030 with recomputed values, PRESERVING user overrides
               expectedFuture.forEach(expectedYear => {
                 const yearIndex = state.scenarioA.future.findIndex(f => f.year === expectedYear.year)
                 if (yearIndex >= 0) {
@@ -3184,14 +3186,14 @@ export const useDashboardStore = create<Store>()(
                 scenarioB.future[year2025Index] = JSON.parse(JSON.stringify(baseline2025))
               }
 
-              // Recompute 2026-2035 from new baseline
+              // Recompute 2026-2030 from new baseline
               const expectedFuture = get().computeExpectedFromBaseline({
                 baseline2025,
                 projection: scenarioB.projection,
                 baselineMode: scenarioB.dataMode
               })
 
-              // Update each year 2026-2035 with recomputed values, PRESERVING user overrides
+              // Update each year 2026-2030 with recomputed values, PRESERVING user overrides
               expectedFuture.forEach(expectedYear => {
                 const yearIndex = scenarioB.future.findIndex(f => f.year === expectedYear.year)
                 if (yearIndex >= 0) {
@@ -3714,11 +3716,25 @@ export function calculateProjectedValue(
     return baselineData.miscEmploymentCosts * Math.pow(1 + miscEmploymentGpct, yearsSinceBaseline)
   } else if (field === 'nonMdEmploymentCosts') {
     // Split staff costs: wages+taxes grow by salary slider; benefits by benefits slider (anchored to 2025)
-    const baseStaff2025 = computeDefaultNonMdEmploymentCosts(2025)
+    // Use the actual baseline value from the scenario, not the hardcoded default
+    const baseStaff2025 = baselineData.nonMdEmploymentCosts
     const baseWagesTaxes2025 = Math.max(0, baseStaff2025 - ANNUAL_BENEFITS_FULLTIME)
     const wagesAndTaxes = baseWagesTaxes2025 * Math.pow(1 + nonMdEmploymentGpct, yearsSinceBaseline)
     const benefits = getBenefitCostsForYear(year, benefitGrowthPct)
-    return wagesAndTaxes + benefits
+    const projectedValue = wagesAndTaxes + benefits
+
+    console.log(`🔍 [calculateProjectedValue] nonMdEmploymentCosts for year ${year}:`, {
+      baselineDataValue: baselineData.nonMdEmploymentCosts,
+      usingBaselineValue: baseStaff2025,
+      baseWagesTaxes2025,
+      wagesAndTaxes,
+      benefits,
+      projectedValue,
+      dataMode: sc.dataMode,
+      yearsSinceBaseline
+    })
+
+    return projectedValue
   }
   return 0
 }

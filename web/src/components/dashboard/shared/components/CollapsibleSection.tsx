@@ -26,9 +26,25 @@ export default function CollapsibleSection({
   useEffect(() => {
     const el = contentRef.current
     if (!el) return
+
     // Measure full height for transition
-    const fullHeight = el.scrollHeight
-    setMaxHeight(fullHeight)
+    const updateHeight = () => {
+      const fullHeight = el.scrollHeight
+      setMaxHeight(fullHeight)
+    }
+
+    updateHeight()
+
+    // Use ResizeObserver to dynamically update height when content changes
+    const resizeObserver = new ResizeObserver(() => {
+      updateHeight()
+    })
+
+    resizeObserver.observe(el)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
   }, [children, open])
 
   const headerStyle: any = {

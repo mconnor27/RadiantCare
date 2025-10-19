@@ -650,6 +650,18 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           const currentValue = fy.nonMdEmploymentCosts || 0
           const isChanged = projectedValue > 0 && Math.abs(currentValue - projectedValue) > UI_DEFAULTS.changeThreshold
           const shouldShowReset = isChanged && !isReadOnly
+
+          console.log(`🎯 [YearPanel] Staff Employment Costs reset icon check for year ${year}:`, {
+            projectedValue,
+            currentValue,
+            diff: Math.abs(currentValue - projectedValue),
+            threshold: UI_DEFAULTS.changeThreshold,
+            isChanged,
+            shouldShowReset,
+            isReadOnly,
+            hasOverride: fy._overrides?.nonMdEmploymentCosts
+          })
+
           return shouldShowReset ? (
             <button
               onClick={() => {
