@@ -336,6 +336,7 @@ export type Store = {
   // REMOVED: setCustomProjectedValue, removeCustomProjectedValue, resetCustomProjectedValues (legacy)
   setYtdCustomProjectedValue: (accountName: string, value: number) => void
   removeYtdCustomProjectedValue: (accountName: string) => void
+  resetYtdCustomProjectedValues: () => void
   setSuppressNextGridSync: (suppress: boolean) => void
   consumeSuppressNextGridSync: () => boolean
   // Scenario management methods
