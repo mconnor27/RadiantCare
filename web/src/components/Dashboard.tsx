@@ -18,7 +18,7 @@ import MobileWarningModal from './shared/MobileWarningModal'
 import { DEFAULT_YTD_SETTINGS } from './dashboard/views/detailed/config/chartConfig'
 import { authenticatedFetch } from '../lib/api'
 // Import types from types.ts to avoid duplication and binding conflicts
-import type { YearRow, PhysicianType, Physician, FutureYear, ScenarioKey, Store, YTDSettings, SavedScenario, ScenarioState, BaselineMode } from './dashboard/shared/types'
+import type { YearRow, PhysicianType, Physician, FutureYear, ScenarioKey, Store, YTDSettings, SavedScenario, ScenarioState } from './dashboard/shared/types'
 
 // Re-export types for backward compatibility with extracted components
 export type { YearRow, PhysicianType, Physician, FutureYear, ScenarioKey }
@@ -789,10 +789,12 @@ export const useDashboardStore = create<Store>()(
             if (field === 'locumsCosts' || field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours' || field === 'consultingServicesAgreement') {
               for (const fy of sc.future) {
                 if (fy.year === 2025) continue // Skip baseline year
-                fy[field] = sc.projection[field]
+                // Map field names from projection to future year properties
+                const futureYearField = field === 'locumsCosts' ? 'locumCosts' : field
+                fy[futureYearField] = sc.projection[field]
                 // Clear override flag - user set a new global value
-                if (fy._overrides?.[field]) {
-                  delete fy._overrides[field]
+                if (fy._overrides?.[futureYearField]) {
+                  delete fy._overrides[futureYearField]
                 }
               }
               // For fixed amount fields, we're done - no need to recalculate growth-based fields
@@ -1605,8 +1607,7 @@ export const useDashboardStore = create<Store>()(
 
         loadScenarioFromDatabase: async (
           id: string,
-          target: 'A' | 'B' = 'A',
-          loadBaseline: boolean = true
+          target: 'A' | 'B' = 'A'
         ) => {
           // MODULAR ROUTER: Routes to appropriate load method based on scenario type
           const { data, error } = await supabase
@@ -1776,15 +1777,25 @@ export const useDashboardStore = create<Store>()(
               return true
             }
 
-            // Step 2: Compare 2026-2030 years against EXPECTED SNAPSHOT (what was loaded/last recomputed)
+            // Step 2: Compare 2026-2030 years against LOADED SNAPSHOT (what was loaded from DB)
             const current2026Plus = scenario.future.filter(f => f.year >= 2026 && f.year <= 2030)
 
-            // Compare against expected snapshot (not fresh recomputation!)
+            // Get the loaded future years from the loaded snapshot
+            const loadedFutureYears = target === 'A'
+              ? state.loadedProjectionSnapshot?.future_2026_2030
+              : state.loadedScenarioBSnapshot?.scenarioB?.future?.filter(f => f.year >= 2026 && f.year <= 2030)
+
+            if (!loadedFutureYears) {
+              console.log(`⚠️ [isProjectionDirty ${target}] No loaded future years found`)
+              return false
+            }
+
+            // Compare against loaded snapshot (what was loaded from database)
             for (let i = 0; i < current2026Plus.length; i++) {
               const currentYear = current2026Plus[i]
-              const expectedYear = expectedSnapshot.future_2026_2030.find(e => e.year === currentYear.year)
+              const loadedYear = loadedFutureYears.find(e => e.year === currentYear.year)
 
-              if (!expectedYear) continue
+              if (!loadedYear) continue
 
               // Check for meaningful differences in projection-controlled fields
               const fields: (keyof FutureYear)[] = [
@@ -1795,13 +1806,13 @@ export const useDashboardStore = create<Store>()(
 
               for (const field of fields) {
                 const currentVal = currentYear[field as keyof typeof currentYear] as number
-                const expectedVal = expectedYear[field as keyof typeof expectedYear] as number
+                const loadedVal = loadedYear[field as keyof typeof loadedYear] as number
 
-                if (typeof currentVal === 'number' && typeof expectedVal === 'number') {
-                  if (Math.abs(currentVal - expectedVal) > 0.01) {
-                    console.log(`✏️ [isProjectionDirty ${target}] Year ${currentYear.year} ${field} differs from expected:`, {
+                if (typeof currentVal === 'number' && typeof loadedVal === 'number') {
+                  if (Math.abs(currentVal - loadedVal) > 0.01) {
+                    console.log(`✏️ [isProjectionDirty ${target}] Year ${currentYear.year} ${field} differs from loaded:`, {
                       current: currentVal,
-                      expected: expectedVal
+                      loaded: loadedVal
                     })
                     return true
                   }
@@ -1809,7 +1820,7 @@ export const useDashboardStore = create<Store>()(
               }
 
               // Check physicians array
-              if (JSON.stringify(currentYear.physicians) !== JSON.stringify(expectedYear.physicians)) {
+              if (JSON.stringify(currentYear.physicians) !== JSON.stringify(loadedYear.physicians)) {
                 console.log(`✏️ [isProjectionDirty ${target}] Year ${currentYear.year} physicians changed`)
                 return true
               }
@@ -3638,7 +3649,7 @@ export function Dashboard() {
 
           if (fallbackScenario) {
             console.log(`[Unload A] Loading fallback: ${fallbackScenario.name}`)
-            await store.loadScenarioFromDatabase(fallbackScenario.id, 'A', true)
+            await store.loadScenarioFromDatabase(fallbackScenario.id, 'A')
           } else {
             // Ultimate fallback: just clear the name
             store.setCurrentScenario(null, 'Default (A)')
@@ -3701,7 +3712,7 @@ export function Dashboard() {
 
           if (fallbackScenario) {
             console.log(`[Unload B] Loading fallback: ${fallbackScenario.name}`)
-            await store.loadScenarioFromDatabase(fallbackScenario.id, 'B', false)
+            await store.loadScenarioFromDatabase(fallbackScenario.id, 'B')
           } else {
             // Ultimate fallback: just clear the name
             store.setCurrentScenarioB(null, 'Default (B)')
@@ -3820,12 +3831,12 @@ export function Dashboard() {
       const data = await response.json()
 
       // Load Scenario A
-      await store.loadScenarioFromDatabase(data.scenario_a.id, 'A', true)
+      await store.loadScenarioFromDatabase(data.scenario_a.id, 'A')
 
       // Load Scenario B if enabled
       if (data.scenario_b_enabled && data.scenario_b) {
         store.setScenarioEnabled(true)
-        await store.loadScenarioFromDatabase(data.scenario_b.id, 'B', false)
+        await store.loadScenarioFromDatabase(data.scenario_b.id, 'B')
       }
 
       // Apply view mode
@@ -3945,13 +3956,13 @@ export function Dashboard() {
         // Load scenario A
         if (scenarioA) {
           console.log(`[INIT] Loading ${favoriteA ? 'favorite' : 'Default'} (A)...`, scenarioA.name)
-          await store.loadScenarioFromDatabase(scenarioA.id, 'A', true)
+          await store.loadScenarioFromDatabase(scenarioA.id, 'A')
         }
 
         // Load scenario B and enable checkbox if favorite B exists
         if (scenarioB) {
           console.log(`[INIT] Loading ${favoriteB ? 'favorite' : 'Default'} (B)...`, scenarioB.name)
-          await store.loadScenarioFromDatabase(scenarioB.id, 'B', false)
+          await store.loadScenarioFromDatabase(scenarioB.id, 'B')
           // Enable scenario B if it's a favorite, otherwise keep it disabled
           if (favoriteB) {
             store.setScenarioEnabled(true)
