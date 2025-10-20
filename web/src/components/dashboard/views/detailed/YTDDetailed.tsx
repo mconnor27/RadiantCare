@@ -240,7 +240,22 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
       if (!profile?.id) return
 
       try {
-        // First, check for a CURRENT favorite scenario
+        // Check if we have persisted ID from localStorage but no data (hybrid persistence)
+        const hasPersistedId = !!store.currentYearSettingId
+        const hasData = !!store.ytdData
+
+        if (hasPersistedId && !hasData) {
+          // Reload from persisted ID
+          console.log('[YTD Init] Reloading from persisted ID:', store.currentYearSettingId)
+          await store.loadCurrentYearSettings(store.currentYearSettingId)
+          return
+        } else if (hasPersistedId && hasData) {
+          // We have both ID and data (shouldn't happen with hybrid persistence, but handle it)
+          console.log('[YTD Init] Already loaded:', store.currentYearSettingName)
+          return
+        }
+
+        // No persisted state - load favorite or default
         const { data: favoriteData } = await supabase
           .from('user_favorites')
           .select('scenario_id')

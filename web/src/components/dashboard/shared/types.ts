@@ -253,7 +253,7 @@ export type Store = {
   scenarioA: ScenarioState
   scenarioB?: ScenarioState
   scenarioBEnabled: boolean
-  customProjectedValues: Record<string, number>
+  // REMOVED: customProjectedValues (legacy - Multi-Year uses _overrides flags)
   suppressNextGridSync?: boolean
   // NEW: Dedicated YTD state (separate from Scenario A/B)
   ytdData: FutureYear // Current year (2025) data for YTD view
@@ -274,7 +274,7 @@ export type Store = {
   // Legacy snapshot (for backward compat)
   loadedScenarioSnapshot: {
     scenarioA: ScenarioState
-    customProjectedValues: Record<string, number>
+    // REMOVED: customProjectedValues (legacy)
   } | null
   loadedScenarioBSnapshot: {
     scenarioB: ScenarioState
@@ -333,9 +333,7 @@ export type Store = {
   resetViewSettings: (scenario: ScenarioKey, skip2025?: boolean) => void
   setPrcsDirector: (scenario: ScenarioKey, year: number, physicianId?: string | null) => void
   ensureBaselineYear: (scenario: ScenarioKey, year: number) => Promise<void>
-  setCustomProjectedValue: (accountName: string, value: number) => void
-  removeCustomProjectedValue: (accountName: string) => void
-  resetCustomProjectedValues: () => void
+  // REMOVED: setCustomProjectedValue, removeCustomProjectedValue, resetCustomProjectedValues (legacy)
   setYtdCustomProjectedValue: (accountName: string, value: number) => void
   removeYtdCustomProjectedValue: (accountName: string) => void
   setSuppressNextGridSync: (suppress: boolean) => void

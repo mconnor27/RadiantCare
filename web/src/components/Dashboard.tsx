@@ -82,7 +82,8 @@ export const useDashboardStore = create<Store>()(
         },
         scenarioB: undefined,
         scenarioBEnabled: false,
-        customProjectedValues: {},
+        // REMOVED: customProjectedValues (legacy - never used in modular system)
+        // Multi-Year uses _overrides flags, YTD uses ytdCustomProjectedValues
         // NEW: Dedicated YTD state (separate from Scenario A/B)
         ytdData: INITIAL_FUTURE_YEARS_A.find(f => f.year === 2025) || {
           year: 2025,
@@ -1090,10 +1091,8 @@ export const useDashboardStore = create<Store>()(
                 futureYear.prcsMedicalDirectorHours = snapshotFy.prcsMedicalDirectorHours
                 futureYear.prcsDirectorPhysicianId = snapshotFy.prcsDirectorPhysicianId
 
-                // Also reset grid overrides to snapshot (only for A, B doesn't have separate grid overrides)
-                if (scenario === 'A' && state.loadedScenarioSnapshot) {
-                  state.customProjectedValues = JSON.parse(JSON.stringify(state.loadedScenarioSnapshot.customProjectedValues))
-                }
+                // REMOVED: Legacy grid overrides restore (customProjectedValues)
+                // Multi-Year uses _overrides flags, not grid overrides
                 return
               }
             }
@@ -1214,10 +1213,7 @@ export const useDashboardStore = create<Store>()(
                   if (snapshotFy.therapyAberdeen !== undefined) fy.therapyAberdeen = snapshotFy.therapyAberdeen
                 }
               })
-              // Also restore custom projected values (grid overrides) - only for A
-              if (scenario === 'A' && state.loadedScenarioSnapshot) {
-                state.customProjectedValues = JSON.parse(JSON.stringify(state.loadedScenarioSnapshot.customProjectedValues))
-              }
+              // REMOVED: Legacy grid overrides restore (customProjectedValues)
             } else {
               // Fall back to recalculating from projection formulas if no snapshot
               get().applyProjectionFromLastActual(scenario)
@@ -1281,7 +1277,7 @@ export const useDashboardStore = create<Store>()(
             console.log('[SNAPSHOT B] Clearing B snapshot (resetToDefaults)')
             state.scenarioBEnabled = false
             state.scenarioB = undefined
-            state.customProjectedValues = {}
+            // REMOVED: customProjectedValues = {} (legacy)
             state.loadedScenarioBSnapshot = null
           }, false)
 
@@ -1343,8 +1339,8 @@ export const useDashboardStore = create<Store>()(
           // Batch all updates in a single set call to avoid intermediate renders
           console.log('[RESET DEBUG] Batching state updates...')
           set((state) => {
-            state.customProjectedValues = {}
-
+            // REMOVED: customProjectedValues = {} (legacy)
+            
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!sc) return
 
@@ -1386,10 +1382,8 @@ export const useDashboardStore = create<Store>()(
             console.warn('Post-reset projection update encountered an issue:', e)
           }
 
-          // Nudge listeners that key projection inputs changed (forces grid reload even if values are same)
-          set((state) => {
-            state.customProjectedValues = { ...state.customProjectedValues }
-          })
+          // REMOVED: Nudge listeners via customProjectedValues (legacy)
+          // No longer needed - grid is only in YTD view
           
           console.log('[RESET DEBUG] ========== resetOnly2025 END ==========')
         },
@@ -1466,22 +1460,11 @@ export const useDashboardStore = create<Store>()(
           })
         },
         
-        // Custom projected values management
-        setCustomProjectedValue: (accountName: string, value: number) =>
-          set((state) => {
-            state.customProjectedValues[accountName] = value
-          }),
+        // REMOVED: setCustomProjectedValue, removeCustomProjectedValue, resetCustomProjectedValues
+        // These were legacy methods for a grid system that no longer exists in Multi-Year view
+        // Multi-Year now uses slider-based editing with _overrides flags for sparse saving
         
-        removeCustomProjectedValue: (accountName: string) =>
-          set((state) => {
-            delete state.customProjectedValues[accountName]
-          }),
-        
-        resetCustomProjectedValues: () =>
-          set((state) => {
-            state.customProjectedValues = {}
-          }),
-        
+        // YTD custom projected values management (actively used)
         setYtdCustomProjectedValue: (accountName: string, value: number) =>
           set((state) => {
             state.ytdCustomProjectedValues[accountName] = value
@@ -1519,8 +1502,8 @@ export const useDashboardStore = create<Store>()(
               const { selectedYear: _selectedYear, ...scenarioAWithoutUI } = state.scenarioA
               void _selectedYear // Mark as intentionally unused
               state.loadedScenarioSnapshot = {
-                scenarioA: JSON.parse(JSON.stringify(scenarioAWithoutUI)),
-                customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
+                scenarioA: JSON.parse(JSON.stringify(scenarioAWithoutUI))
+                // REMOVED: customProjectedValues (legacy)
               }
               console.log('📸 [Snapshot] Updated Scenario A after cache sync')
             } else {
@@ -1563,10 +1546,7 @@ export const useDashboardStore = create<Store>()(
                 // Restore preserved UI state
                 state.scenarioA.selectedYear = preservedSelectedYear
                 
-                // Restore custom projected values (grid overrides)
-                if ('customProjectedValues' in snapshot) {
-                  state.customProjectedValues = JSON.parse(JSON.stringify(snapshot.customProjectedValues))
-                }
+                // REMOVED: Restore customProjectedValues (legacy)
               }
             } else {
               // Scenario B
@@ -1810,21 +1790,8 @@ export const useDashboardStore = create<Store>()(
               }
             }
 
-            // Step 4: Compare future grid overrides (non-2025 keys)
-            const currentFutureKeys = Object.keys(state.customProjectedValues).filter(k => !k.startsWith('2025-'))
-            const snapshotFutureKeys = Object.keys(state.loadedProjectionSnapshot.custom_projected_values_future)
-
-            if (currentFutureKeys.length !== snapshotFutureKeys.length) {
-              console.log('✏️ [isProjectionDirty] Grid override count changed')
-              return true
-            }
-
-            for (const key of currentFutureKeys) {
-              if (Math.abs(state.customProjectedValues[key] - (state.loadedProjectionSnapshot.custom_projected_values_future[key] || 0)) > 0.01) {
-                console.log('✏️ [isProjectionDirty] Grid override changed:', key)
-                return true
-              }
-            }
+            // REMOVED: Step 4 - Compare future grid overrides (legacy customProjectedValues)
+            // Multi-Year has no grid UI, uses slider-based editing with _overrides flags
 
             console.log('✅ [isProjectionDirty] No projection-specific changes detected (clean)')
             return false
@@ -1847,17 +1814,8 @@ export const useDashboardStore = create<Store>()(
             return true
           }
 
-          // Compare future grid overrides (non-2025 keys)
-          const currentFutureKeys = Object.keys(state.customProjectedValues).filter(k => !k.startsWith('2025-'))
-          const snapshotFutureKeys = Object.keys(state.loadedProjectionSnapshot.custom_projected_values_future)
-
-          if (currentFutureKeys.length !== snapshotFutureKeys.length) return true
-
-          for (const key of currentFutureKeys) {
-            if (Math.abs(state.customProjectedValues[key] - (state.loadedProjectionSnapshot.custom_projected_values_future[key] || 0)) > 0.01) {
-              return true
-            }
-          }
+          // REMOVED: Compare future grid overrides (legacy customProjectedValues)
+          // Multi-Year has no grid UI, uses slider-based editing with _overrides flags
 
           // Compare baseline years (for 2024/Custom modes)
           if (state.loadedProjectionSnapshot.baseline_years) {
@@ -1895,13 +1853,7 @@ export const useDashboardStore = create<Store>()(
               ...JSON.parse(JSON.stringify(state.loadedProjectionSnapshot.future_2026_2030))
             ].sort((a, b) => a.year - b.year)
 
-            // Revert future grid overrides
-            Object.keys(state.customProjectedValues).forEach(key => {
-              if (!key.startsWith('2025-')) {
-                delete state.customProjectedValues[key]
-              }
-            })
-            Object.assign(state.customProjectedValues, state.loadedProjectionSnapshot.custom_projected_values_future)
+            // REMOVED: Revert future grid overrides (legacy customProjectedValues)
 
             // Revert baseline years (for 2024/Custom modes)
             if (state.loadedProjectionSnapshot.baseline_years) {
@@ -1932,12 +1884,8 @@ export const useDashboardStore = create<Store>()(
           set((state) => {
             const future2026Plus = state.scenarioA.future.filter(f => f.year >= 2026 && f.year <= 2030)
             
-            const customFutureValues: Record<string, number> = {}
-            Object.keys(state.customProjectedValues).forEach(key => {
-              if (!key.startsWith('2025-')) {
-                customFutureValues[key] = state.customProjectedValues[key]
-              }
-            })
+            // REMOVED: Extract customFutureValues (legacy)
+            // Multi-Year uses _overrides flags, not grid overrides
 
             // Get baseline years if in 2024/Custom mode
             let baselineYears: FutureYear[] | undefined
@@ -1955,7 +1903,7 @@ export const useDashboardStore = create<Store>()(
               baseline_years: baselineYears,
               projection: JSON.parse(JSON.stringify(state.scenarioA.projection)),
               future_2026_2030: JSON.parse(JSON.stringify(future2026Plus)),
-              custom_projected_values_future: customFutureValues
+              custom_projected_values_future: {} // Legacy field - always empty
             }
           })
         },
@@ -2147,13 +2095,8 @@ export const useDashboardStore = create<Store>()(
             future2026Plus = scenario.future.filter(f => f.year >= 2026 && f.year <= 2030)
           }
 
-          // Extract future grid overrides (non-2025 keys)
-          const customFutureValues: Record<string, number> = {}
-          Object.keys(state.customProjectedValues).forEach(key => {
-            if (!key.startsWith('2025-')) {
-              customFutureValues[key] = state.customProjectedValues[key]
-            }
-          })
+          // REMOVED: Extract future grid overrides (legacy customProjectedValues)
+          // Always empty in modular system, Multi-Year uses _overrides flags
 
           // Extract baseline years if not in 2025 Data mode
           let baselineYears: FutureYear[] | null = null
@@ -2180,7 +2123,7 @@ export const useDashboardStore = create<Store>()(
             baseline_years: baselineYears,
             projection_settings: projectionSettings,
             future_years: future2026Plus,
-            future_custom_values: customFutureValues,
+            future_custom_values: {}, // Legacy field - always empty (Multi-Year uses _overrides)
             baseline_date: baselineDate,
             qbo_sync_timestamp: qboSyncTimestamp,
           }
@@ -2389,15 +2332,8 @@ export const useDashboardStore = create<Store>()(
                 state.scenarioB.dataMode = '2025 Data'
               }
 
-              // Restore future grid overrides (replace existing non-2025 keys)
-              Object.keys(state.customProjectedValues).forEach(key => {
-                if (!key.startsWith('2025-')) {
-                  delete state.customProjectedValues[key]
-                }
-              })
-              if (data.future_custom_values) {
-                Object.assign(state.customProjectedValues, data.future_custom_values)
-              }
+              // REMOVED: Restore future grid overrides (legacy customProjectedValues)
+              // Multi-Year uses _overrides flags, data.future_custom_values is always {}
 
               // Update the correct scenario ID/name based on target
               if (target === 'A') {
@@ -2476,15 +2412,8 @@ export const useDashboardStore = create<Store>()(
               ].sort((a, b) => a.year - b.year)
             }
 
-            // Restore future grid overrides (replace existing non-2025 keys)
-            Object.keys(state.customProjectedValues).forEach(key => {
-              if (!key.startsWith('2025-')) {
-                delete state.customProjectedValues[key]
-              }
-            })
-            if (data.future_custom_values) {
-              Object.assign(state.customProjectedValues, data.future_custom_values)
-            }
+            // REMOVED: Restore future grid overrides (legacy customProjectedValues)
+            // Multi-Year uses _overrides flags, data.future_custom_values is always {}
 
             // Restore baseline years if applicable (2024/Custom modes)
             if (data.baseline_years && data.baseline_years.length > 0) {
@@ -2901,10 +2830,23 @@ export const useDashboardStore = create<Store>()(
             // Check if data has expired (7 days = 604800000ms)
             const EXPIRY_MS = 7 * 24 * 60 * 60 * 1000
             if (data.state?._timestamp && Date.now() - data.state._timestamp > EXPIRY_MS) {
-              console.log('[STORAGE] State expired, clearing...')
+              console.log('[STORAGE] State expired (>7 days), clearing...')
               localStorage.removeItem(name)
               return null
             }
+            
+            // STALENESS PROTECTION:
+            // With hybrid persistence, we only store IDs (not data)
+            // Data is ALWAYS loaded fresh from database on mount
+            // This ensures:
+            // - Database updates are always reflected (multi-user safe)
+            // - QBO sync changes are picked up (external data source safe)
+            // - No stale data issues (source of truth is DB)
+            
+            const age = data.state?._timestamp ? Date.now() - data.state._timestamp : 0
+            const ageHours = Math.floor(age / (1000 * 60 * 60))
+            console.log(`[STORAGE] Loading persisted state (age: ${ageHours}h, expires in: ${Math.floor((EXPIRY_MS - age) / (1000 * 60 * 60))}h)`)
+            
             return str
           } catch {
             return str
@@ -2923,17 +2865,40 @@ export const useDashboardStore = create<Store>()(
         removeItem: (name) => localStorage.removeItem(name),
       })),
       partialize: (state: Store) => ({
-        scenarioA: state.scenarioA,
-        scenarioBEnabled: state.scenarioBEnabled,
-        scenarioB: state.scenarioB,
-        customProjectedValues: state.customProjectedValues,
+        // HYBRID PERSISTENCE STRATEGY:
+        // - Persist IDs and UI state for smooth UX
+        // - Don't persist scenario data (always load fresh from DB)
+        // - Persist unsaved grid edits (user work in progress)
+        
+        // Multi-Year Scenario metadata (IDs only, data loaded fresh)
         currentScenarioId: state.currentScenarioId,
         currentScenarioName: state.currentScenarioName,
         currentScenarioUserId: state.currentScenarioUserId,
         currentScenarioBId: state.currentScenarioBId,
         currentScenarioBName: state.currentScenarioBName,
         currentScenarioBUserId: state.currentScenarioBUserId,
-        loadedScenarioSnapshot: state.loadedScenarioSnapshot,
+        
+        // Current Year Setting metadata (IDs only, data loaded fresh)
+        currentYearSettingId: state.currentYearSettingId,
+        currentYearSettingName: state.currentYearSettingName,
+        currentYearSettingUserId: state.currentYearSettingUserId,
+        
+        // Projection metadata (IDs only, data loaded fresh)
+        currentProjectionId: state.currentProjectionId,
+        currentProjectionName: state.currentProjectionName,
+        currentProjectionUserId: state.currentProjectionUserId,
+        
+        // UI preferences
+        scenarioBEnabled: state.scenarioBEnabled,
+        
+        // Unsaved user work (grid edits - YTD only)
+        // NOTE: customProjectedValues is LEGACY and not persisted
+        // Multi-Year view has no grid UI, so grid overrides come from DB (future_custom_values)
+        // YTD view has grid UI and needs to preserve unsaved work
+        ytdCustomProjectedValues: state.ytdCustomProjectedValues,
+        
+        // NOTE: scenarioA, scenarioB, ytdData, snapshots are NOT persisted
+        // They will be loaded fresh from database on mount using the IDs above
       }),
     }
   )
@@ -3231,20 +3196,8 @@ export function hasChangesFromLoadedScenario(
     return true
   }
 
-  // Compare customProjectedValues (grid overrides) - only for scenario A
-  const currentCustomValues = _store.customProjectedValues || {}
-  const snapshotCustomValues = ('customProjectedValues' in snapshot ? snapshot.customProjectedValues : {}) || {}
-
-  const allKeys = new Set([
-    ...Object.keys(currentCustomValues),
-    ...Object.keys(snapshotCustomValues)
-  ])
-
-  for (const key of allKeys) {
-    if (currentCustomValues[key] !== snapshotCustomValues[key]) {
-      return true
-    }
-  }
+  // REMOVED: Compare customProjectedValues (legacy)
+  // Multi-Year uses _overrides flags, not grid overrides
 
   return false
 }

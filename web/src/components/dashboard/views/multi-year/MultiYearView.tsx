@@ -106,43 +106,67 @@ export default function MultiYearView() {
         const favoriteAId = favoritesData?.find(f => f.favorite_type === 'A')?.scenario_id
         const favoriteBId = favoritesData?.find(f => f.favorite_type === 'B')?.scenario_id
 
-        // Find favorite A or fallback to "Default (Optimistic)"
-        const favoriteA = scenarios?.find(s => s.id === favoriteAId)
-        const defaultOptimistic = scenarios?.find(s => s.name === 'Default (Optimistic)')
-        const scenarioA = favoriteA || defaultOptimistic
+        // Check if we have persisted IDs from localStorage but no data (hybrid persistence)
+        const hasPersistedIdA = !!store.currentScenarioId
+        const hasDataA = !!store.scenarioA && store.scenarioA.future.length > 0
+        const hasPersistedIdB = !!store.currentScenarioBId
+        const hasDataB = !!store.scenarioB && store.scenarioB.future.length > 0
 
-        // Find favorite B or fallback to "Default (Pessimistic)"
-        const favoriteB = scenarios?.find(s => s.id === favoriteBId)
-        const defaultPessimistic = scenarios?.find(s => s.name === 'Default (Pessimistic)')
-        const scenarioB = favoriteB || defaultPessimistic
+        // Determine which scenario to load for A
+        let scenarioToLoadA = null
+        if (hasPersistedIdA && !hasDataA) {
+          // We have a persisted ID but no data - reload that scenario
+          scenarioToLoadA = scenarios?.find(s => s.id === store.currentScenarioId)
+          console.log('[Multi-Year Init] Reloading scenario A from persisted ID:', store.currentScenarioId)
+        } else if (!hasPersistedIdA || !hasDataA) {
+          // No persisted state or incomplete - load favorite or default
+          const favoriteA = scenarios?.find(s => s.id === favoriteAId)
+          const defaultOptimistic = scenarios?.find(s => s.name === 'Default (Optimistic)')
+          scenarioToLoadA = favoriteA || defaultOptimistic
+        }
 
-        // Load scenario A if found and not already loaded
-        if (scenarioA && store.currentScenarioId !== scenarioA.id) {
-          console.log(`[Multi-Year Init] Loading ${favoriteA ? 'favorite A' : 'Default (Optimistic)'}...`, scenarioA.name)
-          await store.loadScenarioFromDatabase(scenarioA.id, 'A', true)
+        // Determine which scenario to load for B
+        let scenarioToLoadB = null
+        if (hasPersistedIdB && !hasDataB) {
+          // We have a persisted ID but no data - reload that scenario
+          scenarioToLoadB = scenarios?.find(s => s.id === store.currentScenarioBId)
+          console.log('[Multi-Year Init] Reloading scenario B from persisted ID:', store.currentScenarioBId)
+        } else if (!hasPersistedIdB || !hasDataB) {
+          // No persisted state or incomplete - load favorite or default (but don't auto-enable)
+          const favoriteB = scenarios?.find(s => s.id === favoriteBId)
+          const defaultPessimistic = scenarios?.find(s => s.name === 'Default (Pessimistic)')
+          scenarioToLoadB = favoriteB || defaultPessimistic
+        }
+
+        // Load scenario A if needed
+        if (scenarioToLoadA) {
+          const isFavorite = scenarioToLoadA.id === favoriteAId
+          console.log(`[Multi-Year Init] Loading ${isFavorite ? 'favorite A' : 'Default (Optimistic)'}...`, scenarioToLoadA.name)
+          await store.loadScenarioFromDatabase(scenarioToLoadA.id, 'A', true)
           // Ensure selectedYear is set to 2025 (Baseline) after load
           store.setSelectedYear('A', 2025)
         }
 
-        // Load scenario B if found and not already loaded
-        if (scenarioB && store.currentScenarioBId !== scenarioB.id) {
-          console.log(`[Multi-Year Init] Loading ${favoriteB ? 'favorite B' : 'Default (Pessimistic)'}...`, scenarioB.name)
+        // Load scenario B if needed
+        if (scenarioToLoadB) {
+          const isFavorite = scenarioToLoadB.id === favoriteBId
+          console.log(`[Multi-Year Init] Loading ${isFavorite ? 'favorite B' : 'Default (Pessimistic)'}...`, scenarioToLoadB.name)
           
           // IMPORTANT: Enable scenario B first to create the scenarioB object
           store.setScenarioEnabled(true)
           
           // Now load the data into B (scenarioB exists now)
-          await store.loadScenarioFromDatabase(scenarioB.id, 'B', false)
+          await store.loadScenarioFromDatabase(scenarioToLoadB.id, 'B', false)
           
           // Set selectedYear to 2025 (now works because scenarioB exists)
           store.setSelectedYear('B', 2025)
 
-          // If not a favorite, disable scenario B visibility (but keep data loaded)
-          if (!favoriteB) {
+          // If not a favorite AND not persisted as enabled, disable scenario B visibility
+          if (!isFavorite && !store.scenarioBEnabled) {
             store.setScenarioEnabled(false)
             console.log('[Multi-Year Init] Loaded scenario B but keeping it hidden (not a favorite)')
           } else {
-            console.log('[Multi-Year Init] Enabled scenario B visibility (favorite)')
+            console.log('[Multi-Year Init] Enabled scenario B visibility')
           }
         }
       } catch (err) {
