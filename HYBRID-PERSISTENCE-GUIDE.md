@@ -1,8 +1,8 @@
-# Hybrid Persistence Strategy
+# Session Persistence Strategy
 
 ## Overview
 
-RadiantCare uses a **hybrid persistence approach** that combines localStorage for UI state with fresh database loads for scenario data. This ensures a smooth user experience while maintaining data integrity.
+RadiantCare uses **sessionStorage** to persist working state within a browser tab/window. This ensures users can refresh without losing work, while preventing stale state across sessions.
 
 ### Modular Architecture (Current System)
 
@@ -19,13 +19,19 @@ The app uses a **modular scenario system** with two separate types:
    - NO grid UI (Multi-Year view)
    - Grid overrides come from database, not localStorage
 
-**Key Point:** Only YTD view has a grid UI where users can make unsaved edits. Multi-Year view has no grid, so there's nothing to persist for "unsaved work" there.
+**Key Point:** YTD view has a grid UI for detailed edits. Multi-Year view uses sliders with `_overrides` flags to track user adjustments.
 
-## What Gets Persisted (7 days)
+## What Gets Persisted (Until Tab Close)
 
-### ✅ Stored in localStorage
+### ✅ Stored in sessionStorage
 
-**Scenario Metadata (IDs only)**
+**Full Scenario State** (including unsaved work)
+- `scenarioA` - Multi-Year scenario A (with `_overrides` flags)
+- `scenarioB` - Multi-Year scenario B (with `_overrides` flags)
+- `ytdData` - Current year (2025) data
+- `ytdCustomProjectedValues` - Grid overrides in YTD view
+
+**Scenario Metadata**
 - `currentScenarioId` / `currentScenarioName` / `currentScenarioUserId`
 - `currentScenarioBId` / `currentScenarioBName` / `currentScenarioBUserId`
 - `currentYearSettingId` / `currentYearSettingName` / `currentYearSettingUserId`
@@ -34,82 +40,89 @@ The app uses a **modular scenario system** with two separate types:
 **UI Preferences**
 - `scenarioBEnabled` - Whether scenario B is visible
 
-**Unsaved User Work** (YTD only)
-- `ytdCustomProjectedValues` - Grid overrides in YTD view
+**Unsaved Work Protection:**
+- Multi-Year slider adjustments preserved via `_overrides` flags in scenario state
+- YTD grid edits preserved via `ytdCustomProjectedValues`
+- Browser warns user before closing tab if dirty
 
-**NOTE:** Multi-Year view has **no grid UI** (uses sliders instead). Edits are tracked via `_overrides` flags for sparse saving. There are no unsaved grid overrides to persist - only unsaved slider edits, which are part of the scenario data itself.
+### ❌ NOT Persisted (Cleared on Tab Close)
 
-### ❌ NOT Persisted (Loaded Fresh)
-
-**Scenario Data** (Always loaded from database)
-- `scenarioA` - Multi-Year scenario A data
-- `scenarioB` - Multi-Year scenario B data
-- `ytdData` - Current year setting data
+**Snapshots** (Recreated on load/save)
 - `loadedScenarioSnapshot` - Dirty detection snapshots
 - `loadedScenarioBSnapshot` - Dirty detection snapshots
+- `expectedProjectionSnapshotA` / `expectedProjectionSnapshotB` - Expected state snapshots
 
 ## How It Works
 
-### On Mount
+### On Page Load / Refresh
 
-1. **Check localStorage** for persisted IDs and UI state
-2. **If IDs exist but no data** → Load from database using those IDs
-3. **If no IDs exist** → Load favorites or defaults
-4. **If scenario doesn't exist** → Fallback to defaults
+1. **Check sessionStorage** for persisted state
+2. **If state exists** → Restore full working state (scenarios, edits, UI)
+3. **If no state** → Load favorites or defaults from database
+4. **Snapshots recreated** when scenarios are loaded/saved
 
-### On Save
+### During Session
 
-1. **Store IDs, names, user IDs** to localStorage
-2. **Store UI preferences** (scenarioBEnabled)
-3. **Store unsaved grid edits** (customProjectedValues)
-4. **Add timestamp** for expiry tracking
-5. **Actual data remains in database** (source of truth)
+1. **User makes changes** → Automatically persisted to sessionStorage
+2. **Slider adjustments** → Tracked via `_overrides` flags in scenario state
+3. **Grid edits** → Stored in `ytdCustomProjectedValues`
+4. **Page refresh** → All work preserved
+
+### On Tab/Window Close
+
+1. **Check for dirty state** → `isProjectionDirty()` / `isCurrentYearSettingsDirty()`
+2. **If dirty** → Browser shows warning: "Leave site? Changes you made may not be saved"
+3. **On close** → sessionStorage automatically cleared by browser
+4. **Next session** → Fresh start, no stale state
 
 ### Staleness Protection
 
-#### Time-Based Expiry
-- localStorage expires after **7 days**
-- Cleared on sign-out
-- Versioned key (`radiantcare-state-v1`) for schema migrations
+#### Tab Lifetime
+- sessionStorage cleared when tab/window closes
+- No 7-day expiry needed (ephemeral by design)
+- Versioned key (`radiantcare-state-v2`) for schema migrations
 
-#### Database-First Approach
-Since scenario data is NOT persisted:
-- ✅ **Multi-user safe** - Database updates always reflected
-- ✅ **QBO sync aware** - Fresh data includes latest sync
-- ✅ **No stale data** - Database is source of truth
-- ✅ **Smaller localStorage** - Only metadata stored
+#### Fresh Start Per Session
+Since state is cleared on tab close:
+- ✅ **No cross-session stale state** - Each session starts fresh
+- ✅ **Multi-tab isolation** - Each tab = independent workspace
+- ✅ **No old scenario references** - User consciously chooses what to load
+- ✅ **QBO sync friendly** - New session = fresh data from DB
 
-#### Auto-Load Logic
+#### Within-Session Persistence
 ```typescript
-// Multi-Year View
-if (hasPersistedIdA && !hasDataA) {
-  // Reload from persisted ID (data always fresh from DB)
-  await store.loadScenarioFromDatabase(store.currentScenarioId, 'A', true)
-} else if (!hasPersistedIdA) {
-  // Load favorite or default
-  const favoriteA = scenarios?.find(s => s.id === favoriteAId)
-  const scenarioA = favoriteA || defaultOptimistic
-  await store.loadScenarioFromDatabase(scenarioA.id, 'A', true)
-}
+// User workflow:
+1. Load "Optimistic Projection" from database
+2. Adjust 2027 Therapy Income slider → $3.5M
+   → scenarioA.future[2027]._overrides.therapyIncome = true
+   → Persisted to sessionStorage
+3. Page refresh
+   → scenarioA restored with _overrides intact
+   → User sees their $3.5M adjustment
+4. Save to database
+   → Snapshot updated, no longer dirty
+5. Close tab
+   → sessionStorage cleared, fresh start next time
 ```
 
 ## Benefits
 
 ### User Experience
-- 🎯 **Seamless navigation** - Returns to last viewed scenario
-- 💾 **Work preserved** - Unsaved grid edits survive refresh
-- 🔄 **Consistent state** - UI preferences maintained
+- 🎯 **Work preserved during session** - Refresh doesn't lose edits
+- 💾 **Unsaved work protected** - Warning before closing tab
+- 🔄 **Fresh start each session** - No confusion from old state
+- 🪟 **Multi-tab friendly** - Each tab = independent workspace
 
 ### Data Integrity
-- 🔒 **Always fresh** - Database is source of truth
-- 👥 **Multi-user safe** - No stale cached data
-- 🔄 **QBO sync aware** - Latest data always loaded
-- 📊 **External updates** - Admin changes reflected immediately
+- 🔒 **No stale state** - Tab close = automatic cleanup
+- 👥 **Multi-user friendly** - New session = fresh DB load
+- 🔄 **QBO sync aware** - Changes picked up on next session
+- 📊 **No outdated references** - Deleted scenarios can't persist
 
 ### Performance
-- ⚡ **Fast initial load** - No need to check staleness
-- 💾 **Smaller storage** - Only metadata persisted
-- 🚀 **Efficient** - Single DB load on mount
+- ⚡ **Fast refresh** - Full state restored from sessionStorage
+- 💾 **Reasonable storage** - Full state only lives during session
+- 🚀 **Efficient** - No expiry checks needed
 
 ## Modular System & Sparse Saving
 
@@ -195,154 +208,181 @@ Example sparse save (only edited years):
 
 | Approach | Duration | Use Case | RadiantCare |
 |----------|----------|----------|-------------|
-| **Session Storage** | Until tab closes | Temporary work | ❌ Not used |
-| **localStorage (short)** | 1-7 days | UI state, metadata | ✅ **7 days for IDs/preferences** |
+| **sessionStorage** | Until tab closes | Working state | ✅ **Full scenario state + edits** |
+| **localStorage (short)** | 1-7 days | UI state, metadata | ❌ Replaced by sessionStorage |
 | **localStorage (long)** | 30-90 days | User preferences | Could add for settings |
 | **IndexedDB** | Indefinite | Large datasets | ❌ Not needed (DB-first) |
-| **Always fetch** | Never cached | Critical data | ✅ **All scenario data** |
+| **Always fetch** | Never cached | Critical data | ✅ **On new session** |
 
 ## Migration Notes
 
-### Before (Legacy System)
+### Before (localStorage v1 - Hybrid Approach)
 ```typescript
-// Old approach: Persist full scenarios with all data
+// Old approach: Persist IDs only, load data fresh
 partialize: (state) => ({
-  scenarioA: state.scenarioA,              // ❌ Could be stale, multi-user unsafe
-  scenarioB: state.scenarioB,              // ❌ Could be stale
-  customProjectedValues: state.customProjectedValues, // ❌ For legacy grid (now unused)
-  loadedScenarioSnapshot: state.snapshot   // ❌ Could be stale
+  // Multi-Year metadata (IDs only)
+  currentScenarioId: state.currentScenarioId,
+  currentProjectionId: state.currentProjectionId,
+
+  // Current Year metadata (IDs only)
+  currentYearSettingId: state.currentYearSettingId,
+
+  // UI preferences
+  scenarioBEnabled: state.scenarioBEnabled,
+
+  // Unsaved work (YTD grid only)
+  ytdCustomProjectedValues: state.ytdCustomProjectedValues,
+
+  // NOTE: scenarioA, scenarioB, ytdData NOT persisted
 })
 ```
 
 Problems:
-- Full scenario data cached (could be updated by another user)
-- QBO sync changes not reflected until localStorage expires
-- Large localStorage footprint
-- `customProjectedValues` was dead code (never written to)
-  - Multi-Year view never had a grid UI in modular system
-  - The field existed but was always empty
-  - ~200 lines of code that did nothing
+- Multi-Year slider edits (`_overrides`) lost on refresh
+- User confusion: "Why did my changes disappear?"
+- 7-day expiry could show stale scenario references
+- Public scenarios could be updated/deleted, causing confusion
 
-### After (Modular + Hybrid)
+### After (sessionStorage v2 - Session Approach)
 ```typescript
-// New approach: Persist IDs only, load data fresh
+// New approach: Persist full state within session
 partialize: (state) => ({
-  // Multi-Year metadata
+  // Full scenario state (including _overrides)
+  scenarioA: state.scenarioA,
+  scenarioB: state.scenarioB,
+
+  // YTD state (including unsaved grid edits)
+  ytdData: state.ytdData,
+  ytdCustomProjectedValues: state.ytdCustomProjectedValues,
+
+  // Metadata (which scenarios are loaded)
   currentScenarioId: state.currentScenarioId,
   currentProjectionId: state.currentProjectionId,
-  
-  // Current Year metadata
   currentYearSettingId: state.currentYearSettingId,
-  
+
   // UI preferences
   scenarioBEnabled: state.scenarioBEnabled,
-  
-  // Unsaved work (YTD grid only)
-  ytdCustomProjectedValues: state.ytdCustomProjectedValues,
-  
-  // NOTE: scenarioA, scenarioB, ytdData NOT persisted (loaded fresh)
-  // NOTE: customProjectedValues field REMOVED (was dead code)
+
+  // NOTE: Snapshots NOT persisted (recreated on load/save)
 })
 ```
 
 Benefits:
-- Always fresh data from database (multi-user safe)
-- QBO sync changes reflected immediately
-- Smaller localStorage (just IDs and preferences)
-- Modular system with sparse saving
-- Removed ~200 lines of dead `customProjectedValues` code
-  - Multi-Year uses sliders with `_overrides` flags
-  - YTD uses grid with `ytdCustomProjectedValues`
-  - Clear separation, no confusion
+- Slider edits (`_overrides`) preserved across refresh
+- No stale state across sessions (tab close = cleanup)
+- No 7-day expiry complexity
+- beforeunload warning protects unsaved work
+- Multi-tab isolation (each tab = separate workspace)
+- Simpler mental model: "This tab is my workspace"
 
 ## Testing Scenarios
 
-### ✅ Test 1: Fresh Load
-1. Clear localStorage
-2. Refresh page
-3. **Expected**: Loads favorite or default scenarios
+### ✅ Test 1: Fresh Session
+1. Open new tab/window
+2. Navigate to app
+3. **Expected**: Loads favorite or default scenarios from database
 
-### ✅ Test 2: Return User
-1. Load scenario "My Custom Scenario"
-2. Refresh page
-3. **Expected**: Returns to "My Custom Scenario" (fresh from DB)
+### ✅ Test 2: Slider Edit + Refresh
+1. Load "Optimistic Projection"
+2. Adjust 2027 Therapy Income slider to $3.5M
+3. Refresh page (without saving)
+4. **Expected**: Slider still shows $3.5M, `_overrides.therapyIncome = true` preserved
 
-### ✅ Test 3: Multi-User Update
-1. User A loads scenario "Shared Scenario"
-2. User B updates "Shared Scenario" in database
-3. User A refreshes page
-4. **Expected**: User A sees User B's changes (fresh from DB)
+### ✅ Test 3: Grid Edit + Refresh
+1. In YTD view, edit grid cell
+2. Refresh page (without saving)
+3. **Expected**: Grid edit preserved via `ytdCustomProjectedValues`
 
-### ✅ Test 4: QBO Sync
-1. Load scenario based on 2025 data
-2. QBO sync updates 2025 baseline
-3. Refresh page
-4. **Expected**: Scenario reflects new QBO data (fresh from DB)
+### ✅ Test 4: Close Tab Warning
+1. Make slider adjustments (unsaved)
+2. Attempt to close tab
+3. **Expected**: Browser shows "Leave site? Changes you made may not be saved"
+4. Cancel close
+5. **Expected**: Changes still present
 
-### ✅ Test 5: Expiry
-1. Don't use app for 8 days
-2. Refresh page
-3. **Expected**: localStorage cleared, loads defaults
+### ✅ Test 5: Save + Close (No Warning)
+1. Make slider adjustments
+2. Save to database
+3. Attempt to close tab
+4. **Expected**: No warning (clean state after save)
 
-### ✅ Test 6: Unsaved Work
-1. Make grid edits
-2. Don't save
-3. Refresh page
-4. **Expected**: Grid edits preserved (customProjectedValues persisted)
+### ✅ Test 6: Multi-Tab Isolation
+1. Open app in Tab 1, load "Scenario A"
+2. Open app in Tab 2, load "Scenario B"
+3. Make edits in Tab 1
+4. Switch to Tab 2
+5. **Expected**: Tab 2 shows "Scenario B", unaffected by Tab 1
+
+### ✅ Test 7: Fresh Start After Close
+1. Load scenario, make edits
+2. Close tab (with or without saving)
+3. Open new tab, navigate to app
+4. **Expected**: Fresh start, loads favorites/defaults (no persisted edits from closed session)
 
 ## Future Enhancements
 
 ### Possible Additions
-1. **Connection awareness** - Detect offline/online status
-2. **Optimistic UI** - Show cached data while loading fresh
-3. **Background sync** - Periodically check for updates
+1. **Auto-save draft** - Periodically save drafts to DB (separate from published scenarios)
+2. **Conflict detection** - Warn if scenario was updated by another user since load
+3. **Recovery on crash** - Optional localStorage backup for catastrophic failures
 4. **Version tracking** - Store scenario version for comparison
-5. **Change notifications** - Alert user if DB was updated
+5. **localStorage for preferences** - Long-lived UI settings (separate from working state)
 
 ### Not Recommended
-- ❌ **Longer expiry** - 7 days is good balance
-- ❌ **Persist full data** - Defeats staleness protection
-- ❌ **No expiry** - Would allow indefinite staleness
+- ❌ **Return to localStorage** - Would lose multi-tab isolation and stale state protection
+- ❌ **Persist snapshots** - Large, redundant data that can be recomputed
+- ❌ **IndexedDB** - Unnecessary complexity for current needs
 
 ## Debugging
 
 ### View Persisted State
 ```javascript
 // In browser console
-const state = JSON.parse(localStorage.getItem('radiantcare-state-v1'))
-console.log('Persisted IDs:', {
-  scenarioA: state.state.currentScenarioId,
-  scenarioB: state.state.currentScenarioBId,
-  currentYear: state.state.currentYearSettingId,
-  age: (Date.now() - state.state._timestamp) / 1000 / 60 / 60 + 'h'
+const state = JSON.parse(sessionStorage.getItem('radiantcare-state-v2'))
+console.log('Persisted state:', {
+  scenarioA: state.state.scenarioA?.dataMode,
+  scenarioB: state.state.scenarioB?.dataMode,
+  hasYtdData: !!state.state.ytdData,
+  ytdCustomValues: Object.keys(state.state.ytdCustomProjectedValues || {}).length,
+  scenarioBEnabled: state.state.scenarioBEnabled,
+  ageMinutes: (Date.now() - state.state._timestamp) / 1000 / 60
 })
+
+// Check for _overrides
+console.log('Scenario A overrides:',
+  state.state.scenarioA?.future
+    .filter(f => f._overrides)
+    .map(f => ({ year: f.year, overrides: Object.keys(f._overrides || {}) }))
+)
 ```
 
 ### Clear Persisted State
 ```javascript
-localStorage.removeItem('radiantcare-state-v1')
-// Then refresh page
+sessionStorage.removeItem('radiantcare-state-v2')
+// Then refresh page for fresh start
 ```
 
-### Check Auto-Load Logs
+### Check Storage Logs
 ```javascript
 // Watch console for:
-[STORAGE] Loading persisted state (age: 2h, expires in: 166h)
-[Multi-Year Init] Reloading scenario A from persisted ID: abc123
-[YTD Init] Reloading from persisted ID: def456
+[STORAGE] Loading persisted state from session (age: 15m)
+🔍 [isProjectionDirty A] Using baseline-aware dirty detection with snapshot
+✏️ [isProjectionDirty A] Year 2027 therapyIncome differs from expected
 ```
 
 ## Summary
 
-The hybrid persistence strategy provides the **best of both worlds**:
-- 🎯 **Smooth UX** with persisted IDs and preferences
-- 🔒 **Fresh data** always loaded from database
-- 👥 **Multi-user safe** with no stale cache issues
-- 💾 **Efficient** with smaller localStorage footprint
+The session persistence strategy provides the **best balance** for RadiantCare:
+- 🎯 **Work preserved during session** - Refresh doesn't lose edits (includes `_overrides`)
+- 🔒 **No stale state** - Tab close = automatic cleanup
+- 👥 **Multi-user friendly** - New session = fresh DB load
+- 💾 **Unsaved work protection** - Browser warning before close
+- 🪟 **Multi-tab isolation** - Each tab = independent workspace
 
 This approach is particularly well-suited for RadiantCare's needs:
-- Multiple users editing scenarios
+- Financial projections = valuable work that needs protection
+- Public scenarios can be updated/deleted by admins
 - External data source (QBO) that updates independently
-- Need for instant reflection of database changes
-- Desire for smooth user experience on return visits
+- Users expect "this tab is my workspace" behavior
+- Multi-tab usage for comparing scenarios side-by-side
 

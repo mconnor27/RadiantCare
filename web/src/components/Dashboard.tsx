@@ -1730,34 +1730,48 @@ export const useDashboardStore = create<Store>()(
           return false
         },
 
-        isProjectionDirty: () => {
+        isProjectionDirty: (target: ScenarioKey = 'A') => {
           const state = get()
-          if (!state.loadedProjectionSnapshot) return false
+
+          // Get scenario and snapshots based on target
+          const scenario = target === 'A' ? state.scenarioA : state.scenarioB
+          if (!scenario) return false
+
+          const expectedSnapshot = target === 'A' ? state.expectedProjectionSnapshotA : state.expectedProjectionSnapshotB
+          const loadedSnapshot = target === 'A' ? state.loadedProjectionSnapshot : state.loadedScenarioBSnapshot
+
+          // For legacy scenarios, fall back to loadedScenarioSnapshot
+          if (!loadedSnapshot && target === 'A' && !state.loadedProjectionSnapshot) return false
+          if (!loadedSnapshot && target === 'B' && !state.loadedScenarioBSnapshot) return false
 
           // NEW: If we're in 2025 Data mode with expected snapshot, use baseline-aware dirty detection
-          if (state.scenarioA.dataMode === '2025 Data' && state.expectedProjectionSnapshotA) {
-            console.log('🔍 [isProjectionDirty] Using baseline-aware dirty detection with snapshot')
+          if (scenario.dataMode === '2025 Data' && expectedSnapshot) {
+            console.log(`🔍 [isProjectionDirty ${target}] Using baseline-aware dirty detection with snapshot`)
 
             // Step 1: Compare projection INPUTS (not outputs) to detect user changes
-            // Compare projection settings
-            const projectionDirty = Object.keys(state.scenarioA.projection).some(key => {
-              const k = key as keyof typeof state.scenarioA.projection
-              return Math.abs(state.scenarioA.projection[k] - state.loadedProjectionSnapshot!.projection[k]) > 0.001
+            const snapshotProjection = target === 'A'
+              ? state.loadedProjectionSnapshot?.projection
+              : state.loadedScenarioBSnapshot?.scenarioB?.projection
+
+            if (!snapshotProjection) return false
+
+            const projectionDirty = Object.keys(scenario.projection).some(key => {
+              const k = key as keyof typeof scenario.projection
+              return Math.abs(scenario.projection[k] - snapshotProjection[k]) > 0.001
             })
 
             if (projectionDirty) {
-              console.log('✏️ [isProjectionDirty] Projection settings changed')
+              console.log(`✏️ [isProjectionDirty ${target}] Projection settings changed`)
               return true
             }
 
             // Step 2: Compare 2026-2030 years against EXPECTED SNAPSHOT (what was loaded/last recomputed)
-            // Only mark dirty if user made explicit changes beyond what the snapshot contains
-            const current2026Plus = state.scenarioA.future.filter(f => f.year >= 2026 && f.year <= 2030)
+            const current2026Plus = scenario.future.filter(f => f.year >= 2026 && f.year <= 2030)
 
             // Compare against expected snapshot (not fresh recomputation!)
             for (let i = 0; i < current2026Plus.length; i++) {
               const currentYear = current2026Plus[i]
-              const expectedYear = state.expectedProjectionSnapshotA.future_2026_2030.find(e => e.year === currentYear.year)
+              const expectedYear = expectedSnapshot.future_2026_2030.find(e => e.year === currentYear.year)
 
               if (!expectedYear) continue
 
@@ -1774,7 +1788,7 @@ export const useDashboardStore = create<Store>()(
 
                 if (typeof currentVal === 'number' && typeof expectedVal === 'number') {
                   if (Math.abs(currentVal - expectedVal) > 0.01) {
-                    console.log(`✏️ [isProjectionDirty] Year ${currentYear.year} ${field} differs from expected:`, {
+                    console.log(`✏️ [isProjectionDirty ${target}] Year ${currentYear.year} ${field} differs from expected:`, {
                       current: currentVal,
                       expected: expectedVal
                     })
@@ -1785,41 +1799,49 @@ export const useDashboardStore = create<Store>()(
 
               // Check physicians array
               if (JSON.stringify(currentYear.physicians) !== JSON.stringify(expectedYear.physicians)) {
-                console.log(`✏️ [isProjectionDirty] Year ${currentYear.year} physicians changed`)
+                console.log(`✏️ [isProjectionDirty ${target}] Year ${currentYear.year} physicians changed`)
                 return true
               }
             }
 
-            // REMOVED: Step 4 - Compare future grid overrides (legacy customProjectedValues)
-            // Multi-Year has no grid UI, uses slider-based editing with _overrides flags
-
-            console.log('✅ [isProjectionDirty] No projection-specific changes detected (clean)')
+            console.log(`✅ [isProjectionDirty ${target}] No projection-specific changes detected (clean)`)
             return false
           }
 
-          // LEGACY: Non-2025 baseline modes - use old logic
+          // LEGACY: Non-2025 baseline modes or scenarios without expected snapshot
+          const snapshotForLegacy = target === 'A'
+            ? state.loadedProjectionSnapshot
+            : state.loadedScenarioBSnapshot?.scenarioB
+
+          if (!snapshotForLegacy) return false
+
           // Compare projection settings
-          const projectionDirty = Object.keys(state.scenarioA.projection).some(key => {
-            const k = key as keyof typeof state.scenarioA.projection
-            return Math.abs(state.scenarioA.projection[k] - state.loadedProjectionSnapshot!.projection[k]) > 0.001
+          const legacyProjection = target === 'A'
+            ? (snapshotForLegacy as typeof state.loadedProjectionSnapshot)?.projection
+            : (snapshotForLegacy as ScenarioState)?.projection
+
+          if (!legacyProjection) return false
+
+          const projectionDirty = Object.keys(scenario.projection).some(key => {
+            const k = key as keyof typeof scenario.projection
+            return Math.abs(scenario.projection[k] - legacyProjection[k]) > 0.001
           })
 
           if (projectionDirty) return true
 
           // Compare 2026-2030 years
-          const current2026Plus = state.scenarioA.future.filter(f => f.year >= 2026 && f.year <= 2030)
-          const snapshot2026Plus = state.loadedProjectionSnapshot.future_2026_2030
+          const current2026Plus = scenario.future.filter(f => f.year >= 2026 && f.year <= 2030)
+          const snapshot2026Plus = target === 'A'
+            ? (snapshotForLegacy as typeof state.loadedProjectionSnapshot)?.future_2026_2030
+            : (snapshotForLegacy as ScenarioState)?.future?.filter(f => f.year >= 2026 && f.year <= 2030)
 
-          if (JSON.stringify(current2026Plus) !== JSON.stringify(snapshot2026Plus)) {
+          if (snapshot2026Plus && JSON.stringify(current2026Plus) !== JSON.stringify(snapshot2026Plus)) {
             return true
           }
 
-          // REMOVED: Compare future grid overrides (legacy customProjectedValues)
-          // Multi-Year has no grid UI, uses slider-based editing with _overrides flags
-
           // Compare baseline years (for 2024/Custom modes)
-          if (state.loadedProjectionSnapshot.baseline_years) {
-            const currentBaselineYears = state.scenarioA.future.filter(f =>
+          if (target === 'A' && state.loadedProjectionSnapshot?.baseline_years) {
+            const currentBaselineYears = scenario.future.filter(f =>
               state.loadedProjectionSnapshot!.baseline_years!.some(by => by.year === f.year)
             )
             if (JSON.stringify(currentBaselineYears) !== JSON.stringify(state.loadedProjectionSnapshot.baseline_years)) {
@@ -2819,34 +2841,25 @@ export const useDashboardStore = create<Store>()(
       }
     }),
     {
-      name: 'radiantcare-state-v1',
+      name: 'radiantcare-state-v2',
       storage: createJSONStorage(() => ({
         getItem: (name) => {
-          const str = localStorage.getItem(name)
+          const str = sessionStorage.getItem(name)
           if (!str) return null
 
           try {
             const data = JSON.parse(str)
-            // Check if data has expired (7 days = 604800000ms)
-            const EXPIRY_MS = 7 * 24 * 60 * 60 * 1000
-            if (data.state?._timestamp && Date.now() - data.state._timestamp > EXPIRY_MS) {
-              console.log('[STORAGE] State expired (>7 days), clearing...')
-              localStorage.removeItem(name)
-              return null
-            }
-            
-            // STALENESS PROTECTION:
-            // With hybrid persistence, we only store IDs (not data)
-            // Data is ALWAYS loaded fresh from database on mount
-            // This ensures:
-            // - Database updates are always reflected (multi-user safe)
-            // - QBO sync changes are picked up (external data source safe)
-            // - No stale data issues (source of truth is DB)
-            
+
+            // SESSION STORAGE STRATEGY:
+            // - Persists full scenario state (including _overrides) within browser tab
+            // - Cleared when tab/window closes (no stale state across sessions)
+            // - Preserved across page refresh (user can continue working)
+            // - beforeunload warning protects unsaved work
+
             const age = data.state?._timestamp ? Date.now() - data.state._timestamp : 0
-            const ageHours = Math.floor(age / (1000 * 60 * 60))
-            console.log(`[STORAGE] Loading persisted state (age: ${ageHours}h, expires in: ${Math.floor((EXPIRY_MS - age) / (1000 * 60 * 60))}h)`)
-            
+            const ageMinutes = Math.floor(age / (1000 * 60))
+            console.log(`[STORAGE] Loading persisted state from session (age: ${ageMinutes}m)`)
+
             return str
           } catch {
             return str
@@ -2855,50 +2868,52 @@ export const useDashboardStore = create<Store>()(
         setItem: (name, value) => {
           try {
             const data = JSON.parse(value)
-            // Add timestamp to track when state was saved
+            // Add timestamp for debugging (not expiry - session handles cleanup)
             data.state._timestamp = Date.now()
-            localStorage.setItem(name, JSON.stringify(data))
+            sessionStorage.setItem(name, JSON.stringify(data))
           } catch {
-            localStorage.setItem(name, value)
+            sessionStorage.setItem(name, value)
           }
         },
-        removeItem: (name) => localStorage.removeItem(name),
+        removeItem: (name) => sessionStorage.removeItem(name),
       })),
       partialize: (state: Store) => ({
-        // HYBRID PERSISTENCE STRATEGY:
-        // - Persist IDs and UI state for smooth UX
-        // - Don't persist scenario data (always load fresh from DB)
-        // - Persist unsaved grid edits (user work in progress)
-        
-        // Multi-Year Scenario metadata (IDs only, data loaded fresh)
+        // SESSION PERSISTENCE STRATEGY:
+        // - Persist full scenario state to preserve unsaved work within session
+        // - Includes _overrides flags (slider adjustments) and all user edits
+        // - Tab close = all cleared (user gets warning if dirty)
+        // - Page refresh = work preserved
+
+        // Full scenario state (including unsaved slider work via _overrides)
+        scenarioA: state.scenarioA,
+        scenarioB: state.scenarioB,
+
+        // YTD state (including unsaved grid edits)
+        ytdData: state.ytdData,
+        ytdCustomProjectedValues: state.ytdCustomProjectedValues,
+
+        // Scenario metadata (which scenarios are loaded)
         currentScenarioId: state.currentScenarioId,
         currentScenarioName: state.currentScenarioName,
         currentScenarioUserId: state.currentScenarioUserId,
         currentScenarioBId: state.currentScenarioBId,
         currentScenarioBName: state.currentScenarioBName,
         currentScenarioBUserId: state.currentScenarioBUserId,
-        
-        // Current Year Setting metadata (IDs only, data loaded fresh)
+
+        // Current Year Setting metadata
         currentYearSettingId: state.currentYearSettingId,
         currentYearSettingName: state.currentYearSettingName,
         currentYearSettingUserId: state.currentYearSettingUserId,
-        
-        // Projection metadata (IDs only, data loaded fresh)
+
+        // Projection metadata
         currentProjectionId: state.currentProjectionId,
         currentProjectionName: state.currentProjectionName,
         currentProjectionUserId: state.currentProjectionUserId,
-        
+
         // UI preferences
         scenarioBEnabled: state.scenarioBEnabled,
-        
-        // Unsaved user work (grid edits - YTD only)
-        // NOTE: customProjectedValues is LEGACY and not persisted
-        // Multi-Year view has no grid UI, so grid overrides come from DB (future_custom_values)
-        // YTD view has grid UI and needs to preserve unsaved work
-        ytdCustomProjectedValues: state.ytdCustomProjectedValues,
-        
-        // NOTE: scenarioA, scenarioB, ytdData, snapshots are NOT persisted
-        // They will be loaded fresh from database on mount using the IDs above
+
+        // NOTE: Snapshots are NOT persisted - they're recreated on load/save
       }),
     }
   )
@@ -3389,6 +3404,25 @@ export function Dashboard() {
   const handleYtdRefreshRequest = useCallback((callback: () => void) => {
     ytdRefreshCallbackRef.current = callback
   }, [])
+
+  // Warn user before closing tab/window if there's unsaved work
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const hasUnsavedYTD = store.isCurrentYearSettingsDirty()
+      const hasUnsavedProjectionA = store.isProjectionDirty('A')
+      const hasUnsavedProjectionB = store.scenarioBEnabled && store.scenarioB ? store.isProjectionDirty('B') : false
+
+      if (hasUnsavedYTD || hasUnsavedProjectionA || hasUnsavedProjectionB) {
+        e.preventDefault()
+        // Modern browsers ignore custom messages and show their own generic warning
+        e.returnValue = ''
+        return ''
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [store])
 
   // Detect mobile and show warning on initial load
   useEffect(() => {

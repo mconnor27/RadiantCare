@@ -94,10 +94,17 @@ export default function WorkforceAnalysis() {
     physicians: physicians2024
   }
 
+  // Get 2025 YTD data from store (always use this regardless of baseline mode)
+  const ytdData = store.ytdData
+
   // Calculate weeks worked for Scenario A
   const weeksWorkedA = years.map((y) => {
     if (y === 2024) {
       return calculateTotalWeeksWorked(year2024Data)
+    }
+    // For 2025, always use YTD data regardless of baseline mode
+    if (y === 2025 && ytdData) {
+      return calculateTotalWeeksWorked(ytdData)
     }
     const fy = store.scenarioA.future.find(f => f.year === y)
     return fy ? calculateTotalWeeksWorked(fy) : 0
@@ -107,6 +114,10 @@ export default function WorkforceAnalysis() {
   const weeksVacationA = years.map((y) => {
     if (y === 2024) {
       return calculateTotalWeeksVacation(year2024Data)
+    }
+    // For 2025, always use YTD data regardless of baseline mode
+    if (y === 2025 && ytdData) {
+      return calculateTotalWeeksVacation(ytdData)
     }
     const fy = store.scenarioA.future.find(f => f.year === y)
     return fy ? calculateTotalWeeksVacation(fy) : 0
@@ -118,6 +129,10 @@ export default function WorkforceAnalysis() {
         if (y === 2024) {
           return calculateTotalWeeksWorked(year2024Data)
         }
+        // For 2025, always use YTD data regardless of baseline mode
+        if (y === 2025 && ytdData) {
+          return calculateTotalWeeksWorked(ytdData)
+        }
         const fy = store.scenarioB!.future.find(f => f.year === y)
         return fy ? calculateTotalWeeksWorked(fy) : 0
       })
@@ -128,6 +143,10 @@ export default function WorkforceAnalysis() {
     ? years.map((y) => {
         if (y === 2024) {
           return calculateTotalWeeksVacation(year2024Data)
+        }
+        // For 2025, always use YTD data regardless of baseline mode
+        if (y === 2025 && ytdData) {
+          return calculateTotalWeeksVacation(ytdData)
         }
         const fy = store.scenarioB!.future.find(f => f.year === y)
         return fy ? calculateTotalWeeksVacation(fy) : 0
