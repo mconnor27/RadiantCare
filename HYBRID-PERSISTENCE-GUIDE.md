@@ -45,12 +45,17 @@ The app uses a **modular scenario system** with two separate types:
 - YTD grid edits preserved via `ytdCustomProjectedValues`
 - Browser warns user before closing tab if dirty
 
+**Snapshots for Dirty Detection** (Persisted to support refresh)
+- `loadedScenarioSnapshot` - Legacy snapshot for Scenario A
+- `loadedScenarioBSnapshot` - Legacy snapshot for Scenario B
+- `loadedCurrentYearSettingsSnapshot` - YTD baseline snapshot
+- `loadedProjectionSnapshot` - Projection snapshot for modular scenarios
+- `expectedProjectionSnapshotA` - Expected state after baseline changes (Scenario A)
+- `expectedProjectionSnapshotB` - Expected state after baseline changes (Scenario B)
+
 ### ❌ NOT Persisted (Cleared on Tab Close)
 
-**Snapshots** (Recreated on load/save)
-- `loadedScenarioSnapshot` - Dirty detection snapshots
-- `loadedScenarioBSnapshot` - Dirty detection snapshots
-- `expectedProjectionSnapshotA` / `expectedProjectionSnapshotB` - Expected state snapshots
+**None** - All working state and snapshots are persisted to preserve dirty detection across refresh
 
 ## How It Works
 
@@ -263,12 +268,19 @@ partialize: (state) => ({
   // UI preferences
   scenarioBEnabled: state.scenarioBEnabled,
 
-  // NOTE: Snapshots NOT persisted (recreated on load/save)
+  // Snapshots for dirty detection (persisted to support refresh)
+  loadedScenarioSnapshot: state.loadedScenarioSnapshot,
+  loadedScenarioBSnapshot: state.loadedScenarioBSnapshot,
+  loadedCurrentYearSettingsSnapshot: state.loadedCurrentYearSettingsSnapshot,
+  loadedProjectionSnapshot: state.loadedProjectionSnapshot,
+  expectedProjectionSnapshotA: state.expectedProjectionSnapshotA,
+  expectedProjectionSnapshotB: state.expectedProjectionSnapshotB,
 })
 ```
 
 Benefits:
 - Slider edits (`_overrides`) preserved across refresh
+- **Dirty detection works across refresh** (snapshots persisted)
 - No stale state across sessions (tab close = cleanup)
 - No 7-day expiry complexity
 - beforeunload warning protects unsaved work
@@ -287,11 +299,13 @@ Benefits:
 2. Adjust 2027 Therapy Income slider to $3.5M
 3. Refresh page (without saving)
 4. **Expected**: Slider still shows $3.5M, `_overrides.therapyIncome = true` preserved
+5. **Expected**: Dirty indicator shows (snapshots persisted, dirty detection works)
 
 ### ✅ Test 3: Grid Edit + Refresh
 1. In YTD view, edit grid cell
 2. Refresh page (without saving)
 3. **Expected**: Grid edit preserved via `ytdCustomProjectedValues`
+4. **Expected**: Dirty indicator shows (snapshots persisted, dirty detection works)
 
 ### ✅ Test 4: Close Tab Warning
 1. Make slider adjustments (unsaved)
@@ -330,7 +344,6 @@ Benefits:
 
 ### Not Recommended
 - ❌ **Return to localStorage** - Would lose multi-tab isolation and stale state protection
-- ❌ **Persist snapshots** - Large, redundant data that can be recomputed
 - ❌ **IndexedDB** - Unnecessary complexity for current needs
 
 ## Debugging
@@ -345,7 +358,15 @@ console.log('Persisted state:', {
   hasYtdData: !!state.state.ytdData,
   ytdCustomValues: Object.keys(state.state.ytdCustomProjectedValues || {}).length,
   scenarioBEnabled: state.state.scenarioBEnabled,
-  ageMinutes: (Date.now() - state.state._timestamp) / 1000 / 60
+  ageMinutes: (Date.now() - state.state._timestamp) / 1000 / 60,
+  
+  // Check for snapshots (should be present for dirty detection)
+  hasLoadedScenarioSnapshot: !!state.state.loadedScenarioSnapshot,
+  hasLoadedScenarioBSnapshot: !!state.state.loadedScenarioBSnapshot,
+  hasLoadedCurrentYearSettingsSnapshot: !!state.state.loadedCurrentYearSettingsSnapshot,
+  hasLoadedProjectionSnapshot: !!state.state.loadedProjectionSnapshot,
+  hasExpectedProjectionSnapshotA: !!state.state.expectedProjectionSnapshotA,
+  hasExpectedProjectionSnapshotB: !!state.state.expectedProjectionSnapshotB,
 })
 
 // Check for _overrides
@@ -374,6 +395,7 @@ sessionStorage.removeItem('radiantcare-state-v2')
 
 The session persistence strategy provides the **best balance** for RadiantCare:
 - 🎯 **Work preserved during session** - Refresh doesn't lose edits (includes `_overrides`)
+- ✅ **Dirty detection across refresh** - Snapshots persisted for accurate change tracking
 - 🔒 **No stale state** - Tab close = automatic cleanup
 - 👥 **Multi-user friendly** - New session = fresh DB load
 - 💾 **Unsaved work protection** - Browser warning before close

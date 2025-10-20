@@ -767,6 +767,8 @@ export const useDashboardStore = create<Store>()(
         
         setProjectionField: (scenario, field, value) =>
           set((state) => {
+            console.log(`🎯 [setProjectionField] Called with scenario=${scenario}, field=${field}, value=${value}`)
+            
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!sc) return
             
@@ -807,6 +809,15 @@ export const useDashboardStore = create<Store>()(
             const last2024 = state.historic.find((h) => h.year === 2024)
             const last2025 = state.historic.find((h) => h.year === 2025)
             
+            console.log(`📊 [setProjectionField] dataMode=${dataMode}, has2024=${!!last2024}, has2025=${!!last2025}`)
+            
+            // Check current 2025 value in future array
+            const current2025 = sc.future.find(f => f.year === 2025)
+            console.log(`📋 [setProjectionField] current2025 in future array:`, {
+              therapyIncome: current2025?.therapyIncome,
+              historic2025: last2025?.therapyIncome
+            })
+            
             // Determine starting values based on data mode
             let baselineData
             if (dataMode === 'Custom') {
@@ -819,6 +830,7 @@ export const useDashboardStore = create<Store>()(
                   miscEmploymentCosts: customBaseline.miscEmploymentCosts,
                   nonMdEmploymentCosts: customBaseline.nonMdEmploymentCosts,
                 }
+                console.log(`✅ [setProjectionField] Using CUSTOM baseline from future[2025]`)
               } else {
                 // Fallback if Custom baseline missing (shouldn't happen)
                 baselineData = {
@@ -827,6 +839,7 @@ export const useDashboardStore = create<Store>()(
                   miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                   nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
                 }
+                console.log(`⚠️ [setProjectionField] Custom mode but no baseline found, using historic 2025`)
               }
             } else if (dataMode === '2024 Data' && last2024) {
               baselineData = {
@@ -835,13 +848,23 @@ export const useDashboardStore = create<Store>()(
                 miscEmploymentCosts: ACTUAL_2024_MISC_EMPLOYMENT_COSTS,
                 nonMdEmploymentCosts: ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS,
               }
+              console.log(`✅ [setProjectionField] Using 2024 Data baseline from historic[2024]`)
             } else if (last2025) {
-              baselineData = {
-                therapyIncome: last2025.therapyIncome,
-                nonEmploymentCosts: last2025.nonEmploymentCosts,
-                miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-                nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+              // In '2025 Data' mode, ALWAYS use future[2025] (synced from YTD grid)
+              // The historic[2025] data is stale and should NOT be used as fallback
+              const baseline2025 = sc.future.find(f => f.year === 2025)
+              if (!baseline2025) {
+                console.error('❌ [setProjectionField] No 2025 baseline found in future array!')
+                return
               }
+              baselineData = {
+                therapyIncome: baseline2025.therapyIncome,
+                nonEmploymentCosts: baseline2025.nonEmploymentCosts,
+                miscEmploymentCosts: baseline2025.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
+                nonMdEmploymentCosts: baseline2025.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
+              }
+              console.log(`✅ [setProjectionField] Using 2025 Data baseline from FUTURE[2025] (grid-synced)`)
+              console.log(`    📝 therapyIncome: ${baselineData.therapyIncome} (historic was: ${last2025.therapyIncome})`)
             } else {
               // Fallback to 2025 hardcoded values
               baselineData = {
@@ -850,7 +873,10 @@ export const useDashboardStore = create<Store>()(
                 miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                 nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
               }
+              console.log(`⚠️ [setProjectionField] Using fallback hardcoded baseline`)
             }
+            
+            console.log(`💰 [setProjectionField] Baseline data:`, baselineData)
             
             // Convert percentage growth rates to decimal multipliers
             const incomeGpct = sc.projection.incomeGrowthPct / 100
@@ -858,6 +884,8 @@ export const useDashboardStore = create<Store>()(
             const nonMdEmploymentGpct = sc.projection.nonMdEmploymentCostsPct / 100
             const miscEmploymentGpct = sc.projection.miscEmploymentCostsPct / 100
             const benefitGrowthPct = sc.projection.benefitCostsGrowthPct
+            
+            console.log(`📈 [setProjectionField] Growth rates: incomeGpct=${incomeGpct}, nonEmploymentGpct=${nonEmploymentGpct}`)
             
             // Starting values from the selected baseline
             let income = baselineData.therapyIncome
@@ -887,6 +915,7 @@ export const useDashboardStore = create<Store>()(
 
               // Only update the specific field(s) affected by the changed projection setting
               if (field === 'incomeGrowthPct') {
+                console.log(`  📅 [setProjectionField] Year ${fy.year}: therapyIncome = ${income.toFixed(0)}`)
                 fy.therapyIncome = income
               } else if (field === 'nonEmploymentCostsPct') {
                 fy.nonEmploymentCosts = nonEmploymentCosts
@@ -897,9 +926,13 @@ export const useDashboardStore = create<Store>()(
               }
               // Note: locumsCosts, medicalDirectorHours, etc. are handled above and return early
             }
+            
+            console.log(`✅ [setProjectionField] Complete\n`)
           }),
         applyProjectionFromLastActual: (scenario) =>
           set((state) => {
+            console.log(`🔄 [applyProjectionFromLastActual] Called for scenario=${scenario}`)
+            
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!sc) return
 
@@ -907,6 +940,15 @@ export const useDashboardStore = create<Store>()(
             const dataMode = sc.dataMode
             const last2024 = state.historic.find((h) => h.year === 2024)
             const last2025 = state.historic.find((h) => h.year === 2025)
+
+            console.log(`📊 [applyProjectionFromLastActual] dataMode=${dataMode}, has2024=${!!last2024}, has2025=${!!last2025}`)
+            
+            // Check current 2025 value in future array
+            const updated2025 = sc.future.find(f => f.year === 2025)
+            console.log(`📋 [applyProjectionFromLastActual] updated2025 in future array:`, {
+              therapyIncome: updated2025?.therapyIncome,
+              historic2025: last2025?.therapyIncome
+            })
 
             // Determine starting values based on data mode
             let baselineData
@@ -920,6 +962,7 @@ export const useDashboardStore = create<Store>()(
                   miscEmploymentCosts: customBaseline.miscEmploymentCosts,
                   nonMdEmploymentCosts: customBaseline.nonMdEmploymentCosts,
                 }
+                console.log(`✅ [applyProjectionFromLastActual] Using CUSTOM baseline from future[2025]`)
               } else {
                 // Fallback if Custom baseline missing (shouldn't happen)
                 baselineData = {
@@ -928,6 +971,7 @@ export const useDashboardStore = create<Store>()(
                   miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                   nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
                 }
+                console.log(`⚠️ [applyProjectionFromLastActual] Custom mode but no baseline found, using historic 2025`)
               }
             } else if (dataMode === '2024 Data' && last2024) {
               baselineData = {
@@ -936,15 +980,23 @@ export const useDashboardStore = create<Store>()(
                 miscEmploymentCosts: ACTUAL_2024_MISC_EMPLOYMENT_COSTS,
                 nonMdEmploymentCosts: ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS,
               }
+              console.log(`✅ [applyProjectionFromLastActual] Using 2024 Data baseline from historic[2024]`)
             } else if (last2025) {
-              // Use updated 2025 values from future array if available (user may have edited them)
-              const updated2025 = sc.future.find(f => f.year === 2025)
-              baselineData = {
-                therapyIncome: updated2025?.therapyIncome ?? last2025.therapyIncome,
-                nonEmploymentCosts: updated2025?.nonEmploymentCosts ?? last2025.nonEmploymentCosts,
-                miscEmploymentCosts: updated2025?.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
-                nonMdEmploymentCosts: updated2025?.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
+              // In '2025 Data' mode, ALWAYS use future[2025] (synced from YTD grid)
+              // The historic[2025] data is stale and should NOT be used as fallback
+              const baseline2025 = updated2025
+              if (!baseline2025) {
+                console.error('❌ [applyProjectionFromLastActual] No 2025 baseline found in future array!')
+                return
               }
+              baselineData = {
+                therapyIncome: baseline2025.therapyIncome,
+                nonEmploymentCosts: baseline2025.nonEmploymentCosts,
+                miscEmploymentCosts: baseline2025.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
+                nonMdEmploymentCosts: baseline2025.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
+              }
+              console.log(`✅ [applyProjectionFromLastActual] Using 2025 Data baseline from FUTURE[2025] (grid-synced)`)
+              console.log(`    📝 therapyIncome: ${baselineData.therapyIncome} (historic was: ${last2025.therapyIncome})`)
             } else {
               // Fallback to 2025 hardcoded values
               baselineData = {
@@ -953,7 +1005,10 @@ export const useDashboardStore = create<Store>()(
                 miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                 nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
               }
+              console.log(`⚠️ [applyProjectionFromLastActual] Using fallback hardcoded baseline`)
             }
+            
+            console.log(`💰 [applyProjectionFromLastActual] Baseline data:`, baselineData)
             
             // Convert percentage growth rates to decimal multipliers
             const incomeGpct = sc.projection.incomeGrowthPct / 100
@@ -961,6 +1016,8 @@ export const useDashboardStore = create<Store>()(
             const nonMdEmploymentGpct = sc.projection.nonMdEmploymentCostsPct / 100
             const miscEmploymentGpct = sc.projection.miscEmploymentCostsPct / 100
             const benefitGrowthPct = sc.projection.benefitCostsGrowthPct
+            
+            console.log(`📈 [applyProjectionFromLastActual] Growth rates: incomeGpct=${incomeGpct}`)
             
             // Starting values from the selected baseline
             let income = baselineData.therapyIncome
@@ -986,6 +1043,7 @@ export const useDashboardStore = create<Store>()(
               const benefits = getBenefitCostsForYear(fy.year, benefitGrowthPct)
               const staffEmploymentCosts = wagesAndTaxes + benefits
               
+              console.log(`  📅 [applyProjectionFromLastActual] Year ${fy.year}: therapyIncome = ${income.toFixed(0)}`)
               fy.therapyIncome = income
               fy.nonEmploymentCosts = nonEmploymentCosts
               fy.nonMdEmploymentCosts = staffEmploymentCosts
@@ -998,6 +1056,8 @@ export const useDashboardStore = create<Store>()(
               fy.consultingServicesAgreement = sc.projection.consultingServicesAgreement
             }
 
+            console.log(`✅ [applyProjectionFromLastActual] Complete\n`)
+            
             // Do not modify PRCS Director assignment during projection recalculation
           }),
         setSelectedYear: (scenario, year) =>
@@ -1014,7 +1074,6 @@ export const useDashboardStore = create<Store>()(
             // If switching TO Custom mode, capture current baseline data and make it editable
             if (mode === 'Custom' && sc.dataMode !== 'Custom') {
               const last2024 = state.historic.find((h) => h.year === 2024)
-              const last2025 = state.historic.find((h) => h.year === 2025)
               
               let baselineData: FutureYear
               
@@ -1028,33 +1087,43 @@ export const useDashboardStore = create<Store>()(
                   miscEmploymentCosts: ACTUAL_2024_MISC_EMPLOYMENT_COSTS,
                   physicians: scenario2024Defaults(),
                 }
-              } else if (sc.dataMode === '2025 Data' && last2025) {
+              } else if (sc.dataMode === '2025 Data') {
+                // When switching from '2025 Data' to Custom, capture current future[2025] state (NOT historic)
+                const current2025 = sc.future.find(f => f.year === 2025)
+                if (!current2025) {
+                  console.error('❌ [setDataMode] No 2025 baseline found in future array when switching to Custom!')
+                  return
+                }
                 baselineData = {
                   year: 2025,
-                  therapyIncome: last2025.therapyIncome,
-                  nonEmploymentCosts: last2025.nonEmploymentCosts,
-                  nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
-                  locumCosts: DEFAULT_LOCUM_COSTS_2025,
-                  miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-                  physicians: scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025),
+                  therapyIncome: current2025.therapyIncome,
+                  nonEmploymentCosts: current2025.nonEmploymentCosts,
+                  nonMdEmploymentCosts: current2025.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
+                  locumCosts: current2025.locumCosts ?? DEFAULT_LOCUM_COSTS_2025,
+                  miscEmploymentCosts: current2025.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
+                  physicians: current2025.physicians ?? (scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)),
                 }
+                console.log(`🔄 [setDataMode] Captured current 2025 baseline from future[2025] for Custom mode: therapyIncome=${baselineData.therapyIncome}`)
               } else {
-                // Fallback to 2025 defaults
+                // Fallback to 2025 defaults (should rarely happen)
                 const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
                 const js = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+                // Try to get from future[2025] first, then fall back to hardcoded defaults
+                const current2025 = sc.future.find(f => f.year === 2025)
                 baselineData = {
                   year: 2025,
-                  therapyIncome: last2025?.therapyIncome || 0,
-                  nonEmploymentCosts: last2025?.nonEmploymentCosts || 0,
-                  nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
-                  locumCosts: DEFAULT_LOCUM_COSTS_2025,
-                  miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-                  medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS, // 2025 shared medical director amount
-                  prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, // 2025 PRCS medical director amount (JS)
-                  consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_2025, // 2025 consulting services amount
-                  prcsDirectorPhysicianId: js?.id, // Assign PRCS to JS
-                  physicians,
+                  therapyIncome: current2025?.therapyIncome ?? 0,
+                  nonEmploymentCosts: current2025?.nonEmploymentCosts ?? 0,
+                  nonMdEmploymentCosts: current2025?.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
+                  locumCosts: current2025?.locumCosts ?? DEFAULT_LOCUM_COSTS_2025,
+                  miscEmploymentCosts: current2025?.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
+                  medicalDirectorHours: current2025?.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
+                  prcsMedicalDirectorHours: current2025?.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
+                  consultingServicesAgreement: current2025?.consultingServicesAgreement ?? DEFAULT_CONSULTING_SERVICES_2025,
+                  prcsDirectorPhysicianId: current2025?.prcsDirectorPhysicianId ?? js?.id,
+                  physicians: current2025?.physicians ?? physicians,
                 }
+                console.log(`⚠️ [setDataMode] Using fallback baseline (from future[2025] if available): therapyIncome=${baselineData.therapyIncome}`)
               }
               
               // Set the baseline data as the first entry in future years (replacing or adding 2025)
@@ -2935,7 +3004,13 @@ export const useDashboardStore = create<Store>()(
         // UI preferences
         scenarioBEnabled: state.scenarioBEnabled,
 
-        // NOTE: Snapshots are NOT persisted - they're recreated on load/save
+        // Snapshots for dirty detection (must be persisted to detect changes after refresh)
+        loadedScenarioSnapshot: state.loadedScenarioSnapshot,
+        loadedScenarioBSnapshot: state.loadedScenarioBSnapshot,
+        loadedCurrentYearSettingsSnapshot: state.loadedCurrentYearSettingsSnapshot,
+        loadedProjectionSnapshot: state.loadedProjectionSnapshot,
+        expectedProjectionSnapshotA: state.expectedProjectionSnapshotA,
+        expectedProjectionSnapshotB: state.expectedProjectionSnapshotB,
       }),
     }
   )
@@ -3314,10 +3389,10 @@ export function calculateProjectedValue(
       }
     } else {
       // Fallback if Custom baseline missing (shouldn't happen)
-      const last2025 = store.historic.find((h: YearRow) => h.year === 2025)
+      console.error('❌ [calculateProjectedValue] No Custom baseline found in future array!')
       baselineData = {
-        therapyIncome: last2025?.therapyIncome || 0,
-        nonEmploymentCosts: last2025?.nonEmploymentCosts || 0,
+        therapyIncome: 0,
+        nonEmploymentCosts: 0,
         miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
         nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
       }
@@ -3331,14 +3406,18 @@ export function calculateProjectedValue(
       nonMdEmploymentCosts: ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS,
     }
   } else if (sc.dataMode === '2025 Data') {
-    // Use updated 2025 values from future array if available (grid-synced values)
-    const updated2025 = sc.future.find((f: FutureYear) => f.year === 2025)
-    const last2025 = store.historic.find((h: YearRow) => h.year === 2025)
+    // In '2025 Data' mode, ALWAYS use future[2025] (synced from YTD grid)
+    // The historic[2025] data is stale and should NOT be used
+    const baseline2025 = sc.future.find((f: FutureYear) => f.year === 2025)
+    if (!baseline2025) {
+      console.error('❌ [calculateProjectedValue] No 2025 baseline found in future array!')
+      return 0
+    }
     baselineData = {
-      therapyIncome: updated2025?.therapyIncome ?? last2025?.therapyIncome ?? 0,
-      nonEmploymentCosts: updated2025?.nonEmploymentCosts ?? last2025?.nonEmploymentCosts ?? 0,
-      miscEmploymentCosts: updated2025?.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
-      nonMdEmploymentCosts: updated2025?.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
+      therapyIncome: baseline2025.therapyIncome,
+      nonEmploymentCosts: baseline2025.nonEmploymentCosts,
+      miscEmploymentCosts: baseline2025.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
+      nonMdEmploymentCosts: baseline2025.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
     }
   } else {
     // Fallback to 2025 hardcoded values
