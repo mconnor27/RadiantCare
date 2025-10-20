@@ -353,11 +353,6 @@ export type Store = {
   setCurrentScenarioB: (id: string | null, name: string | null, userId?: string | null) => void
   updateScenarioSnapshot: (scenario?: 'A' | 'B') => void
   resetScenarioFromSnapshot: (scenario?: 'A' | 'B') => void
-  saveScenarioBToDatabase: (
-    name: string,
-    description: string,
-    isPublic: boolean
-  ) => Promise<SavedScenario>
   // NEW: Modular scenario methods
   setCurrentYearSetting: (id: string | null, name: string | null, userId?: string | null) => void
   setCurrentProjection: (id: string | null, name: string | null, userId?: string | null) => void

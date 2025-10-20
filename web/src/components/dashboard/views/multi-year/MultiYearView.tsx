@@ -72,6 +72,16 @@ export default function MultiYearView() {
     console.log('🚀 Multi-Year: View initializing')
   }, [])
 
+  // Get current scenario info from store using selectors for reactivity
+  // For modular (2025 Data), show projection name; for legacy, show scenario name
+  const currentScenarioName = useDashboardStore(state => state.currentScenarioName)
+  const currentScenarioUserId = useDashboardStore(state => state.currentScenarioUserId)
+  const isScenarioOwner = currentScenarioUserId && profile?.id === currentScenarioUserId
+
+  const currentScenarioBName = useDashboardStore(state => state.currentScenarioBName)
+  const currentScenarioBUserId = useDashboardStore(state => state.currentScenarioBUserId)
+  const isScenarioBOwner = currentScenarioBUserId && profile?.id === currentScenarioBUserId
+
   // Auto-load favorite or default scenarios on mount
   useEffect(() => {
     if (!profile?.id) return
@@ -110,12 +120,16 @@ export default function MultiYearView() {
         if (scenarioA && store.currentScenarioId !== scenarioA.id) {
           console.log(`[Multi-Year Init] Loading ${favoriteA ? 'favorite A' : 'Default (Optimistic)'}...`, scenarioA.name)
           await store.loadScenarioFromDatabase(scenarioA.id, 'A', true)
+          // Ensure selectedYear is set to 2025 (Baseline) after load
+          store.setSelectedYear('A', 2025)
         }
 
         // Load scenario B if found and not already loaded
         if (scenarioB && store.currentScenarioBId !== scenarioB.id) {
           console.log(`[Multi-Year Init] Loading ${favoriteB ? 'favorite B' : 'Default (Pessimistic)'}...`, scenarioB.name)
           await store.loadScenarioFromDatabase(scenarioB.id, 'B', false)
+          // Ensure selectedYear is set to 2025 (Baseline) after load
+          store.setSelectedYear('B', 2025)
 
           // Enable scenario B if it's a favorite, otherwise keep it disabled
           if (favoriteB) {
@@ -130,6 +144,102 @@ export default function MultiYearView() {
 
     loadInitialScenarios()
   }, [profile?.id]) // Only run when profile changes (on mount/login)
+
+  // Handle unload scenario A - reload favorite A or Default (Optimistic)
+  useEffect(() => {
+    if (!profile?.id) return
+
+    const handleUnloadScenario = async () => {
+      try {
+        console.log('[Unload A] Current scenario:', currentScenarioName)
+
+        // Cannot unload "Default (Optimistic)" - it's the fallback
+        if (currentScenarioName === 'Default (Optimistic)') {
+          console.log('[Unload A] Cannot unload Default (Optimistic)')
+          return
+        }
+
+        // Query all user's scenarios and public scenarios
+        const { data: scenarios, error } = await supabase
+          .from('scenarios')
+          .select('*')
+          .or(`user_id.eq.${profile.id},is_public.eq.true`)
+
+        if (error) throw error
+
+        // Fetch user's favorites
+        const { data: favoritesData } = await supabase
+          .from('user_favorites')
+          .select('scenario_id, favorite_type')
+          .eq('user_id', profile.id)
+
+        const favoriteAId = favoritesData?.find(f => f.favorite_type === 'A')?.scenario_id
+
+        // Find favorite A (but not if it's the one being unloaded)
+        const favoriteA = scenarios?.find(s => s.id === favoriteAId && s.id !== store.currentScenarioId)
+        const defaultOptimistic = scenarios?.find(s => s.name === 'Default (Optimistic)')
+        const scenarioToLoad = favoriteA || defaultOptimistic
+
+        if (scenarioToLoad) {
+          console.log(`[Unload A] Loading ${favoriteA ? 'favorite A' : 'Default (Optimistic)'}...`, scenarioToLoad.name)
+          await store.loadScenarioFromDatabase(scenarioToLoad.id, 'A', true)
+        }
+      } catch (err) {
+        console.error('[Unload A] Error reloading scenario:', err)
+      }
+    }
+
+    window.addEventListener('unloadScenario', handleUnloadScenario)
+    return () => window.removeEventListener('unloadScenario', handleUnloadScenario)
+  }, [profile?.id, currentScenarioName, store])
+
+  // Handle unload scenario B - reload favorite B or Default (Pessimistic)
+  useEffect(() => {
+    if (!profile?.id) return
+
+    const handleUnloadScenarioB = async () => {
+      try {
+        console.log('[Unload B] Current scenario:', currentScenarioBName)
+
+        // Cannot unload "Default (Pessimistic)" - it's the fallback
+        if (currentScenarioBName === 'Default (Pessimistic)') {
+          console.log('[Unload B] Cannot unload Default (Pessimistic)')
+          return
+        }
+
+        // Query all user's scenarios and public scenarios
+        const { data: scenarios, error } = await supabase
+          .from('scenarios')
+          .select('*')
+          .or(`user_id.eq.${profile.id},is_public.eq.true`)
+
+        if (error) throw error
+
+        // Fetch user's favorites
+        const { data: favoritesData } = await supabase
+          .from('user_favorites')
+          .select('scenario_id, favorite_type')
+          .eq('user_id', profile.id)
+
+        const favoriteBId = favoritesData?.find(f => f.favorite_type === 'B')?.scenario_id
+
+        // Find favorite B (but not if it's the one being unloaded)
+        const favoriteB = scenarios?.find(s => s.id === favoriteBId && s.id !== store.currentScenarioBId)
+        const defaultPessimistic = scenarios?.find(s => s.name === 'Default (Pessimistic)')
+        const scenarioToLoad = favoriteB || defaultPessimistic
+
+        if (scenarioToLoad) {
+          console.log(`[Unload B] Loading ${favoriteB ? 'favorite B' : 'Default (Pessimistic)'}...`, scenarioToLoad.name)
+          await store.loadScenarioFromDatabase(scenarioToLoad.id, 'B', false)
+        }
+      } catch (err) {
+        console.error('[Unload B] Error reloading scenario:', err)
+      }
+    }
+
+    window.addEventListener('unloadScenarioB', handleUnloadScenarioB)
+    return () => window.removeEventListener('unloadScenarioB', handleUnloadScenarioB)
+  }, [profile?.id, currentScenarioBName, store])
 
   // Memoized summaries that update when projection settings change
   const projectionSummaryA = useMemo(() =>
@@ -526,16 +636,6 @@ export default function MultiYearView() {
       // The dirty state will automatically update via the effect that monitors changes
     }
   }
-
-  // Get current scenario info from store using selectors for reactivity
-  // For modular (2025 Data), show projection name; for legacy, show scenario name
-  const currentScenarioName = useDashboardStore(state => state.currentScenarioName)
-  const currentScenarioUserId = useDashboardStore(state => state.currentScenarioUserId)
-  const isScenarioOwner = currentScenarioUserId && profile?.id === currentScenarioUserId
-
-  const currentScenarioBName = useDashboardStore(state => state.currentScenarioBName)
-  const currentScenarioBUserId = useDashboardStore(state => state.currentScenarioBUserId)
-  const isScenarioBOwner = currentScenarioBUserId && profile?.id === currentScenarioBUserId
 
   // Reset Scenario B to original state
   const handleResetScenarioB = () => {

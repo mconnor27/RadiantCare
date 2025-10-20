@@ -1597,285 +1597,27 @@ export const useDashboardStore = create<Store>()(
           viewMode: 'YTD Detailed' | 'Multi-Year' | 'YTD Mobile',
           ytdSettings?: YTDSettings
         ) => {
-          const state = get()
-          // Use the already-imported supabase client (line 4) instead of dynamic import
+          // LEGACY METHOD: Only supports YTD (Current Year Settings)
+          // Multi-Year scenarios must use saveProjection() or saveCurrentYearSettings() instead
 
-          // Get current session
-          const { data: { session } } = await supabase.auth.getSession()
-          if (!session) throw new Error('Not authenticated')
-
-          // Fetch QBO sync timestamp (optional - don't fail save if unavailable)
-          let qboSyncTimestamp: string | null = null
-          try {
-            const { data: cacheData, error: cacheError } = await supabase
-              .from('qbo_cache')
-              .select('last_sync_timestamp')
-              .eq('id', 1)
-              .single()
-
-            if (!cacheError && cacheData) {
-              qboSyncTimestamp = cacheData.last_sync_timestamp
-            }
-          } catch (err) {
-            console.warn('Could not fetch QBO sync timestamp:', err)
-            // Continue with save even if timestamp fetch fails
+          if (viewMode === 'Multi-Year') {
+            throw new Error(
+              'Multi-Year scenarios must use saveProjection() instead of saveScenarioToDatabase(). ' +
+              'This method only supports YTD (Current Year Settings).'
+            )
           }
 
-          // Prepare data based on view mode
-          type SaveData = {
-            name: string
-            description: string
-            is_public: boolean
-            scenario_type: 'current_year' | 'projection'
-            view_mode: 'YTD Detailed' | 'Multi-Year'
-            baseline_date: string
-            qbo_sync_timestamp: string | null
-            ytd_settings?: YTDSettings | null
-            year_2025_data?: FutureYear
-            custom_projected_values?: Record<string, number>
-            scenario_data?: { scenarioA: Omit<ScenarioState, 'selectedYear'>; customProjectedValues: Record<string, number> } | null
-            baseline_mode?: BaselineMode | null
-          }
-          let saveData: SaveData
-          
-          if (viewMode === 'YTD Detailed') {
-            // YTD Save - 2025 baseline customizations + chart settings
-            // Get the 2025 year data (includes physicians and their settings)
-            const year2025 = state.scenarioA.future.find(f => f.year === 2025) || {
-              year: 2025,
-              therapyIncome: 0,
-              nonEmploymentCosts: 0,
-              nonMdEmploymentCosts: 0,
-              locumCosts: 0,
-              miscEmploymentCosts: 0,
-              physicians: []
-            }
-            
-            saveData = {
-              name,
-              description,
-              is_public: isPublic,
-              scenario_type: 'current_year',
-              view_mode: 'YTD Detailed',
-              ytd_settings: ytdSettings,
-              baseline_date: new Date().toISOString().split('T')[0],
-              qbo_sync_timestamp: qboSyncTimestamp,
-              // Store 2025 physician settings and grid overrides
-              year_2025_data: year2025,
-              custom_projected_values: state.customProjectedValues,
-              // Explicitly set scenario_data to null for YTD saves
-              scenario_data: null,
-              baseline_mode: null,
-            }
-          } else {
-            // Multi-Year Save - only save Scenario A (not B)
-            const dataMode = state.scenarioA.dataMode
-            // Exclude selectedYear from saved data (it's just UI state)
-            const { selectedYear: _selectedYear, ...scenarioAWithoutUI } = state.scenarioA
-            void _selectedYear // Mark as intentionally unused
-            const scenarioData = {
-              scenarioA: scenarioAWithoutUI,
-              customProjectedValues: state.customProjectedValues,
-            }
-            
-            // Determine baseline date
-            const baselineDate = dataMode === '2024 Data' 
-              ? '2024-12-31' 
-              : new Date().toISOString().split('T')[0]
-            
-            saveData = {
-              name,
-              description,
-              is_public: isPublic,
-              scenario_type: 'projection',
-              view_mode: 'Multi-Year',
-              baseline_mode: dataMode,
-              baseline_date: baselineDate,
-              qbo_sync_timestamp: qboSyncTimestamp,
-              scenario_data: scenarioData,
-              // Explicitly set ytd_settings to null for Multi-Year saves
-              ytd_settings: null,
-            }
-          }
-
-          // If updating existing scenario
-          if (state.currentScenarioId) {
-            const { data, error } = await supabase
-              .from('scenarios')
-              .update(saveData)
-              .eq('id', state.currentScenarioId)
-              .select()
-              .single()
-
-            if (error) throw error
-
-            set((state) => {
-              state.currentScenarioName = name
-              // Update snapshot to match saved state (clears dirty flag)
-              // Exclude selectedYear from snapshot (it's just UI state)
-              const { selectedYear: _selectedYear, ...scenarioAWithoutUI } = state.scenarioA
-              void _selectedYear // Mark as intentionally unused
-              state.loadedScenarioSnapshot = {
-                scenarioA: JSON.parse(JSON.stringify(scenarioAWithoutUI)),
-                customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
-              }
-            })
-
-            return data
-          } else {
-            // Creating new scenario
-            const { data, error } = await supabase
-              .from('scenarios')
-              .insert({
-                user_id: session.user.id,
-                ...saveData,
-              })
-              .select()
-              .single()
-
-            if (error) throw error
-
-            set((state) => {
-              state.currentScenarioId = data.id
-              state.currentScenarioName = name
-              // Update snapshot to match saved state (clears dirty flag)
-              // Exclude selectedYear from snapshot (it's just UI state)
-              const { selectedYear: _selectedYear, ...scenarioAWithoutUI } = state.scenarioA
-              void _selectedYear // Mark as intentionally unused
-              state.loadedScenarioSnapshot = {
-                scenarioA: JSON.parse(JSON.stringify(scenarioAWithoutUI)),
-                customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
-              }
-            })
-
-            return data
-          }
+          // Only YTD Detailed is supported by this legacy method
+          return await get().saveCurrentYearSettings(name, description, isPublic, ytdSettings)
         },
 
-        saveScenarioBToDatabase: async (
-          name: string,
-          description: string,
-          isPublic: boolean
-        ) => {
-          const state = get()
-          // Use the already-imported supabase client (line 4)
-
-          // Get current session
-          const { data: { session } } = await supabase.auth.getSession()
-          if (!session) throw new Error('Not authenticated')
-
-          if (!state.scenarioB) {
-            throw new Error('No Scenario B to save')
-          }
-
-          // Fetch QBO sync timestamp (optional)
-          let qboSyncTimestamp: string | null = null
-          try {
-            const { data: cacheData, error: cacheError } = await supabase
-              .from('qbo_cache')
-              .select('last_sync_timestamp')
-              .eq('id', 1)
-              .single()
-
-            if (!cacheError && cacheData) {
-              qboSyncTimestamp = cacheData.last_sync_timestamp
-            }
-          } catch (err) {
-            console.warn('Could not fetch QBO sync timestamp:', err)
-          }
-
-          // Save Scenario B's complete data (all future years, physicians, projection settings)
-          // The database stores it as "scenarioA" but it's actually B's data
-          const dataMode = state.scenarioB?.dataMode || '2025 Data'
-
-          // Exclude selectedYear from saved data (it's just UI state)
-          const { selectedYear: _selectedYear, ...scenarioBWithoutUI } = state.scenarioB
-          void _selectedYear // Mark as intentionally unused
-          const scenarioData = {
-            scenarioA: scenarioBWithoutUI, // Save B's complete data, not A's!
-            customProjectedValues: state.customProjectedValues,
-          }
-
-          // Determine baseline date based on the data mode we're saving
-          const baselineDate = dataMode === '2024 Data'
-            ? '2024-12-31'
-            : new Date().toISOString().split('T')[0]
-
-          const saveData = {
-            name,
-            description,
-            is_public: isPublic,
-            view_mode: 'Multi-Year' as const,
-            baseline_mode: dataMode,
-            baseline_date: baselineDate,
-            qbo_sync_timestamp: qboSyncTimestamp,
-            scenario_data: scenarioData,
-            ytd_settings: null,
-          }
-
-          // If updating existing Scenario B
-          if (state.currentScenarioBId) {
-            const { data, error } = await supabase
-              .from('scenarios')
-              .update(saveData)
-              .eq('id', state.currentScenarioBId)
-              .select()
-              .single()
-
-            if (error) throw error
-
-            set((state) => {
-              state.currentScenarioBName = name
-              // Update snapshot to match saved state (clears dirty flag)
-              if (state.scenarioB) {
-                // Exclude selectedYear from snapshot (it's just UI state)
-                const { selectedYear: _selectedYear, ...scenarioBWithoutUI } = state.scenarioB
-                void _selectedYear // Mark as intentionally unused
-                state.loadedScenarioBSnapshot = {
-                  scenarioB: JSON.parse(JSON.stringify(scenarioBWithoutUI))
-                }
-              }
-            })
-
-            return data
-          } else {
-            // Creating new scenario from B
-            const { data, error } = await supabase
-              .from('scenarios')
-              .insert({
-                user_id: session.user.id,
-                ...saveData,
-              })
-              .select()
-              .single()
-
-            if (error) throw error
-
-            set((state) => {
-              state.currentScenarioBId = data.id
-              state.currentScenarioBName = name
-              // Update snapshot to match saved state (clears dirty flag)
-              if (state.scenarioB) {
-                // Exclude selectedYear from snapshot (it's just UI state)
-                const { selectedYear: _selectedYear, ...scenarioBWithoutUI } = state.scenarioB
-                void _selectedYear // Mark as intentionally unused
-                state.loadedScenarioBSnapshot = {
-                  scenarioB: JSON.parse(JSON.stringify(scenarioBWithoutUI))
-                }
-              }
-            })
-
-            return data
-          }
-        },
 
         loadScenarioFromDatabase: async (
-          id: string, 
-          target: 'A' | 'B' = 'A', 
+          id: string,
+          target: 'A' | 'B' = 'A',
           loadBaseline: boolean = true
         ) => {
-          // Use the already-imported supabase client (line 4)
-          
+          // MODULAR ROUTER: Routes to appropriate load method based on scenario type
           const { data, error } = await supabase
             .from('scenarios')
             .select('*')
@@ -1885,141 +1627,23 @@ export const useDashboardStore = create<Store>()(
           if (error) throw error
           if (!data) throw new Error('Scenario not found')
 
-          // Handle based on scenario type
-          // NEW: Route modular PROJECTION scenarios to loadProjection()
+          // Route to modular load methods based on scenario_type
           if ('scenario_type' in data && data.scenario_type === 'projection') {
-            console.log('🔄 [loadScenarioFromDatabase] Detected PROJECTION scenario, routing to loadProjection()')
+            console.log('🔄 [loadScenarioFromDatabase] Routing PROJECTION scenario to loadProjection()')
             return await get().loadProjection(id, target)
           }
 
-          // NEW: Route modular CURRENT_YEAR scenarios to loadCurrentYearSettings()
           if ('scenario_type' in data && data.scenario_type === 'current_year') {
-            console.log('🔄 [loadScenarioFromDatabase] Detected CURRENT_YEAR scenario, routing to loadCurrentYearSettings()')
+            console.log('🔄 [loadScenarioFromDatabase] Routing CURRENT_YEAR scenario to loadCurrentYearSettings()')
             return await get().loadCurrentYearSettings(id)
           }
 
-          if (data.view_mode === 'YTD Detailed') {
-            // YTD Scenario - restore 2025 baseline customizations
-            set((state) => {
-              // Restore 2025 year data (physicians, settings)
-              if (data.year_2025_data) {
-                const existingFutureIndex = state.scenarioA.future.findIndex(f => f.year === 2025)
-                if (existingFutureIndex >= 0) {
-                  state.scenarioA.future[existingFutureIndex] = data.year_2025_data
-                } else {
-                  state.scenarioA.future.push(data.year_2025_data)
-                }
-              }
-
-              // Restore custom projected values (grid overrides)
-              if (data.custom_projected_values) {
-                state.customProjectedValues = data.custom_projected_values
-              }
-
-              state.currentScenarioId = data.id
-              state.currentScenarioName = data.name
-              state.currentScenarioUserId = data.user_id
-
-              // Create deep copy snapshot for change detection
-              // Exclude selectedYear from snapshot (it's just UI state)
-              const { selectedYear: _selectedYear, ...scenarioAWithoutUI } = state.scenarioA
-              void _selectedYear // Mark as intentionally unused
-              state.loadedScenarioSnapshot = {
-                scenarioA: JSON.parse(JSON.stringify(scenarioAWithoutUI)),
-                customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
-              }
-            })
-
-            // Return the data so caller can access ytd_settings
-            return data
-          } else {
-            // Multi-Year Scenario
-            const scenarioData = data.scenario_data
-            
-            if (!scenarioData) {
-              throw new Error('Invalid Multi-Year scenario: missing scenario_data')
-            }
-
-            set((state) => {
-              if (target === 'A' || loadBaseline) {
-                // Loading into A, or loading baseline (affects both A and B)
-                state.scenarioA = scenarioData.scenarioA
-                // Set the dataMode based on the scenario's stored baseline_mode
-                state.scenarioA.dataMode = data.baseline_mode || '2025 Data'
-                state.customProjectedValues = scenarioData.customProjectedValues || {}
-                state.currentScenarioId = data.id
-                state.currentScenarioName = data.name
-                state.currentScenarioUserId = data.user_id
-
-                // Create deep copy snapshot for change detection
-                // Exclude selectedYear from snapshot (it's just UI state)
-                const { selectedYear: _selectedYear, ...scenarioAWithoutUI } = state.scenarioA
-                void _selectedYear // Mark as intentionally unused
-                state.loadedScenarioSnapshot = {
-                  scenarioA: JSON.parse(JSON.stringify(scenarioAWithoutUI)),
-                  customProjectedValues: JSON.parse(JSON.stringify(state.customProjectedValues))
-                }
-                console.log('📸 [Snapshot] Created Scenario A snapshot')
-              }
-
-              if (target === 'B') {
-                console.log('[LOAD B] Loading scenario into B slot:', { id, name: data.name, baseline_mode: data.baseline_mode })
-                // Loading into B for comparison
-                // Determine whether to use loaded scenario's baseline or A's baseline
-                // Use loaded scenario's baseline if it doesn't use 2025 data, otherwise use A's baseline
-                const loadedScenarioBaselineMode = data.baseline_mode || '2025 Data'
-                const useLoadedBaseline = loadedScenarioBaselineMode !== '2025 Data'
-
-                if (useLoadedBaseline) {
-                  // Use the loaded scenario's baseline when it doesn't use 2025 data
-                  state.scenarioB = scenarioData.scenarioA
-                  // Set the dataMode to match the loaded scenario's original baseline mode
-                  if (state.scenarioB) {
-                    state.scenarioB.dataMode = loadedScenarioBaselineMode
-                  }
-                } else {
-                  // Use A's baseline, but load the scenario's projection settings into B
-                  state.scenarioB = {
-                    ...scenarioData.scenarioA,
-                    // Keep A's baseline data but use loaded scenario's projection settings
-                    future: scenarioData.scenarioA.future.map((yearData: FutureYear) => {
-                      if (yearData.year === 2025) {
-                        // For 2025, use A's data (the shared baseline)
-                        const a2025 = state.scenarioA.future.find((f: FutureYear) => f.year === 2025)
-                        return a2025 || yearData
-                      }
-                      // For other years, use the loaded scenario's data
-                      return yearData
-                    })
-                  }
-                  // Set dataMode to 2025 Data since we're using A's baseline
-                  if (state.scenarioB) {
-                    state.scenarioB.dataMode = '2025 Data'
-                  }
-                }
-
-                state.scenarioBEnabled = true
-                state.currentScenarioBId = data.id
-                state.currentScenarioBName = data.name
-                state.currentScenarioBUserId = data.user_id
-
-                // Create deep copy snapshot for B
-                // Exclude selectedYear from snapshot (it's just UI state)
-                if (state.scenarioB) {
-                  const { selectedYear: _selectedYear, ...scenarioBWithoutUI } = state.scenarioB
-                  void _selectedYear // Mark as intentionally unused
-                  state.loadedScenarioBSnapshot = {
-                    scenarioB: JSON.parse(JSON.stringify(scenarioBWithoutUI))
-                  }
-                }
-                console.log('📸 [Snapshot] Created Scenario B snapshot')
-              }
-              // Don't automatically clear B when loading A - they can coexist
-              // B should only be cleared when explicitly replaced or reset
-            })
-            
-            return data
-          }
+          // If we get here, it's a legacy scenario that should have been migrated
+          throw new Error(
+            `Legacy scenario detected: "${data.name}". ` +
+            `Only modular scenarios (scenario_type: 'projection' or 'current_year') are supported. ` +
+            `Please migrate this scenario to the new format.`
+          )
         },
 
         // NEW MODULAR SCENARIO METHODS

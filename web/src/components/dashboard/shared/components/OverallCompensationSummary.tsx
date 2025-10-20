@@ -198,31 +198,35 @@ export default function OverallCompensationSummary() {
           data={(() => {
             const rows: any[] = []
             for (const name of allNames) {
-              const a = seriesA.find((s) => s.name === name)!
-              rows.push({
-                type: 'scatter',
-                mode: 'lines+markers',
-                name: store.scenarioBEnabled ? `${name} (A)` : name,
-                x: years,
-                y: a.values,
-                line: { color: colorByName[name], width: isHighlighted('A', name) ? 3 : 1.2 },
-                opacity: (highlight || isolated || scenarioHighlight || scenarioIsolated) ? (isHighlighted('A', name) ? 1 : 0.2) : 1,
-                legendgroup: name, // Group by physician name
-                legendrank: 1, // A scenario appears first in each group
-              })
-              if (store.scenarioBEnabled) {
-                const b = seriesB.find((s) => s.name === name)!
+              const a = seriesA.find((s) => s.name === name)
+              if (a) {
                 rows.push({
                   type: 'scatter',
                   mode: 'lines+markers',
-                  name: `${name} (B)`,
+                  name: store.scenarioBEnabled ? `${name} (A)` : name,
                   x: years,
-                  y: b.values,
-                  line: { color: colorByName[name], dash: 'dot', width: isHighlighted('B', name) ? 3 : 1.2 },
-                  opacity: (highlight || isolated || scenarioHighlight || scenarioIsolated) ? (isHighlighted('B', name) ? 1 : 0.2) : 1,
-                  legendgroup: name, // Same group as the A scenario
-                  legendrank: 2, // B scenario appears second in each group
+                  y: a.values,
+                  line: { color: colorByName[name], width: isHighlighted('A', name) ? 3 : 1.2 },
+                  opacity: (highlight || isolated || scenarioHighlight || scenarioIsolated) ? (isHighlighted('A', name) ? 1 : 0.2) : 1,
+                  legendgroup: name, // Group by physician name
+                  legendrank: 1, // A scenario appears first in each group
                 })
+              }
+              if (store.scenarioBEnabled && seriesB.length > 0) {
+                const b = seriesB.find((s) => s.name === name)
+                if (b) {
+                  rows.push({
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: `${name} (B)`,
+                    x: years,
+                    y: b.values,
+                    line: { color: colorByName[name], dash: 'dot', width: isHighlighted('B', name) ? 3 : 1.2 },
+                    opacity: (highlight || isolated || scenarioHighlight || scenarioIsolated) ? (isHighlighted('B', name) ? 1 : 0.2) : 1,
+                    legendgroup: name, // Same group as the A scenario
+                    legendrank: 2, // B scenario appears second in each group
+                  })
+                }
               }
             }
 
@@ -320,18 +324,16 @@ export default function OverallCompensationSummary() {
               <div>{store.scenarioBEnabled ? `${name} (Scenario A)` : name}</div>
               {years.map((y, idx) => (
                 <div key={`A-${name}-${y}`} style={{ textAlign: 'right' }}>
-                  {currencyOrDash(seriesA.find((s) => s.name === name)!.values[idx])}
+                  {currencyOrDash(seriesA.find((s) => s.name === name)?.values[idx] ?? 0)}
                 </div>
               ))}
               <div style={{ textAlign: 'right' }}>
                 {currency(
-                  seriesA
-                    .find((s) => s.name === name)!
-                    .values.reduce((a, b) => a + b, 0)
+                  seriesA.find((s) => s.name === name)?.values.reduce((a, b) => a + b, 0) ?? 0
                 )}
               </div>
             </div>
-            {store.scenarioBEnabled && (
+            {store.scenarioBEnabled && seriesB.length > 0 && (
               <div
                 className="table-row-hover"
                 style={{ display: 'grid', gridTemplateColumns: `2.2fr repeat(${years.length}, 1fr) 1fr`, gap: 4, padding: '1px 0', borderTop: '1px solid #f0f0f0', background: isRowHighlighted('B', name) ? 'rgba(59, 130, 246, 0.08)' : (idx % 2 === 0 ? '#f9fafb' : 'transparent') }}
