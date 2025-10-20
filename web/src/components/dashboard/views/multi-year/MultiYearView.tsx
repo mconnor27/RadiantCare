@@ -127,13 +127,21 @@ export default function MultiYearView() {
         // Load scenario B if found and not already loaded
         if (scenarioB && store.currentScenarioBId !== scenarioB.id) {
           console.log(`[Multi-Year Init] Loading ${favoriteB ? 'favorite B' : 'Default (Pessimistic)'}...`, scenarioB.name)
+          
+          // IMPORTANT: Enable scenario B first to create the scenarioB object
+          store.setScenarioEnabled(true)
+          
+          // Now load the data into B (scenarioB exists now)
           await store.loadScenarioFromDatabase(scenarioB.id, 'B', false)
-          // Ensure selectedYear is set to 2025 (Baseline) after load
+          
+          // Set selectedYear to 2025 (now works because scenarioB exists)
           store.setSelectedYear('B', 2025)
 
-          // Enable scenario B if it's a favorite, otherwise keep it disabled
-          if (favoriteB) {
-            store.setScenarioEnabled(true)
+          // If not a favorite, disable scenario B visibility (but keep data loaded)
+          if (!favoriteB) {
+            store.setScenarioEnabled(false)
+            console.log('[Multi-Year Init] Loaded scenario B but keeping it hidden (not a favorite)')
+          } else {
             console.log('[Multi-Year Init] Enabled scenario B visibility (favorite)')
           }
         }
