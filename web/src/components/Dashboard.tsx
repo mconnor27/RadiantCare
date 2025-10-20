@@ -784,15 +784,22 @@ export const useDashboardStore = create<Store>()(
               sc.projection[field] = Math.round(clamped * 10) / 10
             }
             
-            // When changing override sliders, force-sync the per-year values so
-            // the yearly sliders necessarily move with the projection override.
-            if (field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours' || field === 'consultingServicesAgreement') {
+            // When changing fixed amount fields, sync values to all future years
+            // Clear any per-year overrides since the user is setting a new global value
+            if (field === 'locumsCosts' || field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours' || field === 'consultingServicesAgreement') {
               for (const fy of sc.future) {
+                if (fy.year === 2025) continue // Skip baseline year
                 fy[field] = sc.projection[field]
+                // Clear override flag - user set a new global value
+                if (fy._overrides?.[field]) {
+                  delete fy._overrides[field]
+                }
               }
+              // For fixed amount fields, we're done - no need to recalculate growth-based fields
+              return
             }
-            
-            // Apply the updated projections to all future years immediately within the same state update
+
+            // For growth rate fields, we need to recalculate dependent values
             // Use baseline data based on selected dataMode
             const dataMode = sc.dataMode
             const last2024 = state.historic.find((h) => h.year === 2024)
@@ -862,27 +869,31 @@ export const useDashboardStore = create<Store>()(
             const baseWagesTaxes2025 = Math.max(0, baseStaff2025 - ANNUAL_BENEFITS_FULLTIME)
             
             // Apply projections to each future year (SKIP baseline year 2025)
+            // Only recalculate fields affected by the changed growth rate
             for (const fy of sc.future) {
               if (fy.year === 2025) continue  // Never overwrite baseline data
-              
+
+              // Calculate all growth-based values (we need them for cumulative growth)
               income = income * (1 + incomeGpct)
               nonEmploymentCosts = nonEmploymentCosts * (1 + nonEmploymentGpct)
               miscEmploymentCosts = miscEmploymentCosts * (1 + miscEmploymentGpct)
 
-              // Compute staff employment costs using split growth: wages+taxes vs benefits
               const yearsSince2025 = fy.year - 2025
               const wagesAndTaxes = baseWagesTaxes2025 * Math.pow(1 + nonMdEmploymentGpct, yearsSince2025)
               const benefits = getBenefitCostsForYear(fy.year, benefitGrowthPct)
               const staffEmploymentCosts = wagesAndTaxes + benefits
-              
-              fy.therapyIncome = income
-              fy.nonEmploymentCosts = nonEmploymentCosts
-              fy.nonMdEmploymentCosts = staffEmploymentCosts
-              fy.miscEmploymentCosts = miscEmploymentCosts
-              fy.locumCosts = fy.year === 2026 ? DEFAULT_LOCUM_COSTS_2026 : sc.projection.locumsCosts
-              
-              // Set consulting services agreement from the global override
-              fy.consultingServicesAgreement = sc.projection.consultingServicesAgreement
+
+              // Only update the specific field(s) affected by the changed projection setting
+              if (field === 'incomeGrowthPct') {
+                fy.therapyIncome = income
+              } else if (field === 'nonEmploymentCostsPct') {
+                fy.nonEmploymentCosts = nonEmploymentCosts
+              } else if (field === 'nonMdEmploymentCostsPct' || field === 'benefitCostsGrowthPct') {
+                fy.nonMdEmploymentCosts = staffEmploymentCosts
+              } else if (field === 'miscEmploymentCostsPct') {
+                fy.miscEmploymentCosts = miscEmploymentCosts
+              }
+              // Note: locumsCosts, medicalDirectorHours, etc. are handled above and return early
             }
           }),
         applyProjectionFromLastActual: (scenario) =>
@@ -979,7 +990,7 @@ export const useDashboardStore = create<Store>()(
               fy.miscEmploymentCosts = miscEmploymentCosts
               
               // Set locums costs from the global override (except 2026 which defaults to 60K)
-              fy.locumCosts = fy.year === 2026 ? DEFAULT_LOCUM_COSTS_2026 : sc.projection.locumsCosts
+              fy.locumCosts = sc.projection.locumsCosts
               
               // Set consulting services agreement from the global override
               fy.consultingServicesAgreement = sc.projection.consultingServicesAgreement
@@ -1437,7 +1448,7 @@ export const useDashboardStore = create<Store>()(
               therapyIncome: historic?.therapyIncome ?? 0,
               nonEmploymentCosts: historic?.nonEmploymentCosts ?? 0,
               nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(year),
-              locumCosts: year === 2026 ? DEFAULT_LOCUM_COSTS_2026 : 0,
+              locumCosts: 0,
               miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
               medicalDirectorHours: DEFAULT_MD_SHARED_PROJECTION,
               prcsMedicalDirectorHours: DEFAULT_MD_PRCS_PROJECTION,
@@ -2633,7 +2644,7 @@ export const useDashboardStore = create<Store>()(
               nonEmploymentCosts: nonEmploymentCosts,
               nonMdEmploymentCosts: staffEmploymentCosts,
               miscEmploymentCosts: miscEmploymentCosts,
-              locumCosts: year === 2026 ? DEFAULT_LOCUM_COSTS_2026 : projection.locumsCosts,
+              locumCosts: projection.locumsCosts,
               medicalDirectorHours: projection.medicalDirectorHours,
               prcsMedicalDirectorHours: projection.prcsMedicalDirectorHours,
               consultingServicesAgreement: projection.consultingServicesAgreement,

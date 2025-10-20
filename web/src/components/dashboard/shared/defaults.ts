@@ -387,7 +387,7 @@ export function getFutureYearsBase(): Omit<FutureYear, 'physicians'>[] {
       nonEmploymentCosts:
         HISTORIC_DATA[HISTORIC_DATA.length - 1].nonEmploymentCosts,
       nonMdEmploymentCosts: getDefaultNonMdEmploymentCostsForYear(year),
-      locumCosts: year === 2026 ? DEFAULT_LOCUM_COSTS_2026 : PROJECTION_DEFAULTS.A.locumsCosts,
+      locumCosts: PROJECTION_DEFAULTS.A.locumsCosts,
       miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
     }
   })
@@ -437,7 +437,7 @@ export const FUTURE_YEARS_BASE: Omit<FutureYear, 'physicians'>[] = Array.from({ 
     nonEmploymentCosts:
       HISTORIC_DATA[HISTORIC_DATA.length - 1].nonEmploymentCosts,
     nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(year),
-    locumCosts: year === 2026 ? DEFAULT_LOCUM_COSTS_2026 : PROJECTION_DEFAULTS.A.locumsCosts,
+    locumCosts: PROJECTION_DEFAULTS.A.locumsCosts,
     miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
   }
 })
@@ -459,8 +459,8 @@ export const INITIAL_FUTURE_YEARS_B: FutureYear[] = FUTURE_YEARS_BASE.map((b) =>
   return {
     ...b,
     consultingServicesAgreement: b.year === 2025 ? DEFAULT_CONSULTING_SERVICES_2025 : DEFAULT_CONSULTING_SERVICES_PROJECTION,
-    // Scenario B default: $0 locums except $60k in 2026
-    locumCosts: b.year === 2026 ? DEFAULT_LOCUM_COSTS_2026 : 0,
+    // Scenario B default: $0 locums
+    locumCosts: 0,
     physicians,
     prcsDirectorPhysicianId: b.year >= 2024 && suszko ? suszko.id : undefined,
   }
