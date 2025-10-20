@@ -1557,6 +1557,11 @@ export const useDashboardStore = create<Store>()(
             delete state.ytdCustomProjectedValues[accountName]
           }),
         
+        resetYtdCustomProjectedValues: () =>
+          set((state) => {
+            state.ytdCustomProjectedValues = {}
+          }),
+        
         // Scenario management
         setCurrentScenario: (id: string | null, name: string | null, userId?: string | null) =>
           set((state) => {

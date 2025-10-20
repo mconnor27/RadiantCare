@@ -709,7 +709,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
         const hasPersistedId = !!store.currentYearSettingId
         const hasData = !!store.ytdData
 
-        if (hasPersistedId && !hasData) {
+        if (hasPersistedId && !hasData && store.currentYearSettingId) {
           // Reload from persisted ID
           console.log('[YTD Mobile Init] Reloading from persisted ID:', store.currentYearSettingId)
           await store.loadCurrentYearSettings(store.currentYearSettingId)

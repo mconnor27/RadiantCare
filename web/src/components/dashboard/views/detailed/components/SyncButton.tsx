@@ -71,7 +71,7 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
 
   // Handle sync button click
   const handleSyncClick = () => {
-    const hasCustomValues = Object.keys(store.customProjectedValues).length > 0
+    const hasCustomValues = Object.keys(store.ytdCustomProjectedValues).length > 0
 
     // Always show warning about potential refresh
     if (hasCustomValues) {
@@ -145,7 +145,7 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
 
         // Clear custom values if user chose to
         if (clearCustomValues) {
-          store.resetCustomProjectedValues()
+          store.resetYtdCustomProjectedValues()
         }
 
         // Hide modal after 1.5 seconds and refresh data
