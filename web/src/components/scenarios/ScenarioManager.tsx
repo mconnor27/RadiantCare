@@ -23,8 +23,8 @@ interface ScenarioManagerProps {
 }
 
 type Tab = 'my-scenarios' | 'public-scenarios'
-type View = 'list' | 'form' | 'edit' | 'formB' | 'editB'
-type ScenarioTypeFilter = 'all' | 'current_year' | 'projection' | 'legacy'
+type View = 'list' | 'form' | 'edit' | 'formB' | 'editB' | 'clone'
+type ScenarioTypeFilter = 'all' | 'current_year' | 'projection'
 
 export default function ScenarioManager({
   isOpen,
@@ -44,8 +44,10 @@ export default function ScenarioManager({
   const [myScenarios, setMyScenarios] = useState<SavedScenario[]>([])
   const [publicScenarios, setPublicScenarios] = useState<SavedScenario[]>([])
   const [editingScenario, setEditingScenario] = useState<SavedScenario | undefined>()
+  const [cloningScenario, setCloningScenario] = useState<SavedScenario | undefined>()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [hasAutoSwitched, setHasAutoSwitched] = useState(false)
   
   // Baseline warning modal state
   const [showBaselineWarning, setShowBaselineWarning] = useState(false)
@@ -58,8 +60,18 @@ export default function ScenarioManager({
       // Set initial view and scenario when opening
       setView(initialView)
       setEditingScenario(initialScenario)
+      // Reset auto-switch flag when opening
+      setHasAutoSwitched(false)
     }
   }, [isOpen, profile, viewMode, initialView, initialScenario])
+
+  // Auto-switch to public scenarios if no personal scenarios exist (only on initial load)
+  useEffect(() => {
+    if (!hasAutoSwitched && myScenarios.length === 0 && publicScenarios.length > 0 && activeTab === 'my-scenarios') {
+      setActiveTab('public-scenarios')
+      setHasAutoSwitched(true)
+    }
+  }, [myScenarios.length, publicScenarios.length, activeTab, hasAutoSwitched])
 
   // Filter scenarios by type
   function filterScenariosByType(scenarios: SavedScenario[]): SavedScenario[] {
@@ -70,8 +82,6 @@ export default function ScenarioManager({
         return isCurrentYearSettingsScenario(scenario)
       } else if (scenarioTypeFilter === 'projection') {
         return isProjectionScenario(scenario)
-      } else if (scenarioTypeFilter === 'legacy') {
-        return !isCurrentYearSettingsScenario(scenario) && !isProjectionScenario(scenario)
       }
       return true
     })
@@ -386,30 +396,50 @@ export default function ScenarioManager({
       if (error) throw error
       if (!data) throw new Error('Scenario not found')
 
+      // Set up the scenario for cloning with default name
+      const scenarioToClone = {
+        ...data,
+        name: `${data.name} (Copy)`,
+        is_public: false, // Clones are always private
+      }
+      
+      setCloningScenario(scenarioToClone)
+      setView('clone')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load scenario for cloning')
+    }
+  }
+
+  async function handleSaveClonedScenario(name: string, description: string, isPublic: boolean) {
+    if (!cloningScenario) return
+    
+    try {
       // Create a new scenario with cloned data - preserve all metadata
       const { error: insertError } = await supabase
         .from('scenarios')
         .insert({
           user_id: profile?.id,
-          name: `${data.name} (Copy)`,
-          description: data.description,
-          is_public: false, // Clones are always private
-          view_mode: data.view_mode,
-          scenario_data: data.scenario_data,
-          ytd_settings: data.ytd_settings,
-          year_2025_data: data.year_2025_data,
-          custom_projected_values: data.custom_projected_values,
-          baseline_mode: data.baseline_mode,
-          baseline_date: data.baseline_date,
-          qbo_sync_timestamp: data.qbo_sync_timestamp,
+          name: name,
+          description: description,
+          is_public: isPublic,
+          view_mode: cloningScenario.view_mode,
+          scenario_data: (cloningScenario as any).scenario_data,
+          ytd_settings: (cloningScenario as any).ytd_settings,
+          year_2025_data: (cloningScenario as any).year_2025_data,
+          custom_projected_values: (cloningScenario as any).custom_projected_values,
+          baseline_mode: (cloningScenario as any).baseline_mode,
+          baseline_date: cloningScenario.baseline_date,
+          qbo_sync_timestamp: (cloningScenario as any).qbo_sync_timestamp,
         })
 
       if (insertError) throw insertError
 
       await loadScenarios()
+      setView('list')
+      setCloningScenario(undefined)
       setActiveTab('my-scenarios')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to clone scenario')
+      throw err
     }
   }
 
@@ -624,7 +654,7 @@ export default function ScenarioManager({
         <div style={{ padding: '24px', borderBottom: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>
-              {view === 'form' ? 'Save Scenario A' : view === 'formB' ? 'Save Scenario B' : view === 'edit' ? 'Edit Scenario A' : view === 'editB' ? 'Edit Scenario B' : 'Scenario Manager'}
+              {view === 'form' ? 'Save Scenario A' : view === 'formB' ? 'Save Scenario B' : view === 'edit' ? 'Edit Scenario A' : view === 'editB' ? 'Edit Scenario B' : view === 'clone' ? 'Duplicate Scenario' : 'Scenario Manager'}
             </h2>
             <button
               onClick={onClose}
@@ -723,7 +753,6 @@ export default function ScenarioManager({
                   <option value="all">All Types</option>
                   <option value="current_year">Current Year Settings</option>
                   <option value="projection">Projections</option>
-                  <option value="legacy">Legacy Scenarios</option>
                 </select>
               </div>
 
@@ -731,7 +760,7 @@ export default function ScenarioManager({
                 <>
                   <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                     <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                      {filterScenariosByType(myScenarios).length} of {myScenarios.length} {viewMode === 'YTD Detailed' ? 'YTD' : 'Multi-Year'} scenario{myScenarios.length !== 1 ? 's' : ''}
+                      {filterScenariosByType(myScenarios).length} of {myScenarios.length} scenario{myScenarios.length !== 1 ? 's' : ''}
                     </div>
                     <button
                       onClick={() => setView('form')}
@@ -766,7 +795,7 @@ export default function ScenarioManager({
                 <>
                   <div style={{ marginBottom: '16px' }}>
                     <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                      {filterScenariosByType(publicScenarios).length} of {publicScenarios.length} public {viewMode === 'YTD Detailed' ? 'YTD' : 'Multi-Year'} scenario{publicScenarios.length !== 1 ? 's' : ''}
+                      {filterScenariosByType(publicScenarios).length} of {publicScenarios.length} public scenario{publicScenarios.length !== 1 ? 's' : ''}
                     </div>
                   </div>
                   <ScenarioList
@@ -787,15 +816,17 @@ export default function ScenarioManager({
           </>
         )}
 
-        {(view === 'form' || view === 'edit' || view === 'formB' || view === 'editB') && (
+        {(view === 'form' || view === 'edit' || view === 'formB' || view === 'editB' || view === 'clone') && (
           <div style={{ flex: 1, overflowY: 'auto' }}>
             <ScenarioForm
-              existingScenario={editingScenario}
-              onSave={handleSaveScenario}
+              existingScenario={view === 'clone' ? cloningScenario : editingScenario}
+              onSave={view === 'clone' ? handleSaveClonedScenario : handleSaveScenario}
               onCancel={() => {
                 setView('list')
                 setEditingScenario(undefined)
+                setCloningScenario(undefined)
               }}
+              isClone={view === 'clone'}
             />
           </div>
         )}

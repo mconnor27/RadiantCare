@@ -1006,7 +1006,10 @@ export default function MultiYearView() {
                   {/* Reset Button - only show if scenario is loaded and has been modified */}
                   {currentScenarioName && isScenarioDirty && (
                     <button
-                      onClick={handleResetScenario}
+                      onClick={() => {
+                        removeTooltip('multi-reset-tooltip')
+                        handleResetScenario()
+                      }}
                       style={{
                         background: 'none',
                         border: 'none',
@@ -1194,7 +1197,10 @@ export default function MultiYearView() {
                     {/* Reset Button - only show if scenario is loaded and has been modified */}
                     {currentScenarioBName && isScenarioBDirty && (
                       <button
-                        onClick={handleResetScenarioB}
+                        onClick={() => {
+                          removeTooltip('multi-b-reset-tooltip')
+                          handleResetScenarioB()
+                        }}
                         style={{
                           background: 'none',
                           border: 'none',

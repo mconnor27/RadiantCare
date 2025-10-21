@@ -5,9 +5,10 @@ interface ScenarioFormProps {
   existingScenario?: SavedScenario
   onSave: (name: string, description: string, isPublic: boolean) => Promise<void>
   onCancel: () => void
+  isClone?: boolean
 }
 
-export default function ScenarioForm({ existingScenario, onSave, onCancel }: ScenarioFormProps) {
+export default function ScenarioForm({ existingScenario, onSave, onCancel, isClone = false }: ScenarioFormProps) {
   const [name, setName] = useState(existingScenario?.name || '')
   const [description, setDescription] = useState(existingScenario?.description || '')
   const [isPublic, setIsPublic] = useState(existingScenario?.is_public || false)
@@ -156,7 +157,7 @@ export default function ScenarioForm({ existingScenario, onSave, onCancel }: Sce
             cursor: saving || !name.trim() ? 'not-allowed' : 'pointer',
           }}
         >
-          {saving ? 'Saving...' : existingScenario ? 'Update Scenario' : 'Save Scenario'}
+          {saving ? 'Saving...' : (existingScenario && !isClone) ? 'Update Scenario' : 'Save Scenario'}
         </button>
       </div>
     </form>

@@ -319,7 +319,10 @@ export default function ScenarioCard({
           {isOwner && (
             <>
               <button
-                onClick={() => onDelete(scenario.id)}
+                onClick={() => {
+                  removeTooltip(`delete-${scenario.id}`)
+                  onDelete(scenario.id)
+                }}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -398,7 +401,10 @@ export default function ScenarioCard({
           
           {/* Clone button */}
           <button
-            onClick={() => onClone(scenario.id)}
+            onClick={() => {
+              removeTooltip(`clone-${scenario.id}`)
+              onClone(scenario.id)
+            }}
             style={{
               background: 'none',
               border: 'none',
@@ -412,7 +418,7 @@ export default function ScenarioCard({
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.opacity = '0.7'
-              createTooltip(`clone-${scenario.id}`, 'Clone scenario', e, { placement: 'below-center' })
+              createTooltip(`clone-${scenario.id}`, 'Duplicate scenario', e, { placement: 'below-center' })
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.opacity = '1'

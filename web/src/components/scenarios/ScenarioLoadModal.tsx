@@ -35,12 +35,23 @@ export default function ScenarioLoadModal({
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [favoritesMap, setFavoritesMap] = useState<Map<string, { is_favorite_a: boolean, is_favorite_b: boolean, is_favorite_current: boolean }>>(new Map())
+  const [hasAutoSwitched, setHasAutoSwitched] = useState(false)
 
   useEffect(() => {
     if (isOpen && profile) {
       loadScenarios()
+      // Reset auto-switch flag when opening
+      setHasAutoSwitched(false)
     }
   }, [isOpen, profile, viewMode])
+
+  // Auto-switch to public scenarios if no personal scenarios exist (only on initial load)
+  useEffect(() => {
+    if (!hasAutoSwitched && myScenarios.length === 0 && publicScenarios.length > 0 && activeTab === 'my-scenarios') {
+      setActiveTab('public-scenarios')
+      setHasAutoSwitched(true)
+    }
+  }, [myScenarios.length, publicScenarios.length, activeTab, hasAutoSwitched])
 
   async function loadScenarios() {
     setLoading(true)

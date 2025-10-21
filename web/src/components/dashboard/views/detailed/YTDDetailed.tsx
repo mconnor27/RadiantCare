@@ -755,7 +755,10 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         {/* Reset Button - only show if scenario is loaded and has been modified */}
         {currentScenarioName && isScenarioDirty && (
           <button
-            onClick={handleResetScenario}
+            onClick={() => {
+              removeTooltip('ytd-reset-tooltip')
+              handleResetScenario()
+            }}
             style={{
               background: 'none',
               border: 'none',
