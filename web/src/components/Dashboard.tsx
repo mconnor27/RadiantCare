@@ -4244,10 +4244,10 @@ export function Dashboard() {
 
   // User is authenticated - show the full dashboard
   return (
-    <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 0 : 16, position: 'relative' }}>
+    <>
       {/* Top Bar with Auth and Help - hide in mobile mode */}
       {!isMobile && (
-        <div className="full-bleed" style={{ 
+        <div style={{ 
           display: 'flex', 
           alignItems: 'flex-start', 
           justifyContent: 'center', 
@@ -4462,6 +4462,8 @@ export function Dashboard() {
           </div>
         </div>
       )}
+
+      <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 0 : 16, position: 'relative' }}>
 
       {/* Centered Header - hide in mobile mode */}
       {!isMobile && (
@@ -4709,5 +4711,21 @@ export function Dashboard() {
         onClose={() => setShowMobileWarning(false)}
       />
     </div>
+
+    {/* Footer - outside dashboard container */}
+    {!isMobile && (
+      <div style={{
+        background: 'rgba(124, 42, 131, 0.95)',
+        color: 'rgba(255, 255, 255, 0.8)',
+        padding: '8px 16px',
+        fontSize: 12,
+        textAlign: 'center',
+        borderTop: '1px solid rgba(255, 255, 255, 0.2)',
+        marginTop: 20
+      }}>
+        © 2025 RadiantCare. All rights reserved. | Compensation Dashboard v2.0
+      </div>
+    )}
+    </>
   )
 }
