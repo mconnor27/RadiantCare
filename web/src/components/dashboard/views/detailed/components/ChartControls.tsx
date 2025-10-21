@@ -490,49 +490,9 @@ export default function ChartControls({
                   position: 'relative'
                 }}
                 onMouseEnter={(e) => {
-                  const tooltip = document.createElement('div')
-                  tooltip.id = 'normalized-tooltip'
-                  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: none;`
-                  tooltip.textContent = 'Normalized to % of total annual income'
-                  document.body.appendChild(tooltip)
-                  const rect = e.currentTarget.getBoundingClientRect()
-
-                  // Smart positioning to avoid going off-screen
-                  const tooltipWidth = 300
-                  const tooltipHeight = 50
-                  const offset = 10
-                  const padding = 10
-
-                  let x = rect.right + offset
-                  let y = rect.top + window.scrollY
-
-                  // Check right edge
-                  if (x + tooltipWidth > window.innerWidth - padding) {
-                    x = rect.left - tooltipWidth - offset
-                  }
-
-                  // Check bottom edge
-                  if (y + tooltipHeight > window.innerHeight + window.scrollY - padding) {
-                    y = rect.bottom + window.scrollY - tooltipHeight
-                  }
-
-                  // Check left edge
-                  if (x < padding) {
-                    x = padding
-                  }
-
-                  // Check top edge
-                  if (y < window.scrollY + padding) {
-                    y = window.scrollY + padding
-                  }
-
-                  tooltip.style.left = `${x}px`
-                  tooltip.style.top = `${y}px`
+                  createTooltip('normalized-tooltip', 'Normalized to % of total annual income', e, { placement: 'below-center' })
                 }}
-                onMouseLeave={() => {
-                  const tooltip = document.getElementById('normalized-tooltip')
-                  if (tooltip) tooltip.remove()
-                }}
+                onMouseLeave={() => removeTooltip('normalized-tooltip')}
               >
                 <input
                   type="radio"
