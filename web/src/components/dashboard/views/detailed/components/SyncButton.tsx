@@ -497,8 +497,8 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
 
       <div style={{
         padding: 8,
-        background: '#f0f9ff',
-        border: '1px solid #bae6fd',
+        background: 'rgba(255, 255, 255, 0.1)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
         borderRadius: 4,
         display: 'flex',
         flexDirection: 'column',
@@ -515,9 +515,9 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
               onTouchStart={(e) => createSyncTooltip(getButtonTooltip(), e)}
             style={{
               padding: '6px 12px',
-              background: syncing || !syncAvailable || lastSyncTimestamp === undefined ? '#94a3b8' : '#0ea5e9',
-              color: '#fff',
-              border: 'none',
+              background: syncing || !syncAvailable || lastSyncTimestamp === undefined ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.2)',
+              color: '#ffffff',
+              border: '1px solid rgba(255, 255, 255, 0.4)',
               borderRadius: 4,
               fontSize: 14,
               fontWeight: 500,
@@ -525,7 +525,8 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
               whiteSpace: 'nowrap',
               display: 'flex',
               alignItems: 'center',
-              gap: 6
+              gap: 6,
+              transition: 'all 0.2s ease'
             }}
           >
             <svg
@@ -559,7 +560,7 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
                 height="20"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#0ea5e9"
+                stroke="#ffffff"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -604,7 +605,7 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: 12,
-            color: '#64748b'
+            color: 'rgba(255, 255, 255, 0.95)'
           }}>
             Loading sync status...
           </div>
@@ -615,8 +616,8 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
             gap: 8,
             alignItems: 'baseline'
           }}>
-            <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>Last synced:</span>
-            <span style={{ color: '#64748b' }}>{formatTimestamp(lastSyncTimestamp)}</span>
+            <span style={{ color: 'rgba(255, 255, 255, 0.95)', whiteSpace: 'nowrap' }}>Last synced:</span>
+            <span style={{ color: 'rgba(255, 255, 255, 0.95)' }}>{formatTimestamp(lastSyncTimestamp)}</span>
           </div>
         )}
       </div>

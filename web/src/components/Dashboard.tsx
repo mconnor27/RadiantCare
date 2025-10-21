@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase'
 import { immer } from 'zustand/middleware/immer'
 import * as LZString from 'lz-string'
 import { useAuth } from './auth/AuthProvider'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faGear, faSignOutAlt } from '@fortawesome/free-solid-svg-icons'
 import LoginModal from './auth/LoginModal'
 import SignupModal from './auth/SignupModal'
 import PasswordResetModal from './auth/PasswordResetModal'
@@ -4246,56 +4248,158 @@ export function Dashboard() {
     <div className="dashboard-container" style={{ fontFamily: 'Inter, system-ui, Arial', padding: isMobile ? 0 : 16, position: 'relative' }}>
       {/* Top Bar with Auth and Help - hide in mobile mode */}
       {!isMobile && (
-        <div className="full-bleed" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 12, paddingTop: 0, paddingLeft: 16, paddingRight: 16 }}>
-          {/* Sync Button - only show in YTD Detailed view */}
-          {viewMode === 'YTD Detailed' && (
-            <SyncButton
-              environment="production"
-              isLoadingDashboard={false}
-              onSyncComplete={() => {
-                // Trigger data refresh in YTDDetailed component
-                ytdRefreshCallbackRef.current?.()
+        <div className="full-bleed" style={{ 
+          display: 'flex', 
+          alignItems: 'flex-start', 
+          justifyContent: 'center', 
+          gap: 8, 
+          marginBottom: 5, 
+          paddingTop: 5, 
+          paddingBottom: 6,
+          paddingLeft: 16, 
+          paddingRight: 16,
+          background: 'rgba(124, 42, 131, 0.95)',
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+          borderBottom: '1px solid #e5e7eb',
+          position: 'sticky',
+          top: 0,
+          zIndex: 1000
+        }}>
+          {/* Left side: Sync Button */}
+          <div style={{ position: 'absolute', left: 16, display: 'flex', alignItems: 'center' }}>
+            {(viewMode === 'YTD Detailed' || viewMode === 'Multi-Year') && (
+              <SyncButton
+                environment="production"
+                isLoadingDashboard={false}
+                onSyncComplete={() => {
+                  // Trigger data refresh in YTDDetailed component
+                  ytdRefreshCallbackRef.current?.()
+                }}
+              />
+            )}
+          </div>
+
+          {/* Center: View Mode Toggle Buttons */}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={() => setViewMode('YTD Detailed')}
+              style={{ 
+                border: '1px solid rgba(255, 255, 255, 0.3)', 
+                borderRadius: 6, 
+                padding: '8px 16px', 
+                background: viewMode === 'YTD Detailed' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)', 
+                color: '#ffffff',
+                cursor: 'pointer', 
+                touchAction: 'manipulation', 
+                WebkitTapHighlightColor: 'transparent',
+                fontSize: 14,
+                fontWeight: 500,
+                transition: 'all 0.2s ease'
               }}
-            />
-          )}
-          {/* Spacer to push right elements to the right when SyncButton is hidden */}
-          {viewMode !== 'YTD Detailed' && <div style={{ flex: 1 }}></div>}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 14, color: '#6b7280' }}>
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = viewMode === 'YTD Detailed' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)'
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
+              }}
+            >
+              YTD Detailed
+            </button>
+            <button
+              onClick={() => setViewMode('Multi-Year')}
+              style={{ 
+                border: '1px solid rgba(255, 255, 255, 0.3)', 
+                borderRadius: 6, 
+                padding: '8px 16px', 
+                background: viewMode === 'Multi-Year' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)', 
+                color: '#ffffff',
+                cursor: 'pointer', 
+                touchAction: 'manipulation', 
+                WebkitTapHighlightColor: 'transparent',
+                fontSize: 14,
+                fontWeight: 500,
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = viewMode === 'Multi-Year' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)'
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
+              }}
+            >
+              Multi-Year
+            </button>
+          </div>
+
+          {/* Right side: User section */}
+          <div style={{ position: 'absolute', right: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 14, color: 'rgba(255, 255, 255, 0.9)', fontWeight: 500 }}>
             {profile.email}
           </span>
         <button
           onClick={() => setShowPasswordReset(true)}
+          title="Change Password"
           style={{
-            padding: '8px 16px',
-            background: '#fff',
-            color: '#6b7280',
-            border: '1px solid #d1d5db',
+            padding: '8px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            color: '#ffffff',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
             borderRadius: '4px',
-            fontSize: 14,
-            fontWeight: 500,
+            fontSize: 16,
             cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
           }}
         >
-          Change Password
+          <FontAwesomeIcon icon={faGear} />
         </button>
         <button
           onClick={() => {
             signOut()
             store.setCurrentScenario(null, null)
           }}
+          title="Sign Out"
           style={{
-            padding: '8px 16px',
-            background: '#fff',
-            color: '#6b7280',
-            border: '1px solid #d1d5db',
+            padding: '8px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            color: '#ffffff',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
             borderRadius: '4px',
-            fontSize: 14,
-            fontWeight: 500,
+            fontSize: 16,
             cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
           }}
         >
-          Sign Out
+          <FontAwesomeIcon icon={faSignOutAlt} />
         </button>
         
         {/* Help Icon */}
@@ -4306,30 +4410,30 @@ export function Dashboard() {
             width: 32,
             height: 32,
             borderRadius: '50%',
-            border: '2px solid #7c2a83',
-            backgroundColor: '#fff',
+            border: '2px solid rgba(255, 255, 255, 0.5)',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
             fontSize: 18,
             fontWeight: 'bold',
-            color: '#7c2a83',
+            color: '#ffffff',
             transition: 'all 0.2s',
             flexShrink: 0
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#7c2a83'
-            e.currentTarget.style.color = '#fff'
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.8)'
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#fff'
-            e.currentTarget.style.color = '#7c2a83'
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'
           }}
         >
           ?
         </div>
-        </div>
+          </div>
         </div>
       )}
 
@@ -4346,21 +4450,6 @@ export function Dashboard() {
         maxWidth: isMobile ? '100%' : 1600,
         margin: isMobile ? 0 : '20px auto 0 auto'
       }}>
-        {/* View Mode Buttons - hide on mobile */}
-        {!isMobile && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button
-                onClick={() => setViewMode('YTD Detailed')}
-                style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'YTD Detailed' ? '#e5e7eb' : '#fff', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-              >YTD Detailed</button>
-              <button
-                onClick={() => setViewMode('Multi-Year')}
-                style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px', background: viewMode === 'Multi-Year' ? '#e5e7eb' : '#fff', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-              >Multi-Year</button>
-            </div>
-          </div>
-        )}
         
         {!urlLoaded ? (
           <div style={{ padding: 20, textAlign: 'center' }}>Loading...</div>
