@@ -8,6 +8,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTrash, faPenToSquare, faClone, faFolderOpen, faRotate, faStar as faSolidStar } from '@fortawesome/free-solid-svg-icons'
 import { faStar as faRegularStar } from '@fortawesome/free-regular-svg-icons'
+import { createTooltip, removeTooltip } from '../dashboard/shared/tooltips'
 
 interface ScenarioCardProps {
   scenario: SavedScenario
@@ -143,7 +144,12 @@ export default function ScenarioCard({
                     touchAction: 'manipulation',
                     WebkitTapHighlightColor: 'transparent'
                   }}
-                  title={scenario.is_favorite_a ? 'Remove from Favorite A' : 'Set as Favorite A'}
+                  onMouseEnter={(e) => {
+                    createTooltip(`fav-a-${scenario.id}`, scenario.is_favorite_a ? 'Remove from Favorite A' : 'Set as Favorite A', e, { placement: 'below-center' })
+                  }}
+                  onMouseLeave={() => {
+                    removeTooltip(`fav-a-${scenario.id}`)
+                  }}
                 >
                   <FontAwesomeIcon
                     icon={scenario.is_favorite_a ? faSolidStar : faRegularStar}
@@ -177,7 +183,12 @@ export default function ScenarioCard({
                     touchAction: 'manipulation',
                     WebkitTapHighlightColor: 'transparent'
                   }}
-                  title={scenario.is_favorite_b ? 'Remove from Favorite B' : 'Set as Favorite B'}
+                  onMouseEnter={(e) => {
+                    createTooltip(`fav-b-${scenario.id}`, scenario.is_favorite_b ? 'Remove from Favorite B' : 'Set as Favorite B', e, { placement: 'below-center' })
+                  }}
+                  onMouseLeave={() => {
+                    removeTooltip(`fav-b-${scenario.id}`)
+                  }}
                 >
                   <FontAwesomeIcon
                     icon={scenario.is_favorite_b ? faSolidStar : faRegularStar}
@@ -214,7 +225,12 @@ export default function ScenarioCard({
                   touchAction: 'manipulation',
                   WebkitTapHighlightColor: 'transparent'
                 }}
-                title={scenario.is_favorite_current ? 'Remove from Current Year Favorite' : 'Set as Current Year Favorite'}
+                onMouseEnter={(e) => {
+                  createTooltip(`fav-current-${scenario.id}`, scenario.is_favorite_current ? 'Remove from Current Year Favorite' : 'Set as Current Year Favorite', e, { placement: 'below-center' })
+                }}
+                onMouseLeave={() => {
+                  removeTooltip(`fav-current-${scenario.id}`)
+                }}
               >
                 <FontAwesomeIcon
                   icon={scenario.is_favorite_current ? faSolidStar : faRegularStar}
@@ -317,11 +333,12 @@ export default function ScenarioCard({
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.opacity = '0.7'
+                  createTooltip(`delete-${scenario.id}`, 'Delete scenario', e, { placement: 'below-center' })
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.opacity = '1'
+                  removeTooltip(`delete-${scenario.id}`)
                 }}
-                title="Delete scenario"
               >
                 <FontAwesomeIcon icon={faTrash} />
               </button>
@@ -340,11 +357,12 @@ export default function ScenarioCard({
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.opacity = '0.7'
+                  createTooltip(`edit-${scenario.id}`, 'Edit scenario', e, { placement: 'below-center' })
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.opacity = '1'
+                  removeTooltip(`edit-${scenario.id}`)
                 }}
-                title="Edit scenario"
               >
                 <FontAwesomeIcon icon={faPenToSquare} />
               </button>
@@ -365,11 +383,12 @@ export default function ScenarioCard({
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.opacity = '0.7'
+                    createTooltip(`update-${scenario.id}`, 'Update this scenario with the latest 2025 data', e, { placement: 'below-center' })
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.opacity = '1'
+                    removeTooltip(`update-${scenario.id}`)
                   }}
-                  title="Update this scenario with the latest 2025 data"
                 >
                   <FontAwesomeIcon icon={faRotate} />
                 </button>
@@ -393,11 +412,12 @@ export default function ScenarioCard({
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.opacity = '0.7'
+              createTooltip(`clone-${scenario.id}`, 'Clone scenario', e, { placement: 'below-center' })
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.opacity = '1'
+              removeTooltip(`clone-${scenario.id}`)
             }}
-            title="Clone scenario"
           >
             <FontAwesomeIcon icon={faClone} />
           </button>
@@ -423,11 +443,12 @@ export default function ScenarioCard({
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.opacity = '0.7'
+                  createTooltip(`load-b-${scenario.id}`, 'Load scenario into B', e, { placement: 'below-center' })
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.opacity = '1'
+                  removeTooltip(`load-b-${scenario.id}`)
                 }}
-                title="Load scenario into B"
               >
                 <FontAwesomeIcon icon={faFolderOpen} style={{ transform: 'translateY(3px)' }} />
                 <span style={{ fontSize: '12px', fontWeight: 'bold' }}>B</span>
@@ -450,11 +471,12 @@ export default function ScenarioCard({
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.opacity = '0.7'
+                  createTooltip(`load-a-${scenario.id}`, 'Load scenario into A', e, { placement: 'below-center' })
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.opacity = '1'
+                  removeTooltip(`load-a-${scenario.id}`)
                 }}
-                title="Load scenario into A"
               >
                 <FontAwesomeIcon icon={faFolderOpen} style={{ transform: 'translateY(3px)' }} />
                 <span style={{ fontSize: '12px', fontWeight: 'bold' }}>A</span>
@@ -482,13 +504,14 @@ export default function ScenarioCard({
                   if (isLoadable) {
                     e.currentTarget.style.opacity = '0.7'
                   }
+                  createTooltip(`load-${scenario.id}`, isLoadable ? "Load scenario" : "Load from Multi-Year View", e, { placement: 'below-center' })
                 }}
                 onMouseLeave={(e) => {
                   if (isLoadable) {
                     e.currentTarget.style.opacity = '1'
                   }
+                  removeTooltip(`load-${scenario.id}`)
                 }}
-                title={isLoadable ? "Load scenario" : "Load from Multi-Year View"}
               >
                 <FontAwesomeIcon icon={faFolderOpen} style={{ transform: 'translateY(3px)' }} />
               </button>

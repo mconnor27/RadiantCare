@@ -8,34 +8,60 @@ function calculateTooltipPosition(
   tooltipWidth: number = 300, 
   tooltipHeight: number = 100,
   offsetX: number = 10,
-  offsetY: number = 0
+  offsetY: number = 0,
+  placement?: 'right' | 'below-center' | 'below-left' | 'below-right'
 ) {
   const padding = 10
+  let x: number
+  let y: number
 
-  // Start with the desired position
-  let x = rect.right + offsetX
-  let y = rect.top + window.scrollY + offsetY
-
-  // Check right edge - only reposition if truly necessary
-  if (x + tooltipWidth > window.innerWidth - padding) {
-    // Try positioning to the left of the element
-    const leftX = rect.left - tooltipWidth - Math.abs(offsetX)
-    if (leftX >= padding) {
-      x = leftX
+  if (placement === 'below-center' || placement === 'below-left' || placement === 'below-right') {
+    // Position below the element
+    y = rect.bottom + window.scrollY + Math.abs(offsetY || 8)
+    
+    if (placement === 'below-left') {
+      // Align tooltip's right edge with element's right edge
+      x = rect.right - tooltipWidth
+    } else if (placement === 'below-right') {
+      // Align tooltip's left edge with element's left edge
+      x = rect.left
     } else {
-      // If can't fit on left either, just constrain to right edge
-      x = Math.max(padding, window.innerWidth - tooltipWidth - padding)
+      // Center horizontally under the element
+      x = rect.left + (rect.width / 2) - (tooltipWidth / 2)
     }
-  }
+    
+    // Ensure tooltip stays within viewport horizontally
+    if (x < padding) {
+      x = padding
+    } else if (x + tooltipWidth > window.innerWidth - padding) {
+      x = window.innerWidth - tooltipWidth - padding
+    }
+  } else {
+    // Default: Position to the right of the element
+    x = rect.right + offsetX
+    y = rect.top + window.scrollY + offsetY
 
-  // Check bottom edge
-  if (y + tooltipHeight > window.innerHeight + window.scrollY - padding) {
-    y = Math.max(window.scrollY + padding, rect.bottom + window.scrollY - tooltipHeight)
-  }
+    // Check right edge - only reposition if truly necessary
+    if (x + tooltipWidth > window.innerWidth - padding) {
+      // Try positioning to the left of the element
+      const leftX = rect.left - tooltipWidth - Math.abs(offsetX)
+      if (leftX >= padding) {
+        x = leftX
+      } else {
+        // If can't fit on left either, just constrain to right edge
+        x = Math.max(padding, window.innerWidth - tooltipWidth - padding)
+      }
+    }
 
-  // Check top edge
-  if (y < window.scrollY + padding) {
-    y = window.scrollY + padding
+    // Check bottom edge
+    if (y + tooltipHeight > window.innerHeight + window.scrollY - padding) {
+      y = Math.max(window.scrollY + padding, rect.bottom + window.scrollY - tooltipHeight)
+    }
+
+    // Check top edge
+    if (y < window.scrollY + padding) {
+      y = window.scrollY + padding
+    }
   }
 
   return { x, y }
@@ -46,9 +72,22 @@ export function createTooltip(
   id: string, 
   content: string, 
   e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>,
-  offsetX: number = 10,
+  offsetX: number | { placement?: 'right' | 'below-center' | 'below-left' | 'below-right', offsetY?: number } = 10,
   offsetY: number = 0
 ) {
+  // Handle new options-based API
+  let placement: 'right' | 'below-center' | 'below-left' | 'below-right' | undefined
+  let actualOffsetX = 10
+  let actualOffsetY = offsetY
+  
+  if (typeof offsetX === 'object') {
+    placement = offsetX.placement
+    actualOffsetY = offsetX.offsetY !== undefined ? offsetX.offsetY : 0
+    actualOffsetX = 10 // Default for right placement
+  } else {
+    actualOffsetX = offsetX
+  }
+
   const existing = document.getElementById(id)
   if (existing) existing.remove()
 
@@ -60,7 +99,9 @@ export function createTooltip(
   document.body.appendChild(tooltip)
 
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  const pos = calculateTooltipPosition(rect, 300, 100, offsetX, offsetY)
+  const tooltipWidth = tooltip.offsetWidth
+  const tooltipHeight = tooltip.offsetHeight
+  const pos = calculateTooltipPosition(rect, tooltipWidth, tooltipHeight, actualOffsetX, actualOffsetY, placement)
   tooltip.style.left = `${pos.x}px`
   tooltip.style.top = `${pos.y}px`
 }

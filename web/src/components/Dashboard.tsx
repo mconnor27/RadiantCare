@@ -30,7 +30,7 @@ import {
   getPartnerPortionOfYear,
   getBenefitCostsForYear
 } from './dashboard/shared/calculations'
-import { getDefaultTrailingSharedMdAmount } from './dashboard/shared/tooltips'
+import { getDefaultTrailingSharedMdAmount, createTooltip, removeTooltip } from './dashboard/shared/tooltips'
 import {
   calculateAllCompensations,
   calculateAllCompensationsWithRetired
@@ -56,7 +56,6 @@ import {
   INITIAL_FUTURE_YEARS_A,
   INITIAL_FUTURE_YEARS_B
 } from './dashboard/shared/defaults'
-
 
 
 export const useDashboardStore = create<Store>()(
@@ -4342,7 +4341,6 @@ export function Dashboard() {
           </span>
         <button
           onClick={() => setShowPasswordReset(true)}
-          title="Change Password"
           style={{
             padding: '8px',
             background: 'rgba(255, 255, 255, 0.1)',
@@ -4361,10 +4359,18 @@ export function Dashboard() {
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
             e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'
+            createTooltip('change-password-tooltip', 'Change Password', e, { placement: 'below-center' })
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
             e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
+            removeTooltip('change-password-tooltip')
+          }}
+          onTouchStart={(e) => {
+            createTooltip('change-password-tooltip', 'Change Password', e, { placement: 'below-center' })
+          }}
+          onTouchEnd={() => {
+            removeTooltip('change-password-tooltip')
           }}
         >
           <FontAwesomeIcon icon={faGear} />
@@ -4374,7 +4380,6 @@ export function Dashboard() {
             signOut()
             store.setCurrentScenario(null, null)
           }}
-          title="Sign Out"
           style={{
             padding: '8px',
             background: 'rgba(255, 255, 255, 0.1)',
@@ -4393,10 +4398,18 @@ export function Dashboard() {
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
             e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'
+            createTooltip('sign-out-tooltip', 'Sign Out', e, { placement: 'below-center' })
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
             e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
+            removeTooltip('sign-out-tooltip')
+          }}
+          onTouchStart={(e) => {
+            createTooltip('sign-out-tooltip', 'Sign Out', e, { placement: 'below-center' })
+          }}
+          onTouchEnd={() => {
+            removeTooltip('sign-out-tooltip')
           }}
         >
           <FontAwesomeIcon icon={faSignOutAlt} />
@@ -4405,7 +4418,6 @@ export function Dashboard() {
         {/* Help Icon */}
         <div 
           onClick={() => setShowHelpModal(true)}
-          title="Click for help"
           style={{
             width: 32,
             height: 32,
@@ -4425,10 +4437,18 @@ export function Dashboard() {
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'
             e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.8)'
+            createTooltip('help-icon-tooltip', 'Click for help', e, { placement: 'below-left' })
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'
             e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'
+            removeTooltip('help-icon-tooltip')
+          }}
+          onTouchStart={(e) => {
+            createTooltip('help-icon-tooltip', 'Click for help', e, { placement: 'below-left' })
+          }}
+          onTouchEnd={() => {
+            removeTooltip('help-icon-tooltip')
           }}
         >
           ?

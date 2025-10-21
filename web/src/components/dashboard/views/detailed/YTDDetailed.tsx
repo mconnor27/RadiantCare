@@ -24,6 +24,7 @@ import ScenarioLoadModal from '../../../scenarios/ScenarioLoadModal'
 import ShareLinkButton from '../../../shared/ShareLinkButton'
 import { useAuth } from '../../../auth/AuthProvider'
 import { supabase } from '../../../../lib/supabase'
+import { createTooltip, removeTooltip } from '../../shared/tooltips'
 
 interface YTDDetailedProps {
   initialSettings?: any
@@ -587,11 +588,12 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.opacity = '0.7'
+            createTooltip('ytd-load-tooltip', 'Load scenario', e, { placement: 'below-center' })
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.opacity = '1'
+            removeTooltip('ytd-load-tooltip')
           }}
-          title="Load scenario"
         >
           <FontAwesomeIcon icon={faFolderOpen} />
         </button>
@@ -616,11 +618,12 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.opacity = '0.7'
+              createTooltip('ytd-save-tooltip', 'Save scenario', e, { placement: 'below-center' })
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.opacity = '1'
+              removeTooltip('ytd-save-tooltip')
             }}
-            title="Save scenario"
           >
             <FontAwesomeIcon icon={faFloppyDisk} />
           </button>
@@ -640,11 +643,12 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.opacity = '0.7'
+            createTooltip('ytd-save-as-tooltip', 'Save as new scenario', e, { placement: 'below-center' })
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.opacity = '1'
+            removeTooltip('ytd-save-as-tooltip')
           }}
-          title="Save as new scenario"
         >
           <FontAwesomeIcon icon={faCopy} />
         </button>
@@ -669,11 +673,12 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.opacity = '0.7'
+              createTooltip('ytd-unload-tooltip', 'Unload scenario', e, { placement: 'below-center' })
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.opacity = '1'
+              removeTooltip('ytd-unload-tooltip')
             }}
-            title="Unload scenario"
           >
             <FontAwesomeIcon icon={faCircleXmark} />
           </button>
@@ -697,6 +702,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
           scenarioBEnabled={false}
           isScenarioDirty={isScenarioDirty}
           isScenarioBDirty={false}
+          fontSize={24}
           uiSettings={{
             ytdDetailed: {
               isNormalized,
@@ -736,11 +742,12 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.opacity = '0.7'
+            createTooltip('ytd-manager-tooltip', 'Scenario Manager', e, { placement: 'below-center' })
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.opacity = '1'
+            removeTooltip('ytd-manager-tooltip')
           }}
-          title="Scenario Manager"
         >
           <FontAwesomeIcon icon={faGear} />
         </button>
@@ -760,11 +767,12 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.opacity = '0.7'
+              createTooltip('ytd-reset-tooltip', 'Reset to original', e, { placement: 'below-center' })
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.opacity = '1'
+              removeTooltip('ytd-reset-tooltip')
             }}
-            title="Reset to original"
           >
             <FontAwesomeIcon icon={faRotateLeft} />
           </button>

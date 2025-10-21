@@ -15,6 +15,7 @@ import ModularScenarioSaveDialog from '../../../scenarios/ModularScenarioSaveDia
 import ShareLinkButton from '../../../shared/ShareLinkButton'
 import { useAuth } from '../../../auth/AuthProvider'
 import { supabase } from '../../../../lib/supabase'
+import { createTooltip, removeTooltip } from '../../shared/tooltips'
 
 // Helper function to get baseline year from data mode
 function getBaselineYear(dataMode: string): number {
@@ -853,9 +854,14 @@ export default function MultiYearView() {
                       transition: 'opacity 0.2s',
                       padding: 2
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
-                    title="Load scenario"
+                    onMouseEnter={(e) => { 
+                      e.currentTarget.style.opacity = '0.7'
+                      createTooltip('multi-load-tooltip', 'Load scenario', e, { placement: 'below-center' })
+                    }}
+                    onMouseLeave={(e) => { 
+                      e.currentTarget.style.opacity = '1'
+                      removeTooltip('multi-load-tooltip')
+                    }}
                   >
                     <FontAwesomeIcon icon={faFolderOpen} />
                   </button>
@@ -876,9 +882,14 @@ export default function MultiYearView() {
                         transition: 'opacity 0.2s',
                         padding: 2
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
-                      title="Save scenario"
+                      onMouseEnter={(e) => { 
+                        e.currentTarget.style.opacity = '0.7'
+                        createTooltip('multi-save-tooltip', 'Save scenario', e, { placement: 'below-center' })
+                      }}
+                      onMouseLeave={(e) => { 
+                        e.currentTarget.style.opacity = '1'
+                        removeTooltip('multi-save-tooltip')
+                      }}
                     >
                       <FontAwesomeIcon icon={faFloppyDisk} />
                     </button>
@@ -896,9 +907,14 @@ export default function MultiYearView() {
                       transition: 'opacity 0.2s',
                       padding: 2
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
-                    title="Save as new scenario"
+                    onMouseEnter={(e) => { 
+                      e.currentTarget.style.opacity = '0.7'
+                      createTooltip('multi-save-as-tooltip', 'Save as new scenario', e, { placement: 'below-center' })
+                    }}
+                    onMouseLeave={(e) => { 
+                      e.currentTarget.style.opacity = '1'
+                      removeTooltip('multi-save-as-tooltip')
+                    }}
                   >
                     <FontAwesomeIcon icon={faCopy} />
                   </button>
@@ -921,9 +937,14 @@ export default function MultiYearView() {
                         transition: 'opacity 0.2s',
                         padding: 2
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
-                      title="Unload scenario"
+                      onMouseEnter={(e) => { 
+                        e.currentTarget.style.opacity = '0.7'
+                        createTooltip('multi-unload-tooltip', 'Unload scenario', e, { placement: 'below-center' })
+                      }}
+                      onMouseLeave={(e) => { 
+                        e.currentTarget.style.opacity = '1'
+                        removeTooltip('multi-unload-tooltip')
+                      }}
                     >
                       <FontAwesomeIcon icon={faCircleXmark} />
                     </button>
@@ -970,9 +991,14 @@ export default function MultiYearView() {
                       transition: 'opacity 0.2s',
                       padding: 2
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
-                    title="Scenario Manager"
+                    onMouseEnter={(e) => { 
+                      e.currentTarget.style.opacity = '0.7'
+                      createTooltip('multi-manager-tooltip', 'Scenario Manager', e, { placement: 'below-center' })
+                    }}
+                    onMouseLeave={(e) => { 
+                      e.currentTarget.style.opacity = '1'
+                      removeTooltip('multi-manager-tooltip')
+                    }}
                   >
                     <FontAwesomeIcon icon={faGear} />
                   </button>
@@ -990,9 +1016,14 @@ export default function MultiYearView() {
                         transition: 'opacity 0.2s',
                         padding: 2
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
-                      title="Reset to original"
+                      onMouseEnter={(e) => { 
+                        e.currentTarget.style.opacity = '0.7'
+                        createTooltip('multi-reset-tooltip', 'Reset to original', e, { placement: 'below-center' })
+                      }}
+                      onMouseLeave={(e) => { 
+                        e.currentTarget.style.opacity = '1'
+                        removeTooltip('multi-reset-tooltip')
+                      }}
                     >
                       <FontAwesomeIcon icon={faRotateLeft} />
                     </button>
@@ -1061,9 +1092,14 @@ export default function MultiYearView() {
                         transition: 'opacity 0.2s',
                         padding: 2
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
-                      title="Load scenario into B"
+                      onMouseEnter={(e) => { 
+                        e.currentTarget.style.opacity = '0.7'
+                        createTooltip('multi-b-load-tooltip', 'Load scenario into B', e, { placement: 'below-center' })
+                      }}
+                      onMouseLeave={(e) => { 
+                        e.currentTarget.style.opacity = '1'
+                        removeTooltip('multi-b-load-tooltip')
+                      }}
                     >
                       <FontAwesomeIcon icon={faFolderOpen} />
                     </button>
@@ -1084,9 +1120,14 @@ export default function MultiYearView() {
                           transition: 'opacity 0.2s',
                           padding: 2
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
-                        onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
-                        title="Save Scenario B"
+                        onMouseEnter={(e) => { 
+                          e.currentTarget.style.opacity = '0.7'
+                          createTooltip('multi-b-save-tooltip', 'Save Scenario B', e, { placement: 'below-center' })
+                        }}
+                        onMouseLeave={(e) => { 
+                          e.currentTarget.style.opacity = '1'
+                          removeTooltip('multi-b-save-tooltip')
+                        }}
                       >
                         <FontAwesomeIcon icon={faFloppyDisk} />
                       </button>
@@ -1107,9 +1148,14 @@ export default function MultiYearView() {
                         transition: 'opacity 0.2s',
                         padding: 2
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
-                      title="Save Scenario B as new scenario"
+                      onMouseEnter={(e) => { 
+                        e.currentTarget.style.opacity = '0.7'
+                        createTooltip('multi-b-save-as-tooltip', 'Save Scenario B as new scenario', e, { placement: 'below-center' })
+                      }}
+                      onMouseLeave={(e) => { 
+                        e.currentTarget.style.opacity = '1'
+                        removeTooltip('multi-b-save-as-tooltip')
+                      }}
                     >
                       <FontAwesomeIcon icon={faCopy} />
                     </button>
@@ -1132,9 +1178,14 @@ export default function MultiYearView() {
                           transition: 'opacity 0.2s',
                           padding: 2
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
-                        onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
-                        title="Unload Scenario B"
+                        onMouseEnter={(e) => { 
+                          e.currentTarget.style.opacity = '0.7'
+                          createTooltip('multi-b-unload-tooltip', 'Unload Scenario B', e, { placement: 'below-center' })
+                        }}
+                        onMouseLeave={(e) => { 
+                          e.currentTarget.style.opacity = '1'
+                          removeTooltip('multi-b-unload-tooltip')
+                        }}
                       >
                         <FontAwesomeIcon icon={faCircleXmark} />
                       </button>
@@ -1153,9 +1204,14 @@ export default function MultiYearView() {
                           transition: 'opacity 0.2s',
                           padding: 2
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7' }}
-                        onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
-                        title="Reset to original"
+                        onMouseEnter={(e) => { 
+                          e.currentTarget.style.opacity = '0.7'
+                          createTooltip('multi-b-reset-tooltip', 'Reset to original', e, { placement: 'below-center' })
+                        }}
+                        onMouseLeave={(e) => { 
+                          e.currentTarget.style.opacity = '1'
+                          removeTooltip('multi-b-reset-tooltip')
+                        }}
                       >
                         <FontAwesomeIcon icon={faRotateLeft} />
                       </button>
