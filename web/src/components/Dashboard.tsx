@@ -1044,16 +1044,47 @@ export const useDashboardStore = create<Store>()(
               const staffEmploymentCosts = wagesAndTaxes + benefits
               
               console.log(`  📅 [applyProjectionFromLastActual] Year ${fy.year}: therapyIncome = ${income.toFixed(0)}`)
-              fy.therapyIncome = income
-              fy.nonEmploymentCosts = nonEmploymentCosts
-              fy.nonMdEmploymentCosts = staffEmploymentCosts
-              fy.miscEmploymentCosts = miscEmploymentCosts
+              
+              // Preserve user overrides - only update fields that haven't been manually overridden
+              const overrides = fy._overrides
+              
+              if (!overrides?.therapyIncome) {
+                fy.therapyIncome = income
+              } else {
+                console.log(`  🔒 [applyProjectionFromLastActual] Preserving therapyIncome override for year ${fy.year}`)
+              }
+              
+              if (!overrides?.nonEmploymentCosts) {
+                fy.nonEmploymentCosts = nonEmploymentCosts
+              } else {
+                console.log(`  🔒 [applyProjectionFromLastActual] Preserving nonEmploymentCosts override for year ${fy.year}`)
+              }
+              
+              if (!overrides?.nonMdEmploymentCosts) {
+                fy.nonMdEmploymentCosts = staffEmploymentCosts
+              } else {
+                console.log(`  🔒 [applyProjectionFromLastActual] Preserving nonMdEmploymentCosts override for year ${fy.year}`)
+              }
+              
+              if (!overrides?.miscEmploymentCosts) {
+                fy.miscEmploymentCosts = miscEmploymentCosts
+              } else {
+                console.log(`  🔒 [applyProjectionFromLastActual] Preserving miscEmploymentCosts override for year ${fy.year}`)
+              }
               
               // Set locums costs from the global override (except 2026 which defaults to 60K)
-              fy.locumCosts = sc.projection.locumsCosts
+              if (!overrides?.locumCosts) {
+                fy.locumCosts = sc.projection.locumsCosts
+              } else {
+                console.log(`  🔒 [applyProjectionFromLastActual] Preserving locumCosts override for year ${fy.year}`)
+              }
               
               // Set consulting services agreement from the global override
-              fy.consultingServicesAgreement = sc.projection.consultingServicesAgreement
+              if (!overrides?.consultingServicesAgreement) {
+                fy.consultingServicesAgreement = sc.projection.consultingServicesAgreement
+              } else {
+                console.log(`  🔒 [applyProjectionFromLastActual] Preserving consultingServicesAgreement override for year ${fy.year}`)
+              }
             }
 
             console.log(`✅ [applyProjectionFromLastActual] Complete\n`)
@@ -1830,11 +1861,21 @@ export const useDashboardStore = create<Store>()(
           if (!loadedSnapshot && target === 'A' && !state.loadedProjectionSnapshot) return false
           if (!loadedSnapshot && target === 'B' && !state.loadedScenarioBSnapshot) return false
 
+          // Check if baseline mode has changed from loaded snapshot (for ALL baseline modes)
+          const loadedBaselineMode = target === 'A'
+            ? state.loadedProjectionSnapshot?.baseline_mode
+            : state.loadedScenarioBSnapshot?.scenarioB?.dataMode
+          
+          if (loadedBaselineMode && scenario.dataMode !== loadedBaselineMode) {
+            console.log(`✏️ [isProjectionDirty ${target}] Baseline mode changed from ${loadedBaselineMode} to ${scenario.dataMode}`)
+            return true
+          }
+
           // NEW: If we're in 2025 Data mode with expected snapshot, use baseline-aware dirty detection
           if (scenario.dataMode === '2025 Data' && expectedSnapshot) {
             console.log(`🔍 [isProjectionDirty ${target}] Using baseline-aware dirty detection with snapshot`)
 
-            // Step 1: Compare projection INPUTS (not outputs) to detect user changes
+            // Step 2: Compare projection INPUTS (not outputs) to detect user changes
             const snapshotProjection = target === 'A'
               ? state.loadedProjectionSnapshot?.projection
               : state.loadedScenarioBSnapshot?.scenarioB?.projection
