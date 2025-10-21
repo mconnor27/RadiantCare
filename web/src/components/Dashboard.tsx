@@ -2000,6 +2000,15 @@ export const useDashboardStore = create<Store>()(
           })
         },
 
+        resetYtdGridToSnapshot: () => {
+          set((state) => {
+            if (!state.loadedCurrentYearSettingsSnapshot) return
+
+            // Revert only grid overrides (not physician data)
+            state.ytdCustomProjectedValues = JSON.parse(JSON.stringify(state.loadedCurrentYearSettingsSnapshot.ytdCustomProjectedValues))
+          })
+        },
+
         resetProjection: () => {
           set((state) => {
             if (!state.loadedProjectionSnapshot) return

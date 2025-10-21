@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { ReactGrid, type Row } from '@silevis/reactgrid'
 import '@silevis/reactgrid/styles.css'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faRotateLeft } from '@fortawesome/free-solid-svg-icons'
 import CollapsibleSection from '../../../shared/components/CollapsibleSection'
 import { loadYearlyGridData, type CollapsibleState } from '../utils/yearlyDataTransformer'
 import getDefaultValue from '../config/projectedDefaults'
 import ProjectedValueSlider from './ProjectedValueSlider'
 import { useDashboardStore } from '../../../../Dashboard'
+import { createTooltip, removeTooltip } from '../../../shared/tooltips'
 
 // Mapping from grid account names to multiyear field names
 // Using normalized names to be robust against whitespace, info icons, etc.
@@ -232,6 +235,10 @@ interface YearlyDataGridProps {
   onSyncComplete?: () => void  // Callback when cache sync to store completes
   mode?: 'scenario' | 'ytd'  // Which state to sync to (default: 'scenario')
   shouldUpdateSnapshotOnFirstSync?: boolean  // Whether to update snapshot after first cache sync
+  isGridDirty?: boolean  // Whether grid values have been modified
+  onResetGrid?: () => void  // Callback to reset grid to loaded scenario
+  onAnnualizeAll?: () => void  // Callback to annualize all grid values
+  reloadTrigger?: number  // Increment this to force a grid reload (for explicit scenario loads)
 }
 
 // Click detection coordinates for expand/collapse all icons in header
@@ -249,7 +256,11 @@ export default function YearlyDataGrid({
   isLoadingCache = false,
   onSyncComplete,
   mode = 'scenario',
-  shouldUpdateSnapshotOnFirstSync = false
+  shouldUpdateSnapshotOnFirstSync = false,
+  isGridDirty = false,
+  onResetGrid,
+  onAnnualizeAll,
+  reloadTrigger = 0
 }: YearlyDataGridProps = {}) {
   const store = useDashboardStore()
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
@@ -377,11 +388,11 @@ export default function YearlyDataGrid({
   // Track last loaded data signature to prevent redundant loads
   const lastLoadRef = useRef<string>('')
 
-  // Reset first sync flag when component mounts, mode changes, or scenario loads
+  // Reset first sync flag when component mounts, mode changes, or scenario loads (including explicit reloads)
   useEffect(() => {
     hasCompletedFirstSync.current = false
-    console.log('🔄 [Grid] Reset first sync flag (mode or scenario changed)')
-  }, [mode, store.currentYearSettingId, store.currentScenarioId])
+    console.log('🔄 [Grid] Reset first sync flag (mode, scenario, or reload trigger changed)')
+  }, [mode, store.currentYearSettingId, store.currentScenarioId, reloadTrigger])
   
   // Extract key physician values for dependency tracking
   // Grid is only used in YTD mode
@@ -438,8 +449,10 @@ export default function YearlyDataGrid({
       // Create a signature of the data that would affect the load
       const cachedSummaryData = (environment === 'production' && cachedSummary) ? cachedSummary : undefined
       const customValues = store.ytdCustomProjectedValues
+      const currentScenarioId = store.currentYearSettingId
       const dataSignature = JSON.stringify({
-        scenarioId: store.currentYearSettingId, // Include scenario ID to force reload on scenario change
+        scenarioId: currentScenarioId, // Include scenario ID to force reload on scenario change
+        reloadTrigger, // Include reload trigger to force reload on explicit user action
         collapsed: collapsedSections,
         customs: customValues,
         physicians: physicianData?.physicians.length,
@@ -451,10 +464,27 @@ export default function YearlyDataGrid({
         hasCached: !!cachedSummaryData
       })
       
-      // Skip if we just loaded the exact same configuration
-      if (lastLoadRef.current === dataSignature) {
+      // ALWAYS reload if scenario ID changed OR reload trigger changed (don't use cached signature)
+      // This ensures grid sync happens on every explicit scenario load
+      const lastSignature = lastLoadRef.current
+      const lastSignatureObj = lastSignature ? JSON.parse(lastSignature) : null
+      const lastScenarioId = lastSignatureObj?.scenarioId
+      const lastReloadTrigger = lastSignatureObj?.reloadTrigger ?? 0
+      
+      const isScenarioChanged = lastScenarioId !== currentScenarioId && currentScenarioId !== null && currentScenarioId !== undefined
+      const isExplicitReload = reloadTrigger !== lastReloadTrigger
+      
+      // Skip if we just loaded the exact same configuration AND scenario/trigger hasn't changed
+      if (!isScenarioChanged && !isExplicitReload && lastLoadRef.current === dataSignature) {
         console.log('⏭️  Skipping redundant load (same data)')
         return
+      }
+      
+      if (isScenarioChanged) {
+        console.log(`📋 [Grid] Scenario changed: ${lastScenarioId} → ${currentScenarioId}, forcing grid reload`)
+      }
+      if (isExplicitReload) {
+        console.log(`🔄 [Grid] Explicit reload requested (trigger: ${lastReloadTrigger} → ${reloadTrigger})`)
       }
       
       console.log('📊 YearlyDataGrid: Loading data...')
@@ -528,12 +558,83 @@ export default function YearlyDataGrid({
   // that affect calculated grid rows (MD Associates, Guaranteed Payments, Locums, PRCS MD Hours, Shared MD Hours, Consulting)
   // Also track custom projected values count so grid reloads with correct coloring when user changes values
   // IMPORTANT: Include currentYearSettingId to force grid reload when scenario changes (even if data is identical)
+  // IMPORTANT: Include reloadTrigger to force reload when user explicitly loads a scenario (even if same ID)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collapsedSections, environment, cachedSummary, isLoadingCache, mode, store.currentYearSettingId, prcsDirectorId, prcsMdHours, mdSharedHours, consultingAgreement, locumCosts, physicianDataSignature, customProjectedValuesCount])
+  }, [collapsedSections, environment, cachedSummary, isLoadingCache, mode, store.currentYearSettingId, prcsDirectorId, prcsMdHours, mdSharedHours, consultingAgreement, locumCosts, physicianDataSignature, customProjectedValuesCount, reloadTrigger])
 
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  // Listen for annualize all event
+  useEffect(() => {
+    const handleAnnualizeAll = () => {
+      console.log('🔢 Annualizing all grid values...')
+      
+      // Iterate through all rows and set projected values to annualized amounts
+      gridData.allRows.forEach((row: any) => {
+        const accountCell = row.cells?.[0] as any
+        const accountName = accountCell?.text?.trim() || ''
+        
+        // Skip if this is a calculated row
+        if (isCalculatedAccount(accountName)) {
+          return
+        }
+        
+        // Skip section rows, spacer rows, and summary group rows
+        const cell = row.cells?.[gridData.columns.length - 1] as any
+        const isSpacer = cell?.rowType === 'Spacer'
+        const isSection = cell?.rowType === 'Section'
+        const isSummaryGroup = cell?.rowType === 'Summary' && !accountName.startsWith('Total 7100')
+        
+        if (isSpacer || isSection || isSummaryGroup) {
+          return
+        }
+        
+        // Skip therapy components (they're summed into Total 7100 Therapy Income)
+        const isTherapyComponent = accountName === '7105 Therapy - Lacey' || 
+                                   accountName === '7108 Therapy - Aberdeen' || 
+                                   accountName === '7110 Therapy - Centralia' || 
+                                   accountName === '7149 Refunds - Therapy'
+        if (isTherapyComponent) {
+          return
+        }
+        
+        // Calculate annualized value from YTD
+        const ytdColIndex = gridData.columns.length - 2
+        const ytdCell = row.cells?.[ytdColIndex] as any
+        const ytdText = (ytdCell?.text || '0').toString()
+        const ytdValue = parseFloat(ytdText.replace(/[$,\s]/g, '')) || 0
+        const annualizedValue = ytdValue * projectionRatio
+        
+        // Get the default value for this account (what would be used without override)
+        const normalizedAccountName = normalizeAccountName(accountName)
+        const defaultValue = getDefaultValue(normalizedAccountName, annualizedValue)
+        
+        // Helper to check approximate equality (within rounding tolerance)
+        const approximatelyEqual = (a: number, b: number) => Math.abs(Math.round(a) - Math.round(b)) <= 0
+        
+        // Only set custom override if annualized value differs from default
+        // This prevents yellow cells (already annualized) from turning red
+        if (approximatelyEqual(annualizedValue, defaultValue)) {
+          // Value matches default - remove any existing custom override
+          if (store.ytdCustomProjectedValues[normalizedAccountName] !== undefined) {
+            store.removeYtdCustomProjectedValue(normalizedAccountName)
+            console.log(`  ✓ ${normalizedAccountName}: Removed override (matches default)`)
+          }
+        } else {
+          // Value differs from default - set custom override
+          store.setYtdCustomProjectedValue(normalizedAccountName, annualizedValue)
+          console.log(`  ✓ ${normalizedAccountName}: ${annualizedValue.toFixed(0)} (custom override)`)
+        }
+      })
+      
+      console.log('✅ Annualization complete')
+    }
+    
+    window.addEventListener('annualizeAllGridValues', handleAnnualizeAll)
+    return () => window.removeEventListener('annualizeAllGridValues', handleAnnualizeAll)
+  }, [gridData, projectionRatio, store])
 
   // After data is loaded, scroll the horizontal container all the way to the right by default
   useEffect(() => {
@@ -811,6 +912,73 @@ export default function YearlyDataGrid({
       title="Yearly Financial Data (2016-2025)"
       defaultOpen={false}
       tone="neutral"
+      right={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Annualize All Button (always visible) */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              removeTooltip('grid-annualize-tooltip')
+              onAnnualizeAll?.()
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 4,
+              display: 'flex',
+              alignItems: 'center',
+              transition: 'opacity 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.7'
+              createTooltip('grid-annualize-tooltip', 'Annualize all grid values', e, { placement: 'below-center' })
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1'
+              removeTooltip('grid-annualize-tooltip')
+            }}
+          >
+            <img 
+              src="/recalc2.png" 
+              alt="Annualize" 
+              style={{ width: 34, height: 34 }}
+            />
+          </button>
+
+          {/* Reset Grid Button (only visible when dirty) */}
+          {isGridDirty && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                removeTooltip('grid-reset-tooltip')
+                onResetGrid?.()
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#f59e0b',
+                fontSize: 28,
+                cursor: 'pointer',
+                padding: 4,
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'opacity 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '0.7'
+                createTooltip('grid-reset-tooltip', 'Reset grid to loaded scenario', e, { placement: 'below-center' })
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1'
+                removeTooltip('grid-reset-tooltip')
+              }}
+            >
+              <FontAwesomeIcon icon={faRotateLeft} />
+            </button>
+          )}
+        </div>
+      }
     >
       <div style={{ 
         padding: '12px',

@@ -39,7 +39,9 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
   const [showLoadModal, setShowLoadModal] = useState(false)  // Scenario load modal
   const [showModularSaveDialog, setShowModularSaveDialog] = useState(false)  // Modular save dialog
   const [isScenarioDirty, setIsScenarioDirty] = useState(false)  // Track if scenario has been modified
+  const [isGridDirty, setIsGridDirty] = useState(false)  // Track if grid values have been modified
   const [scenarioAIsPublic, setScenarioAIsPublic] = useState(false)  // Track if scenario is public
+  const [gridReloadTrigger, setGridReloadTrigger] = useState(0)  // Increment to force grid reload
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<YTDPoint[]>([])
   const [environment] = useState<'production' | 'sandbox'>('production')
@@ -285,13 +287,14 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
   }, [profile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Watch for scenario loads and freeze compensation until grid re-syncs
+  // This includes explicit reloads of the same scenario (via gridReloadTrigger)
   useEffect(() => {
     const currentScenarioId = store.currentYearSettingId
     if (currentScenarioId) {
-      console.log('🔄 [Desktop] Scenario loaded, freezing compensation until grid re-syncs')
+      console.log('🔄 [Desktop] Scenario loaded/reloaded, freezing compensation until grid re-syncs')
       setIsResyncingCompensation(true)
     }
-  }, [store.currentYearSettingId])
+  }, [store.currentYearSettingId, gridReloadTrigger])
 
   // Initialize current period based on timeframe
   useEffect(() => {
@@ -417,6 +420,71 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     JSON.stringify(store.ytdCustomProjectedValues)
   ])
 
+  // Track grid-specific dirty state (tracks both grid overrides AND physician panel changes that affect grid)
+  useEffect(() => {
+    // Skip if no scenario loaded
+    if (!store.currentYearSettingId || !store.loadedCurrentYearSettingsSnapshot) {
+      setIsGridDirty(false)
+      return
+    }
+
+    // Skip dirty detection while compensation is resyncing (during scenario loads)
+    // This prevents false positives during the transition period
+    if (isResyncingCompensation) {
+      setIsGridDirty(false)
+      return
+    }
+
+    // Compare grid custom projected values
+    const currentCustomStr = JSON.stringify(store.ytdCustomProjectedValues)
+    const snapshotCustomStr = JSON.stringify(store.loadedCurrentYearSettingsSnapshot.ytdCustomProjectedValues)
+    
+    if (currentCustomStr !== snapshotCustomStr) {
+      setIsGridDirty(true)
+      return
+    }
+
+    // Also check physician panel values that affect the grid
+    // (Medical Director Hours, Consulting Agreement, locumCosts, etc.)
+    const current = store.ytdData
+    const snapshot = store.loadedCurrentYearSettingsSnapshot.ytdData
+    
+    if (current && snapshot) {
+      // Check fields that affect grid display
+      const gridAffectingFields = [
+        'medicalDirectorHours',
+        'consultingServicesAgreement',
+        'locumCosts',
+        'prcsMedicalDirectorHours',
+        'prcsDirectorPhysicianId'
+      ]
+      
+      for (const field of gridAffectingFields) {
+        if (current[field as keyof typeof current] !== snapshot[field as keyof typeof snapshot]) {
+          setIsGridDirty(true)
+          return
+        }
+      }
+      
+      // Check physician array changes (for MD Associates, Guaranteed Payments)
+      const currentPhysiciansStr = JSON.stringify(current.physicians)
+      const snapshotPhysiciansStr = JSON.stringify(snapshot.physicians)
+      if (currentPhysiciansStr !== snapshotPhysiciansStr) {
+        setIsGridDirty(true)
+        return
+      }
+    }
+    
+    // No changes detected
+    setIsGridDirty(false)
+  }, [
+    store.currentYearSettingId,
+    store.loadedCurrentYearSettingsSnapshot,
+    JSON.stringify(store.ytdCustomProjectedValues),
+    JSON.stringify(fy2025),
+    isResyncingCompensation
+  ])
+
   // Fetch scenario public status when loaded
   useEffect(() => {
     async function fetchScenarioPublicStatus() {
@@ -452,6 +520,32 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
       // Simple reset from snapshot - no database reload needed
       store.resetCurrentYearSettings()
       // The dirty state will automatically update via the effect that monitors changes
+    }
+  }
+
+  // Reset grid values only to loaded scenario state
+  const handleResetGrid = () => {
+    if (!store.loadedCurrentYearSettingsSnapshot) return
+
+    if (confirm('Reset all grid values to loaded scenario? This will reset both grid overrides and physician panel values.')) {
+      // Reset ALL current year settings (grid overrides + physician panel data)
+      // Since the grid displays values from both sources, we need to reset both
+      store.resetCurrentYearSettings()
+      // The grid dirty state will automatically update via the effect that monitors changes
+    }
+  }
+
+  // Annualize all grid values (set all to YTD * projection ratio)
+  const handleAnnualizeAll = () => {
+    const message = 'Set all grid projected values to annualized amounts?\n\n' +
+      'This will replace all custom values with YTD × projection ratio.\n\n' +
+      'Note: Calculated rows (MD Associates, Guaranteed Payments, Locums) will not be affected.'
+    
+    if (confirm(message)) {
+      // This will be implemented in YearlyDataGrid where we have access to the grid data
+      // Dispatch a custom event that YearlyDataGrid will listen for
+      const event = new CustomEvent('annualizeAllGridValues')
+      window.dispatchEvent(event)
     }
   }
 
@@ -787,10 +881,15 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         isOpen={showLoadModal}
         onClose={() => setShowLoadModal(false)}
         onLoad={async (id) => {
+          // Freeze chart/compensation IMMEDIATELY before loading to prevent flicker
+          setIsResyncingCompensation(true)
+          
           // Use NEW modular method to load Current Year Settings scenario
           // This follows the same flow as initial load: defaults → scenario → QBO cache sync
           await store.loadCurrentYearSettings(id)
-          // Note: Compensation freeze is automatically triggered by the useEffect watching currentYearSettingId
+
+          // Force grid reload even if same scenario ID (user explicitly requested reload)
+          setGridReloadTrigger(prev => prev + 1)
 
           setShowLoadModal(false)
         }}
@@ -945,6 +1044,10 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
           onSyncComplete={handleSyncComplete}
           mode="ytd"
           shouldUpdateSnapshotOnFirstSync={true}
+          isGridDirty={isGridDirty}
+          onResetGrid={handleResetGrid}
+          onAnnualizeAll={handleAnnualizeAll}
+          reloadTrigger={gridReloadTrigger}
         />
       </div>
     </>
