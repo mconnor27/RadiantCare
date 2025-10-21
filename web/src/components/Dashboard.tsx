@@ -4283,25 +4283,28 @@ export function Dashboard() {
             <button
               onClick={() => setViewMode('YTD Detailed')}
               style={{ 
-                border: '1px solid rgba(255, 255, 255, 0.3)', 
+                border: viewMode === 'YTD Detailed' ? '2px solid rgba(255, 255, 255, 0.8)' : '1px solid rgba(255, 255, 255, 0.3)', 
                 borderRadius: 6, 
                 padding: '8px 16px', 
-                background: viewMode === 'YTD Detailed' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)', 
+                background: viewMode === 'YTD Detailed' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)', 
                 color: '#ffffff',
                 cursor: 'pointer', 
                 touchAction: 'manipulation', 
                 WebkitTapHighlightColor: 'transparent',
                 fontSize: 14,
-                fontWeight: 500,
-                transition: 'all 0.2s ease'
+                fontWeight: viewMode === 'YTD Detailed' ? 600 : 500,
+                transition: 'all 0.2s ease',
+                boxShadow: viewMode === 'YTD Detailed' ? '0 0 12px rgba(255, 255, 255, 0.3)' : 'none'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'
+                if (viewMode !== 'YTD Detailed') {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = viewMode === 'YTD Detailed' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)'
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
+                e.currentTarget.style.background = viewMode === 'YTD Detailed' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)'
+                e.currentTarget.style.borderColor = viewMode === 'YTD Detailed' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.3)'
               }}
             >
               YTD Detailed
@@ -4309,25 +4312,28 @@ export function Dashboard() {
             <button
               onClick={() => setViewMode('Multi-Year')}
               style={{ 
-                border: '1px solid rgba(255, 255, 255, 0.3)', 
+                border: viewMode === 'Multi-Year' ? '2px solid rgba(255, 255, 255, 0.8)' : '1px solid rgba(255, 255, 255, 0.3)', 
                 borderRadius: 6, 
                 padding: '8px 16px', 
-                background: viewMode === 'Multi-Year' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)', 
+                background: viewMode === 'Multi-Year' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)', 
                 color: '#ffffff',
                 cursor: 'pointer', 
                 touchAction: 'manipulation', 
                 WebkitTapHighlightColor: 'transparent',
                 fontSize: 14,
-                fontWeight: 500,
-                transition: 'all 0.2s ease'
+                fontWeight: viewMode === 'Multi-Year' ? 600 : 500,
+                transition: 'all 0.2s ease',
+                boxShadow: viewMode === 'Multi-Year' ? '0 0 12px rgba(255, 255, 255, 0.3)' : 'none'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'
+                if (viewMode !== 'Multi-Year') {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = viewMode === 'Multi-Year' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)'
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
+                e.currentTarget.style.background = viewMode === 'Multi-Year' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)'
+                e.currentTarget.style.borderColor = viewMode === 'Multi-Year' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.3)'
               }}
             >
               Multi-Year

@@ -357,7 +357,7 @@ export function getSiteMonthlyEndPoints(year: string): YTDPointWithSites[] {
       }), { lacey: 0, centralia: 0, aberdeen: 0 })
       
       // Determine the month and year from monthKey
-      const [yearStr, monthStr] = monthKey.split('-')
+      const [, monthStr] = monthKey.split('-')
       const monthNum = parseInt(monthStr, 10)
       
       // Update cumulative totals for next month
@@ -520,7 +520,7 @@ export function get2025SiteMonthlyEndPoints(): YTDPointWithSites[] {
     let cumulativeAberdeen = 0
     
     for (const monthKey of sortedMonths) {
-      const [yearStr, monthStr] = monthKey.split('-')
+      const [, monthStr] = monthKey.split('-')
       const monthNum = parseInt(monthStr, 10)
       
       if (monthNum > lastReliableMonth) break
