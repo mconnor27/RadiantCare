@@ -1087,7 +1087,7 @@ export const buildSiteBarChartTraces = (
         const actual2025 = siteBarChartData.individual?.find((item: any) => item.year === '2025')
         const projected2025 = siteBarChartData.projected?.[0]
         if (actual2025?.quarters) {
-          const currentValues = ['Q1', 'Q2', 'Q3', 'Q4'].map(quarter => {
+          const currentValues = quarters.map(quarter => {
             const quarterData = actual2025.quarters.find((q: any) => q.quarter === quarter)
             const projectedQuarter = projected2025?.quarters?.find((q: any) => q.quarter === quarter)
             const denom = (quarterData ? sumSites(quarterData.sites || {} as SiteData) : 0) + (projectedQuarter ? sumSites(projectedQuarter.sites || {} as SiteData) : 0)
@@ -1096,7 +1096,7 @@ export const buildSiteBarChartTraces = (
           })
           
           traces.push({
-            x: ['Q1', 'Q2', 'Q3', 'Q4'],
+            x: quarters,
             y: currentValues,
             type: 'bar' as const,
             name: `${site} 2025 Actual`,
@@ -1119,7 +1119,7 @@ export const buildSiteBarChartTraces = (
             const projectedValues: number[] = []
             const totalValues: number[] = []
 
-            ;['Q1', 'Q2', 'Q3', 'Q4'].forEach(quarter => {
+            quarters.forEach(quarter => {
               const quarterData = projected2025.quarters.find((q: any) => q.quarter === quarter)
               const actualQuarter = actual2025?.quarters?.find((q: any) => q.quarter === quarter)
               const denom = (quarterData ? sumSites(quarterData.sites || {} as SiteData) : 0) + (actualQuarter ? sumSites(actualQuarter.sites || {} as SiteData) : 0)
@@ -1134,7 +1134,7 @@ export const buildSiteBarChartTraces = (
             const hasProjectedData = projectedValues.some(val => val > 0)
             if (hasProjectedData) {
               traces.push({
-                x: ['Q1', 'Q2', 'Q3', 'Q4'],
+                x: quarters,
                 y: projectedValues,
                 customdata: totalValues,
                 type: 'bar' as const,
@@ -1157,13 +1157,12 @@ export const buildSiteBarChartTraces = (
       })
 
       // INVISIBLE OVERLAY BAR with border - Quarter individual mode
-      const actual2025 = siteBarChartData.individual?.find((item: any) => item.year === '2025')
-      const projected2025 = siteBarChartData.projected?.[0]
-      if (actual2025?.quarters && projected2025?.quarters) {
-        const quarters = ['Q1', 'Q2', 'Q3', 'Q4']
+      const actual2025Overlay = siteBarChartData.individual?.find((item: any) => item.year === '2025')
+      const projected2025Overlay = siteBarChartData.projected?.[0]
+      if (actual2025Overlay?.quarters && projected2025Overlay?.quarters) {
         const totalHeights = quarters.map(quarter => {
-          const actualQ = actual2025.quarters.find((q: any) => q.quarter === quarter)
-          const projectedQ = projected2025.quarters.find((q: any) => q.quarter === quarter)
+          const actualQ = actual2025Overlay.quarters.find((q: any) => q.quarter === quarter)
+          const projectedQ = projected2025Overlay.quarters.find((q: any) => q.quarter === quarter)
           const actualTotal = actualQ ? (
             (isSiteVisible('lacey') ? actualQ.sites.lacey : 0) +
             (isSiteVisible('centralia') ? actualQ.sites.centralia : 0) +
