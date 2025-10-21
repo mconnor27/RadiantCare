@@ -776,52 +776,6 @@ export default function MultiYearView() {
             </div>
           </div>
 
-          {/* NEW: Show loaded Current Year Setting and Projection (when in 2025 Data mode) */}
-          {store.scenarioA.dataMode === '2025 Data' && (store.currentYearSettingName || store.currentProjectionName) && (
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-              padding: '12px 16px',
-              background: '#eff6ff',
-              border: '1px solid #bfdbfe',
-              borderRadius: 8,
-              marginTop: 8,
-              fontSize: 14
-            }}>
-              <div style={{ display: 'flex', gap: 16 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, color: '#1e40af', marginBottom: 2, fontWeight: 500 }}>
-                    Current Year Settings:
-                  </div>
-                  <div style={{ color: '#1e3a8a' }}>
-                    {store.currentYearSettingName || 'Not loaded'}
-                    {store.isCurrentYearSettingsDirty() && <span style={{ marginLeft: 8, color: '#f59e0b' }}>• Modified</span>}
-                  </div>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, color: '#1e40af', marginBottom: 2, fontWeight: 500 }}>
-                    Projection:
-                  </div>
-                  <div style={{ color: '#1e3a8a' }}>
-                    {store.currentProjectionName || 'Not loaded'}
-                    {store.isProjectionDirty() && <span style={{ marginLeft: 8, color: '#f59e0b' }}>• Modified</span>}
-                  </div>
-                </div>
-              </div>
-              {store.currentProjectionName && (
-                <div style={{
-                  fontSize: 12,
-                  color: '#3730a3',
-                  fontStyle: 'italic',
-                  paddingTop: 4,
-                  borderTop: '1px solid #dbeafe'
-                }}>
-                  💡 Projection years (2026-2035) are built on top of the 2025 YTD baseline. Changes to Current Year Settings will automatically update all projection years.
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         <div style={{ 
