@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from 'react'
+import { useMemo, useEffect, useState, useRef } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faFolderOpen, faFloppyDisk, faCopy, faCircleXmark, faGear, faRotateLeft } from '@fortawesome/free-solid-svg-icons'
 import { useDashboardStore } from '../../../Dashboard'
@@ -596,13 +596,32 @@ export default function MultiYearView() {
     store.loadedScenarioBSnapshot ? JSON.stringify(store.loadedScenarioBSnapshot) : null
   ])
 
-  // Reset dirty flags when scenarios change
+  // Reset dirty flags when scenarios change (using refs to track previous values)
+  const prevScenarioIdRef = useRef(store.currentScenarioId)
+  const prevScenarioBIdRef = useRef(store.currentScenarioBId)
+
   useEffect(() => {
-    setIsScenarioDirty(false)
+    // Only reset if the ID actually changed to a different value
+    if (prevScenarioIdRef.current !== store.currentScenarioId) {
+      console.log('[DIRTY RESET A] Scenario ID changed, resetting dirty flag', {
+        prev: prevScenarioIdRef.current,
+        current: store.currentScenarioId
+      })
+      setIsScenarioDirty(false)
+      prevScenarioIdRef.current = store.currentScenarioId
+    }
   }, [store.currentScenarioId])
 
   useEffect(() => {
-    setIsScenarioBDirty(false)
+    // Only reset if the ID actually changed to a different value
+    if (prevScenarioBIdRef.current !== store.currentScenarioBId) {
+      console.log('[DIRTY RESET B] Scenario B ID changed, resetting dirty flag', {
+        prev: prevScenarioBIdRef.current,
+        current: store.currentScenarioBId
+      })
+      setIsScenarioBDirty(false)
+      prevScenarioBIdRef.current = store.currentScenarioBId
+    }
   }, [store.currentScenarioBId])
 
   // Fetch scenario A public status when loaded
