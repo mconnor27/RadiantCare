@@ -46,6 +46,13 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
     const defaultValue = defaultValues[field]
     const isChanged = Math.abs(value - defaultValue) > UI_DEFAULTS.floatingPointTolerance
 
+    // Align the visual 0% tick with the slider thumb center.
+    // WebKit maps the thumb center across (width - thumbWidth), so a small
+    // pixel offset is required to align an absolutely-positioned tick.
+    const zeroPercent = ((0 - min) / (max - min)) * 100
+    const thumbHalfPx = 9 // thumb width is 18px in index.css
+    const zeroOffsetPx = thumbHalfPx - (2 * thumbHalfPx * ((0 - min) / (max - min)))
+
     const wrapperStyle = bare
       ? { 
           padding: (field === 'nonMdEmploymentCostsPct' || field === 'benefitCostsGrowthPct') ? '0 0 0 4px' : 0, 
@@ -128,7 +135,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
                 <div style={{
                   position: 'absolute',
                   top: '50%',
-                  left: `${((0 - min) / (max - min)) * 100}%`,
+                  left: `calc(${zeroPercent}% + ${zeroOffsetPx}px)`,
                   transform: 'translate(-50%, -50%)',
                   width: '2px',
                   height: '8px',
@@ -413,7 +420,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
             <div style={{
               position: 'absolute',
               top: '50%',
-              left: `${((0 - min) / (max - min)) * 100}%`,
+              left: `calc(${zeroPercent}% + ${zeroOffsetPx}px)`,
               transform: 'translate(-50%, -50%)',
               width: '2px',
               height: '8px',
