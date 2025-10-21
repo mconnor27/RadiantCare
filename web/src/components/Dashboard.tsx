@@ -3024,8 +3024,27 @@ export const useDashboardStore = create<Store>()(
 // Initialize projections on store creation
 setTimeout(() => {
   const store = useDashboardStore.getState()
-  store.applyProjectionFromLastActual('A')
-  if (store.scenarioB) store.applyProjectionFromLastActual('B')
+  
+  // Only apply projections if data doesn't exist from sessionStorage
+  // On page refresh, sessionStorage already has the correct computed data
+  const hasScenarioAData = store.scenarioA?.future?.some(fy => fy.year >= 2026 && fy.therapyIncome > 0)
+  const hasScenarioBData = store.scenarioB?.future?.some(fy => fy.year >= 2026 && fy.therapyIncome > 0)
+  
+  if (!hasScenarioAData) {
+    console.log('🔄 [Init] No scenario A data found, computing projections')
+    store.applyProjectionFromLastActual('A')
+  } else {
+    console.log('✅ [Init] Scenario A data exists from sessionStorage, skipping recomputation')
+  }
+  
+  if (store.scenarioB) {
+    if (!hasScenarioBData) {
+      console.log('🔄 [Init] No scenario B data found, computing projections')
+      store.applyProjectionFromLastActual('B')
+    } else {
+      console.log('✅ [Init] Scenario B data exists from sessionStorage, skipping recomputation')
+    }
+  }
 }, 0)
 
 
