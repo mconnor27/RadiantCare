@@ -4,15 +4,12 @@ import {
   estimateSiteBreakdownForYear,
   generateProjectedSiteData,
   parseSiteIncomeFromSummary,
-  get2025SiteMonthlyEndPoints,
-  generateProjectedSiteMonthlyPoints
+  get2025SiteMonthlyEndPoints
 } from '../../../../../historical_data/siteIncomeParser'
 import { getSiteColors, SITE_PROJECTED_PATTERNS, desaturateColor, CURRENT_BAR_BORDER, SITE_DESATURATION } from '../config/chartConfig'
 import { getSiteYearTotals, getSiteQuarterTotals, getSiteMonthTotals } from '../../../../../historical_data/siteIncomeParser'
 import {
-  getYearlyTotals,
-  getQuarterlyTotals,
-  getMonthlyTotals
+  getYearlyTotals
 } from '../utils/aggregations'
 import { getTotalIncome } from '../../../shared/calculations'
 
@@ -239,10 +236,8 @@ export const buildSiteBarChartData = ({
         }
       })
       
-      // Get projected quarterly data using site-specific projections that properly handle end-of-month logic
+      // Get actual site data to determine last complete month
       const actual2025SiteData = get2025SiteMonthlyEndPoints()
-      const projectedSiteMonthlyData = fy2025 ? generateProjectedSiteMonthlyPoints(actual2025SiteData, fy2025) : []
-      const projectedQuarterly2025 = getQuarterlyTotals(projectedSiteMonthlyData)
       
       // Calculate projected increment per quarter using PROJECTED site data from grid/store
       // Only show projections for incomplete quarters (current quarter if incomplete + future quarters)
@@ -286,19 +281,32 @@ export const buildSiteBarChartData = ({
           }
         : generateProjectedSiteData(projectedTotalIncome, current2025SitesQuarter)
       
-      // Calculate total projected increment per site for the year
-      const projectedIncrementSites = {
-        lacey: projected2025Sites.lacey - current2025SitesQuarter.lacey,
-        centralia: projected2025Sites.centralia - current2025SitesQuarter.centralia,
-        aberdeen: projected2025Sites.aberdeen - current2025SitesQuarter.aberdeen
+      // Calculate projected site quarters by distributing remaining income across remaining quarters
+      // First, calculate cumulative actual YTD
+      const cumulativeActualYTD = current2025SiteQuarters.reduce((acc, q) => ({
+        lacey: acc.lacey + q.sites.lacey,
+        centralia: acc.centralia + q.sites.centralia,
+        aberdeen: acc.aberdeen + q.sites.aberdeen
+      }), { lacey: 0, centralia: 0, aberdeen: 0 })
+      
+      // Calculate total remaining income to be projected
+      const remainingIncome = {
+        lacey: projected2025Sites.lacey - cumulativeActualYTD.lacey,
+        centralia: projected2025Sites.centralia - cumulativeActualYTD.centralia,
+        aberdeen: projected2025Sites.aberdeen - cumulativeActualYTD.aberdeen
       }
       
+      // Count quarters that need projection
+      const quartersNeedingProjection = current2025SiteQuarters.filter((_, index) => {
+        const quarterNum = index + 1
+        const isCurrentQuarter = quarterNum === currentQuarter
+        const isFutureQuarter = quarterNum > currentQuarter
+        const quarterEndMonth = quarterNum * 3
+        const isCurrentQuarterComplete = isCurrentQuarter && currentMonth > quarterEndMonth
+        return isFutureQuarter || (isCurrentQuarter && !isCurrentQuarterComplete)
+      }).length
+      
       const projectedSiteQuarters = current2025SiteQuarters.map((actualQuarter, index) => {
-        const projectedQuarter = projectedQuarterly2025[index]
-        const actualTotal = actualQuarter.sites.lacey + actualQuarter.sites.centralia + actualQuarter.sites.aberdeen
-        const quarterIncrementTotal = (projectedQuarter?.income || 0) - actualTotal
-        
-        // Determine if this quarter needs projection
         const quarterNum = index + 1
         const isCurrentQuarter = quarterNum === currentQuarter
         const isFutureQuarter = quarterNum > currentQuarter
@@ -310,20 +318,27 @@ export const buildSiteBarChartData = ({
         // Only show projection if it's a future quarter or current incomplete quarter
         const shouldShowProjection = isFutureQuarter || (isCurrentQuarter && !isCurrentQuarterComplete)
         
-        // Use projected site proportions to distribute the quarter increment
-        const totalProjectedIncrement = projectedIncrementSites.lacey + projectedIncrementSites.centralia + projectedIncrementSites.aberdeen
-        const proportions = totalProjectedIncrement > 0 ? {
-          lacey: projectedIncrementSites.lacey / totalProjectedIncrement,
-          centralia: projectedIncrementSites.centralia / totalProjectedIncrement,
-          aberdeen: projectedIncrementSites.aberdeen / totalProjectedIncrement
-        } : { lacey: 0.4, centralia: 0.35, aberdeen: 0.25 }
+        if (!shouldShowProjection) {
+          return {
+            quarter: actualQuarter.quarter,
+            sites: { lacey: 0, centralia: 0, aberdeen: 0 }
+          }
+        }
+        
+        // Distribute remaining income equally across remaining quarters
+        // Each quarter gets its proportional share of the remaining income
+        const quarterShare = quartersNeedingProjection > 0 ? {
+          lacey: remainingIncome.lacey / quartersNeedingProjection,
+          centralia: remainingIncome.centralia / quartersNeedingProjection,
+          aberdeen: remainingIncome.aberdeen / quartersNeedingProjection
+        } : { lacey: 0, centralia: 0, aberdeen: 0 }
         
         return {
           quarter: actualQuarter.quarter,
           sites: {
-            lacey: shouldShowProjection ? Math.max(0, quarterIncrementTotal * proportions.lacey) : 0,
-            centralia: shouldShowProjection ? Math.max(0, quarterIncrementTotal * proportions.centralia) : 0, 
-            aberdeen: shouldShowProjection ? Math.max(0, quarterIncrementTotal * proportions.aberdeen) : 0
+            lacey: Math.max(0, quarterShare.lacey),
+            centralia: Math.max(0, quarterShare.centralia),
+            aberdeen: Math.max(0, quarterShare.aberdeen)
           }
         }
       })
@@ -356,10 +371,8 @@ export const buildSiteBarChartData = ({
       }))
     }))
     
-    // Calculate projected increments for 2025 using site-specific projections that properly handle end-of-month logic
+    // Get actual site data to determine last complete month for 2025
     const actual2025SiteDataQuarter = get2025SiteMonthlyEndPoints()
-    const projectedSiteMonthlyDataQuarter = fy2025 ? generateProjectedSiteMonthlyPoints(actual2025SiteDataQuarter, fy2025) : []
-    const projectedQuarterly2025 = getQuarterlyTotals(projectedSiteMonthlyDataQuarter)
     
     // Add 2025 current data with REAL site breakdown - only include complete months
     // Build quarters from complete months only to avoid showing partial month data
@@ -407,20 +420,33 @@ export const buildSiteBarChartData = ({
         }
       : generateProjectedSiteData(projectedTotalIncome, current2025SitesIndividual)
     
-    // Calculate total projected increment per site for the year
-    const projectedIncrementSites = {
-      lacey: projected2025Sites.lacey - current2025SitesIndividual.lacey,
-      centralia: projected2025Sites.centralia - current2025SitesIndividual.centralia,
-      aberdeen: projected2025Sites.aberdeen - current2025SitesIndividual.aberdeen
+    // Calculate cumulative actual YTD
+    const cumulativeActualYTDIndividual = current2025SiteQuarters.reduce((acc, q) => ({
+      lacey: acc.lacey + q.sites.lacey,
+      centralia: acc.centralia + q.sites.centralia,
+      aberdeen: acc.aberdeen + q.sites.aberdeen
+    }), { lacey: 0, centralia: 0, aberdeen: 0 })
+    
+    // Calculate total remaining income to be projected
+    const remainingIncomeIndividual = {
+      lacey: projected2025Sites.lacey - cumulativeActualYTDIndividual.lacey,
+      centralia: projected2025Sites.centralia - cumulativeActualYTDIndividual.centralia,
+      aberdeen: projected2025Sites.aberdeen - cumulativeActualYTDIndividual.aberdeen
     }
+    
+    // Count quarters that need projection
+    const quartersNeedingProjectionIndividual = current2025SiteQuarters.filter((_, index) => {
+      const quarterNum = index + 1
+      const isCurrentQuarter = quarterNum === currentQuarter
+      const isFutureQuarter = quarterNum > currentQuarter
+      const quarterEndMonth = quarterNum * 3
+      const isCurrentQuarterComplete = isCurrentQuarter && currentMonth > quarterEndMonth
+      return isFutureQuarter || (isCurrentQuarter && !isCurrentQuarterComplete)
+    }).length
     
     const projected2025Data = {
       year: '2025 Projected',
       quarters: current2025SiteQuarters.map((actualQuarter, index) => {
-        const projectedQuarter = projectedQuarterly2025[index]
-        const actualTotal = actualQuarter.sites.lacey + actualQuarter.sites.centralia + actualQuarter.sites.aberdeen
-        const quarterIncrementTotal = (projectedQuarter?.income || 0) - actualTotal
-        
         // Determine if this quarter needs projection
         const quarterNum = index + 1
         const isCurrentQuarter = quarterNum === currentQuarter
@@ -433,20 +459,26 @@ export const buildSiteBarChartData = ({
         // Only show projection if it's a future quarter or current incomplete quarter
         const shouldShowProjection = isFutureQuarter || (isCurrentQuarter && !isCurrentQuarterComplete)
         
-        // Use projected site proportions to distribute the quarter increment
-        const totalProjectedIncrement = projectedIncrementSites.lacey + projectedIncrementSites.centralia + projectedIncrementSites.aberdeen
-        const proportions = totalProjectedIncrement > 0 ? {
-          lacey: projectedIncrementSites.lacey / totalProjectedIncrement,
-          centralia: projectedIncrementSites.centralia / totalProjectedIncrement,
-          aberdeen: projectedIncrementSites.aberdeen / totalProjectedIncrement
-        } : { lacey: 0.4, centralia: 0.35, aberdeen: 0.25 }
+        if (!shouldShowProjection) {
+          return {
+            quarter: actualQuarter.quarter,
+            sites: { lacey: 0, centralia: 0, aberdeen: 0 }
+          }
+        }
+        
+        // Distribute remaining income equally across remaining quarters
+        const quarterShare = quartersNeedingProjectionIndividual > 0 ? {
+          lacey: remainingIncomeIndividual.lacey / quartersNeedingProjectionIndividual,
+          centralia: remainingIncomeIndividual.centralia / quartersNeedingProjectionIndividual,
+          aberdeen: remainingIncomeIndividual.aberdeen / quartersNeedingProjectionIndividual
+        } : { lacey: 0, centralia: 0, aberdeen: 0 }
         
         return {
           quarter: actualQuarter.quarter,
           sites: {
-            lacey: shouldShowProjection ? Math.max(0, quarterIncrementTotal * proportions.lacey) : 0,
-            centralia: shouldShowProjection ? Math.max(0, quarterIncrementTotal * proportions.centralia) : 0,
-            aberdeen: shouldShowProjection ? Math.max(0, quarterIncrementTotal * proportions.aberdeen) : 0
+            lacey: Math.max(0, quarterShare.lacey),
+            centralia: Math.max(0, quarterShare.centralia),
+            aberdeen: Math.max(0, quarterShare.aberdeen)
           }
         }
       })
@@ -546,15 +578,6 @@ export const buildSiteBarChartData = ({
       if (actual2025SiteData.length > 0) {
         console.log('[Monthly Combined] Last actual site data point:', actual2025SiteData[actual2025SiteData.length - 1])
       }
-      const projectedSiteMonthlyData = fy2025 ? generateProjectedSiteMonthlyPoints(actual2025SiteData, fy2025) : []
-      console.log('[Monthly Combined] projectedSiteMonthlyData length:', projectedSiteMonthlyData.length)
-      if (projectedSiteMonthlyData.length > 0) {
-        console.log('[Monthly Combined] First projected site data point:', projectedSiteMonthlyData[0])
-        console.log('[Monthly Combined] Last projected site data point:', projectedSiteMonthlyData[projectedSiteMonthlyData.length - 1])
-      }
-      const projectedMonthly2025 = getMonthlyTotals(projectedSiteMonthlyData)
-      console.log('[Monthly Combined] projectedMonthly2025:', projectedMonthly2025)
-
       // Calculate projected increment per month using PROJECTED site data from grid/store
       // Only show projections for incomplete months (current month if incomplete + future months)
       const currentDate = new Date()
@@ -579,51 +602,59 @@ export const buildSiteBarChartData = ({
           }
         : generateProjectedSiteData(projectedTotalIncome, current2025SitesMonth)
       
-      // Calculate total projected increment per site for the year
-      const projectedIncrementSites = {
-        lacey: projected2025Sites.lacey - current2025SitesMonth.lacey,
-        centralia: projected2025Sites.centralia - current2025SitesMonth.centralia,
-        aberdeen: projected2025Sites.aberdeen - current2025SitesMonth.aberdeen
-      }
-      
       const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
       
-      // Build map of actual site income by month (only complete months)
-      const actualSiteIncomeByMonthCombined = new Map(
-        current2025SiteMonths.map(m => [
-          m.month,
-          (m.sites?.lacey || 0) + (m.sites?.centralia || 0) + (m.sites?.aberdeen || 0)
-        ])
-      )
+      // Calculate cumulative actual YTD through complete months
+      const cumulativeActualYTD = current2025SiteMonths.reduce((acc, monthData) => ({
+        lacey: acc.lacey + (monthData.sites?.lacey || 0),
+        centralia: acc.centralia + (monthData.sites?.centralia || 0),
+        aberdeen: acc.aberdeen + (monthData.sites?.aberdeen || 0)
+      }), { lacey: 0, centralia: 0, aberdeen: 0 })
+      
+      // Calculate total remaining income to be projected
+      const remainingIncome = {
+        lacey: projected2025Sites.lacey - cumulativeActualYTD.lacey,
+        centralia: projected2025Sites.centralia - cumulativeActualYTD.centralia,
+        aberdeen: projected2025Sites.aberdeen - cumulativeActualYTD.aberdeen
+      }
+      
+      // Count months that need projection
+      const monthsNeedingProjection = monthOrder.filter((_, index) => {
+        const monthNum = index + 1
+        const isCurrentMonth = monthNum === currentMonth
+        const isFutureMonth = monthNum > currentMonth
+        return isFutureMonth || (isCurrentMonth && monthNum > lastCompleteSiteMonth)
+      }).length
       
       const projectedSiteMonths = monthOrder.map((month, index) => {
-        const projectedIncome = projectedMonthly2025.find(p => p.month === month)?.income || 0
-        const actualIncome = actualSiteIncomeByMonthCombined.get(month) || 0
-        const monthIncrementTotal = Math.max(0, projectedIncome - actualIncome)
-        
-        // Determine if this month needs projection
         const monthNum = index + 1
         const isCurrentMonth = monthNum === currentMonth
         const isFutureMonth = monthNum > currentMonth
         
-        // For current month, we could check if it's complete (past the end of month)
-        // But for simplicity, let's assume current month is incomplete and future months need projection
-        const shouldShowProjection = isFutureMonth || isCurrentMonth
+        // Only show projection if it's a future month or current incomplete month
+        const shouldShowProjection = isFutureMonth || (isCurrentMonth && monthNum > lastCompleteSiteMonth)
         
-        // Use projected site proportions to distribute the month increment
-        const totalProjectedIncrement = projectedIncrementSites.lacey + projectedIncrementSites.centralia + projectedIncrementSites.aberdeen
-        const proportions = totalProjectedIncrement > 0 ? {
-          lacey: projectedIncrementSites.lacey / totalProjectedIncrement,
-          centralia: projectedIncrementSites.centralia / totalProjectedIncrement,
-          aberdeen: projectedIncrementSites.aberdeen / totalProjectedIncrement
-        } : { lacey: 0.4, centralia: 0.35, aberdeen: 0.25 }
+        if (!shouldShowProjection) {
+          return {
+            month,
+            sites: { lacey: 0, centralia: 0, aberdeen: 0 }
+          }
+        }
+        
+        // Distribute remaining income equally across remaining months
+        // Each month gets its proportional share of the remaining income
+        const monthShare = monthsNeedingProjection > 0 ? {
+          lacey: remainingIncome.lacey / monthsNeedingProjection,
+          centralia: remainingIncome.centralia / monthsNeedingProjection,
+          aberdeen: remainingIncome.aberdeen / monthsNeedingProjection
+        } : { lacey: 0, centralia: 0, aberdeen: 0 }
         
         return {
           month,
           sites: {
-            lacey: shouldShowProjection ? monthIncrementTotal * proportions.lacey : 0,
-            centralia: shouldShowProjection ? monthIncrementTotal * proportions.centralia : 0, 
-            aberdeen: shouldShowProjection ? monthIncrementTotal * proportions.aberdeen : 0
+            lacey: Math.max(0, monthShare.lacey),
+            centralia: Math.max(0, monthShare.centralia),
+            aberdeen: Math.max(0, monthShare.aberdeen)
           }
         }
       })
@@ -663,15 +694,6 @@ export const buildSiteBarChartData = ({
     if (actual2025SiteData.length > 0) {
       console.log('[Monthly Individual] Last actual site data point:', actual2025SiteData[actual2025SiteData.length - 1])
     }
-    const projectedSiteMonthlyData = fy2025 ? generateProjectedSiteMonthlyPoints(actual2025SiteData, fy2025) : []
-    console.log('[Monthly Individual] projectedSiteMonthlyData length:', projectedSiteMonthlyData.length)
-    if (projectedSiteMonthlyData.length > 0) {
-      console.log('[Monthly Individual] First projected site data point:', projectedSiteMonthlyData[0])
-      console.log('[Monthly Individual] Last projected site data point:', projectedSiteMonthlyData[projectedSiteMonthlyData.length - 1])
-    }
-    const projectedMonthly2025 = getMonthlyTotals(projectedSiteMonthlyData)
-    console.log('[Monthly Individual] projectedMonthly2025:', projectedMonthly2025)
-    
     // Add 2025 current data with REAL site breakdown - only include complete months
     // For per-site data, we only trust complete months since site breakdown is not available intra-month
     const lastCompleteSiteMonthIndividual = actual2025SiteData.length > 0 
@@ -700,51 +722,59 @@ export const buildSiteBarChartData = ({
         }
       : generateProjectedSiteData(projectedTotalIncome, current2025SitesMonthIndividual)
     
-    // Calculate total projected increment per site for the year
-    const projectedIncrementSites = {
-      lacey: projected2025Sites.lacey - current2025SitesMonthIndividual.lacey,
-      centralia: projected2025Sites.centralia - current2025SitesMonthIndividual.centralia,
-      aberdeen: projected2025Sites.aberdeen - current2025SitesMonthIndividual.aberdeen
+    // Calculate cumulative actual YTD through complete months
+    const cumulativeActualYTDMonthIndividual = current2025Data.months.reduce((acc, monthData) => ({
+      lacey: acc.lacey + (monthData.sites?.lacey || 0),
+      centralia: acc.centralia + (monthData.sites?.centralia || 0),
+      aberdeen: acc.aberdeen + (monthData.sites?.aberdeen || 0)
+    }), { lacey: 0, centralia: 0, aberdeen: 0 })
+    
+    // Calculate total remaining income to be projected
+    const remainingIncomeMonthIndividual = {
+      lacey: projected2025Sites.lacey - cumulativeActualYTDMonthIndividual.lacey,
+      centralia: projected2025Sites.centralia - cumulativeActualYTDMonthIndividual.centralia,
+      aberdeen: projected2025Sites.aberdeen - cumulativeActualYTDMonthIndividual.aberdeen
     }
     
-    // Build map of actual site income by month (only complete months)
-    const actualSiteIncomeByMonth = new Map(
-      current2025Data.months.map(m => [
-        m.month,
-        (m.sites?.lacey || 0) + (m.sites?.centralia || 0) + (m.sites?.aberdeen || 0)
-      ])
-    )
+    // Count months that need projection
+    const monthsNeedingProjectionIndividual = monthOrder.filter((_, index) => {
+      const monthNum = index + 1
+      const isCurrentMonth = monthNum === currentMonth
+      const isFutureMonth = monthNum > currentMonth
+      return isFutureMonth || (isCurrentMonth && monthNum > lastCompleteSiteMonthIndividual)
+    }).length
     
     const projected2025Data = {
       year: '2025 Projected',
       months: monthOrder.map((month, index) => {
-        const projectedIncome = projectedMonthly2025.find(p => p.month === month)?.income || 0
-        const actualIncome = actualSiteIncomeByMonth.get(month) || 0
-        const monthIncrementTotal = Math.max(0, projectedIncome - actualIncome)
-        
-        // Determine if this month needs projection
         const monthNum = index + 1
         const isCurrentMonth = monthNum === currentMonth
         const isFutureMonth = monthNum > currentMonth
         
-        // For current month, we could check if it's complete (past the end of month)
-        // But for simplicity, let's assume current month is incomplete and future months need projection
-        const shouldShowProjection = isFutureMonth || isCurrentMonth
+        // Only show projection if it's a future month or current incomplete month
+        const shouldShowProjection = isFutureMonth || (isCurrentMonth && monthNum > lastCompleteSiteMonthIndividual)
         
-        // Use projected site proportions to distribute the month increment
-        const totalProjectedIncrement = projectedIncrementSites.lacey + projectedIncrementSites.centralia + projectedIncrementSites.aberdeen
-        const proportions = totalProjectedIncrement > 0 ? {
-          lacey: projectedIncrementSites.lacey / totalProjectedIncrement,
-          centralia: projectedIncrementSites.centralia / totalProjectedIncrement,
-          aberdeen: projectedIncrementSites.aberdeen / totalProjectedIncrement
-        } : { lacey: 0.4, centralia: 0.35, aberdeen: 0.25 }
+        if (!shouldShowProjection) {
+          return {
+            month,
+            sites: { lacey: 0, centralia: 0, aberdeen: 0 }
+          }
+        }
+        
+        // Distribute remaining income equally across remaining months
+        // Each month gets its proportional share of the remaining income
+        const monthShare = monthsNeedingProjectionIndividual > 0 ? {
+          lacey: remainingIncomeMonthIndividual.lacey / monthsNeedingProjectionIndividual,
+          centralia: remainingIncomeMonthIndividual.centralia / monthsNeedingProjectionIndividual,
+          aberdeen: remainingIncomeMonthIndividual.aberdeen / monthsNeedingProjectionIndividual
+        } : { lacey: 0, centralia: 0, aberdeen: 0 }
         
         return {
           month,
           sites: {
-            lacey: shouldShowProjection ? monthIncrementTotal * proportions.lacey : 0,
-            centralia: shouldShowProjection ? monthIncrementTotal * proportions.centralia : 0,
-            aberdeen: shouldShowProjection ? monthIncrementTotal * proportions.aberdeen : 0
+            lacey: Math.max(0, monthShare.lacey),
+            centralia: Math.max(0, monthShare.centralia),
+            aberdeen: Math.max(0, monthShare.aberdeen)
           }
         }
       })

@@ -185,31 +185,21 @@ export function getSiteYearTotals(year: string): SiteData {
 }
 
 export function getSiteQuarterTotals(year: string): { quarter: 'Q1' | 'Q2' | 'Q3' | 'Q4', sites: SiteData }[] {
-  const report = resolveYearReport(year)
-  if (!report) return []
-  try {
-    const validColumns = getValidColumns(report)
-    const laceyRow = findTherapyAccountRowGeneric(report?.Rows?.Row || [], '7105 Therapy - Lacey')
-    const centraliaRow = findTherapyAccountRowGeneric(report?.Rows?.Row || [], '7110 Therapy - Centralia')
-    const aberdeenRow = findTherapyAccountRowGeneric(report?.Rows?.Row || [], '7108 Therapy - Aberdeen')
-    const laceyVals = getSiteRowValues(laceyRow)
-    const centraliaVals = getSiteRowValues(centraliaRow)
-    const aberdeenVals = getSiteRowValues(aberdeenRow)
-    const buckets = [{ q:'Q1' as const },{ q:'Q2' as const },{ q:'Q3' as const },{ q:'Q4' as const }]
-    const sums = buckets.map(() => ({ lacey: 0, centralia: 0, aberdeen: 0 }))
-    for (const { originalIndex, startDate } of validColumns) {
-      const d = new Date(startDate + 'T00:00:00')
-      const month = d.getUTCMonth() + 1
-      const quarterIndex = Math.floor((month - 1) / 3)
-      sums[quarterIndex].lacey += laceyVals[originalIndex] || 0
-      sums[quarterIndex].centralia += centraliaVals[originalIndex] || 0
-      sums[quarterIndex].aberdeen += aberdeenVals[originalIndex] || 0
-    }
-    return buckets.map((b, idx) => ({ quarter: b.q, sites: sums[idx] }))
-  } catch (e) {
-    console.error('getSiteQuarterTotals error', year, e)
-    return []
-  }
+  // Use monthly totals and sum them into quarters to match line chart logic
+  const monthlyTotals = getSiteMonthTotals(year)
+  if (monthlyTotals.length === 0) return []
+  
+  const buckets = [{ q:'Q1' as const },{ q:'Q2' as const },{ q:'Q3' as const },{ q:'Q4' as const }]
+  const quarterSums = buckets.map(() => ({ lacey: 0, centralia: 0, aberdeen: 0 }))
+  
+  monthlyTotals.forEach((monthData, monthIndex) => {
+    const quarterIndex = Math.floor(monthIndex / 3)
+    quarterSums[quarterIndex].lacey += monthData.sites.lacey
+    quarterSums[quarterIndex].centralia += monthData.sites.centralia
+    quarterSums[quarterIndex].aberdeen += monthData.sites.aberdeen
+  })
+  
+  return buckets.map((b, idx) => ({ quarter: b.q, sites: quarterSums[idx] }))
 }
 
 export function getSiteMonthTotals(year: string): { month: string, sites: SiteData }[] {
@@ -345,16 +335,17 @@ export function getSiteMonthlyEndPoints(year: string): YTDPointWithSites[] {
       })
     }
     
-    // Calculate monthly totals and create daily interpolated points
+    // Calculate monthly totals and create daily interpolated points using month-to-month interpolation
     const points: YTDPointWithSites[] = []
+    const monthlyTotals: { month: number, sites: { lacey: number, centralia: number, aberdeen: number } }[] = []
     let cumulativeLacey = 0
     let cumulativeCentralia = 0
     let cumulativeAberdeen = 0
-    let feb29Income = { lacey: 0, centralia: 0, aberdeen: 0 } // Track Feb 29 income to add to Feb 28
     
     // Sort months chronologically
     const sortedMonths = Array.from(monthGroups.keys()).sort()
     
+    // First pass: calculate monthly totals
     for (const monthKey of sortedMonths) {
       const monthData = monthGroups.get(monthKey)!
       
@@ -369,23 +360,53 @@ export function getSiteMonthlyEndPoints(year: string): YTDPointWithSites[] {
       const [yearStr, monthStr] = monthKey.split('-')
       const monthNum = parseInt(monthStr, 10)
       
+      // Update cumulative totals for next month
+      cumulativeLacey += monthTotal.lacey
+      cumulativeCentralia += monthTotal.centralia
+      cumulativeAberdeen += monthTotal.aberdeen
+      
+      monthlyTotals.push({
+        month: monthNum,
+        sites: {
+          lacey: cumulativeLacey,
+          centralia: cumulativeCentralia,
+          aberdeen: cumulativeAberdeen
+        }
+      })
+    }
+    
+    // Second pass: create daily interpolated points using month-to-month interpolation
+    for (const monthKey of sortedMonths) {
+      const [yearStr, monthStr] = monthKey.split('-')
+      const monthNum = parseInt(monthStr, 10)
+      
       // Use non-leap year calendar (always 28 days in February)
       const daysInMonth = monthNum === 2 ? 28 : new Date(parseInt(yearStr), monthNum, 0).getDate()
       
-      // Create daily points with linear interpolation within the month
+      // Find the monthly totals for this month and previous month
+      const currentMonthTotal = monthlyTotals.find(m => m.month === monthNum)
+      const previousMonthTotal = monthlyTotals.find(m => m.month === monthNum - 1)
+      
+      if (!currentMonthTotal) continue
+      
+      // Get starting values (previous month end or zero for January)
+      const startLacey = previousMonthTotal ? previousMonthTotal.sites.lacey : 0
+      const startCentralia = previousMonthTotal ? previousMonthTotal.sites.centralia : 0
+      const startAberdeen = previousMonthTotal ? previousMonthTotal.sites.aberdeen : 0
+      
+      // Calculate monthly increments
+      const monthlyLaceyIncrement = currentMonthTotal.sites.lacey - startLacey
+      const monthlyCentraliaIncrement = currentMonthTotal.sites.centralia - startCentralia
+      const monthlyAberdeenIncrement = currentMonthTotal.sites.aberdeen - startAberdeen
+      
       for (let day = 1; day <= daysInMonth; day++) {
-        const dailyProgress = day / daysInMonth
+        // Calculate progress through this month (0 to 1)
+        const progressThroughMonth = day / daysInMonth
         
-        let dailyLacey = cumulativeLacey + (monthTotal.lacey * dailyProgress)
-        let dailyCentralia = cumulativeCentralia + (monthTotal.centralia * dailyProgress)
-        let dailyAberdeen = cumulativeAberdeen + (monthTotal.aberdeen * dailyProgress)
-        
-        // Handle Feb 29 by adding its income to Feb 28
-        if (monthNum === 2 && day === 28) {
-          dailyLacey += feb29Income.lacey
-          dailyCentralia += feb29Income.centralia
-          dailyAberdeen += feb29Income.aberdeen
-        }
+        // Interpolate within this month
+        const dailyLacey = startLacey + (monthlyLaceyIncrement * progressThroughMonth)
+        const dailyCentralia = startCentralia + (monthlyCentraliaIncrement * progressThroughMonth)
+        const dailyAberdeen = startAberdeen + (monthlyAberdeenIncrement * progressThroughMonth)
         
         const monthDay = `${monthStr}-${String(day).padStart(2, '0')}`
         
@@ -400,29 +421,6 @@ export function getSiteMonthlyEndPoints(year: string): YTDPointWithSites[] {
           }
         })
       }
-      
-      // Check for Feb 29 data in this month's data and extract it
-      if (monthNum === 2) {
-        const feb29Data = monthData.filter(day => {
-          const dayDate = new Date(day.startDate + 'T00:00:00')
-          return dayDate.getDate() === 29
-        })
-        
-        if (feb29Data.length > 0) {
-          feb29Income = feb29Data.reduce((acc, day) => ({
-            lacey: acc.lacey + day.values.lacey,
-            centralia: acc.centralia + day.values.centralia,
-            aberdeen: acc.aberdeen + day.values.aberdeen
-          }), { lacey: 0, centralia: 0, aberdeen: 0 })
-          
-          console.log(`Found Feb 29 data in ${year}, adding to Feb 28:`, feb29Income)
-        }
-      }
-      
-      // Update cumulative totals for next month
-      cumulativeLacey += monthTotal.lacey
-      cumulativeCentralia += monthTotal.centralia
-      cumulativeAberdeen += monthTotal.aberdeen
     }
     
     console.log(`Generated ${points.length} interpolated daily points for ${year} site data`)
@@ -434,7 +432,7 @@ export function getSiteMonthlyEndPoints(year: string): YTDPointWithSites[] {
   }
 }
 
-// Get 2025 daily interpolated points using the actual data range from the source
+// Get 2025 daily interpolated points using month-to-month interpolation
 // Since site data is only accurate monthly, end at the last complete month
 export function get2025SiteMonthlyEndPoints(): YTDPointWithSites[] {
   try {
@@ -481,7 +479,76 @@ export function get2025SiteMonthlyEndPoints(): YTDPointWithSites[] {
     const ytdPoint = current2025Data[0]
     if (!ytdPoint.sites) return []
     
-    // Create daily interpolated points from January to the last reliable month end
+    // Create monthly totals by extracting actual monthly data from the source
+    const monthlyTotals: { month: number, sites: { lacey: number, centralia: number, aberdeen: number } }[] = []
+    
+    // Extract site rows and values
+    const laceyRow = findTherapyAccountRowGeneric(report?.Rows?.Row || [], '7105 Therapy - Lacey')
+    const centraliaRow = findTherapyAccountRowGeneric(report?.Rows?.Row || [], '7110 Therapy - Centralia')
+    const aberdeenRow = findTherapyAccountRowGeneric(report?.Rows?.Row || [], '7108 Therapy - Aberdeen')
+    
+    const laceyVals = getSiteRowValues(laceyRow)
+    const centraliaVals = getSiteRowValues(centraliaRow)
+    const aberdeenVals = getSiteRowValues(aberdeenRow)
+    
+    // Group columns by month and calculate monthly totals
+    const monthGroups = new Map<string, { originalIndex: number, startDate: string, values: { lacey: number, centralia: number, aberdeen: number } }[]>()
+    
+    for (const { originalIndex, startDate } of validColumns) {
+      const date = new Date(startDate + 'T00:00:00')
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      
+      if (!monthGroups.has(monthKey)) {
+        monthGroups.set(monthKey, [])
+      }
+      
+      monthGroups.get(monthKey)!.push({
+        originalIndex,
+        startDate,
+        values: {
+          lacey: laceyVals[originalIndex] || 0,
+          centralia: centraliaVals[originalIndex] || 0,
+          aberdeen: aberdeenVals[originalIndex] || 0
+        }
+      })
+    }
+    
+    // Calculate monthly totals for each month up to lastReliableMonth
+    const sortedMonths = Array.from(monthGroups.keys()).sort()
+    let cumulativeLacey = 0
+    let cumulativeCentralia = 0
+    let cumulativeAberdeen = 0
+    
+    for (const monthKey of sortedMonths) {
+      const [yearStr, monthStr] = monthKey.split('-')
+      const monthNum = parseInt(monthStr, 10)
+      
+      if (monthNum > lastReliableMonth) break
+      
+      const monthData = monthGroups.get(monthKey)!
+      
+      // Calculate this month's total for each site
+      const monthTotal = monthData.reduce((acc, day) => ({
+        lacey: acc.lacey + day.values.lacey,
+        centralia: acc.centralia + day.values.centralia,
+        aberdeen: acc.aberdeen + day.values.aberdeen
+      }), { lacey: 0, centralia: 0, aberdeen: 0 })
+      
+      cumulativeLacey += monthTotal.lacey
+      cumulativeCentralia += monthTotal.centralia
+      cumulativeAberdeen += monthTotal.aberdeen
+      
+      monthlyTotals.push({
+        month: monthNum,
+        sites: {
+          lacey: cumulativeLacey,
+          centralia: cumulativeCentralia,
+          aberdeen: cumulativeAberdeen
+        }
+      })
+    }
+    
+    // Create daily interpolated points using month-to-month interpolation
     const points: YTDPointWithSites[] = []
     
     for (let month = 1; month <= lastReliableMonth; month++) {
@@ -489,19 +556,30 @@ export function get2025SiteMonthlyEndPoints(): YTDPointWithSites[] {
       const daysInMonth = month === 2 ? 28 : new Date(2025, month, 0).getDate()
       const endDay = month === lastReliableMonth ? Math.min(lastReliableDay, daysInMonth) : daysInMonth
       
+      // Find the monthly totals for this month and previous month
+      const currentMonthTotal = monthlyTotals.find(m => m.month === month)
+      const previousMonthTotal = monthlyTotals.find(m => m.month === month - 1)
+      
+      if (!currentMonthTotal) continue
+      
+      // Get starting values (previous month end or zero for January)
+      const startLacey = previousMonthTotal ? previousMonthTotal.sites.lacey : 0
+      const startCentralia = previousMonthTotal ? previousMonthTotal.sites.centralia : 0
+      const startAberdeen = previousMonthTotal ? previousMonthTotal.sites.aberdeen : 0
+      
+      // Calculate monthly increments
+      const monthlyLaceyIncrement = currentMonthTotal.sites.lacey - startLacey
+      const monthlyCentraliaIncrement = currentMonthTotal.sites.centralia - startCentralia
+      const monthlyAberdeenIncrement = currentMonthTotal.sites.aberdeen - startAberdeen
+      
       for (let day = 1; day <= endDay; day++) {
-        // Skip Feb 29 - it doesn't exist in our non-leap year calendar
-        if (month === 2 && day === 29) continue
+        // Calculate progress through this month (0 to 1)
+        const progressThroughMonth = day / daysInMonth
         
-        // Calculate progress through the reliable data period using non-leap year calendar
-        const dayOfYear = getDayOfYearNonLeap(month, day)
-        const lastReliableDayOfYear = getDayOfYearNonLeap(lastReliableMonth, Math.min(lastReliableDay, lastReliableMonth === 2 ? 28 : lastReliableDay))
-        const progressThroughPeriod = dayOfYear / lastReliableDayOfYear
-        
-        // Interpolate cumulative values based on reliable period
-        const dailyLacey = ytdPoint.sites.lacey * progressThroughPeriod
-        const dailyCentralia = ytdPoint.sites.centralia * progressThroughPeriod
-        const dailyAberdeen = ytdPoint.sites.aberdeen * progressThroughPeriod
+        // Interpolate within this month
+        const dailyLacey = startLacey + (monthlyLaceyIncrement * progressThroughMonth)
+        const dailyCentralia = startCentralia + (monthlyCentraliaIncrement * progressThroughMonth)
+        const dailyAberdeen = startAberdeen + (monthlyAberdeenIncrement * progressThroughMonth)
         
         const monthDay = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
         
@@ -518,7 +596,7 @@ export function get2025SiteMonthlyEndPoints(): YTDPointWithSites[] {
       }
     }
     
-    console.log(`Generated ${points.length} interpolated daily points for 2025 site data (through end of month ${lastReliableMonth})`)
+    console.log(`Generated ${points.length} month-to-month interpolated daily points for 2025 site data (through end of month ${lastReliableMonth})`)
     return points
     
   } catch (error) {
@@ -544,20 +622,43 @@ function getDayOfYearNonLeap(month: number, day: number): number {
 }
 
 // Generate projected site data points for line charts
-// Start projections from the last reliable month end (not mid-month)
+// Start projections from the actual last reliable month end (not interpolated daily point)
 export function generateProjectedSiteMonthlyPoints(
   actualSiteData: YTDPointWithSites[],
   fy2025: any
 ): YTDPointWithSites[] {
   if (actualSiteData.length === 0 || !fy2025) return []
   
-  const lastActualPoint = actualSiteData[actualSiteData.length - 1]
-  if (!lastActualPoint.sites) return []
+  // Find the actual last reliable month end by looking for the last end-of-month point
+  // This ensures we start projections from the actual last complete month, not an interpolated daily point
+  let lastReliablePoint: YTDPointWithSites | null = null
+  let lastReliableMonth = 0
+  let lastReliableDay = 0
   
-  // Parse the last reliable site data date (this should be end of last complete month)
-  const lastReliableDate = new Date(lastActualPoint.date + 'T00:00:00')
-  const lastReliableMonth = lastReliableDate.getMonth() + 1 // 1-based
-  const lastReliableDay = lastReliableDate.getDate()
+  // Look backwards through the actual data to find the last end-of-month point
+  for (let i = actualSiteData.length - 1; i >= 0; i--) {
+    const point = actualSiteData[i]
+    const [month, day] = point.monthDay.split('-').map(Number)
+    
+    // Check if this is an end-of-month point
+    const daysInMonth = month === 2 ? 28 : new Date(2025, month, 0).getDate()
+    if (day === daysInMonth) {
+      lastReliablePoint = point
+      lastReliableMonth = month
+      lastReliableDay = day
+      break
+    }
+  }
+  
+  // Fallback to the last point if no end-of-month found
+  if (!lastReliablePoint) {
+    lastReliablePoint = actualSiteData[actualSiteData.length - 1]
+    const [month, day] = lastReliablePoint.monthDay.split('-').map(Number)
+    lastReliableMonth = month
+    lastReliableDay = day
+  }
+  
+  if (!lastReliablePoint.sites) return []
   
   const projectedTotalIncome = getTotalIncome(fy2025)
   // Prefer explicit per-site projections from the store/grid if available
@@ -568,37 +669,34 @@ export function generateProjectedSiteMonthlyPoints(
         centralia: Number(fy2025?.therapyCentralia || 0),
         aberdeen: Number(fy2025?.therapyAberdeen || 0)
       } as SiteData
-    : generateProjectedSiteData(projectedTotalIncome, lastActualPoint.sites)
+    : generateProjectedSiteData(projectedTotalIncome, lastReliablePoint.sites)
   
-  // Generate daily interpolated points from the LAST reliable site date (inclusive) to end of year
+  // Generate daily interpolated points from the ACTUAL last reliable month end to end of year
   const projectedPoints: YTDPointWithSites[] = []
   
-  // Calculate the remaining days in the year from the last reliable date
+  // Calculate the remaining days in the year from the last reliable month end
   const remainingDaysInYear = getDaysRemainingInYear(lastReliableMonth, lastReliableDay)
   
   if (remainingDaysInYear <= 0) return [] // No projection needed if we're at end of year
   
   let dayCounter = 0
   
-  // Start from the SAME day as the last reliable site data so the lines connect
+  // Start from the day AFTER the last reliable month end to avoid duplication
   for (let month = lastReliableMonth; month <= 12; month++) {
     // Use non-leap year calendar (always 28 days in February)
     const daysInMonth = month === 2 ? 28 : new Date(2025, month, 0).getDate()
-    const startDay = month === lastReliableMonth ? lastReliableDay : 1
+    const startDay = month === lastReliableMonth ? lastReliableDay + 1 : 1
     
     for (let day = startDay; day <= daysInMonth; day++) {
-      // Skip Feb 29 - it doesn't exist in our non-leap year calendar
-      if (month === 2 && day === 29) continue
-      
       // Linear interpolation from reliable values to projected year-end values
       const progressThroughProjection = dayCounter / remainingDaysInYear
       
-      const projectedLacey = lastActualPoint.sites.lacey + 
-        (projectedSiteData.lacey - lastActualPoint.sites.lacey) * progressThroughProjection
-      const projectedCentralia = lastActualPoint.sites.centralia + 
-        (projectedSiteData.centralia - lastActualPoint.sites.centralia) * progressThroughProjection
-      const projectedAberdeen = lastActualPoint.sites.aberdeen + 
-        (projectedSiteData.aberdeen - lastActualPoint.sites.aberdeen) * progressThroughProjection
+      const projectedLacey = lastReliablePoint.sites.lacey + 
+        (projectedSiteData.lacey - lastReliablePoint.sites.lacey) * progressThroughProjection
+      const projectedCentralia = lastReliablePoint.sites.centralia + 
+        (projectedSiteData.centralia - lastReliablePoint.sites.centralia) * progressThroughProjection
+      const projectedAberdeen = lastReliablePoint.sites.aberdeen + 
+        (projectedSiteData.aberdeen - lastReliablePoint.sites.aberdeen) * progressThroughProjection
       
       const monthDay = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
       
@@ -618,7 +716,7 @@ export function generateProjectedSiteMonthlyPoints(
     }
   }
   
-  console.log(`Generated ${projectedPoints.length} projected daily points for 2025 site data (from ${lastActualPoint.date} to Dec 31)`)
+  console.log(`Generated ${projectedPoints.length} projected daily points for 2025 site data (from ${lastReliableMonth}/${lastReliableDay} to Dec 31)`)
   return projectedPoints
 }
 
