@@ -286,6 +286,25 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     loadInitialScenario()
   }, [profile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Debug: snapshot/store baseline on scenario ID change or after grid reload
+  useEffect(() => {
+    console.log('[YTD Debug] Scenario change or reload detected:', {
+      currentYearSettingId: store.currentYearSettingId,
+      currentYearSettingName: store.currentYearSettingName,
+      hasLoadedSnapshot: !!store.loadedCurrentYearSettingsSnapshot,
+      snapshotKeys: store.loadedCurrentYearSettingsSnapshot ? Object.keys(store.loadedCurrentYearSettingsSnapshot?.ytdCustomProjectedValues || {}) : [],
+      customValuesCount: Object.keys(store.ytdCustomProjectedValues || {}).length,
+      ytdFields: store.ytdData ? {
+        medicalDirectorHours: store.ytdData.medicalDirectorHours,
+        prcsMedicalDirectorHours: store.ytdData.prcsMedicalDirectorHours,
+        consultingServicesAgreement: store.ytdData.consultingServicesAgreement,
+        locumCosts: store.ytdData.locumCosts,
+        physiciansCount: store.ytdData.physicians?.length
+      } : null,
+      isResyncingCompensation
+    })
+  }, [store.currentYearSettingId, gridReloadTrigger])
+
   // Watch for scenario loads and freeze compensation until grid re-syncs
   // This includes explicit reloads of the same scenario (via gridReloadTrigger)
   useEffect(() => {
@@ -403,15 +422,21 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
 
   // Mark scenario as dirty when scenario data changes compared to loaded snapshot
   useEffect(() => {
+    console.log('[YTD Debug] Dirty check (scenario-level) starting...', {
+      hasScenarioId: !!store.currentYearSettingId,
+      hasSnapshot: !!store.loadedCurrentYearSettingsSnapshot,
+    })
     // Skip if no scenario loaded
     if (!store.currentYearSettingId || !store.loadedCurrentYearSettingsSnapshot) {
       setIsScenarioDirty(false)
+      console.log('[YTD Debug] Dirty check (scenario-level) skipped: missing id or snapshot')
       return
     }
 
     // Check if current state differs from snapshot
     const isDirty = store.isCurrentYearSettingsDirty()
     setIsScenarioDirty(isDirty)
+    console.log('[YTD Debug] Dirty check (scenario-level) result:', { isDirty })
   }, [
     store.currentYearSettingId,
     store.loadedCurrentYearSettingsSnapshot,
@@ -422,9 +447,15 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
 
   // Track grid-specific dirty state (tracks both grid overrides AND physician panel changes that affect grid)
   useEffect(() => {
+    console.log('[YTD Debug] Dirty check (grid-level) starting...', {
+      hasScenarioId: !!store.currentYearSettingId,
+      hasSnapshot: !!store.loadedCurrentYearSettingsSnapshot,
+      isResyncingCompensation
+    })
     // Skip if no scenario loaded
     if (!store.currentYearSettingId || !store.loadedCurrentYearSettingsSnapshot) {
       setIsGridDirty(false)
+      console.log('[YTD Debug] Dirty check (grid-level) skipped: missing id or snapshot')
       return
     }
 
@@ -432,12 +463,23 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     // This prevents false positives during the transition period
     if (isResyncingCompensation) {
       setIsGridDirty(false)
+      console.log('[YTD Debug] Dirty check (grid-level) skipped: resync in progress')
       return
     }
 
     // Compare grid custom projected values
     const currentCustomStr = JSON.stringify(store.ytdCustomProjectedValues)
     const snapshotCustomStr = JSON.stringify(store.loadedCurrentYearSettingsSnapshot.ytdCustomProjectedValues)
+    if (currentCustomStr !== snapshotCustomStr) {
+      const currentKeys = Object.keys(store.ytdCustomProjectedValues || {})
+      const snapshotKeys = Object.keys(store.loadedCurrentYearSettingsSnapshot.ytdCustomProjectedValues || {})
+      console.log('[YTD Debug] Custom values differ', {
+        currentCount: currentKeys.length,
+        snapshotCount: snapshotKeys.length,
+        added: currentKeys.filter(k => !snapshotKeys.includes(k)),
+        removed: snapshotKeys.filter(k => !currentKeys.includes(k))
+      })
+    }
     
     if (currentCustomStr !== snapshotCustomStr) {
       setIsGridDirty(true)
@@ -461,6 +503,10 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
       
       for (const field of gridAffectingFields) {
         if (current[field as keyof typeof current] !== snapshot[field as keyof typeof snapshot]) {
+          console.log('[YTD Debug] Grid-affecting field differs:', field, {
+            current: current[field as keyof typeof current],
+            snapshot: snapshot[field as keyof typeof snapshot]
+          })
           setIsGridDirty(true)
           return
         }
@@ -470,6 +516,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
       const currentPhysiciansStr = JSON.stringify(current.physicians)
       const snapshotPhysiciansStr = JSON.stringify(snapshot.physicians)
       if (currentPhysiciansStr !== snapshotPhysiciansStr) {
+        console.log('[YTD Debug] Physicians array differs (lengths or content)')
         setIsGridDirty(true)
         return
       }
@@ -477,6 +524,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     
     // No changes detected
     setIsGridDirty(false)
+    console.log('[YTD Debug] Dirty check (grid-level) result: clean')
   }, [
     store.currentYearSettingId,
     store.loadedCurrentYearSettingsSnapshot,

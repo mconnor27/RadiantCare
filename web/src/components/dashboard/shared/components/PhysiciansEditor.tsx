@@ -214,7 +214,9 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
                       } else {
                         store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
                       }
-                    }, msg, 120000)
+                    }, msg, 120000, 
+                    mode === 'ytd' ? (fy.prcsMdHoursMode || 'calculated') : undefined,
+                    mode === 'ytd' ? (newMode) => store.setPrcsMdHoursMode(newMode) : undefined)
                   }
                 }
               }}
@@ -262,7 +264,9 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
                     } else {
                       store.setFutureValue(scenario, year, 'prcsMedicalDirectorHours', Math.max(0, Math.min(120000, amount)))
                     }
-                  }, msg, 120000)
+                  }, msg, 120000,
+                  mode === 'ytd' ? (fy.prcsMdHoursMode || 'calculated') : undefined,
+                  mode === 'ytd' ? (newMode) => store.setPrcsMdHoursMode(newMode) : undefined)
                 } else {
                   // If deselecting, close any slider and show the basic unselected hover immediately
                   removeTooltip(`prcs-amount-slider-${p.id}`)

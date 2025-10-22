@@ -100,7 +100,6 @@ export const useDashboardStore = create<Store>()(
           physicians: scenarioADefaultsByYear(2025),
         },
         ytdCustomProjectedValues: {},
-        ytdGridSnapshot: null, // Track loaded state for dirty detection
         currentScenarioId: null,
         currentScenarioName: null,
         currentScenarioUserId: null,
@@ -254,6 +253,7 @@ export const useDashboardStore = create<Store>()(
             // NEW: Trigger recomputation of projections if baseline changed
             // Use setTimeout to avoid infinite loops and batch updates
             setTimeout(() => {
+              // compute: recomputeProjectionsFromBaseline
               get().recomputeProjectionsFromBaseline()
             }, 0)
           }),
@@ -738,6 +738,7 @@ export const useDashboardStore = create<Store>()(
 
             // NEW: Trigger recomputation of projections if baseline changed
             setTimeout(() => {
+              // compute: recomputeProjectionsFromBaseline
               get().recomputeProjectionsFromBaseline()
             }, 0)
           }),
@@ -765,6 +766,34 @@ export const useDashboardStore = create<Store>()(
         setYtdPrcsDirector: (physicianId) =>
           set((state) => {
             state.ytdData.prcsDirectorPhysicianId = physicianId
+          }),
+        
+        setPrcsMdHoursMode: (mode: 'calculated' | 'annualized', annualizedValue?: number) =>
+          set((state) => {
+            const previousMode = state.ytdData.prcsMdHoursMode || 'calculated'
+            state.ytdData.prcsMdHoursMode = mode
+            console.log(`🔀 [setPrcsMdHoursMode] Changed PRCS MD Hours mode: ${previousMode} → ${mode}`)
+            console.log(`📊 [setPrcsMdHoursMode] Current PRCS value: ${state.ytdData.prcsMedicalDirectorHours}`)
+            
+            const customKey = 'Medical Director Hours (PRCS)'
+            
+            if (mode === 'calculated') {
+              // When switching to calculated mode, remove any custom value for PRCS MD Hours
+              if (state.ytdCustomProjectedValues[customKey] !== undefined) {
+                delete state.ytdCustomProjectedValues[customKey]
+                console.log(`🗑️ [setPrcsMdHoursMode] Removed custom value for ${customKey} (switching to calculated)`)
+                console.log(`🎨 [setPrcsMdHoursMode] Cell will be PURPLE (calculated from physician panel)`)
+              }
+            } else if (mode === 'annualized') {
+              // When switching to annualized mode, set the annualized projection as a custom value
+              if (annualizedValue !== undefined) {
+                state.ytdCustomProjectedValues[customKey] = annualizedValue
+                console.log(`📊 [setPrcsMdHoursMode] Set annualized value for ${customKey}: $${Math.round(annualizedValue).toLocaleString()}`)
+                console.log(`🎨 [setPrcsMdHoursMode] Cell will be GREEN (custom annualized projection)`)
+              } else {
+                console.warn(`⚠️ [setPrcsMdHoursMode] Switching to annualized but no annualizedValue provided!`)
+              }
+            }
           }),
         
         setProjectionField: (scenario, field, value) =>
@@ -1593,17 +1622,9 @@ export const useDashboardStore = create<Store>()(
         resetYtdCustomProjectedValues: () =>
           set((state) => {
             state.ytdCustomProjectedValues = {}
-            state.ytdGridSnapshot = null
           }),
         
-        // Capture grid snapshot for dirty detection
-        captureYtdGridSnapshot: () =>
-          set((state) => {
-            // Capture current custom projected values as the clean state
-            state.ytdGridSnapshot = { ...state.ytdCustomProjectedValues }
-            console.log('📸 [captureYtdGridSnapshot] Captured keys:', Object.keys(state.ytdGridSnapshot))
-            console.log('📸 [captureYtdGridSnapshot] Full snapshot:', state.ytdGridSnapshot)
-          }),
+        // REMOVED: captureYtdGridSnapshot - grid aligns to full snapshot
         
         // Scenario management
         setCurrentScenario: (id: string | null, name: string | null, userId?: string | null) =>
@@ -1616,7 +1637,6 @@ export const useDashboardStore = create<Store>()(
             if (scenarioChanged) {
               console.log(`🗑️ [setCurrentScenario] Clearing snapshots due to scenario change: ${state.currentScenarioId} → ${id}`)
               state.loadedScenarioSnapshot = null
-              state.ytdGridSnapshot = null
             }
           }),
 
@@ -1770,7 +1790,6 @@ export const useDashboardStore = create<Store>()(
             // This ensures a fresh snapshot is captured for the newly loaded scenario
             if (scenarioChanged) {
               console.log(`🗑️ [setCurrentYearSetting] Clearing snapshot due to scenario change: ${state.currentYearSettingId} → ${id}`)
-              state.ytdGridSnapshot = null
             }
           })
         },
@@ -1799,7 +1818,7 @@ export const useDashboardStore = create<Store>()(
             const snapshot = state.loadedCurrentYearSettingsSnapshot.ytdData
             
             // Check simple fields
-            const simpleFields = ['year', 'therapyIncome', 'nonEmploymentCosts', 'nonMdEmploymentCosts', 'locumCosts', 'miscEmploymentCosts', 'medicalDirectorHours', 'prcsMedicalDirectorHours', 'prcsDirectorPhysicianId', 'consultingServicesAgreement']
+            const simpleFields = ['year', 'therapyIncome', 'nonEmploymentCosts', 'nonMdEmploymentCosts', 'locumCosts', 'miscEmploymentCosts', 'medicalDirectorHours', 'prcsMedicalDirectorHours', 'prcsMdHoursMode', 'prcsDirectorPhysicianId', 'consultingServicesAgreement']
             for (const field of simpleFields) {
               if (current[field as keyof typeof current] !== snapshot[field as keyof typeof snapshot]) {
                 console.log(`[Dirty Check]   Field changed: ${field}`)
@@ -2154,6 +2173,11 @@ export const useDashboardStore = create<Store>()(
           if (ytdData.prcsDirectorPhysicianId !== defaultSuszko?.id) {
             filteredYear2025.prcsDirectorPhysicianId = ytdData.prcsDirectorPhysicianId
           }
+          
+          // Save PRCS MD Hours mode (defaults to 'calculated' if not set)
+          if (ytdData.prcsMdHoursMode && ytdData.prcsMdHoursMode !== 'calculated') {
+            filteredYear2025.prcsMdHoursMode = ytdData.prcsMdHoursMode
+          }
 
           // Extract YTD grid overrides (already filtered by slider logic)
           const custom2025Values: Record<string, number> = { ...state.ytdCustomProjectedValues }
@@ -2385,6 +2409,11 @@ export const useDashboardStore = create<Store>()(
             throw new Error('Not a Current Year Settings scenario')
           }
 
+        // Explicit load: always clear YTD snapshots before applying new state
+        set((state) => {
+          state.loadedCurrentYearSettingsSnapshot = null
+        })
+
           set((state) => {
             // Build COMPLETE 2025 data by merging: defaults → loaded scenario
             // Do NOT use existing store values - this is a fresh load
@@ -2400,6 +2429,7 @@ export const useDashboardStore = create<Store>()(
               locumCosts: DEFAULT_LOCUM_COSTS_2025,
               medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
               prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
+              prcsMdHoursMode: 'calculated', // Default to calculated mode
               consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_2025,
               miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
               prcsDirectorPhysicianId: defaultSuszko?.id,
@@ -2450,6 +2480,8 @@ export const useDashboardStore = create<Store>()(
               keys: Object.keys(state.ytdCustomProjectedValues),
               values: state.ytdCustomProjectedValues
             })
+
+            // Grid baseline now uses full snapshot's ytdCustomProjectedValues
             
             console.log('✅ [Load] Loaded into YTD store state:', {
               ytdDataYear: state.ytdData?.year,
@@ -2488,6 +2520,18 @@ export const useDashboardStore = create<Store>()(
           if (data.scenario_type !== 'projection') {
             throw new Error('Not a Projection scenario')
           }
+
+        // Explicit load: always clear projection-related snapshots before applying new state
+        set((state) => {
+          if (target === 'A') {
+            state.loadedScenarioSnapshot = null
+            state.expectedProjectionSnapshotA = null
+          } else {
+            state.loadedScenarioBSnapshot = null
+            state.expectedProjectionSnapshotB = null
+          }
+          state.loadedProjectionSnapshot = null
+        })
 
           const baselineMode = data.baseline_mode || '2025 Data'
 
@@ -2763,7 +2807,7 @@ export const useDashboardStore = create<Store>()(
           // Compute what the projected years (2026-2030) should look like
           // given the current baseline and projection settings
 
-          console.log('🧮 [computeExpectedFromBaseline] Computing expected projections from baseline')
+          // compute removed
 
           const expectedFuture: FutureYear[] = []
 
@@ -2816,13 +2860,13 @@ export const useDashboardStore = create<Store>()(
             expectedFuture.push(futureYear)
           }
 
-          console.log('✅ [computeExpectedFromBaseline] Computed', expectedFuture.length, 'expected years')
+          // compute removed
 
           return expectedFuture
         },
 
         buildScenarioFromProjection: ({ projection, futureYearsFromScenario, baseline2025, baselineMode }) => {
-          console.log('🏗️ [buildScenarioFromProjection] Building scenario from projection overlay')
+          // compute removed
 
           // Compute expected derived years from baseline
           const expectedDerived = get().computeExpectedFromBaseline({
@@ -2853,7 +2897,7 @@ export const useDashboardStore = create<Store>()(
               for (const key of overrideKeys) {
                 if (key !== 'year' && sparseOverrides[key] !== undefined) {
                   (mergedYear as Record<string, unknown>)[key] = sparseOverrides[key]
-                  console.log(`  - ${String(key)}: using override value`)
+                  // compute removed
                 }
               }
             }
@@ -2861,7 +2905,7 @@ export const useDashboardStore = create<Store>()(
             future.push(mergedYear)
           }
 
-          console.log('✅ [buildScenarioFromProjection] Built scenario with', future.length, 'years')
+          // compute removed
 
           return { future }
         },
@@ -2906,14 +2950,14 @@ export const useDashboardStore = create<Store>()(
         // Helper: Recompute projection years from current baseline (baseline change observer)
         recomputeProjectionsFromBaseline: () => {
           set((state) => {
-            console.log('🔄 [recomputeProjectionsFromBaseline] Baseline changed, recomputing projections...')
+            // compute removed
 
             // Get current baseline from YTD store
             const baseline2025 = get().getYtdBaselineFutureYear2025()
 
             // Recompute Scenario A if in 2025 Data mode
             if (state.scenarioA.dataMode === '2025 Data') {
-              console.log('🔄 [recomputeProjectionsFromBaseline] Recomputing Scenario A')
+              // compute removed
 
               // Update year 2025 from baseline
               const year2025Index = state.scenarioA.future.findIndex(f => f.year === 2025)
@@ -2943,7 +2987,7 @@ export const useDashboardStore = create<Store>()(
                     for (const [field, isOverridden] of Object.entries(overrides)) {
                       if (isOverridden && field in currentYear) {
                         (updated as Record<string, unknown>)[field] = (currentYear as Record<string, unknown>)[field]
-                        console.log(`🔒 [recompute] Preserving override for year ${updated.year} field ${field}`)
+                        // compute removed
                       }
                     }
                     // Preserve the override flags
@@ -2960,7 +3004,7 @@ export const useDashboardStore = create<Store>()(
 
             // Recompute Scenario B if enabled and in 2025 Data mode
             if (state.scenarioBEnabled && state.scenarioB && state.scenarioB.dataMode === '2025 Data') {
-              console.log('🔄 [recomputeProjectionsFromBaseline] Recomputing Scenario B')
+              // compute removed
 
               const scenarioB = state.scenarioB
 
@@ -2992,7 +3036,7 @@ export const useDashboardStore = create<Store>()(
                     for (const [field, isOverridden] of Object.entries(overrides)) {
                       if (isOverridden && field in currentYear) {
                         (updated as Record<string, unknown>)[field] = (currentYear as Record<string, unknown>)[field]
-                        console.log(`🔒 [recompute] Preserving override for year ${updated.year} field ${field} in Scenario B`)
+                        // compute removed
                       }
                     }
                     // Preserve the override flags
@@ -3007,7 +3051,7 @@ export const useDashboardStore = create<Store>()(
               get().snapshotExpectedProjection('B')
             }
 
-            console.log('✅ [recomputeProjectionsFromBaseline] Recomputation complete')
+            // compute removed
           })
         },
       }

@@ -227,13 +227,13 @@ export default function ShareLinkModal({
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <h2 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h2 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', textAlign: 'left' }}>
             ⚠️ Unsaved Changes Detected
           </h2>
-          <p style={{ margin: '0 0 16px 0', fontSize: '14px', lineHeight: '1.5', color: '#333' }}>
+          <p style={{ margin: '0 0 16px 0', fontSize: '14px', lineHeight: '1.5', color: '#333', textAlign: 'left' }}>
             You have made changes that are not saved to the database.
           </p>
-          <p style={{ margin: '0 0 24px 0', fontSize: '14px', lineHeight: '1.5', color: '#666' }}>
+          <p style={{ margin: '0 0 24px 0', fontSize: '14px', lineHeight: '1.5', color: '#666', textAlign: 'left' }}>
             The shareable link will reflect the last saved version of your scenario, not your current edits.
             Save your scenario first if you want to share your latest changes.
           </p>

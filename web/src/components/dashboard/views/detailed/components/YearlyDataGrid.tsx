@@ -311,7 +311,40 @@ export default function YearlyDataGrid({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [collapsedSections, setCollapsedSections] = useState<CollapsibleState>({})
-  const [projectionRatio, setProjectionRatio] = useState<number>(1.5) // Default fallback
+  const [projectionRatio, setProjectionRatio] = useState<number>(1.5)
+  
+  // Helper function to calculate annualized PRCS MD Hours from YTD actual
+  const calculateAnnualizedPrcsMdHours = useCallback((): number | null => {
+    try {
+      // Find PRCS MD Hours row in grid data
+      const prcsRow = gridData.allRows.find((row: any) => {
+        const accountCell = row.cells?.[0] as any
+        const accountName = accountCell?.text?.trim() || ''
+        return accountName.match(/Medical Director Hours.*PRCS/i)
+      })
+      
+      if (!prcsRow) {
+        console.warn('⚠️ Could not find PRCS MD Hours row in grid')
+        return null
+      }
+      
+      // Get YTD actual value (second-to-last column before projected)
+      const ytdColIndex = gridData.columns.length - 2
+      const ytdCell = prcsRow.cells?.[ytdColIndex] as any
+      const ytdText = ytdCell?.text || '0'
+      const ytdValue = parseFloat(ytdText.replace(/[$,\s]/g, '')) || 0
+      
+      // Calculate annualized value
+      const annualized = ytdValue * projectionRatio
+      
+      console.log(`📊 [calculateAnnualizedPrcsMdHours] YTD: $${ytdValue.toLocaleString()}, Ratio: ${projectionRatio.toFixed(3)}, Annualized: $${Math.round(annualized).toLocaleString()}`)
+      
+      return annualized
+    } catch (error) {
+      console.error('❌ Error calculating annualized PRCS MD Hours:', error)
+      return null
+    }
+  }, [gridData, projectionRatio]) // Default fallback
   const [tooltip, setTooltip] = useState<{ show: boolean; text: string; x: number; y: number }>({
     show: false,
     text: '',
@@ -347,6 +380,19 @@ export default function YearlyDataGrid({
     columnIndex: -1,
     annualizedBaseline: 0,
     ytdActualValue: 0
+  })
+  
+  // PRCS MD Hours mode toggle tooltip state
+  const [prcsModeTooltip, setPrcsModeTooltip] = useState<{
+    isVisible: boolean
+    position: { x: number; y: number }
+    currentValue: number
+    cellRect?: { top: number; right: number; bottom: number; left: number; width: number; height: number }
+  }>({
+    isVisible: false,
+    position: { x: 0, y: 0 },
+    currentValue: 0,
+    cellRect: undefined
   })
   
   // Get custom projected values from store (now persisted across navigation)
@@ -399,6 +445,7 @@ export default function YearlyDataGrid({
   const fy2025 = store.ytdData
   const prcsDirectorId = fy2025?.prcsDirectorPhysicianId
   const prcsMdHours = fy2025?.prcsMedicalDirectorHours
+  const prcsMdHoursMode = fy2025?.prcsMdHoursMode || 'calculated'
   const mdSharedHours = fy2025?.medicalDirectorHours
   const consultingAgreement = fy2025?.consultingServicesAgreement
   const locumCosts = fy2025?.locumCosts
@@ -451,7 +498,8 @@ export default function YearlyDataGrid({
         prcsDirectorPhysicianId: fy2025.prcsDirectorPhysicianId,
         prcsMedicalDirectorHours: fy2025.prcsMedicalDirectorHours,
         medicalDirectorHours: fy2025.medicalDirectorHours,
-        consultingServicesAgreement: fy2025.consultingServicesAgreement
+        consultingServicesAgreement: fy2025.consultingServicesAgreement,
+        prcsMdHoursMode: fy2025.prcsMdHoursMode || 'calculated'
       } : undefined
 
       // Create a signature of the data that would affect the load
@@ -466,6 +514,7 @@ export default function YearlyDataGrid({
         physicians: physicianData?.physicians.length,
         prcsDirector: physicianData?.prcsDirectorPhysicianId,
         prcsMdHours: physicianData?.prcsMedicalDirectorHours,
+        prcsMdHoursMode: physicianData?.prcsMdHoursMode, // CRITICAL: Include mode so grid reloads when toggled
         mdSharedHours: physicianData?.medicalDirectorHours, // Add this so changes trigger reload
         consultingAgreement: physicianData?.consultingServicesAgreement, // Add this so changes trigger reload
         locumCosts: physicianData?.locumCosts,
@@ -479,13 +528,22 @@ export default function YearlyDataGrid({
       const lastScenarioId = lastSignatureObj?.scenarioId
       const lastReloadTrigger = lastSignatureObj?.reloadTrigger ?? 0
       
+      const currentSignatureObj = JSON.parse(dataSignature)
+      const lastPrcsMdHoursMode = lastSignatureObj?.prcsMdHoursMode
+      const currentPrcsMdHoursMode = currentSignatureObj?.prcsMdHoursMode
+      
       const isScenarioChanged = lastScenarioId !== currentScenarioId && currentScenarioId !== null && currentScenarioId !== undefined
       const isExplicitReload = reloadTrigger !== lastReloadTrigger
+      const isModeChanged = lastPrcsMdHoursMode !== currentPrcsMdHoursMode
       
       // Skip if we just loaded the exact same configuration AND scenario/trigger hasn't changed
       if (!isScenarioChanged && !isExplicitReload && lastLoadRef.current === dataSignature) {
         console.log('⏭️  Skipping redundant load (same data)')
         return
+      }
+      
+      if (isModeChanged) {
+        console.log(`🎨 [Grid] PRCS mode changed in dataSignature: ${lastPrcsMdHoursMode} → ${currentPrcsMdHoursMode}, forcing reload`)
       }
       
       if (isScenarioChanged) {
@@ -502,10 +560,15 @@ export default function YearlyDataGrid({
       // Load both the grid data and the projection ratio
       // customValues already defined above for signature
       const [data, ratio] = await Promise.all([
-        loadYearlyGridData(collapsedSections, customValues, physicianData, cachedSummaryData, store.ytdGridSnapshot),
+        loadYearlyGridData(collapsedSections, customValues, physicianData, cachedSummaryData, store.loadedCurrentYearSettingsSnapshot?.ytdCustomProjectedValues || null),
         calculateProjectionRatio(cachedSummaryData)
       ])
 
+      // Expose snapshot for outlines from the full snapshot's custom values
+      try {
+        const fullSnap = store.loadedCurrentYearSettingsSnapshot?.ytdCustomProjectedValues
+        ;(window as any).__ytdGridSnapshot = fullSnap || undefined
+      } catch {}
       setGridData(data)
       setProjectionRatio(ratio)
       lastLoadRef.current = dataSignature
@@ -559,20 +622,11 @@ export default function YearlyDataGrid({
         // Only capture if we don't already have a snapshot (null check)
         console.log('🔍 [Grid] Snapshot check:', {
           hasCompletedFirstSync: hasCompletedFirstSync.current,
-          hasExistingSnapshot: store.ytdGridSnapshot !== null,
+          hasFullSnapshot: !!store.loadedCurrentYearSettingsSnapshot,
           currentCustomValuesCount: Object.keys(store.ytdCustomProjectedValues).length
         })
         
-        // Capture snapshot if we don't have one yet
-        if (store.ytdGridSnapshot === null) {
-          console.log('📸 [Grid] About to capture snapshot (no snapshot exists)...')
-          setTimeout(() => {
-            store.captureYtdGridSnapshot()
-            console.log('📸 [Grid] Captured snapshot for dirty detection:', store.ytdGridSnapshot)
-          }, 100)
-        } else {
-          console.log('⏭️ [Grid] Skipping snapshot capture (snapshot already exists)')
-        }
+        // Snapshot now comes solely from loadedCurrentYearSettingsSnapshot; no grid snapshot capture
       }, 200)
     } catch (err) {
       console.error('Error loading yearly data:', err)
@@ -586,8 +640,9 @@ export default function YearlyDataGrid({
   // Also track custom projected values count so grid reloads with correct coloring when user changes values
   // IMPORTANT: Include currentYearSettingId to force grid reload when scenario changes (even if data is identical)
   // IMPORTANT: Include reloadTrigger to force reload when user explicitly loads a scenario (even if same ID)
+  // IMPORTANT: Include prcsMdHoursMode so grid reloads when PRCS mode toggled (calculated vs annualized)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collapsedSections, environment, cachedSummary, isLoadingCache, mode, store.currentYearSettingId, prcsDirectorId, prcsMdHours, mdSharedHours, consultingAgreement, locumCosts, physicianDataSignature, customProjectedValuesCount, reloadTrigger])
+  }, [collapsedSections, environment, cachedSummary, isLoadingCache, mode, store.currentYearSettingId, prcsDirectorId, prcsMdHours, prcsMdHoursMode, mdSharedHours, consultingAgreement, locumCosts, physicianDataSignature, customProjectedValuesCount, reloadTrigger])
 
   useEffect(() => {
     loadData()
@@ -759,7 +814,71 @@ export default function YearlyDataGrid({
       const isTherapyTotalSummary = (cell?.rowType === 'Summary' && accountText === 'Total 7100 Therapy Income')
       const isTherapyComponent = accountText === '7105 Therapy - Lacey' || accountText === '7108 Therapy - Aberdeen' || accountText === '7110 Therapy - Centralia' || accountText === '7149 Refunds - Therapy'
       const isCalculatedRow = isCalculatedAccount(accountText)
-      if (cell && accountCell && !isSpacer && !isCalculatedRow && (((isRowTypeData && !isComputed) && !isTherapyComponent) || isTherapyTotalSummary)) {
+      const isPrcsMdHours = accountText.match(/Medical Director Hours.*PRCS/i)
+      const prcsMdHoursMode = store.ytdData.prcsMdHoursMode || 'calculated'
+      
+      console.log('🔍 [Click] Cell details:', {
+        accountText,
+        isPrcsMdHours,
+        prcsMdHoursMode,
+        isCalculatedRow,
+        hasCell: !!cell,
+        hasAccountCell: !!accountCell,
+        isSpacer
+      })
+      
+      // Special handling for PRCS MD Hours - ALWAYS show toggle tooltip (in both calculated and annualized modes)
+      if (isPrcsMdHours && cell && accountCell && !isSpacer) {
+        console.log(`✅ PRCS MD Hours (${prcsMdHoursMode} mode) clicked - showing mode toggle`)
+        
+        // Get cell position for tooltip placement (use viewport coordinates for fixed positioning)
+        let cellPosition = { x: 0, y: 0 }
+        let cellRect: { top: number; right: number; bottom: number; left: number; width: number; height: number } | undefined
+        
+        if (event) {
+          const target = event.target as HTMLElement
+          const cellElement = target.closest('[data-cell-rowidx]') || target.closest('[role="gridcell"]') || target.closest('.rg-cell')
+          if (cellElement) {
+            const rect = cellElement.getBoundingClientRect()
+            cellRect = {
+              top: rect.top,
+              right: rect.right,
+              bottom: rect.bottom,
+              left: rect.left,
+              width: rect.width,
+              height: rect.height
+            }
+            cellPosition = { 
+              x: rect.right, 
+              y: rect.top + rect.height / 2 
+            }
+          } else {
+            cellPosition = { 
+              x: event.clientX, 
+              y: event.clientY 
+            }
+          }
+        }
+        
+        console.log('📍 Tooltip position:', cellPosition, 'cellRect:', cellRect)
+        
+        // Show PRCS mode toggle tooltip
+        const cellText = cell.text || '0'
+        const currentValue = parseFloat(cellText.replace(/[$,\s]/g, '')) || 0
+        
+        setPrcsModeTooltip({
+          isVisible: true,
+          position: cellPosition,
+          currentValue,
+          cellRect
+        })
+        return
+      }
+      
+      // Allow PRCS MD Hours clicks if in annualized mode (treat as editable)
+      const isEditableCell = !isCalculatedRow || (isPrcsMdHours && prcsMdHoursMode === 'annualized')
+      
+      if (cell && accountCell && !isSpacer && isEditableCell && (((isRowTypeData && !isComputed) && !isTherapyComponent) || isTherapyTotalSummary)) {
         console.log('Projected cell clicked:', { rowIndex, colIndex, accountName: accountCell.text })
         
         // Parse the displayed projected value (may be custom) and compute baseline
@@ -1120,7 +1239,9 @@ export default function YearlyDataGrid({
                       const isTherapyTotalSummary = (cell?.rowType === 'Summary' && accountText === 'Total 7100 Therapy Income')
                       const isTherapyComponent = accountText === '7105 Therapy - Lacey' || accountText === '7108 Therapy - Aberdeen' || accountText === '7110 Therapy - Centralia' || accountText === '7149 Refunds - Therapy'
                       const isCalculatedRow = isCalculatedAccount(accountText)
-                      if (!isSpacer && !isCalculatedRow && (((cell?.rowType === 'Data' && cell?.computedRow !== true) && !isTherapyComponent) || isTherapyTotalSummary)) {
+                      const isPrcsMdHours = accountText.match(/Medical Director Hours.*PRCS/i)
+                      // Allow clicks on: normal editable cells, therapy total summary, OR PRCS MD Hours (even when calculated)
+                      if (!isSpacer && (!isCalculatedRow || isPrcsMdHours) && (((cell?.rowType === 'Data' && cell?.computedRow !== true) && !isTherapyComponent) || isTherapyTotalSummary)) {
                         handleCellClick(rowId, columnId, e)
                       }
                     }
@@ -1544,6 +1665,203 @@ export default function YearlyDataGrid({
           annualizedBaseline={slider.annualizedBaseline}
           ytdActualValue={slider.ytdActualValue}
         />
+        
+        {/* PRCS MD Hours Mode Toggle Tooltip */}
+        {prcsModeTooltip.isVisible && (() => {
+          // Smart positioning logic (same as ProjectedValueSlider)
+          const tooltipWidth = 340
+          const padding = 20
+          const spaceOnRight = window.innerWidth - (prcsModeTooltip.position.x + padding)
+          const shouldRenderLeft = spaceOnRight < tooltipWidth + 30 // 30px safety margin
+          
+          const tooltipPosition = {
+            top: prcsModeTooltip.position.y - 100,
+            left: shouldRenderLeft 
+              ? Math.max(10, (prcsModeTooltip.cellRect?.left || prcsModeTooltip.position.x) - tooltipWidth - padding)
+              : prcsModeTooltip.position.x + padding
+          }
+          
+          console.log('🎯 Tooltip rendering:', { shouldRenderLeft, spaceOnRight, tooltipPosition })
+          
+          return (
+            <>
+              {/* Backdrop to catch outside clicks */}
+              <div
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  zIndex: 9999,
+                  backgroundColor: 'transparent'
+                }}
+                onClick={() => {
+                  console.log('🚪 Closing PRCS tooltip (clicked outside)')
+                  setPrcsModeTooltip({ isVisible: false, position: { x: 0, y: 0 }, currentValue: 0, cellRect: undefined })
+                }}
+              />
+              <div
+                style={{
+                  position: 'fixed',
+                  top: tooltipPosition.top,
+                  left: tooltipPosition.left,
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                  zIndex: 10000,
+                  minWidth: '320px',
+                  maxWidth: '380px',
+                  pointerEvents: 'auto'
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+            {(() => {
+              const currentMode = store.ytdData.prcsMdHoursMode || 'calculated'
+              const isCalculated = currentMode === 'calculated'
+              
+              return (
+                <>
+                  <div style={{ marginBottom: '12px', fontWeight: 600, fontSize: '14px', color: '#111827' }}>
+                    Medical Director Hours (PRCS)
+                  </div>
+                  
+                  <div style={{ marginBottom: '12px', fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
+                    {isCalculated 
+                      ? <>Currently calculated from physician panel: <strong style={{ color: '#111827' }}>${prcsModeTooltip.currentValue.toLocaleString()}</strong></>
+                      : <>Current value: <strong style={{ color: '#111827' }}>${prcsModeTooltip.currentValue.toLocaleString()}</strong> (can be edited in grid)</>
+                    }
+                  </div>
+                  
+                  <div style={{ marginBottom: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px', fontWeight: 500 }}>
+                      Mode:
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => {
+                          if (isCalculated) {
+                            console.log('🔀 Already in calculated mode, closing')
+                          } else {
+                            console.log('🔀 Switching to calculated mode')
+                            store.setPrcsMdHoursMode('calculated')
+                          }
+                          setPrcsModeTooltip({ isVisible: false, position: { x: 0, y: 0 }, currentValue: 0, cellRect: undefined })
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          backgroundColor: isCalculated ? '#7c2a83' : '#ffffff',
+                          color: isCalculated ? '#ffffff' : '#374151',
+                          border: isCalculated ? 'none' : '2px solid #d1d5db',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: isCalculated ? 'default' : 'pointer',
+                          opacity: isCalculated ? 0.7 : 1,
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isCalculated) {
+                            e.currentTarget.style.borderColor = '#7c2a83'
+                            e.currentTarget.style.color = '#7c2a83'
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isCalculated) {
+                            e.currentTarget.style.borderColor = '#d1d5db'
+                            e.currentTarget.style.color = '#374151'
+                          }
+                        }}
+                      >
+                        {isCalculated ? '●' : '○'} Calculated
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!isCalculated) {
+                            console.log('🔀 Already in annualized mode, closing')
+                          } else {
+                            console.log('🔀 Switching to annualized mode')
+                            const annualizedValue = calculateAnnualizedPrcsMdHours()
+                            if (annualizedValue !== null) {
+                              store.setPrcsMdHoursMode('annualized', annualizedValue)
+                            } else {
+                              console.error('❌ Could not calculate annualized value')
+                            }
+                          }
+                          setPrcsModeTooltip({ isVisible: false, position: { x: 0, y: 0 }, currentValue: 0, cellRect: undefined })
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          backgroundColor: !isCalculated ? '#fefce8' : '#ffffff',
+                          color: '#374151',
+                          border: !isCalculated ? '2px solid #eab308' : '2px solid #d1d5db',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: !isCalculated ? 'default' : 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (isCalculated) {
+                            e.currentTarget.style.borderColor = '#eab308'
+                            e.currentTarget.style.backgroundColor = '#fefce8'
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (isCalculated) {
+                            e.currentTarget.style.borderColor = '#d1d5db'
+                            e.currentTarget.style.backgroundColor = '#ffffff'
+                          }
+                        }}
+                      >
+                        {!isCalculated ? '●' : '○'} Annualized
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )
+            })()}
+            
+            <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '12px', fontStyle: 'italic' }}>
+              {(() => {
+                const currentMode = store.ytdData.prcsMdHoursMode || 'calculated'
+                return currentMode === 'calculated'
+                  ? 'In calculated mode, the value is determined by the physician panel. Switch to annualized to set it manually.'
+                  : 'In annualized mode, you can edit the value directly in the grid cell. Switch to calculated to use the physician panel value.'
+              })()}
+            </div>
+            
+            <button
+              onClick={() => setPrcsModeTooltip({ isVisible: false, position: { x: 0, y: 0 }, currentValue: 0, cellRect: undefined })}
+              style={{
+                width: '100%',
+                padding: '8px',
+                backgroundColor: '#f3f4f6',
+                color: '#374151',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#e5e7eb'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#f3f4f6'
+              }}
+            >
+              Close
+            </button>
+          </div>
+          </>
+          )
+        })()}
       </div>
     </CollapsibleSection>
   )

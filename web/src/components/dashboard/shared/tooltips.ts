@@ -321,7 +321,11 @@ export function createPrcsAmountTooltip(
   e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>,
   onUpdate: (physicianId: string, amount: number) => void,
   message: string,
-  maxValue: number = PRCS_MD_ANNUAL_MAX
+  maxValue: number = PRCS_MD_ANNUAL_MAX,
+  mode?: 'calculated' | 'annualized',
+  onModeToggle?: (newMode: 'calculated' | 'annualized', annualizedValue?: number) => void,
+  ytdActualValue?: number,
+  projectionRatio?: number
 ) {
   const tooltipId = `prcs-amount-slider-${physicianId}`
   const existing = document.getElementById(tooltipId)
@@ -329,15 +333,33 @@ export function createPrcsAmountTooltip(
 
   const tooltip = document.createElement('div')
   tooltip.id = tooltipId
-  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 10002; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto;`
+  tooltip.style.cssText = `position: absolute; background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; text-align: left; z-index: 10002; box-shadow: 0 2px 8px rgba(0,0,0,0.2); pointer-events: auto; min-width: 240px;`
 
   const minValue = 0
   const displayAmount = `$${Math.round(currentAmount || 0).toLocaleString()}`
   const title = 'PRCS Medical Director'
+  const currentMode = mode || 'calculated'
 
-  tooltip.innerHTML = `
-    <div style="margin-bottom: 6px; font-weight: 600; white-space: nowrap;">${title}</div>
-    <div style="margin-bottom: 6px; font-size: 12px; opacity: 0.9;">${message}</div>
+  // Mode toggle HTML (only show in YTD mode when callback is provided)
+  const modeToggleHTML = onModeToggle ? `
+    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #555;">
+      <div style="font-size: 11px; opacity: 0.8; margin-bottom: 6px;">Grid Mode:</div>
+      <div style="display: flex; gap: 6px;">
+        <button id="${tooltipId}-mode-calc" style="flex: 1; padding: 6px; background: ${currentMode === 'calculated' ? '#7c2a83' : '#555'}; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: ${currentMode === 'calculated' ? '600' : 'normal'}; opacity: ${currentMode === 'calculated' ? '1' : '0.7'};">
+          ${currentMode === 'calculated' ? '●' : '○'} Calculated
+        </button>
+        <button id="${tooltipId}-mode-annual" style="flex: 1; padding: 6px; background: ${currentMode === 'annualized' ? '#fef08a' : '#555'}; color: ${currentMode === 'annualized' ? '#374151' : 'white'}; border: ${currentMode === 'annualized' ? '2px solid #eab308' : 'none'}; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: ${currentMode === 'annualized' ? '600' : 'normal'};">
+          ${currentMode === 'annualized' ? '●' : '○'} Annualized
+        </button>
+      </div>
+      <div style="font-size: 10px; opacity: 0.6; margin-top: 6px; font-style: italic;">
+        ${currentMode === 'calculated' ? 'Calculated from physician panel' : 'Set manually in grid'}
+      </div>
+    </div>
+  ` : ''
+
+  // Conditionally show slider only in calculated mode
+  const sliderHTML = currentMode === 'calculated' ? `
     <div style="padding: 2px 0;">
       <input type="range" min="${minValue}" max="${maxValue}" step="1000" value="${currentAmount}"
         style="width: 200px; margin-bottom: 8px; cursor: pointer;" class="growth-slider" id="${tooltipId}-slider" />
@@ -347,6 +369,22 @@ export function createPrcsAmountTooltip(
           id="${tooltipId}-amount" />
       </div>
     </div>
+  ` : `
+    <div style="padding: 10px; margin: 8px 0; background: rgba(254, 252, 232, 0.1); border: 1px solid #555; border-radius: 4px;">
+      <div style="font-size: 11px; opacity: 0.8; text-align: center;">
+        Current value: <strong>${displayAmount}</strong>
+      </div>
+      <div style="font-size: 10px; opacity: 0.6; margin-top: 4px; text-align: center; font-style: italic;">
+        Click the cell in the grid to edit the value
+      </div>
+    </div>
+  `
+
+  tooltip.innerHTML = `
+    <div style="margin-bottom: 6px; font-weight: 600; white-space: nowrap;">${title}</div>
+    <div style="margin-bottom: 6px; font-size: 12px; opacity: 0.9;">${message}</div>
+    ${sliderHTML}
+    ${modeToggleHTML}
   `
 
   document.body.appendChild(tooltip)
@@ -356,27 +394,56 @@ export function createPrcsAmountTooltip(
   tooltip.style.left = `${pos.x}px`
   tooltip.style.top = `${pos.y}px`
 
-  const slider = document.getElementById(`${tooltipId}-slider`) as HTMLInputElement
-  const amountInput = document.getElementById(`${tooltipId}-amount`) as HTMLInputElement
+  // Only set up slider event handlers if in calculated mode
+  if (currentMode === 'calculated') {
+    const slider = document.getElementById(`${tooltipId}-slider`) as HTMLInputElement
+    const amountInput = document.getElementById(`${tooltipId}-amount`) as HTMLInputElement
 
-  if (slider && amountInput) {
-    // Update from slider
-    slider.addEventListener('input', (event) => {
-      const target = event.target as HTMLInputElement
-      const newAmount = Number(target.value)
-      amountInput.value = `$${Math.round(newAmount).toLocaleString()}`
-      onUpdate(physicianId, newAmount)
-    })
+    if (slider && amountInput) {
+      // Update from slider
+      slider.addEventListener('input', (event) => {
+        const target = event.target as HTMLInputElement
+        const newAmount = Number(target.value)
+        amountInput.value = `$${Math.round(newAmount).toLocaleString()}`
+        onUpdate(physicianId, newAmount)
+      })
 
-    // Update from text input
-    amountInput.addEventListener('input', (event) => {
-      const target = event.target as HTMLInputElement
-      const numericValue = Number(target.value.replace(/[^0-9]/g, ''))
-      const clamped = Math.max(minValue, Math.min(maxValue, numericValue))
-      slider.value = String(clamped)
-      target.value = `$${Math.round(clamped).toLocaleString()}`
-      onUpdate(physicianId, clamped)
-    })
+      // Update from text input
+      amountInput.addEventListener('input', (event) => {
+        const target = event.target as HTMLInputElement
+        const numericValue = Number(target.value.replace(/[^0-9]/g, ''))
+        const clamped = Math.max(minValue, Math.min(maxValue, numericValue))
+        slider.value = String(clamped)
+        target.value = `$${Math.round(clamped).toLocaleString()}`
+        onUpdate(physicianId, clamped)
+      })
+    }
+  }
+
+  // Mode toggle button handlers
+  if (onModeToggle) {
+    const calcButton = document.getElementById(`${tooltipId}-mode-calc`)
+    const annualButton = document.getElementById(`${tooltipId}-mode-annual`)
+    
+    if (calcButton) {
+      calcButton.addEventListener('click', () => {
+        onModeToggle('calculated')
+        removeTooltip(tooltipId)
+      })
+    }
+    
+    if (annualButton) {
+      annualButton.addEventListener('click', () => {
+        // Calculate annualized value from YTD if available
+        let annualizedValue: number | undefined
+        if (ytdActualValue !== undefined && projectionRatio !== undefined) {
+          annualizedValue = ytdActualValue * projectionRatio
+          console.log(`📊 [PRCS Toggle] Calculated annualized value: YTD $${ytdActualValue.toLocaleString()} * ${projectionRatio.toFixed(3)} = $${Math.round(annualizedValue).toLocaleString()}`)
+        }
+        onModeToggle('annualized', annualizedValue)
+        removeTooltip(tooltipId)
+      })
+    }
   }
 
   tooltip.addEventListener('mouseenter', () => {

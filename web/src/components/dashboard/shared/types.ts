@@ -74,6 +74,7 @@ export type FutureYear = {
   therapyAberdeen?: number
   medicalDirectorHours?: number
   prcsMedicalDirectorHours?: number
+  prcsMdHoursMode?: 'calculated' | 'annualized' // How PRCS MD Hours are determined (YTD only)
   consultingServicesAgreement?: number // Consulting Services Agreement annual amount (overrides projection)
   prcsDirectorPhysicianId?: string | null // null = explicitly deselected, undefined = use default
   physicians: Physician[]
@@ -258,7 +259,6 @@ export type Store = {
   // NEW: Dedicated YTD state (separate from Scenario A/B)
   ytdData: FutureYear // Current year (2025) data for YTD view
   ytdCustomProjectedValues: Record<string, number> // Grid overrides for YTD view (2025-* keys)
-  ytdGridSnapshot: Record<string, number> | null // Snapshot of grid values when scenario loaded (for dirty detection)
   currentScenarioId: string | null // Legacy - for backward compat
   currentScenarioName: string | null // Legacy - for backward compat
   currentScenarioUserId: string | null // Legacy - for backward compat
@@ -312,6 +312,7 @@ export type Store = {
     field: 'therapyIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'locumCosts' | 'miscEmploymentCosts' | 'medicalDirectorHours' | 'prcsMedicalDirectorHours' | 'consultingServicesAgreement' | 'therapyLacey' | 'therapyCentralia' | 'therapyAberdeen',
     value: number
   ) => void
+  setPrcsMdHoursMode: (mode: 'calculated' | 'annualized', annualizedValue?: number) => void
   upsertPhysician: (scenario: ScenarioKey, year: number, physician: Physician) => void
   removePhysician: (scenario: ScenarioKey, year: number, physicianId: string) => void
   reorderPhysicians: (scenario: ScenarioKey, year: number, fromIndex: number, toIndex: number) => void
@@ -338,7 +339,6 @@ export type Store = {
   setYtdCustomProjectedValue: (accountName: string, value: number) => void
   removeYtdCustomProjectedValue: (accountName: string) => void
   resetYtdCustomProjectedValues: () => void
-  captureYtdGridSnapshot: () => void
   setSuppressNextGridSync: (suppress: boolean) => void
   consumeSuppressNextGridSync: () => boolean
   // Scenario management methods
