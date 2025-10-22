@@ -12,11 +12,11 @@ When toggling PRCS MD Hours to "annualized" mode, the value wasn't changing. The
    - User controls via physician panel
    - Cell background: Purple (`#f3e8ff`)
 
-2. **Annualized Mode** (Green/Yellow Cell):
+2. **Annualized Mode** (Yellow Cell):
    - Value **calculated** from YTD actual × projection ratio
    - Automatically set as a custom projected value
    - **NOT user-editable** (it's a projection, not a manual override)
-   - Cell background: Green (`#dcfce7`) with yellow tint
+   - Cell background: Yellow (`#fefce8`) to indicate annualized projection
    - Formula: `Annualized = YTD Actual × Projection Ratio`
 
 ## Implementation
@@ -120,7 +120,7 @@ if (annualButton) {
 5. Grid reloads (dataSignature changed)
    ↓
 6. Cell renders:
-   - Background: GREEN (has custom value)
+   - Background: YELLOW (annualized projection)
    - Value: $31,475 (the calculated annualized amount)
    - NOT EDITABLE (it's a projection, not an override)
 ```
@@ -163,7 +163,7 @@ if (annualButton) {
 
 4. **Visual Feedback**
    - Calculated: Purple cell
-   - Annualized: Green cell (custom value based on YTD projection)
+   - Annualized: Yellow cell (annualized projection based on YTD)
    - Button colors: Purple for calculated, Yellow for annualized
 
 ## Console Output Example
@@ -172,16 +172,18 @@ if (annualButton) {
 📊 [calculateAnnualizedPrcsMdHours] YTD: $25,000, Ratio: 1.259, Annualized: $31,475
 🔀 [setPrcsMdHoursMode] Changed PRCS MD Hours mode: calculated → annualized
 📊 [setPrcsMdHoursMode] Set annualized value for Medical Director Hours (PRCS): $31,475
-🎨 [setPrcsMdHoursMode] Cell will be GREEN (custom annualized projection)
+🎨 [setPrcsMdHoursMode] Cell will be YELLOW (annualized projection)
 🎨 [Grid] PRCS mode changed in dataSignature: calculated → annualized, forcing reload
 ```
 
 ## Testing Checklist
 
-- [ ] Calculated mode → Click "Annualized" → Cell turns green with YTD-based annualized value
+- [ ] Calculated mode → Click "Annualized" → Cell turns yellow with YTD-based annualized value
 - [ ] Value shown equals YTD × projection ratio
 - [ ] Annualized mode → Click cell → Shows toggle (NO slider)
 - [ ] Annualized mode → Click "Calculated" → Cell turns purple, shows physician panel value
-- [ ] Save scenario in annualized mode → Reload → Still annualized with same value
+- [ ] Save scenario in annualized mode → Reload → Still annualized with same value (yellow cell)
 - [ ] Change YTD data → Annualized value updates on next calculation
+- [ ] **NEW**: Calculated mode → Click "Annualize All Grid Values" → PRCS switches to annualized (yellow cell)
+- [ ] **NEW**: Annualized mode → Click "Annualize All Grid Values" → PRCS stays annualized, value preserved
 

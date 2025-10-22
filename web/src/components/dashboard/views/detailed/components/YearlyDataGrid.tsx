@@ -653,12 +653,25 @@ export default function YearlyDataGrid({
     const handleAnnualizeAll = () => {
       console.log('🔢 Annualizing all grid values...')
       
+      // Special handling: Switch PRCS to annualized mode if currently in calculated mode
+      const isPrcsCalculated = store.ytdData.prcsMdHoursMode === 'calculated'
+      if (isPrcsCalculated) {
+        console.log('🔀 [Annualize All] Switching PRCS from calculated to annualized mode')
+        const annualizedPrcsValue = calculateAnnualizedPrcsMdHours()
+        if (annualizedPrcsValue !== null) {
+          store.setPrcsMdHoursMode('annualized', annualizedPrcsValue)
+          console.log(`  ✓ PRCS switched to annualized: $${Math.round(annualizedPrcsValue).toLocaleString()}`)
+        }
+      } else {
+        console.log('  ℹ️  PRCS already in annualized mode, value will be preserved')
+      }
+      
       // Iterate through all rows and set projected values to annualized amounts
       gridData.allRows.forEach((row: any) => {
         const accountCell = row.cells?.[0] as any
         const accountName = accountCell?.text?.trim() || ''
         
-        // Skip if this is a calculated row
+        // Skip if this is a calculated row (but PRCS is now handled above)
         if (isCalculatedAccount(accountName)) {
           return
         }
@@ -716,7 +729,7 @@ export default function YearlyDataGrid({
     
     window.addEventListener('annualizeAllGridValues', handleAnnualizeAll)
     return () => window.removeEventListener('annualizeAllGridValues', handleAnnualizeAll)
-  }, [gridData, projectionRatio, store])
+  }, [gridData, projectionRatio, store, calculateAnnualizedPrcsMdHours])
 
   // After data is loaded, scroll the horizontal container all the way to the right by default
   useEffect(() => {
@@ -1517,71 +1530,56 @@ export default function YearlyDataGrid({
           <div style={{
             marginTop: '12px',
             display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '20px',
             fontSize: '12px',
             color: '#374151',
-            padding: '12px',
+            padding: '8px 12px',
             backgroundColor: '#f9fafb',
             borderRadius: '6px',
-            border: '1px solid #e5e7eb'
+            border: '1px solid #e5e7eb',
+            flexWrap: 'wrap'
           }}>
-            <div style={{ fontWeight: 600, marginBottom: '4px' }}>Cell Background (Value Type):</div>
-            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{
-                  width: '20px',
-                  height: '12px',
-                  backgroundColor: '#fefce8',
-                  border: '1px solid #d4d4d8',
-                  borderRadius: '2px'
-                }} />
-                <span>Annualized Projection</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{
-                  width: '20px',
-                  height: '12px',
-                  backgroundColor: '#dcfce7',
-                  border: '1px solid #d4d4d8',
-                  borderRadius: '2px'
-                }} />
-                <span>Custom Value (from scenario)</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{
-                  width: '20px',
-                  height: '12px',
-                  backgroundColor: '#f3e8ff',
-                  border: '1px solid #d8b4fe',
-                  borderRadius: '2px'
-                }} />
-                <span>Calculated (Physician Panel)</span>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{
+                width: '16px',
+                height: '10px',
+                backgroundColor: '#fefce8',
+                border: '1px solid #d4d4d8',
+                borderRadius: '2px'
+              }} />
+              <span>Annualized Projection</span>
             </div>
-            
-            <div style={{ fontWeight: 600, marginTop: '8px', marginBottom: '4px' }}>Cell Border (Dirty State):</div>
-            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{
-                  width: '20px',
-                  height: '12px',
-                  backgroundColor: '#fefce8',
-                  border: '1px solid #d4d4d8',
-                  borderRadius: '2px'
-                }} />
-                <span>Clean (matches loaded scenario)</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{
-                  width: '20px',
-                  height: '12px',
-                  backgroundColor: '#fefce8',
-                  border: '2px solid #ef4444',
-                  borderRadius: '2px'
-                }} />
-                <span>Changed this session (not saved)</span>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{
+                width: '16px',
+                height: '10px',
+                backgroundColor: '#dcfce7',
+                border: '1px solid #d4d4d8',
+                borderRadius: '2px'
+              }} />
+              <span>Custom Value</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{
+                width: '16px',
+                height: '10px',
+                backgroundColor: '#f3e8ff',
+                border: '1px solid #d8b4fe',
+                borderRadius: '2px'
+              }} />
+              <span>Calculated</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{
+                width: '16px',
+                height: '10px',
+                backgroundColor: '#fefce8',
+                border: '2px solid #ef4444',
+                borderRadius: '2px'
+              }} />
+              <span>Changed (not saved)</span>
             </div>
             
             <div

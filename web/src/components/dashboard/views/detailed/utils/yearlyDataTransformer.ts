@@ -1200,10 +1200,15 @@ export function transformYearlyDataToGrid(
           // NEW LOGIC: Background = type, Border = dirty state
           
           // Determine BACKGROUND COLOR (what type of value it is)
-          if (hasCustomValue) {
+          // Special case: PRCS MD Hours in annualized mode should be YELLOW (not green)
+          const isPrcsMdHours = accountName.match(/Medical Director Hours.*PRCS/i)
+          const prcsMdHoursMode = (window as any).__prcsMdHoursMode || 'calculated'
+          const isPrcsAnnualized = isPrcsMdHours && prcsMdHoursMode === 'annualized'
+          
+          if (hasCustomValue && !isPrcsAnnualized) {
             backgroundColor = '#dcfce7' // GREEN - custom value (from scenario or just set)
           } else {
-            backgroundColor = '#fefce8' // YELLOW - annualized projection
+            backgroundColor = '#fefce8' // YELLOW - annualized projection (or PRCS in annualized mode)
           }
           
           // Determine OUTLINE (whether it's dirty/changed this session)
@@ -1246,7 +1251,7 @@ export function transformYearlyDataToGrid(
       if (isProjectedColumn && row.type === 'Summary' && accountName === 'Total 7100 Therapy Income') {
         cursor = 'pointer'
         
-        // SAME LOGIC for therapy total
+        // SAME LOGIC for therapy total (note: therapy total is never PRCS, so no special case needed)
         if (hasCustomValue) {
           backgroundColor = '#dcfce7' // GREEN
         } else {

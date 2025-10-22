@@ -272,6 +272,8 @@ export type Store = {
   currentProjectionId: string | null
   currentProjectionName: string | null
   currentProjectionUserId: string | null
+  // Last active view mode (for session restoration)
+  lastViewMode?: 'Multi-Year' | 'YTD Detailed' | 'YTD Mobile'
   // Legacy snapshot (for backward compat)
   loadedScenarioSnapshot: {
     scenarioA: ScenarioState
@@ -324,6 +326,7 @@ export type Store = {
   setProjectionField: (scenario: ScenarioKey, field: keyof Projection, value: number) => void
   applyProjectionFromLastActual: (scenario: ScenarioKey) => void
   setSelectedYear: (scenario: ScenarioKey, year: number) => void
+  setLastViewMode: (viewMode: 'Multi-Year' | 'YTD Detailed' | 'YTD Mobile') => void
   setDataMode: (scenario: ScenarioKey, mode: 'Custom' | '2024 Data' | '2025 Data') => void
   loadSnapshot: (snapshot: { scenarioA: ScenarioState; scenarioBEnabled: boolean; scenarioB?: ScenarioState }) => void
   resetToDefaults: (skip2025?: boolean) => void

@@ -76,9 +76,9 @@ console.log('🔍 [Click] Cell details:', {
    - Value is calculated from physician panel and not directly editable
 
 2. **Annualized Mode**:
-   - PRCS MD Hours cell is **yellow** (if annualized) or **green** (if custom value set)
-   - Clicking opens the slider to set a custom value
-   - Value can be edited directly in the grid
+   - PRCS MD Hours cell is **yellow** (annualized projection calculated from YTD)
+   - Clicking opens the mode toggle tooltip (NOT a slider - value is not directly editable)
+   - Value is automatically calculated from YTD actual × projection ratio
 
 ### Physician Panel Behavior
 When hovering over the PRCS Medical Director icon in the physician panel and the physician is selected:
@@ -88,8 +88,8 @@ When hovering over the PRCS Medical Director icon in the physician panel and the
 4. Tooltip closes after mode change
 
 ### Mode Switching
-- **Calculated → Annualized**: Cell turns yellow/green and becomes editable
-- **Annualized → Calculated**: Cell turns purple, any custom value is removed
+- **Calculated → Annualized**: Cell turns yellow (annualized projection) - value is calculated, not editable
+- **Annualized → Calculated**: Cell turns purple, annualized value is removed, reverts to physician panel value
 - Mode change marks scenario as dirty (requires save)
 
 ## Files Modified
@@ -264,6 +264,137 @@ When hovering over the PRCS Medical Director icon in the physician panel and the
 │ Calculated from physician panel│
 └─────────────────────────────────┘
 ```
+
+## Bug Fix (Round 7) - Annualized Cell Color
+
+### Issue: Annualized Cell Showing Green Instead of Yellow
+**Problem**: When switching PRCS MD Hours to annualized mode, the cell turned green instead of yellow.
+**Root Cause**: The annualized value was stored in `customProjectedValues`, which made `hasCustomValue` true, resulting in green background (custom value) instead of yellow (annualized projection).
+**Expected Behavior**: Annualized PRCS should be yellow to indicate it's a calculated projection, not a manually set custom value.
+
+**Fix** (`yearlyDataTransformer.ts`, lines ~1203-1211):
+Added special case detection for PRCS MD Hours in annualized mode:
+```typescript
+// Special case: PRCS MD Hours in annualized mode should be YELLOW (not green)
+const isPrcsMdHours = accountName.match(/Medical Director Hours.*PRCS/i)
+const prcsMdHoursMode = (window as any).__prcsMdHoursMode || 'calculated'
+const isPrcsAnnualized = isPrcsMdHours && prcsMdHoursMode === 'annualized'
+
+if (hasCustomValue && !isPrcsAnnualized) {
+  backgroundColor = '#dcfce7' // GREEN - custom value (from scenario or just set)
+} else {
+  backgroundColor = '#fefce8' // YELLOW - annualized projection (or PRCS in annualized mode)
+}
+```
+
+**Result**:
+- ✅ Calculated mode → Purple cell
+- ✅ Annualized mode → **Yellow cell** (was incorrectly green before)
+- ✅ User manually sets custom value → Green cell (for other accounts, not PRCS in annualized mode)
+
+## Dirty Tracking for PRCS (Round 8)
+
+### What Gets Tracked?
+For PRCS, we track **BOTH the mode AND the value** for dirty detection:
+
+1. **Mode tracking** (`prcsMdHoursMode`):
+   - Tracked in snapshot (`ytdData.prcsMdHoursMode`)
+   - Checked in overall dirty detection
+   - Checked in grid-level dirty detection (line 502 in YTDDetailed.tsx)
+
+2. **Value tracking** (annualized amount):
+   - Stored in `ytdCustomProjectedValues['Medical Director Hours (PRCS)']`
+   - Only present when in annualized mode
+   - Checked via customProjectedValues comparison
+
+### When Does Red Outline Appear?
+
+**Red outline shows when the current state differs from snapshot:**
+
+1. **Switched from Calculated → Annualized**
+   - Snapshot: No custom value, mode = 'calculated'
+   - Current: Has custom value, mode = 'annualized'
+   - Result: ✅ Red outline (NEW custom value detected)
+
+2. **Switched from Annualized → Calculated**
+   - Snapshot: Has custom value, mode = 'annualized'
+   - Current: No custom value, mode = 'calculated'
+   - Result: ✅ Red outline (REMOVED custom value detected)
+
+3. **Stayed in Annualized, but value changed**
+   - Snapshot: Custom value = $30,000, mode = 'annualized'
+   - Current: Custom value = $32,000, mode = 'annualized'
+   - Result: ✅ Red outline (CHANGED custom value)
+   - Note: This can happen if YTD data changes and value is recalculated
+
+4. **Stayed in Annualized, value unchanged**
+   - Snapshot: Custom value = $30,000, mode = 'annualized'
+   - Current: Custom value = $30,000, mode = 'annualized'
+   - Result: ✅ No red outline (clean, matches snapshot)
+
+### When Does "Reset Grid" Button Appear?
+
+**The grid is marked as dirty when:**
+- Any custom projected value changes (including PRCS annualized value)
+- **OR** any grid-affecting field changes (including `prcsMdHoursMode`)
+- **OR** physician data changes (affects calculated rows)
+
+This means toggling PRCS mode (calculated ↔ annualized) will:
+1. ✅ Show red outline on PRCS cell
+2. ✅ Mark grid as dirty (show Reset Grid button)
+3. ✅ Enable Save button (overall scenario dirty)
+
+### Why Track Both Mode AND Value?
+
+**Mode matters because:**
+- It determines whether the value is editable or calculated
+- It changes the cell color (purple vs yellow)
+- Switching modes is a meaningful user action that should be saved
+
+**Value matters because:**
+- In annualized mode, it's the projected amount
+- It can change if YTD data updates
+- User needs to save it to preserve the annualized calculation
+
+## Annualize All Integration (Round 9)
+
+### Issue: "Annualize All" Button Should Toggle PRCS
+**Requirement**: When user clicks the "Annualize All Grid Values" button, it should also switch PRCS from calculated mode to annualized mode (if it's currently in calculated mode).
+
+**Implementation** (`YearlyDataGrid.tsx`, lines ~656-667):
+Added special handling at the start of `handleAnnualizeAll`:
+```typescript
+// Special handling: Switch PRCS to annualized mode if currently in calculated mode
+const isPrcsCalculated = store.ytdData.prcsMdHoursMode === 'calculated'
+if (isPrcsCalculated) {
+  console.log('🔀 [Annualize All] Switching PRCS from calculated to annualized mode')
+  const annualizedPrcsValue = calculateAnnualizedPrcsMdHours()
+  if (annualizedPrcsValue !== null) {
+    store.setPrcsMdHoursMode('annualized', annualizedPrcsValue)
+    console.log(`  ✓ PRCS switched to annualized: $${Math.round(annualizedPrcsValue).toLocaleString()}`)
+  }
+} else {
+  console.log('  ℹ️  PRCS already in annualized mode, value will be preserved')
+}
+```
+
+**Behavior**:
+1. **PRCS in Calculated Mode** → Click "Annualize All"
+   - PRCS switches to annualized mode ✅
+   - PRCS value calculated from YTD × ratio ✅
+   - Cell turns yellow ✅
+   - All other cells annualized ✅
+
+2. **PRCS in Annualized Mode** → Click "Annualize All"
+   - PRCS stays in annualized mode ✅
+   - PRCS value is preserved (not recalculated) ✅
+   - All other cells annualized ✅
+
+3. **PRCS value updates if YTD changes**:
+   - If YTD data changes and you click "Annualize All" again
+   - Other cells update to new annualized values
+   - PRCS stays at its previously calculated annualized value (not recalculated)
+   - To recalculate PRCS: switch to calculated, then back to annualized
 
 ## Notes
 - Mode toggle only appears in YTD mode (not in multi-year scenarios)

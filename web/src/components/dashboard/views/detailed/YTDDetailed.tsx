@@ -498,7 +498,8 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         'consultingServicesAgreement',
         'locumCosts',
         'prcsMedicalDirectorHours',
-        'prcsDirectorPhysicianId'
+        'prcsDirectorPhysicianId',
+        'prcsMdHoursMode'  // CRITICAL: Track mode changes for PRCS (calculated vs annualized)
       ]
       
       for (const field of gridAffectingFields) {

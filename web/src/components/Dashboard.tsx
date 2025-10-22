@@ -113,6 +113,8 @@ export const useDashboardStore = create<Store>()(
         currentProjectionId: null,
         currentProjectionName: null,
         currentProjectionUserId: null,
+        // Last active view mode (for session restoration)
+        lastViewMode: undefined,
         // Legacy snapshots
         loadedScenarioSnapshot: null,
         loadedScenarioBSnapshot: null,
@@ -1127,6 +1129,10 @@ export const useDashboardStore = create<Store>()(
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!sc) return
             sc.selectedYear = year
+          }),
+        setLastViewMode: (viewMode) =>
+          set((state) => {
+            state.lastViewMode = viewMode
           }),
         setDataMode: (scenario, mode) =>
           set((state) => {
@@ -3068,14 +3074,23 @@ export const useDashboardStore = create<Store>()(
 
             // SESSION STORAGE STRATEGY:
             // - Persists full scenario state (including _overrides) within browser tab
-            // - Cleared when tab/window closes (no stale state across sessions)
             // - Preserved across page refresh (user can continue working)
+            // - 8-hour expiration to prevent stale data from browser session restoration
             // - beforeunload warning protects unsaved work
 
             const age = data.state?._timestamp ? Date.now() - data.state._timestamp : 0
+            const ageHours = age / (1000 * 60 * 60)
             const ageMinutes = Math.floor(age / (1000 * 60))
-            console.log(`[STORAGE] Loading persisted state from session (age: ${ageMinutes}m)`)
+            
+            // Expire data after 8 hours
+            const EXPIRATION_HOURS = 8
+            if (ageHours > EXPIRATION_HOURS) {
+              console.log(`[STORAGE] ⏰ Data expired (age: ${ageMinutes}m, limit: ${EXPIRATION_HOURS}h) - clearing sessionStorage`)
+              sessionStorage.removeItem(name)
+              return null
+            }
 
+            console.log(`[STORAGE] Loading persisted state from session (age: ${ageMinutes}m)`)
             return str
           } catch {
             return str
@@ -3099,6 +3114,7 @@ export const useDashboardStore = create<Store>()(
         // - Includes _overrides flags (slider adjustments) and all user edits
         // - Tab close = all cleared (user gets warning if dirty)
         // - Page refresh = work preserved
+        // - 8-hour expiration prevents stale data from browser session restoration
 
         // Full scenario state (including unsaved slider work via _overrides)
         scenarioA: state.scenarioA,
@@ -3128,6 +3144,9 @@ export const useDashboardStore = create<Store>()(
 
         // UI preferences
         scenarioBEnabled: state.scenarioBEnabled,
+        
+        // View mode (to restore correct view on refresh)
+        lastViewMode: state.lastViewMode,
 
         // Snapshots for dirty detection (must be persisted to detect changes after refresh)
         loadedScenarioSnapshot: state.loadedScenarioSnapshot,
@@ -3141,9 +3160,22 @@ export const useDashboardStore = create<Store>()(
   )
 )
 
-// Initialize projections on store creation
+// Initialize projections on store creation (only if resuming Multi-Year session)
 setTimeout(() => {
   const store = useDashboardStore.getState()
+  
+  // Check if we're resuming a Multi-Year session or starting fresh
+  const persistedViewMode = store.lastViewMode
+  
+  if (!persistedViewMode || persistedViewMode === 'YTD Detailed' || persistedViewMode === 'YTD Mobile') {
+    // Fresh visit or was in YTD mode - skip projection initialization
+    // Projections will be loaded on-demand when user switches to Multi-Year view
+    console.log(`[Init] ${persistedViewMode ? 'Resuming YTD session' : 'Fresh visit'} - skipping projection initialization`)
+    return
+  }
+  
+  // Resuming Multi-Year session - restore projection data if needed
+  console.log('[Init] Resuming Multi-Year session - checking projection data')
   
   // Only apply projections if data doesn't exist from sessionStorage
   // On page refresh, sessionStorage already has the correct computed data
@@ -3668,6 +3700,36 @@ export function Dashboard() {
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [store])
+
+  // Restore view mode from persisted state and handle stale projection data
+  useEffect(() => {
+    const persistedViewMode = store.lastViewMode
+    
+    if (persistedViewMode) {
+      console.log(`[INIT] Restoring last view mode: ${persistedViewMode}`)
+      setViewMode(persistedViewMode)
+      
+      // If user was in Multi-Year view, mark it as initialized
+      if (persistedViewMode === 'Multi-Year') {
+        setMultiYearInitialized(true)
+      }
+    } else {
+      // No persisted view mode - this is a fresh visit or expired session
+      console.log('[INIT] No persisted view mode - fresh visit, clearing stale projection data')
+      
+      // Clear projection scenarios A/B data (not needed in default YTD view)
+      // This prevents stale projection data from lingering across browser session restoration
+      store.setScenarioEnabled(false)
+    }
+    
+    // Only run once on mount
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Track viewMode changes and persist to store for session restoration
+  useEffect(() => {
+    store.setLastViewMode(viewMode)
+    console.log(`[ViewMode] Changed to: ${viewMode}`)
+  }, [viewMode, store])
 
   // Detect mobile and show warning on initial load
   useEffect(() => {
