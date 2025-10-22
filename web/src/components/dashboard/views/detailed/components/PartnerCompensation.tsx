@@ -343,7 +343,8 @@ export default function PartnerCompensation({
     
     return result
   }, [
-    physicians,
+    // Only depend on data that affects compensation calculation
+    JSON.stringify(physicians),  // Deep comparison of physicians array
     fy2025?.therapyIncome,
     fy2025?.nonEmploymentCosts,
     fy2025?.nonMdEmploymentCosts,
@@ -353,9 +354,8 @@ export default function PartnerCompensation({
     fy2025?.consultingServicesAgreement,
     fy2025?.locumCosts,
     fy2025?.prcsDirectorPhysicianId,
-    store.scenarioA.projection?.benefitCostsGrowthPct,
-    isRefreshing,
-    isMobile
+    store.scenarioA.projection?.benefitCostsGrowthPct
+    // Removed: isRefreshing, isMobile (don't affect calculation)
   ])
   const ytdData = useMemo(() => parseYTDPhysicianData(physicians, equityData, summaryData), [physicians, equityData, summaryData])
   

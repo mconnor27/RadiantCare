@@ -361,17 +361,11 @@ export default function MultiYearView() {
     // Check if per-year data differs in any future year
     console.log('[DIRTY CHECK A] Starting per-year comparison, future count:', current.future.length)
     const perYearDirty = current.future.some((currentFy, idx) => {
-      console.log(`[DIRTY CHECK A] Checking year ${currentFy.year} (index ${idx})`)
       const snapshotFy = snapshot.future[idx]
       if (!snapshotFy) {
-        console.log(`[DIRTY CHECK A] No snapshot for index ${idx}`)
+        console.log(`[DIRTY CHECK A] Year ${currentFy.year}: No snapshot found`)
         return true
       }
-
-      console.log(`[DIRTY CHECK A] Year ${currentFy.year} physician counts:`, {
-        current: currentFy.physicians?.length,
-        snapshot: snapshotFy.physicians?.length
-      })
 
       // Compare all per-year override fields
       const threshold = 0.01
@@ -390,22 +384,13 @@ export default function MultiYearView() {
 
       // Compare physician arrays
       if (currentFy.physicians.length !== snapshotFy.physicians.length) {
-        console.log(`[DIRTY CHECK A] Physician count differs`)
+        console.log(`[DIRTY CHECK A] Year ${currentFy.year}: Physician count differs (${currentFy.physicians.length} vs ${snapshotFy.physicians.length})`)
         return true
       }
 
       const physiciansDiffer = currentFy.physicians.some((currentPhys, physIdx) => {
         const snapshotPhys = snapshotFy.physicians[physIdx]
         if (!snapshotPhys) return true
-
-        console.log(`[DIRTY CHECK A] Comparing physician ${currentPhys.name}:`, {
-          currentSalary: currentPhys.salary,
-          snapshotSalary: snapshotPhys.salary,
-          areSame: currentPhys.salary === snapshotPhys.salary,
-          currentRef: currentPhys,
-          snapshotRef: snapshotPhys,
-          areReferencesSame: currentPhys === snapshotPhys
-        })
 
         const differs = currentPhys.id !== snapshotPhys.id ||
                currentPhys.name !== snapshotPhys.name ||
@@ -426,11 +411,15 @@ export default function MultiYearView() {
                currentPhys.additionalDaysWorked !== snapshotPhys.additionalDaysWorked
 
         if (differs) {
-          console.log(`[DIRTY CHECK A] Physician ${currentPhys.name} differs!`)
+          console.log(`[DIRTY CHECK A] Year ${currentFy.year}: Physician ${currentPhys.name} has changes`)
         }
         return differs
       })
 
+      if (!physiciansDiffer) {
+        console.log(`[DIRTY CHECK A] Year ${currentFy.year}: All ${currentFy.physicians.length} physicians match`)
+      }
+      
       return physiciansDiffer
     })
 

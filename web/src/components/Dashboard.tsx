@@ -3227,7 +3227,21 @@ export function usePartnerComp(year: number, scenario: ScenarioKey, fyOverride?:
     return allComps
       .filter(c => c.type === 'partner')
       .map(c => ({ id: c.id, name: c.name, comp: c.comp }))
-  }, [fy, sc, year])
+  }, [
+    // Depend on specific fields that affect compensation, not entire objects
+    year,
+    fy?.therapyIncome,
+    fy?.nonEmploymentCosts,
+    fy?.nonMdEmploymentCosts,
+    fy?.miscEmploymentCosts,
+    fy?.locumCosts,
+    fy?.medicalDirectorHours,
+    fy?.prcsMedicalDirectorHours,
+    fy?.consultingServicesAgreement,
+    fy?.prcsDirectorPhysicianId,
+    JSON.stringify(fy?.physicians),  // Serialize physicians array for deep comparison
+    sc.projection.benefitCostsGrowthPct
+  ])
 }
 
 // Helper function to get default values for a specific year
