@@ -2867,7 +2867,10 @@ export const useDashboardStore = create<Store>()(
             }
 
             expectedFuture.push(futureYear)
+            console.log(`🔧 [computeExpectedFromBaseline] Created year ${year}:`, futureYear.year)
           }
+          
+          console.log(`🔧 [computeExpectedFromBaseline] Total years created:`, expectedFuture.length, 'Years:', expectedFuture.map(f => f.year))
 
           // compute removed
 
@@ -2892,7 +2895,16 @@ export const useDashboardStore = create<Store>()(
             const sparseOverrides = futureYearsFromScenario.find(f => f.year === year)
             const expectedYear = expectedDerived.find(f => f.year === year)
 
-            if (!expectedYear) continue
+            console.log(`🏗️ [buildScenarioFromProjection] Processing year ${year}:`, {
+              hasSparseOverrides: !!sparseOverrides,
+              hasExpectedYear: !!expectedYear,
+              expectedYearYear: expectedYear?.year
+            })
+
+            if (!expectedYear) {
+              console.log(`❌ [buildScenarioFromProjection] Skipping year ${year} - no expected year found`)
+              continue
+            }
 
             // Start with expected (computed) values
             const mergedYear = JSON.parse(JSON.stringify(expectedYear)) as FutureYear
@@ -2912,7 +2924,10 @@ export const useDashboardStore = create<Store>()(
             }
 
             future.push(mergedYear)
+            console.log(`✅ [buildScenarioFromProjection] Added year ${year} to future array`)
           }
+          
+          console.log(`🏗️ [buildScenarioFromProjection] Final future array length:`, future.length, 'Years:', future.map(f => f.year))
 
           // compute removed
 

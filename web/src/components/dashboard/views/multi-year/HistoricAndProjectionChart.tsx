@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import createPlotlyComponent from 'react-plotly.js/factory'
 import Plotly from 'plotly.js-dist-min'
 const Plot = createPlotlyComponent(Plotly)
@@ -10,11 +10,53 @@ import { calculateNetIncomeForMDs } from '../../../Dashboard'
 export default function HistoricAndProjectionChart() {
   const store = useDashboardStore()
   const historicYears = store.historic.map((h) => h.year)
+  const [isDataReady, setIsDataReady] = useState(false)
+  const [containerWidth, setContainerWidth] = useState<number | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   
-  // Log only on mount (not on every render)
+  // Track container width for aspect ratio using ResizeObserver
   useEffect(() => {
-    console.log('📊 Multi-Year Chart: Loaded projections for', store.scenarioA.future.map(f => f.year).join(', '))
+    const updateWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.offsetWidth)
+      }
+    }
+
+    // Immediate synchronous measurement to prevent layout shift
+    updateWidth()
+    
+    // Use ResizeObserver to detect container size changes
+    if (containerRef.current) {
+      const resizeObserver = new ResizeObserver(() => {
+        updateWidth()
+      })
+      resizeObserver.observe(containerRef.current)
+      
+      // Keep window resize listener as fallback
+      window.addEventListener('resize', updateWidth)
+      
+      return () => {
+        resizeObserver.disconnect()
+        window.removeEventListener('resize', updateWidth)
+      }
+    }
   }, [])
+
+  // Check if data is ready - we need 2025 baseline data and projected years
+  useEffect(() => {
+    const has2025Data = store.scenarioA.future.some(f => f.year === 2025)
+    const hasProjectedYears = store.scenarioA.future.length >= 6 // Should have 2025-2030
+    const dataReady = has2025Data && hasProjectedYears
+    
+    if (dataReady && !isDataReady) {
+      console.log('📊 Multi-Year Chart: Data ready, loaded projections for', store.scenarioA.future.map(f => f.year).join(', '))
+      setIsDataReady(true)
+    } else if (!dataReady && isDataReady) {
+      // Data became invalid (e.g., scenario loading)
+      console.log('📊 Multi-Year Chart: Data not ready, waiting...')
+      setIsDataReady(false)
+    }
+  }, [store.scenarioA.future, isDataReady])
 
   // Helper: Calculate metrics from a FutureYear entry (used for 2025 baseline from store)
   const calculateMetricsFromFutureYear = (fy: any) => {
@@ -207,23 +249,81 @@ export default function HistoricAndProjectionChart() {
     return getTotalIncome(f) - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - f.locumCosts - md - buyouts - delayedW2
   }), [store.scenarioA.future])
   
-  const scBNet = useMemo(() => store.scenarioB?.future.map(f => {
-    const md = f.physicians.reduce((s, e) => {
-      if (e.type === 'employee') return s + (e.salary ?? 0)
-      if (e.type === 'newEmployee') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
-      if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
-      return s
-    }, 0)
-    const buyouts = f.physicians.reduce((s, p) => s + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0), 0)
-    const delayedW2 = f.physicians.reduce((s, p) => {
-      if (p.type === 'employeeToPartner') {
-        const delayed = calculateDelayedW2Payment(p, f.year)
-        return s + delayed.amount + delayed.taxes
-      }
-      return s
-    }, 0)
-    return getTotalIncome(f) - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - f.locumCosts - md - buyouts - delayedW2
-  }) || [], [store.scenarioB?.future])
+  const scBNet = useMemo(() => {
+    if (!store.scenarioB?.future) return []
+    
+    // Check if Scenario B has 2025 in its future array
+    const has2025 = store.scenarioB.future.some(f => f.year === 2025)
+    
+    let result: number[]
+    if (has2025) {
+      // Scenario B has 2025-2030 (modular projection scenario)
+      result = store.scenarioB.future.map(f => {
+        const md = f.physicians.reduce((s, e) => {
+          if (e.type === 'employee') return s + (e.salary ?? 0)
+          if (e.type === 'newEmployee') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+          if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+          return s
+        }, 0)
+        const buyouts = f.physicians.reduce((s, p) => s + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0), 0)
+        const delayedW2 = f.physicians.reduce((s, p) => {
+          if (p.type === 'employeeToPartner') {
+            const delayed = calculateDelayedW2Payment(p, f.year)
+            return s + delayed.amount + delayed.taxes
+          }
+          return s
+        }, 0)
+        const totalIncome = getTotalIncome(f)
+        const netIncome = totalIncome - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - f.locumCosts - md - buyouts - delayedW2
+        return netIncome
+      })
+    } else {
+      // Scenario B only has 2026-2030 (legacy scenario) - add 2025 baseline
+      const baseline2025 = baselineA.netIncome
+      const projectedYears = store.scenarioB.future.map(f => {
+        const md = f.physicians.reduce((s, e) => {
+          if (e.type === 'employee') return s + (e.salary ?? 0)
+          if (e.type === 'newEmployee') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+          if (e.type === 'employeeToPartner') return s + (e.salary ?? 0) * getEmployeePortionOfYear(e)
+          return s
+        }, 0)
+        const buyouts = f.physicians.reduce((s, p) => s + (p.type === 'partnerToRetire' ? (p.buyoutCost ?? 0) : 0), 0)
+        const delayedW2 = f.physicians.reduce((s, p) => {
+          if (p.type === 'employeeToPartner') {
+            const delayed = calculateDelayedW2Payment(p, f.year)
+            return s + delayed.amount + delayed.taxes
+          }
+          return s
+        }, 0)
+        const totalIncome = getTotalIncome(f)
+        const netIncome = totalIncome - f.nonEmploymentCosts - f.nonMdEmploymentCosts - f.miscEmploymentCosts - f.locumCosts - md - buyouts - delayedW2
+        
+        // Debug specific year calculations
+        if (f.year === 2030) {
+          console.log('📊 2030 Net Income Calculation (Legacy B):', {
+            year: f.year,
+            totalIncome,
+            nonEmploymentCosts: f.nonEmploymentCosts,
+            nonMdEmploymentCosts: f.nonMdEmploymentCosts,
+            miscEmploymentCosts: f.miscEmploymentCosts,
+            locumCosts: f.locumCosts,
+            mdCosts: md,
+            buyouts,
+            delayedW2,
+            netIncome,
+            isNaN: isNaN(netIncome),
+            isFinite: isFinite(netIncome)
+          })
+        }
+        
+        return netIncome
+      })
+      result = [baseline2025, ...projectedYears]
+    }
+    
+    console.log('📊 Scenario B Net Income years:', store.scenarioB.future.map(f => f.year), 'values:', result, 'has2025:', has2025)
+    return result
+  }, [store.scenarioB?.future, baselineA.netIncome])
   
   // Memoize Net Income for MDs calculations
   const scANetIncomeForMDs = useMemo(() => 
@@ -266,15 +366,108 @@ export default function HistoricAndProjectionChart() {
     return [value2025, ...values2026Plus]
   }, [store.scenarioBEnabled, store.scenarioB?.future, scAStaffEmployment])
 
+  // Calculate chart height based on container width and aspect ratio
+  const aspectRatio = 0.5 // Height = 50% of width (similar to DetailedChart)
+  const chartHeight = containerWidth !== null
+    ? Math.round(containerWidth * aspectRatio)
+    : 700 // Default height
+
+  // Memoize layout to make it reactive to height changes
+  const chartLayout = useMemo(() => ({
+    title: { text: 'Historic and Projected Totals', font: { weight: 700 } },
+    dragmode: false as any,
+    legend: { orientation: 'v', x: 1.02, xanchor: 'left', y: 0.5, yanchor: 'middle', bordercolor: '#e5e7eb', borderwidth: 1, tracegroupgap: 0 },
+    margin: { l: 60, r: 150, t: 40, b: 40 },
+    yaxis: {
+      tickprefix: '$',
+      separatethousands: true,
+      tickformat: ',.0f',
+      rangemode: 'tozero',
+      autorange: true,
+      automargin: true,
+    },
+    xaxis: { dtick: 1, range: [2015.5, 2030.5] },
+    autosize: true,
+    height: chartHeight,
+  }), [chartHeight])
+
+  // Loading indicator component
+  if (!isDataReady || containerWidth === null) {
+    // Use CSS aspect ratio to maintain correct height while measuring
+    const aspectRatioPercent = (aspectRatio * 100).toFixed(2)
+    
+    return (
+      <div
+        ref={containerRef}
+        style={{
+          flex: 1,
+          minWidth: 600,
+          maxWidth: 1400,
+          margin: '0 auto',
+          borderRadius: 8,
+          background: '#f9fafb',
+          padding: 12,
+        }}
+      >
+        <div style={{ 
+          border: '1px solid #d1d5db', 
+          borderRadius: 6, 
+          background: '#ffffff', 
+          padding: 4, 
+          boxShadow: '0 6px 10px rgba(0, 0, 0, 0.15)',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          {/* Aspect ratio spacer - maintains height based on width */}
+          <div style={{ paddingBottom: `${aspectRatioPercent}%` }} />
+          {/* Content overlay */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 16
+          }}>
+            <div style={{
+              width: 48,
+              height: 48,
+              border: '4px solid #e5e7eb',
+              borderTop: '4px solid #1976d2',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
+            }} />
+            <div style={{ 
+              fontSize: 16, 
+              color: '#6b7280',
+              fontWeight: 500
+            }}>
+              {!isDataReady ? 'Loading chart data and projections...' : 'Loading chart...'}
+            </div>
+            <style>{`
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            `}</style>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
+      ref={containerRef}
       style={{
         flex: 1,
         minWidth: 600,
-        maxWidth: 1200,
+        maxWidth: 1400,
         margin: '0 auto',
-        //border: '2px solid #d1d5db',
         borderRadius: 8,
         background: '#f9fafb',
         padding: 12,
@@ -396,6 +589,25 @@ export default function HistoricAndProjectionChart() {
             baselineB ? baselineB.netIncome : null,
             'net'
           )
+          
+          // Debug logging for Net Income traces
+          if (store.scenarioBEnabled && store.scenarioB) {
+            const scenarioAYears = [2025, ...store.scenarioA.future.filter(f => f.year !== 2025).map(f => f.year)]
+            const scenarioAValues = [baselineA.netIncome, ...scANet.slice(1)]
+            const scenarioBYears = [2025, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.year)]
+            const scenarioBValues = [baselineB!.netIncome, ...scBNet.slice(1)]
+            
+            console.log('📊 Net Income Trace Debug:', {
+              scenarioAYears,
+              scenarioAValues,
+              scenarioBYears,
+              scenarioBValues,
+              scBNetLength: scBNet.length,
+              scBNetSlice1: scBNet.slice(1),
+              has2030InScenarioB: scenarioBYears.includes(2030),
+              scenarioB2030Value: scenarioBValues[scenarioBYears.indexOf(2030)]
+            })
+          }
 
           createTraceGroup(
             'Employment Costs',
@@ -484,23 +696,7 @@ export default function HistoricAndProjectionChart() {
 
           return traces
         })() as any}
-        layout={{
-          title: { text: 'Historic and Projected Totals', font: { weight: 700 } },
-          dragmode: false as any,
-          //legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.1, yanchor: 'top', traceorder: 'grouped' },
-          legend: { orientation: 'v', x: 1.02, xanchor: 'left', y: 0.5, yanchor: 'middle', bordercolor: '#e5e7eb', borderwidth: 1, tracegroupgap: 0 },
-          margin: { l: 60, r: 150, t: 40, b: 40 },
-          yaxis: {
-            tickprefix: '$',
-            separatethousands: true,
-            tickformat: ',.0f',
-            rangemode: 'tozero',
-            autorange: true,
-            automargin: true,
-          },
-          xaxis: { dtick: 1, range: [2015.5, 2030.5] },
-
-        }}
+        layout={chartLayout as any}
         config={{
           responsive: true,
           displayModeBar: false,
@@ -540,7 +736,7 @@ export default function HistoricAndProjectionChart() {
           return false // Prevent default behavior
         }}
         useResizeHandler={true}
-        style={{ width: '100%', height: 600 }}
+        style={{ width: '100%' }}
       />
       </div>
     </div>

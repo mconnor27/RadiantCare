@@ -752,7 +752,7 @@ export default function MultiYearView() {
       />
 
       <div style={{
-        maxWidth: 1200,
+        maxWidth: 1400,
         margin: '0 auto',
         border: '1px solid #d1d5db',
         borderRadius: 6,
