@@ -425,6 +425,7 @@ export default function YearlyDataGrid({
   )
   
   const loadData = useCallback(async () => {
+    console.log('🔄 [Grid loadData] Called!')
     try {
       // In production, wait for cached data to arrive before loading stale historical data
       if (environment === 'production' && !cachedSummary && isLoadingCache) {
@@ -435,6 +436,13 @@ export default function YearlyDataGrid({
       
       // Get 2025 physician data and benefit growth rate from store based on mode
       const fy2025 = store.ytdData
+      console.log('🔍 [Grid loadData] Physician data from store:', {
+        physiciansCount: fy2025?.physicians?.length,
+        prcsMedicalDirectorHours: fy2025?.prcsMedicalDirectorHours,
+        medicalDirectorHours: fy2025?.medicalDirectorHours,
+        consultingServicesAgreement: fy2025?.consultingServicesAgreement,
+        locumCosts: fy2025?.locumCosts
+      })
       const benefitGrowthPct = store.scenarioA.projection.benefitCostsGrowthPct
       const physicianData = fy2025 ? {
         physicians: fy2025.physicians,
@@ -494,7 +502,7 @@ export default function YearlyDataGrid({
       // Load both the grid data and the projection ratio
       // customValues already defined above for signature
       const [data, ratio] = await Promise.all([
-        loadYearlyGridData(collapsedSections, customValues, physicianData, cachedSummaryData),
+        loadYearlyGridData(collapsedSections, customValues, physicianData, cachedSummaryData, store.ytdGridSnapshot),
         calculateProjectionRatio(cachedSummaryData)
       ])
 
@@ -546,6 +554,25 @@ export default function YearlyDataGrid({
 
         // Notify parent that sync is complete
         onSyncComplete?.()
+        
+        // Capture the grid snapshot for dirty detection
+        // Only capture if we don't already have a snapshot (null check)
+        console.log('🔍 [Grid] Snapshot check:', {
+          hasCompletedFirstSync: hasCompletedFirstSync.current,
+          hasExistingSnapshot: store.ytdGridSnapshot !== null,
+          currentCustomValuesCount: Object.keys(store.ytdCustomProjectedValues).length
+        })
+        
+        // Capture snapshot if we don't have one yet
+        if (store.ytdGridSnapshot === null) {
+          console.log('📸 [Grid] About to capture snapshot (no snapshot exists)...')
+          setTimeout(() => {
+            store.captureYtdGridSnapshot()
+            console.log('📸 [Grid] Captured snapshot for dirty detection:', store.ytdGridSnapshot)
+          }, 100)
+        } else {
+          console.log('⏭️ [Grid] Skipping snapshot capture (snapshot already exists)')
+        }
       }, 200)
     } catch (err) {
       console.error('Error loading yearly data:', err)
@@ -1369,52 +1396,73 @@ export default function YearlyDataGrid({
           <div style={{
             marginTop: '12px',
             display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: '24px',
+            flexDirection: 'column',
+            gap: '12px',
             fontSize: '12px',
-            color: '#374151'
+            color: '#374151',
+            padding: '12px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '6px',
+            border: '1px solid #e5e7eb'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{
-                width: '20px',
-                height: '12px',
-                backgroundColor: '#fef3c7',
-                border: '1px solid #fbbf24',
-                borderRadius: '2px'
-              }} />
-              <span>Annualized Projection</span>
+            <div style={{ fontWeight: 600, marginBottom: '4px' }}>Cell Background (Value Type):</div>
+            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{
+                  width: '20px',
+                  height: '12px',
+                  backgroundColor: '#fefce8',
+                  border: '1px solid #d4d4d8',
+                  borderRadius: '2px'
+                }} />
+                <span>Annualized Projection</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{
+                  width: '20px',
+                  height: '12px',
+                  backgroundColor: '#dcfce7',
+                  border: '1px solid #d4d4d8',
+                  borderRadius: '2px'
+                }} />
+                <span>Custom Value (from scenario)</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{
+                  width: '20px',
+                  height: '12px',
+                  backgroundColor: '#f3e8ff',
+                  border: '1px solid #d8b4fe',
+                  borderRadius: '2px'
+                }} />
+                <span>Calculated (Physician Panel)</span>
+              </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{
-                width: '20px',
-                height: '12px',
-                backgroundColor: '#dcfce7',
-                border: '1px solid #22c55e',
-                borderRadius: '2px'
-              }} />
-              <span>Configured Default</span>
+            
+            <div style={{ fontWeight: 600, marginTop: '8px', marginBottom: '4px' }}>Cell Border (Dirty State):</div>
+            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{
+                  width: '20px',
+                  height: '12px',
+                  backgroundColor: '#fefce8',
+                  border: '1px solid #d4d4d8',
+                  borderRadius: '2px'
+                }} />
+                <span>Clean (matches loaded scenario)</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{
+                  width: '20px',
+                  height: '12px',
+                  backgroundColor: '#fefce8',
+                  border: '2px solid #ef4444',
+                  borderRadius: '2px'
+                }} />
+                <span>Changed this session (not saved)</span>
+              </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{
-                width: '20px',
-                height: '12px',
-                backgroundColor: '#fee2e2',
-                border: '1px solid #ef4444',
-                borderRadius: '2px'
-              }} />
-              <span>User Changed</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{
-                width: '20px',
-                height: '12px',
-                backgroundColor: '#f3e8ff',
-                border: '1px solid #d8b4fe',
-                borderRadius: '2px'
-              }} />
-              <span>Set In Physician Panel</span>
-            </div>
+            
             <div
               style={{
                 display: 'flex',
@@ -1428,14 +1476,15 @@ export default function YearlyDataGrid({
                 height: '20px',
                 border: '1px solid #ccc',
                 borderRadius: '50%',
-                backgroundColor: '#f8f9fa'
+                backgroundColor: '#f8f9fa',
+                marginTop: '4px'
               }}
               onMouseEnter={(e) => {
                 const mouseEvent = e as unknown as { clientX: number; clientY: number }
                 const pos = calculateTooltipPosition(mouseEvent.clientX, mouseEvent.clientY)
                 setTooltip({
                   show: true,
-                  text: 'Click any projected value (rightmost column) to adjust it. The cell background color indicates how the value was determined.',
+                  text: 'Click any projected value (rightmost column) to adjust it. Background color shows value type (annualized vs custom). Red border indicates unsaved changes.',
                   x: pos.x,
                   y: pos.y
                 })

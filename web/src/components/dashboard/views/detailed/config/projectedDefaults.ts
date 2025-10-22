@@ -97,47 +97,54 @@ export const projectedDefaultsByAccount: Record<string, ProjectedAccountDefaults
     sliderStep: UI_DEFAULTS.therapyIncomeStep,
   },
   
-  // Medical Director Hours
+  // Medical Director Hours (Shared)
+  // REMOVED: Hard-coded default (was ACTUAL_2025_MEDICAL_DIRECTOR_HOURS = 119374)
+  // Now uses annualized value; admin can set preferred value in "Default" scenario
   'Medical Director Hours (Shared)': {
-    defaultValue: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
+    // defaultValue: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS, // COMMENTED OUT - use scenario instead
     bounds: { 
       mode: 'absolute', 
       min: 0, 
       max: UI_DEFAULTS.medicalDirectorHoursMax 
     },
-    sliderInitial: 'default',
+    sliderInitial: 'annualized', // Changed from 'default'
     sliderStep: UI_DEFAULTS.medicalDirectorHoursStep,
   },
+  
+  // Medical Director Hours (PRCS)
+  // REMOVED: Hard-coded default (was ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS = 32321)
   'Medical Director Hours (PRCS)': {
-    defaultValue: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
+    // defaultValue: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS, // COMMENTED OUT - use scenario instead
     bounds: { 
       mode: 'absolute', 
       min: 0, 
       max: UI_DEFAULTS.medicalDirectorHoursMax 
     },
-    sliderInitial: 'default',
+    sliderInitial: 'annualized', // Changed from 'default'
     sliderStep: UI_DEFAULTS.medicalDirectorHoursStep,
   },
   
   // Consulting Services Agreement
+  // REMOVED: Hard-coded default (was DEFAULT_CONSULTING_SERVICES_2025 = 16200)
   'Consulting Agreement/Other': {
-    defaultValue: DEFAULT_CONSULTING_SERVICES_2025,
+    // defaultValue: DEFAULT_CONSULTING_SERVICES_2025, // COMMENTED OUT - use scenario instead
     bounds: { mode: 'absolute', min: 0, max: 20000 },
-    sliderInitial: 'default',
+    sliderInitial: 'annualized', // Changed from 'default'
     sliderStep: 100,
   },
   
   // Locum Costs
+  // REMOVED: Hard-coded default (was DEFAULT_LOCUM_COSTS_2025 = 54600)
   '8322 Locums - Salary': {
-    defaultValue: DEFAULT_LOCUM_COSTS_2025,
+    // defaultValue: DEFAULT_LOCUM_COSTS_2025, // COMMENTED OUT - use scenario instead
     bounds: { mode: 'absolute', min: 0, max: 200000 },
-    sliderInitial: 'default',
+    sliderInitial: 'annualized', // Changed from 'default'
     sliderStep: 1000,
   },
 
-  // HW Buyout Cost
+  // HW Buyout Cost - KEEP THIS ONE (it's calculated in physician panel, not a default)
   '8343 Guaranteed Payments': {
-    defaultValue: HW_BUYOUT_COST_2025,
+    defaultValue: HW_BUYOUT_COST_2025, // KEEP - this is calculated in physician panel
     bounds: { mode: 'absolute', min: 0, max: 100000 },
     sliderInitial: 'default',
     sliderStep: 100,

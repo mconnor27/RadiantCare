@@ -258,6 +258,7 @@ export type Store = {
   // NEW: Dedicated YTD state (separate from Scenario A/B)
   ytdData: FutureYear // Current year (2025) data for YTD view
   ytdCustomProjectedValues: Record<string, number> // Grid overrides for YTD view (2025-* keys)
+  ytdGridSnapshot: Record<string, number> | null // Snapshot of grid values when scenario loaded (for dirty detection)
   currentScenarioId: string | null // Legacy - for backward compat
   currentScenarioName: string | null // Legacy - for backward compat
   currentScenarioUserId: string | null // Legacy - for backward compat
@@ -337,6 +338,7 @@ export type Store = {
   setYtdCustomProjectedValue: (accountName: string, value: number) => void
   removeYtdCustomProjectedValue: (accountName: string) => void
   resetYtdCustomProjectedValues: () => void
+  captureYtdGridSnapshot: () => void
   setSuppressNextGridSync: (suppress: boolean) => void
   consumeSuppressNextGridSync: () => boolean
   // Scenario management methods

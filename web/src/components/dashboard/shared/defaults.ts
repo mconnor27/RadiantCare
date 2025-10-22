@@ -61,9 +61,16 @@ export const TAX_RATES = {
   washingtonRate: 0.0003, // Washington Rate: 0.030% on all wages
 } as const
 
+// ============================================================================
+// REFERENCE VALUES (for database configuration only)
+// These constants are NOT used as hard-coded defaults in the grid application.
+// They should be set in the "Default" scenario in Supabase when configuring
+// baseline values for your organization.
+// ============================================================================
+
 // Default financial values for fallbacks
 // Note: 2025 values are loaded dynamically from actual/cached data, not hardcoded
-export const DEFAULT_LOCUM_COSTS_2025 = 54600 // Used only for grid slider defaults
+export const DEFAULT_LOCUM_COSTS_2025 = 54600 // Reference value for Default scenario
 export const DEFAULT_LOCUM_COSTS_2026 = 60000
 
 // 2024 actual values for data mode
@@ -75,12 +82,20 @@ export const ACTUAL_2024_PRCS_MEDICAL_DIRECTOR_HOURS = 25805
 export const ACTUAL_2024_PARTNER_POOL = 2008467
 
 // 2025 actual/projected values (rounded to whole dollars to match grid display)
-export const ACTUAL_2025_MEDICAL_DIRECTOR_HOURS = 119374
-export const ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS = 32321
+// These are REFERENCE values from QBO data - use when creating Default scenario
+export const ACTUAL_2025_MEDICAL_DIRECTOR_HOURS = 119374 // From QBO data
+export const ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS = 32321 // From QBO data
 
-// Projection defaults for medical director hours
-export const DEFAULT_MD_SHARED_PROJECTION = 97200
-export const DEFAULT_MD_PRCS_PROJECTION = 50000
+// Projection defaults for medical director hours (contract maximums)
+// Use these when configuring the Default scenario in Supabase
+export const DEFAULT_MD_SHARED_PROJECTION = 97200 // Contract maximum
+export const DEFAULT_MD_PRCS_PROJECTION = 50000 // Contract maximum
+
+// ============================================================================
+// Note: To set application defaults, create a "Default" scenario in Supabase
+// with these values in the year_2025_data field. See:
+// supabase-insert-default-ytd-scenario-with-data.sql
+// ============================================================================
 
 // Partner Compensation Configuration - can be modified for future years
 export const PARTNER_COMPENSATION_CONFIG = {

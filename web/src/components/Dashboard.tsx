@@ -100,6 +100,7 @@ export const useDashboardStore = create<Store>()(
           physicians: scenarioADefaultsByYear(2025),
         },
         ytdCustomProjectedValues: {},
+        ytdGridSnapshot: null, // Track loaded state for dirty detection
         currentScenarioId: null,
         currentScenarioName: null,
         currentScenarioUserId: null,
@@ -1592,17 +1593,30 @@ export const useDashboardStore = create<Store>()(
         resetYtdCustomProjectedValues: () =>
           set((state) => {
             state.ytdCustomProjectedValues = {}
+            state.ytdGridSnapshot = null
+          }),
+        
+        // Capture grid snapshot for dirty detection
+        captureYtdGridSnapshot: () =>
+          set((state) => {
+            // Capture current custom projected values as the clean state
+            state.ytdGridSnapshot = { ...state.ytdCustomProjectedValues }
+            console.log('📸 [captureYtdGridSnapshot] Captured keys:', Object.keys(state.ytdGridSnapshot))
+            console.log('📸 [captureYtdGridSnapshot] Full snapshot:', state.ytdGridSnapshot)
           }),
         
         // Scenario management
         setCurrentScenario: (id: string | null, name: string | null, userId?: string | null) =>
           set((state) => {
+            const scenarioChanged = state.currentScenarioId !== id
             state.currentScenarioId = id
             state.currentScenarioName = name
             state.currentScenarioUserId = userId ?? null
-            // Clear snapshot when unloading a scenario (id is null)
-            if (id === null) {
+            // Clear snapshots whenever scenario changes (loading new, unloading, or reloading same)
+            if (scenarioChanged) {
+              console.log(`🗑️ [setCurrentScenario] Clearing snapshots due to scenario change: ${state.currentScenarioId} → ${id}`)
               state.loadedScenarioSnapshot = null
+              state.ytdGridSnapshot = null
             }
           }),
 
@@ -1748,9 +1762,16 @@ export const useDashboardStore = create<Store>()(
 
         setCurrentYearSetting: (id: string | null, name: string | null, userId?: string | null) => {
           set((state) => {
+            const scenarioChanged = state.currentYearSettingId !== id
             state.currentYearSettingId = id
             state.currentYearSettingName = name
             state.currentYearSettingUserId = userId || null
+            // Clear snapshot whenever scenario changes (loading new, unloading, or reloading same)
+            // This ensures a fresh snapshot is captured for the newly loaded scenario
+            if (scenarioChanged) {
+              console.log(`🗑️ [setCurrentYearSetting] Clearing snapshot due to scenario change: ${state.currentYearSettingId} → ${id}`)
+              state.ytdGridSnapshot = null
+            }
           })
         },
 
@@ -2425,6 +2446,10 @@ export const useDashboardStore = create<Store>()(
 
             // Restore YTD grid overrides
             state.ytdCustomProjectedValues = data.custom_projected_values || {}
+            console.log('📥 [Load] Loaded ytdCustomProjectedValues:', {
+              keys: Object.keys(state.ytdCustomProjectedValues),
+              values: state.ytdCustomProjectedValues
+            })
             
             console.log('✅ [Load] Loaded into YTD store state:', {
               ytdDataYear: state.ytdData?.year,

@@ -298,6 +298,7 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
                   break
               }
               isCalculated = true
+              console.log(`💜 [Calculated] ${accountName}: type=${calculatedInfo.type}, value2025Default=${value2025Default}`)
             } else {
               // Use config default or fallback to annualized for other accounts
               value2025Default = getDefaultValue(accountName, value2025Annualized)
@@ -373,6 +374,7 @@ function merge2025Data(historicalData: YearlyData, data2025: Record<string, numb
                   break
               }
               isCalculated = true
+              console.log(`💜 [Calculated] ${accountName}: type=${calculatedInfo.type}, value2025Default=${value2025Default}`)
             } else {
               // Use config default or fallback to annualized for other accounts
               value2025Default = getDefaultValue(accountName, value2025Annualized)
@@ -557,8 +559,21 @@ const getTooltipForCalculatedRow = (type: 'mdSalary' | 'mdBenefits' | 'mdPayroll
   }
 }
 
-export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, _physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number, medicalDirectorHours?: number, consultingServicesAgreement?: number }): { rows: Row[], columns: any[], allRows: Row[] } {
-  // Helper to get the absolute 2016 Asset Disposal amount from raw data
+export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, _physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number, medicalDirectorHours?: number, consultingServicesAgreement?: number }, gridSnapshot?: Record<string, number> | null): { rows: Row[], columns: any[], allRows: Row[] } {
+  try {
+    // Store snapshot globally for cell coloring logic to access
+    (window as any).__ytdGridSnapshot = gridSnapshot
+    
+    console.log('🔍 [transformYearlyDataToGrid] Called with:', {
+      hasData: !!data,
+      dataRows: data?.Rows?.Row?.length,
+      collapsedCount: Object.keys(collapsedSections).length,
+      customValuesCount: Object.keys(customProjectedValues).length,
+      hasPhysicianData: !!_physicianData,
+      hasGridSnapshot: !!gridSnapshot
+    })
+    
+    // Helper to get the absolute 2016 Asset Disposal amount from raw data
   const getAssetDisposal2016Amount = (source: YearlyData): number => {
     const search = (rows: any[]): number => {
       for (const row of rows) {
@@ -842,6 +857,9 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
   // Create ALL rows (including collapsed ones) for calculations/sync
   const allDataRows: Row[] = visibleRows.map((row, index) => {
     const accountName = row.colData[0]?.value || ''
+    // Check if this account is a calculated row (do this once per row, not per cell)
+    const calculatedInfo = isCalculatedRow(accountName)
+    
     const cells = row.colData.map((cellData: any, cellIndex: number) => {
       let value = cellData.value || ''
       
@@ -870,14 +888,16 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
         // console.log(`  📈 Current value: "${value}"`)
       }
       
-      // Apply custom projected value if available
-      if (hasCustomValue) {
+      // Apply custom projected value if available (but NOT for calculated rows!)
+      if (hasCustomValue && !calculatedInfo.isCalculated) {
         if (isProjectedColumn && row.type === 'Summary') {
           // console.log(`  ✅ Using custom override: ${customProjectedValues[accountName]}`)
         }
         // Use normalized name to get the value, falling back to original
         const customVal = customProjectedValues[normalizedAccountName] ?? customProjectedValues[accountName]
         value = customVal?.toString() ?? value
+      } else if (calculatedInfo.isCalculated && hasCustomValue) {
+        console.log(`⚠️ [Grid] Skipping custom value override for calculated row: ${accountName}`)
       }
       
       // Special calculated summaries (projected column only)
@@ -1056,7 +1076,6 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       let formattedValue = (isNumeric || hasCustomValue) ? formatCurrency(value, accountName) : value
 
       // Add info icon for calculated rows AFTER formatting
-      const calculatedInfo = isCalculatedRow(accountName)
       if (isProjectedColumn && calculatedInfo.isCalculated) {
         // console.log('Attempting to add info icon for calculated row:', accountName, 'type:', calculatedInfo.type, 'formatted value:', formattedValue)
         formattedValue = formattedValue + ' ⓘ'
@@ -1102,7 +1121,8 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       let fontSize = '12px'
       const paddingLeft = row.level * 12
       let cursor = 'default'
-      let border = 'none'
+      let outline = 'none'
+      let outlineOffset = '-2px' // Draw outline inside the cell
       
       if (row.type === 'Header' || row.type === 'Section' || row.type === 'Spacer') {
         backgroundColor = '#f9fafb'
@@ -1134,44 +1154,85 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
       if (isProjectedColumn && row.type === 'Data' && cellIndex > 0 && !isComputedCustomRow && !isTherapyComponent) {
         // Special styling for calculated rows (MD Associates and Guaranteed Payments)
         if (calculatedInfo.isCalculated) {
-          // Calculated values → purple background, not clickable
+          // Calculated values → purple background (not editable)
           cursor = 'default'
           backgroundColor = '#f3e8ff' // Light purple for calculated
-          border = '1px solid #d8b4fe'
+          // No special outline for calculated cells
         } else {
           cursor = 'pointer'
-          const config = findAccountConfig(accountName)
-          const hasManualDefault = typeof config?.defaultValue === 'number'
+          
+          // NEW LOGIC: Background = type, Border = dirty state
+          
+          // Determine BACKGROUND COLOR (what type of value it is)
           if (hasCustomValue) {
-            // User has manually changed the projected value → red
-            backgroundColor = '#fef2f2'
-            border = '1px solid #fecaca'
-          } else if (hasManualDefault) {
-            // Row has a manual default in config (not falling back to annualized) → green
-            backgroundColor = '#f0fdf4'
-            border = '1px solid #bbf7d0'
+            backgroundColor = '#dcfce7' // GREEN - custom value (from scenario or just set)
           } else {
-            // Falling back to computed annualized baseline → yellow
-            backgroundColor = '#fefce8'
-            border = '1px solid #fed7aa'
+            backgroundColor = '#fefce8' // YELLOW - annualized projection
           }
+          
+          // Determine OUTLINE (whether it's dirty/changed this session)
+          const snapshotValue = (window as any).__ytdGridSnapshot?.[normalizedAccountName]
+          const currentDisplayedValue = parseFloat((value || '0').toString().replace(/[$,\s]/g, '')) || 0
+          
+          // Check if dirty in multiple scenarios:
+          // 1. NEW: custom value added this session (not in snapshot)
+          // 2. CHANGED: custom value different from snapshot
+          // 3. REMOVED: was in snapshot but annualized this session (no longer custom)
+          let isDirty = false
+          
+          if (hasCustomValue) {
+            if (snapshotValue === undefined) {
+              // NEW value added this session
+              isDirty = true
+              console.log(`🔴 [Outline] NEW (dirty): ${accountName} - current: ${currentDisplayedValue}, not in snapshot`)
+            } else if (Math.abs(currentDisplayedValue - snapshotValue) > 0.5) {
+              // CHANGED from snapshot
+              isDirty = true
+              console.log(`🔴 [Outline] CHANGED (dirty): ${accountName} - current: ${currentDisplayedValue}, snapshot: ${snapshotValue}`)
+            }
+          } else if (snapshotValue !== undefined) {
+            // REMOVED: was custom in snapshot but now annualized
+            isDirty = true
+            console.log(`🔴 [Outline] REMOVED/ANNUALIZED (dirty): ${accountName} - was ${snapshotValue}, now annualized to ${currentDisplayedValue}`)
+          }
+          
+          if (isDirty) {
+            outline = '2px solid #ef4444' // THICK RED - changed this session (dirty!)
+          }
+          // Clean cells get no special outline (stay as 'none')
         }
       }
       // Make Therapy Total summary look clickable in Projected column
       if (isProjectedColumn && row.type === 'Summary' && accountName === 'Total 7100 Therapy Income') {
         cursor = 'pointer'
-        const config = findAccountConfig(accountName)
-        const hasManualDefault = typeof config?.defaultValue === 'number'
+        
+        // SAME LOGIC for therapy total
         if (hasCustomValue) {
-          backgroundColor = '#fef2f2'
-          border = '1px solid #fecaca'
-        } else if (hasManualDefault) {
-          backgroundColor = '#f0fdf4'
-          border = '1px solid #bbf7d0'
+          backgroundColor = '#dcfce7' // GREEN
         } else {
-          backgroundColor = '#fefce8'
-          border = '1px solid #fed7aa'
+          backgroundColor = '#fefce8' // YELLOW
         }
+        
+        const snapshotValue = (window as any).__ytdGridSnapshot?.[normalizedAccountName]
+        const currentDisplayedValue = parseFloat((value || '0').toString().replace(/[$,\s]/g, '')) || 0
+        
+        // Check if dirty (same logic as regular cells)
+        let isDirty = false
+        if (hasCustomValue) {
+          if (snapshotValue === undefined) {
+            isDirty = true
+          } else if (Math.abs(currentDisplayedValue - snapshotValue) > 0.5) {
+            isDirty = true
+          }
+        } else if (snapshotValue !== undefined) {
+          // REMOVED: was custom in snapshot but now annualized
+          isDirty = true
+        }
+        
+        if (isDirty) {
+          outline = '2px solid #ef4444'
+        }
+        // Clean cells get no special outline (stay as 'none')
       }
       
       // Add tooltip info for first column if row carries tooltip metadata or has info icon
@@ -1228,7 +1289,8 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
           textAlign: shouldRightAlign ? 'right' : 'left',
           fontSize: fontSize,
           cursor: hasTooltip ? 'help' : cursor,
-          border: border,
+          outline: outline,
+          outlineOffset: outlineOffset,
           // Force text alignment with additional properties
           justifyContent: shouldRightAlign ? 'flex-end' : 'flex-start',
           display: 'flex',
@@ -1259,10 +1321,29 @@ export function transformYearlyDataToGrid(data: YearlyData, collapsedSections: C
     width: index === 0 ? 290 : (index === columnTitles.length - 1 ? 140 : 100) // Make last column wider to fit title
   }))
   
-  return {
-    rows: [headerRow, ...displayRows], // Only display non-collapsed rows
-    allRows: [headerRow, ...allDataRows], // Keep all rows for calculations/sync
-    columns
+    console.log('✅ [transformYearlyDataToGrid] Returning:', {
+      totalRows: displayRows.length + 1, // +1 for header
+      allRowsCount: allDataRows.length + 1,
+      columnsCount: columns.length,
+      headerRow: !!headerRow,
+      displayRowsCount: displayRows.length,
+      allDataRowsCount: allDataRows.length
+    })
+    
+    return {
+      rows: [headerRow, ...displayRows], // Only display non-collapsed rows
+      allRows: [headerRow, ...allDataRows], // Keep all rows for calculations/sync
+      columns
+    }
+  } catch (error) {
+    console.error('❌ [transformYearlyDataToGrid] ERROR:', error)
+    console.error('Stack trace:', (error as Error).stack)
+    // Return empty grid on error
+    return {
+      rows: [],
+      allRows: [],
+      columns: []
+    }
   }
 }
 
@@ -1578,7 +1659,23 @@ export function debugSummaryCalculations(gridData: { rows: Row[], columns: any[]
 }
 
 // Load and transform the yearly data
-export async function loadYearlyGridData(collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number, medicalDirectorHours?: number, consultingServicesAgreement?: number }, cached2025Summary?: any): Promise<{ rows: Row[], allRows: Row[], columns: any[] }> {
+export async function loadYearlyGridData(collapsedSections: CollapsibleState = {}, customProjectedValues: Record<string, number> = {}, physicianData?: { physicians: Physician[], benefitGrowthPct: number, locumCosts: number, prcsDirectorPhysicianId?: string | null, prcsMedicalDirectorHours?: number, medicalDirectorHours?: number, consultingServicesAgreement?: number }, cached2025Summary?: any, gridSnapshot?: Record<string, number> | null): Promise<{ rows: Row[], allRows: Row[], columns: any[] }> {
+  console.log('🔍 [loadYearlyGridData] Starting load with:', {
+    collapsedSectionsCount: Object.keys(collapsedSections).length,
+    customValuesCount: Object.keys(customProjectedValues).length,
+    hasPhysicianData: !!physicianData,
+    physicianDataDetails: physicianData ? {
+      physiciansCount: physicianData.physicians?.length,
+      prcsMedicalDirectorHours: physicianData.prcsMedicalDirectorHours,
+      medicalDirectorHours: physicianData.medicalDirectorHours,
+      consultingServicesAgreement: physicianData.consultingServicesAgreement,
+      prcsDirectorPhysicianId: physicianData.prcsDirectorPhysicianId,
+      locumCosts: physicianData.locumCosts
+    } : null,
+    hasCached2025: !!cached2025Summary,
+    hasGridSnapshot: !!gridSnapshot
+  })
+  
   try {
     // Import the JSON data
     const yearlyDataPromise = import('../../../../../historical_data/2016-2024_yearly.json')
@@ -1586,9 +1683,11 @@ export async function loadYearlyGridData(collapsedSections: CollapsibleState = {
     let data2025Raw: any
     if (cached2025Summary) {
       // Use cached data from API
+      console.log('📦 [loadYearlyGridData] Using cached 2025 data from API')
       data2025Raw = cached2025Summary
     } else {
       // Fall back to static JSON file
+      console.log('📦 [loadYearlyGridData] Loading 2025 data from static JSON file')
       const data2025Module = await import('../../../../../historical_data/2025_summary.json')
       data2025Raw = data2025Module.default || data2025Module
     }
@@ -1621,7 +1720,16 @@ export async function loadYearlyGridData(collapsedSections: CollapsibleState = {
       }
     }
     
-    return transformYearlyDataToGrid(extendedData, collapsedSections, customProjectedValues, physicianData)
+    console.log('📊 [loadYearlyGridData] Calling transformYearlyDataToGrid with:', {
+      extendedDataRows: extendedData?.Rows?.Row?.length,
+      hasExtendedData: !!extendedData,
+      collapsedSections: Object.keys(collapsedSections).length,
+      customValues: Object.keys(customProjectedValues).length,
+      hasPhysicianData: !!physicianData,
+      hasGridSnapshot: !!gridSnapshot
+    })
+    
+    return transformYearlyDataToGrid(extendedData, collapsedSections, customProjectedValues, physicianData, gridSnapshot)
   } catch (error) {
     // console.error('Failed to load yearly data:', error)
     
