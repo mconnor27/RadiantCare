@@ -4392,7 +4392,7 @@ export function Dashboard() {
       {!isMobile && (
         <div style={{ 
           display: 'flex', 
-          alignItems: 'flex-start', 
+          alignItems: 'center', 
           justifyContent: 'center', 
           gap: 8, 
           marginBottom: 5, 

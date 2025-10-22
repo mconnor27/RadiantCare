@@ -496,10 +496,12 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
       )}
 
       <div style={{
-        padding: 8,
-        background: 'rgba(255, 255, 255, 0.1)',
-        border: '1px solid rgba(255, 255, 255, 0.3)',
-        borderRadius: 4,
+        ...(isAdmin ? {} : {
+          padding: 8,
+          background: 'rgba(255, 255, 255, 0.1)',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
+          borderRadius: 4,
+        }),
         display: 'flex',
         flexDirection: 'column',
         gap: 6
