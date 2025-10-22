@@ -312,7 +312,8 @@ export type Store = {
   ) => void
   setYtdValue: (
     field: 'therapyIncome' | 'nonEmploymentCosts' | 'nonMdEmploymentCosts' | 'locumCosts' | 'miscEmploymentCosts' | 'medicalDirectorHours' | 'prcsMedicalDirectorHours' | 'consultingServicesAgreement' | 'therapyLacey' | 'therapyCentralia' | 'therapyAberdeen',
-    value: number
+    value: number,
+    options?: { skipRecompute?: boolean }
   ) => void
   setPrcsMdHoursMode: (mode: 'calculated' | 'annualized', annualizedValue?: number) => void
   upsertPhysician: (scenario: ScenarioKey, year: number, physician: Physician) => void

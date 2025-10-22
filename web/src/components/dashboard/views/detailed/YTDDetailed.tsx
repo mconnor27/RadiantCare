@@ -85,6 +85,30 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
   const fy2025 = store.ytdData
   const currentLocumCosts = fy2025?.locumCosts ?? DEFAULT_LOCUM_COSTS_2025
 
+  // Memoize a "signature" of user-editable YTD fields for dirty detection
+  // This avoids triggering dirty checks when QBO-calculated fields change (therapyIncome, etc.)
+  const ytdDataSignature = useMemo(() => {
+    if (!fy2025) return null
+    return {
+      locumCosts: fy2025.locumCosts,
+      medicalDirectorHours: fy2025.medicalDirectorHours,
+      prcsMedicalDirectorHours: fy2025.prcsMedicalDirectorHours,
+      prcsMdHoursMode: fy2025.prcsMdHoursMode,
+      prcsDirectorPhysicianId: fy2025.prcsDirectorPhysicianId,
+      consultingServicesAgreement: fy2025.consultingServicesAgreement,
+      physiciansCount: fy2025.physicians?.length,
+      // DON'T include: therapyIncome, nonEmploymentCosts (QBO-calculated, not user-editable)
+    }
+  }, [
+    fy2025?.locumCosts,
+    fy2025?.medicalDirectorHours,
+    fy2025?.prcsMedicalDirectorHours,
+    fy2025?.prcsMdHoursMode,
+    fy2025?.prcsDirectorPhysicianId,
+    fy2025?.consultingServicesAgreement,
+    fy2025?.physicians?.length
+  ])
+
   // Parse YTD Locums amount from summary data (row 8323 Salary Locums, TOTAL column)
   const ytdLocumsAmount = useMemo(() => {
     if (!cachedData?.summary) {
@@ -440,8 +464,8 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
   }, [
     store.currentYearSettingId,
     store.loadedCurrentYearSettingsSnapshot,
-    // Track changes to scenario data (physician panel, grid, etc.)
-    JSON.stringify(fy2025),
+    // Track changes to user-editable fields only (not QBO-calculated fields)
+    JSON.stringify(ytdDataSignature),
     JSON.stringify(store.ytdCustomProjectedValues)
   ])
 
@@ -530,7 +554,8 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     store.currentYearSettingId,
     store.loadedCurrentYearSettingsSnapshot,
     JSON.stringify(store.ytdCustomProjectedValues),
-    JSON.stringify(fy2025),
+    // Track changes to user-editable fields only (not QBO-calculated fields)
+    JSON.stringify(ytdDataSignature),
     isResyncingCompensation
   ])
 
@@ -1086,18 +1111,31 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         />
       </div>
       <div style={{ maxWidth: '1480px', margin: '0 auto' }}>
-        <YearlyDataGrid
-          environment={environment}
-          cachedSummary={cachedData?.summary}
-          isLoadingCache={showLoadingModal}
-          onSyncComplete={handleSyncComplete}
-          mode="ytd"
-          shouldUpdateSnapshotOnFirstSync={true}
-          isGridDirty={isGridDirty}
-          onResetGrid={handleResetGrid}
-          onAnnualizeAll={handleAnnualizeAll}
-          reloadTrigger={gridReloadTrigger}
-        />
+        {/* Only render grid after scenario is loaded to prevent double-load */}
+        {currentScenarioName ? (
+          <YearlyDataGrid
+            environment={environment}
+            cachedSummary={cachedData?.summary}
+            isLoadingCache={showLoadingModal}
+            onSyncComplete={handleSyncComplete}
+            mode="ytd"
+            shouldUpdateSnapshotOnFirstSync={true}
+            isGridDirty={isGridDirty}
+            onResetGrid={handleResetGrid}
+            onAnnualizeAll={handleAnnualizeAll}
+            reloadTrigger={gridReloadTrigger}
+          />
+        ) : (
+          <div style={{
+            border: '1px solid #e5e7eb',
+            borderRadius: 6,
+            padding: 40,
+            textAlign: 'center',
+            color: '#666'
+          }}>
+            Loading scenario...
+          </div>
+        )}
       </div>
     </>
   )

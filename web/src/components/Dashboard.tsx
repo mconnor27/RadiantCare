@@ -238,7 +238,7 @@ export const useDashboardStore = create<Store>()(
               }
             }
           }),
-        setYtdValue: (field, value) =>
+        setYtdValue: (field, value, options) =>
           set((state) => {
             // Guard: Only update if value actually changed to prevent infinite loops
             const currentValue = state.ytdData[field]
@@ -254,10 +254,13 @@ export const useDashboardStore = create<Store>()(
 
             // NEW: Trigger recomputation of projections if baseline changed
             // Use setTimeout to avoid infinite loops and batch updates
-            setTimeout(() => {
-              // compute: recomputeProjectionsFromBaseline
-              get().recomputeProjectionsFromBaseline()
-            }, 0)
+            // Skip recomputation if explicitly requested (e.g., during batch sync)
+            if (!options?.skipRecompute) {
+              setTimeout(() => {
+                // compute: recomputeProjectionsFromBaseline
+                get().recomputeProjectionsFromBaseline()
+              }, 0)
+            }
           }),
         upsertPhysician: (scenario, year, physician) =>
           set((state) => {
@@ -3729,7 +3732,7 @@ export function Dashboard() {
   useEffect(() => {
     store.setLastViewMode(viewMode)
     console.log(`[ViewMode] Changed to: ${viewMode}`)
-  }, [viewMode, store])
+  }, [viewMode]) // Only re-run when viewMode changes (store is still accessible via closure)
 
   // Detect mobile and show warning on initial load
   useEffect(() => {

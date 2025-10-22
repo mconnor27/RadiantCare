@@ -139,7 +139,7 @@ function syncGridValuesToMultiyear(
       // Update YTD or Scenario state depending on mode
       try {
         if (mode === 'ytd') {
-          store.setYtdValue(multiyearField, value)
+          store.setYtdValue(multiyearField, value, { skipRecompute: true })
         } else {
           store.setFutureValue('A', 2025, multiyearField, value)
           if (store.scenarioBEnabled) {
@@ -170,7 +170,7 @@ function syncGridValuesToMultiyear(
     // Sync therapy income total
     try {
       if (mode === 'ytd') {
-        store.setYtdValue('therapyIncome', therapyIncomeTotal)
+        store.setYtdValue('therapyIncome', therapyIncomeTotal, { skipRecompute: true })
       } else {
         store.setFutureValue('A', 2025, 'therapyIncome', therapyIncomeTotal)
         if (store.scenarioBEnabled) {
@@ -188,9 +188,9 @@ function syncGridValuesToMultiyear(
       const aberdeen = getProjectedValue('7108 Therapy - Aberdeen')
       
       if (mode === 'ytd') {
-        store.setYtdValue('therapyLacey', lacey)
-        store.setYtdValue('therapyCentralia', centralia)
-        store.setYtdValue('therapyAberdeen', aberdeen)
+        store.setYtdValue('therapyLacey', lacey, { skipRecompute: true })
+        store.setYtdValue('therapyCentralia', centralia, { skipRecompute: true })
+        store.setYtdValue('therapyAberdeen', aberdeen, { skipRecompute: true })
       } else {
         store.setFutureValue('A', 2025, 'therapyLacey', lacey)
         store.setFutureValue('A', 2025, 'therapyCentralia', centralia)
@@ -215,6 +215,9 @@ function syncGridValuesToMultiyear(
         therapyCentralia: getProjectedValue('7110 Therapy - Centralia'),
         therapyAberdeen: getProjectedValue('7108 Therapy - Aberdeen')
       })
+      
+      // Now that all YTD values are synced, trigger ONE recomputation of projections
+      store.recomputeProjectionsFromBaseline()
     } else {
       console.log('✅ [Sync] Grid → Scenario A/B complete:', {
         therapyIncome: therapyIncomeTotal,
@@ -594,13 +597,7 @@ export default function YearlyDataGrid({
 
           if (mode === 'ytd') {
             console.log('📸 [YTD] Updating YTD snapshot after first QBO cache sync')
-            console.log('📊 [YTD] Store state after sync:', {
-              therapyIncome: store.ytdData?.therapyIncome,
-              nonEmploymentCosts: store.ytdData?.nonEmploymentCosts,
-              locumCosts: store.ytdData?.locumCosts,
-              prcsMedicalDirectorHours: store.ytdData?.prcsMedicalDirectorHours,
-              customValuesCount: Object.keys(store.ytdCustomProjectedValues || {}).length
-            })
+            // Note: Store state is updated asynchronously, so immediate debug logs may show stale values
             store.updateCurrentYearSettingsSnapshot()
           } else {
             // Multi-Year mode: update scenario snapshots
