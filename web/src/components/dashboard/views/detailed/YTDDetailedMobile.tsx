@@ -13,7 +13,6 @@ import DetailedChart from './components/DetailedChart'
 import ChartControls from './components/ChartControls'
 import PartnerCompensation from './components/PartnerCompensation'
 import { syncStoreFrom2025Cache } from './utils/load2025Data'
-import { createTooltip, removeTooltip } from '../../shared/tooltips'
 
 // Mobile Scenario Load Modal Component
 function MobileScenarioLoadModal({
@@ -421,12 +420,6 @@ function MobileScenarioLoadModal({
                           position: 'relative',
                           touchAction: 'manipulation',
                           WebkitTapHighlightColor: 'transparent'
-                        }}
-                        onMouseEnter={(e) => {
-                          createTooltip('mobile-favorite-tooltip', scenario.is_favorite_current ? 'Remove from Current Year Favorite' : 'Set as Current Year Favorite', e, { placement: 'below-center' })
-                        }}
-                        onMouseLeave={() => {
-                          removeTooltip('mobile-favorite-tooltip')
                         }}
                       >
                         <FontAwesomeIcon
@@ -1115,12 +1108,6 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
               borderRadius: 4,
               touchAction: 'manipulation',
               WebkitTapHighlightColor: 'transparent'
-            }}
-            onMouseEnter={(e) => {
-              createTooltip('mobile-load-tooltip', 'Load scenario', e, { placement: 'below-center' })
-            }}
-            onMouseLeave={() => {
-              removeTooltip('mobile-load-tooltip')
             }}
           >
             <FontAwesomeIcon icon={faFolderOpen} />
