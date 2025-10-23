@@ -127,16 +127,27 @@ export default function MultiYearView() {
         }
 
         // Determine which scenario to load for B
+        // ONLY load Scenario B on mount if:
+        // 1. User has a persisted ID (they had it loaded before), OR
+        // 2. User has a favorite B
+        // Do NOT auto-load "Default (Pessimistic)" on fresh visits
         let scenarioToLoadB = null
+        let isFavoriteB = false
+        
         if (hasPersistedIdB && !hasDataB) {
           // We have a persisted ID but no data - reload that scenario
           scenarioToLoadB = scenarios?.find(s => s.id === store.currentScenarioBId)
           console.log('[Multi-Year Init] Reloading scenario B from persisted ID:', store.currentScenarioBId)
         } else if (!hasPersistedIdB || !hasDataB) {
-          // No persisted state or incomplete - load favorite or default (but don't auto-enable)
+          // No persisted state - ONLY load if user has a favorite
           const favoriteB = scenarios?.find(s => s.id === favoriteBId)
-          const defaultPessimistic = scenarios?.find(s => s.name === 'Default (Pessimistic)')
-          scenarioToLoadB = favoriteB || defaultPessimistic
+          if (favoriteB) {
+            scenarioToLoadB = favoriteB
+            isFavoriteB = true
+            console.log('[Multi-Year Init] Found favorite B, will load and enable')
+          } else {
+            console.log('[Multi-Year Init] No favorite B, scenario B will remain disabled')
+          }
         }
 
         // Load scenario A if needed
@@ -148,26 +159,23 @@ export default function MultiYearView() {
           store.setSelectedYear('A', 2025)
         }
 
-        // Load scenario B if needed
+        // Load scenario B if needed (only if persisted or favorite)
         if (scenarioToLoadB) {
-          const isFavorite = scenarioToLoadB.id === favoriteBId
-          console.log(`[Multi-Year Init] Loading ${isFavorite ? 'favorite B' : 'Default (Pessimistic)'}...`, scenarioToLoadB.name)
+          console.log(`[Multi-Year Init] Loading scenario B...`, scenarioToLoadB.name)
           
-          // IMPORTANT: Enable scenario B first to create the scenarioB object
-          store.setScenarioEnabled(true)
-          
-          // Now load the data into B (scenarioB exists now)
+          // Load the data into B
           await store.loadScenarioFromDatabase(scenarioToLoadB.id, 'B', false)
           
-          // Set selectedYear to 2025 (now works because scenarioB exists)
+          // Set selectedYear to 2025
           store.setSelectedYear('B', 2025)
 
-          // If not a favorite AND not persisted as enabled, disable scenario B visibility
-          if (!isFavorite && !store.scenarioBEnabled) {
-            store.setScenarioEnabled(false)
-            console.log('[Multi-Year Init] Loaded scenario B but keeping it hidden (not a favorite)')
-          } else {
+          // Enable visibility if it's a favorite or if it was persisted as enabled
+          if (isFavoriteB || store.scenarioBEnabled) {
+            store.setScenarioEnabled(true)
             console.log('[Multi-Year Init] Enabled scenario B visibility')
+          } else {
+            store.setScenarioEnabled(false)
+            console.log('[Multi-Year Init] Loaded scenario B but keeping it hidden')
           }
         }
       } catch (err) {
@@ -177,6 +185,80 @@ export default function MultiYearView() {
 
     loadInitialScenarios()
   }, [profile?.id]) // Only run when profile changes (on mount/login)
+
+  // Handle user manually enabling Scenario B checkbox
+  // If scenarioB doesn't exist or has no data, load user's favorite B or "Default (Pessimistic)"
+  useEffect(() => {
+    if (!profile?.id) return
+    if (!store.scenarioBEnabled) return // Only trigger when enabled
+    
+    // Check if scenarioB needs to be loaded
+    const needsLoad = !store.scenarioB || !store.scenarioB.future || store.scenarioB.future.length === 0
+    
+    if (needsLoad) {
+      const loadScenarioB = async () => {
+        try {
+          console.log('[Scenario B] User enabled checkbox, determining which scenario to load...')
+          
+          // Fetch user's favorite B
+          const { data: favoritesData } = await supabase
+            .from('user_favorites')
+            .select('scenario_id, favorite_type')
+            .eq('user_id', profile.id)
+            .eq('favorite_type', 'B')
+            .single()
+          
+          const favoriteBId = favoritesData?.scenario_id
+          
+          // Query for scenarios
+          const { data: scenarios, error } = await supabase
+            .from('scenarios')
+            .select('*')
+            .or(`user_id.eq.${profile.id},is_public.eq.true`)
+          
+          if (error) throw error
+          if (!scenarios || scenarios.length === 0) {
+            console.error('[Scenario B] No scenarios found in database')
+            store.setScenarioEnabled(false)
+            return
+          }
+          
+          // Prioritize: Favorite B > Default (Pessimistic)
+          let scenarioToLoad = null
+          if (favoriteBId) {
+            scenarioToLoad = scenarios.find(s => s.id === favoriteBId)
+            if (scenarioToLoad) {
+              console.log('[Scenario B] Loading favorite:', scenarioToLoad.name)
+            }
+          }
+          
+          if (!scenarioToLoad) {
+            scenarioToLoad = scenarios.find(s => s.name === 'Default (Pessimistic)')
+            if (scenarioToLoad) {
+              console.log('[Scenario B] No favorite found, loading Default (Pessimistic)')
+            }
+          }
+          
+          if (!scenarioToLoad) {
+            console.error('[Scenario B] No suitable scenario found (no favorite or Default (Pessimistic))')
+            store.setScenarioEnabled(false)
+            return
+          }
+          
+          // Load the scenario
+          await store.loadScenarioFromDatabase(scenarioToLoad.id, 'B', false)
+          store.setSelectedYear('B', 2025)
+          console.log('[Scenario B] Loaded successfully:', scenarioToLoad.name)
+        } catch (err) {
+          console.error('[Scenario B] Error loading scenario:', err)
+          // Disable checkbox on error
+          store.setScenarioEnabled(false)
+        }
+      }
+      
+      loadScenarioB()
+    }
+  }, [store.scenarioBEnabled, profile?.id])
 
   // Handle unload scenario A - reload favorite A or Default (Optimistic)
   useEffect(() => {
@@ -753,6 +835,7 @@ export default function MultiYearView() {
 
       <div style={{
         maxWidth: 1400,
+        minWidth: store.scenarioBEnabled ? 1660 : 1000,
         margin: '0 auto',
         border: '1px solid #d1d5db',
         borderRadius: 6,
@@ -766,6 +849,7 @@ export default function MultiYearView() {
       <div style={{ marginTop: 16 }}>
         <div style={{
           maxWidth: store.scenarioBEnabled ? 1660 : 1000,
+          minWidth: store.scenarioBEnabled ? 1660 : 1000,
           margin: '0 auto'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, justifyContent: 'space-between', flexWrap: 'wrap' }}>
@@ -788,7 +872,8 @@ export default function MultiYearView() {
         </div>
 
         <div style={{ 
-          maxWidth: store.scenarioBEnabled ? 1660 : 1000, 
+          maxWidth: store.scenarioBEnabled ? 1660 : 1000,
+          minWidth: store.scenarioBEnabled ? 1660 : 1000,
           margin: '0 auto' 
         }}>
           <div className="scenario-grid" style={{
@@ -1237,19 +1322,19 @@ export default function MultiYearView() {
         </div>
       </div>
       
-      <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '0 auto' }}>
+      <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, minWidth: store.scenarioBEnabled ? 1660 : 1000, margin: '0 auto' }}>
         <CollapsibleSection title="Overall Compensation Summary (2025-2030)" open={overallOpen} onOpenChange={setOverallOpen} tone="neutral">
           <OverallCompensationSummary />
         </CollapsibleSection>
       </div>
 
-      <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '0 auto' }}>
+      <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, minWidth: store.scenarioBEnabled ? 1660 : 1000, margin: '0 auto' }}>
         <CollapsibleSection title="Workforce Analysis" open={workforceOpen} onOpenChange={setWorkforceOpen} tone="neutral">
           <WorkforceAnalysis />
         </CollapsibleSection>
       </div>
 
-      <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '0 auto' }}>
+      <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, minWidth: store.scenarioBEnabled ? 1660 : 1000, margin: '0 auto' }}>
         <CollapsibleSection title="Parameters Summary" open={parametersOpen} onOpenChange={setParametersOpen} tone="neutral">
           <ParametersSummary />
         </CollapsibleSection>

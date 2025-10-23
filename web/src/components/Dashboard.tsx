@@ -53,8 +53,7 @@ import {
   ACTUAL_2024_LOCUM_COSTS,
   PROJECTION_DEFAULTS,
   ANNUAL_BENEFITS_FULLTIME,
-  INITIAL_FUTURE_YEARS_A,
-  INITIAL_FUTURE_YEARS_B
+  INITIAL_FUTURE_YEARS_A
 } from './dashboard/shared/defaults'
 
 
@@ -127,34 +126,11 @@ export const useDashboardStore = create<Store>()(
         setScenarioEnabled: (enabled) => {
           set((state) => {
             state.scenarioBEnabled = enabled
-            // Don't clear snapshot when just toggling visibility - keep it for dirty detection
-            if (enabled && !state.scenarioB) {
-              // Only initialize with defaults if scenario B doesn't exist yet
-              state.scenarioB = {
-                future: INITIAL_FUTURE_YEARS_B.map((f) => ({ ...f, physicians: [...f.physicians] })),
-                projection: {
-                  incomeGrowthPct: PROJECTION_DEFAULTS.B.incomeGrowthPct,
-                  medicalDirectorHours: PROJECTION_DEFAULTS.B.medicalDirectorHours,
-                  prcsMedicalDirectorHours: PROJECTION_DEFAULTS.B.prcsMedicalDirectorHours,
-                  consultingServicesAgreement: PROJECTION_DEFAULTS.B.consultingServicesAgreement,
-                  nonEmploymentCostsPct: PROJECTION_DEFAULTS.B.nonEmploymentCostsPct, 
-                  nonMdEmploymentCostsPct: PROJECTION_DEFAULTS.B.nonMdEmploymentCostsPct, 
-                  locumsCosts: PROJECTION_DEFAULTS.B.locumsCosts, 
-                  miscEmploymentCostsPct: PROJECTION_DEFAULTS.B.miscEmploymentCostsPct,
-                  benefitCostsGrowthPct: PROJECTION_DEFAULTS.B.benefitCostsGrowthPct
-                },
-                selectedYear: state.scenarioA.selectedYear,
-                dataMode: '2024 Data',
-              }
-            }
             // Don't clear scenarioB when disabling - just hide it
             // This preserves loaded scenario data and snapshot for dirty detection
+            // When enabling, the UI should load a scenario from the database
+            // We NEVER use PROJECTION_DEFAULTS - all scenarios come from the database
           })
-          // Apply projections to scenario B if it was just enabled
-          if (enabled) {
-            const store = useDashboardStore.getState()
-            if (store.scenarioB) store.applyProjectionFromLastActual('B')
-          }
         },
         // One-time suppression control for grid->store synchronization
         setSuppressNextGridSync: (suppress: boolean) => {
@@ -4434,7 +4410,8 @@ export function Dashboard() {
           borderBottom: '1px solid #e5e7eb',
           position: 'sticky',
           top: 0,
-          zIndex: 1000
+          zIndex: 1000,
+          minWidth: viewMode === 'Multi-Year' ? (store.scenarioBEnabled ? 1660 : 1000) : 0
         }}>
           {/* Left side: Sync Button */}
           <div style={{ position: 'absolute', left: 16, display: 'flex', alignItems: 'center' }}>
@@ -4639,7 +4616,7 @@ export function Dashboard() {
 
       {/* Centered Header - hide in mobile mode */}
       {!isMobile && (
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 12, marginBottom: 16, minWidth: viewMode === 'Multi-Year' ? (store.scenarioBEnabled ? 1660 : 1000) : 0 }}>
           <img src="/radiantcare.png" alt="RadiantCare" style={{ height: 60, width: 'auto', display: 'block' }} />
           <h2 style={{ margin: 0, fontFamily: '"Myriad Pro", Myriad, "Helvetica Neue", Arial, sans-serif', color: '#7c2a83', fontWeight: 900, fontSize: 36, lineHeight: 1.05 }}>Compensation Dashboard</h2>
         </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import createPlotlyComponent from 'react-plotly.js/factory'
 import Plotly from 'plotly.js-dist-min'
 const Plot = createPlotlyComponent(Plotly)
@@ -10,49 +10,87 @@ import { DEFAULT_LOCUM_COSTS_2025 } from '../defaults'
 export default function OverallCompensationSummary() {
   const store = useDashboardStore()
   const years = Array.from(new Set([2025, ...store.scenarioA.future.map((f) => f.year)]))
-  const perYearA = years.map((y) => ({ year: y, comps: computeAllCompensationsForYear(y, 'A') }))
+  
+  // Memoize expensive calculations to prevent recalculation on every render (e.g., browser resize)
+  // Only recalculate when the actual scenario data changes
+  const perYearA = useMemo(
+    () => years.map((y) => ({ year: y, comps: computeAllCompensationsForYear(y, 'A') })),
+    [years.join(','), JSON.stringify(store.scenarioA.future), store.scenarioA.projection.benefitCostsGrowthPct]
+  )
   
   // Scenario B: Use Scenario A's 2025 values (shared baseline), then B's own values for 2026+
-  const perYearB = store.scenarioBEnabled && store.scenarioB
-    ? years.map((y) => ({ 
-        year: y, 
-        comps: y === 2025 
-          ? computeAllCompensationsForYear(y, 'A') // Use shared baseline for 2025
-          : computeAllCompensationsForYear(y, 'B') 
-      }))
-    : undefined
+  const perYearB = useMemo(
+    () => store.scenarioBEnabled && store.scenarioB
+      ? years.map((y) => ({ 
+          year: y, 
+          comps: y === 2025 
+            ? computeAllCompensationsForYear(y, 'A') // Use shared baseline for 2025
+            : computeAllCompensationsForYear(y, 'B') 
+        }))
+      : undefined,
+    [
+      store.scenarioBEnabled, 
+      years.join(','), 
+      JSON.stringify(store.scenarioA.future),
+      store.scenarioB ? JSON.stringify(store.scenarioB.future) : null,
+      store.scenarioA.projection.benefitCostsGrowthPct,
+      store.scenarioB?.projection.benefitCostsGrowthPct
+    ]
+  )
 
   // For the "Per Physician By Year" table, we want to include retired partners
   // Using the shared function from calculations.ts
 
-  const perYearAWithRetired = years.map((y) => ({ year: y, comps: computeAllCompensationsForYearWithRetired(y, 'A') }))
+  const perYearAWithRetired = useMemo(
+    () => years.map((y) => ({ year: y, comps: computeAllCompensationsForYearWithRetired(y, 'A') })),
+    [years.join(','), JSON.stringify(store.scenarioA.future), store.scenarioA.projection.benefitCostsGrowthPct]
+  )
   
   // Scenario B: Use Scenario A's 2025 values (shared baseline), then B's own values for 2026+
-  const perYearBWithRetired = store.scenarioBEnabled && store.scenarioB
-    ? years.map((y) => ({ 
-        year: y, 
-        comps: y === 2025 
-          ? computeAllCompensationsForYearWithRetired(y, 'A') // Use shared baseline for 2025
-          : computeAllCompensationsForYearWithRetired(y, 'B') 
-      }))
-    : undefined
+  const perYearBWithRetired = useMemo(
+    () => store.scenarioBEnabled && store.scenarioB
+      ? years.map((y) => ({ 
+          year: y, 
+          comps: y === 2025 
+            ? computeAllCompensationsForYearWithRetired(y, 'A') // Use shared baseline for 2025
+            : computeAllCompensationsForYearWithRetired(y, 'B') 
+        }))
+      : undefined,
+    [
+      store.scenarioBEnabled,
+      years.join(','),
+      JSON.stringify(store.scenarioA.future),
+      store.scenarioB ? JSON.stringify(store.scenarioB.future) : null,
+      store.scenarioA.projection.benefitCostsGrowthPct,
+      store.scenarioB?.projection.benefitCostsGrowthPct
+    ]
+  )
 
   // Collect all physician names from both scenarios (including retired)
-  const allNamesFromA = perYearAWithRetired.flatMap((y) => y.comps.map((c) => c.name))
-  const allNamesFromB = perYearBWithRetired ? perYearBWithRetired.flatMap((y) => y.comps.map((c) => c.name)) : []
-  const allNames = Array.from(new Set([...allNamesFromA, ...allNamesFromB]))
+  // Memoize to prevent recalculation on every render
+  const allNames = useMemo(() => {
+    const allNamesFromA = perYearAWithRetired.flatMap((y) => y.comps.map((c) => c.name))
+    const allNamesFromB = perYearBWithRetired ? perYearBWithRetired.flatMap((y) => y.comps.map((c) => c.name)) : []
+    return Array.from(new Set([...allNamesFromA, ...allNamesFromB]))
+  }, [perYearAWithRetired, perYearBWithRetired])
+  
   // Assign a consistent color per person for both scenarios
-  const colorPalette = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
-  const colorByName: Record<string, string> = {}
-  allNames.forEach((n, i) => { colorByName[n] = colorPalette[i % colorPalette.length] })
-  const seriesA = allNames.map((name) => ({
+  const colorByName = useMemo(() => {
+    const colorPalette = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+    const colors: Record<string, string> = {}
+    allNames.forEach((n, i) => { colors[n] = colorPalette[i % colorPalette.length] })
+    return colors
+  }, [allNames])
+  
+  const seriesA = useMemo(() => allNames.map((name) => ({
     name,
     values: years.map((y) => {
       const found = perYearAWithRetired.find((py) => py.year === y)?.comps.find((c) => c.name === name)
       return found ? found.comp : 0
     }),
-  }))
-  const seriesB = perYearBWithRetired
+  })), [allNames, years, perYearAWithRetired])
+  
+  const seriesB = useMemo(() => perYearBWithRetired
     ? allNames.map((name) => ({
         name,
         values: years.map((y) => {
@@ -60,17 +98,17 @@ export default function OverallCompensationSummary() {
           return found ? found.comp : 0
         }),
       }))
-    : []
+    : [], [allNames, years, perYearBWithRetired])
 
   // Calculate locums data for both scenarios (including grid overrides for 2025)
-  const locumsSeriesA = years.map((y) => {
+  const locumsSeriesA = useMemo(() => years.map((y) => {
     const fy = store.scenarioA.future.find(f => f.year === y)
     // Use merged future[2025] data (includes grid overrides) or fallback to default
     return fy?.locumCosts ?? (y === 2025 ? DEFAULT_LOCUM_COSTS_2025 : 0)
-  })
+  }), [years, store.scenarioA.future])
   
   // Scenario B: Use Scenario A's 2025 locums value (shared baseline), then B's own values for 2026+
-  const locumsSeriesB = store.scenarioBEnabled && store.scenarioB
+  const locumsSeriesB = useMemo(() => store.scenarioBEnabled && store.scenarioB
     ? years.map((y) => {
         if (y === 2025) {
           // Use shared baseline from Scenario A for 2025
@@ -81,7 +119,7 @@ export default function OverallCompensationSummary() {
         const fy = store.scenarioB!.future.find(f => f.year === y)
         return fy?.locumCosts ?? 0
       })
-    : []
+    : [], [store.scenarioBEnabled, store.scenarioB, years, store.scenarioA.future])
 
   const [highlight, setHighlight] = useState<null | { scenario: 'A' | 'B'; name: string }>(null)
   const [isolated, setIsolated] = useState<null | { scenario: 'A' | 'B'; name: string }>(null)

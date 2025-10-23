@@ -18,7 +18,21 @@ export default function HistoricAndProjectionChart() {
   useEffect(() => {
     const updateWidth = () => {
       if (containerRef.current) {
-        setContainerWidth(containerRef.current.offsetWidth)
+        const newWidth = containerRef.current.offsetWidth
+        console.log('📐 [HistoricChart] Container width update:', {
+          newWidth,
+          currentWidth: containerWidth,
+          hasPositiveWidth: newWidth > 0,
+          willUpdate: newWidth > 0
+        })
+        
+        // Only update if we have a valid positive width
+        // This prevents the chart from collapsing when container is temporarily hidden
+        if (newWidth > 0) {
+          setContainerWidth(newWidth)
+        } else {
+          console.warn('📐 [HistoricChart] Ignoring zero/negative width')
+        }
       }
     }
 
@@ -27,8 +41,23 @@ export default function HistoricAndProjectionChart() {
     
     // Use ResizeObserver to detect container size changes
     if (containerRef.current) {
-      const resizeObserver = new ResizeObserver(() => {
-        updateWidth()
+      const resizeObserver = new ResizeObserver((entries) => {
+        // Use ResizeObserver entries for more accurate measurements
+        for (const entry of entries) {
+          const newWidth = entry.contentRect.width
+          console.log('📐 [HistoricChart] ResizeObserver triggered:', {
+            newWidth,
+            currentWidth: containerWidth,
+            hasPositiveWidth: newWidth > 0
+          })
+          
+          // Only update if we have a valid positive width
+          if (newWidth > 0) {
+            setContainerWidth(newWidth)
+          } else {
+            console.warn('📐 [HistoricChart] ResizeObserver: Ignoring zero/negative width')
+          }
+        }
       })
       resizeObserver.observe(containerRef.current)
       
@@ -46,17 +75,25 @@ export default function HistoricAndProjectionChart() {
   useEffect(() => {
     const has2025Data = store.scenarioA.future.some(f => f.year === 2025)
     const hasProjectedYears = store.scenarioA.future.length >= 6 // Should have 2025-2030
-    const dataReady = has2025Data && hasProjectedYears
+    
+    // If Scenario B is enabled, also wait for it to be ready
+    const scenarioBReady = !store.scenarioBEnabled || 
+      (store.scenarioB?.future && store.scenarioB.future.length >= 5)
+    
+    const dataReady = has2025Data && hasProjectedYears && scenarioBReady
     
     if (dataReady && !isDataReady) {
       console.log('📊 Multi-Year Chart: Data ready, loaded projections for', store.scenarioA.future.map(f => f.year).join(', '))
+      if (store.scenarioBEnabled && store.scenarioB) {
+        console.log('📊 Multi-Year Chart: Scenario B also ready with', store.scenarioB.future.map(f => f.year).join(', '))
+      }
       setIsDataReady(true)
     } else if (!dataReady && isDataReady) {
       // Data became invalid (e.g., scenario loading)
-      console.log('📊 Multi-Year Chart: Data not ready, waiting...')
+      console.log('📊 Multi-Year Chart: Data not ready, waiting...', { has2025Data, hasProjectedYears, scenarioBReady })
       setIsDataReady(false)
     }
-  }, [store.scenarioA.future, isDataReady])
+  }, [store.scenarioA.future, store.scenarioBEnabled, store.scenarioB?.future, isDataReady])
 
   // Helper: Calculate metrics from a FutureYear entry (used for 2025 baseline from store)
   const calculateMetricsFromFutureYear = (fy: any) => {
@@ -367,34 +404,116 @@ export default function HistoricAndProjectionChart() {
   }, [store.scenarioBEnabled, store.scenarioB?.future, scAStaffEmployment])
 
   // Calculate chart height based on container width and aspect ratio
-  const aspectRatio = 0.5 // Height = 50% of width (similar to DetailedChart)
-  const chartHeight = containerWidth !== null
-    ? Math.round(containerWidth * aspectRatio)
-    : 700 // Default height
+  const ASPECT_RATIO = 0.5 // Height = 50% of width (same as DetailedChart default)
+  const MIN_HEIGHT = 400 // Minimum height to prevent collapse
+  const DEFAULT_HEIGHT = 700 // Default height when width is unknown
+  
+  const chartHeight = containerWidth !== null 
+    ? Math.max(MIN_HEIGHT, Math.round(containerWidth * ASPECT_RATIO))
+    : DEFAULT_HEIGHT
+  
+  console.log('📏 [HistoricChart] Height calculation:', {
+    containerWidth,
+    aspectRatio: ASPECT_RATIO,
+    calculatedHeight: containerWidth !== null ? Math.round(containerWidth * ASPECT_RATIO) : null,
+    chartHeight,
+    minHeight: MIN_HEIGHT,
+    usingDefault: containerWidth === null
+  })
 
-  // Memoize layout to make it reactive to height changes
-  const chartLayout = useMemo(() => ({
-    title: { text: 'Historic and Projected Totals', font: { weight: 700 } },
-    dragmode: false as any,
-    legend: { orientation: 'v', x: 1.02, xanchor: 'left', y: 0.5, yanchor: 'middle', bordercolor: '#e5e7eb', borderwidth: 1, tracegroupgap: 0 },
-    margin: { l: 60, r: 150, t: 40, b: 40 },
-    yaxis: {
-      tickprefix: '$',
-      separatethousands: true,
-      tickformat: ',.0f',
-      rangemode: 'tozero',
-      autorange: true,
-      automargin: true,
-    },
-    xaxis: { dtick: 1, range: [2015.5, 2030.5] },
-    autosize: true,
-    height: chartHeight,
-  }), [chartHeight])
+  // Track chartHeight changes
+  useEffect(() => {
+    console.log('⚡ [HistoricChart] chartHeight changed:', chartHeight)
+  }, [chartHeight])
+
+  // Memoize layout to ensure it updates when chartHeight changes
+  const chartLayout = useMemo(() => {
+    console.log('📋 [HistoricChart] Creating new layout with height:', chartHeight)
+    return {
+      title: { text: 'Historic and Projected Totals', font: { weight: 700 } },
+      dragmode: false as any,
+      legend: { 
+        orientation: 'v', 
+        x: 1.02, 
+        xanchor: 'left', 
+        y: 0.5, 
+        yanchor: 'middle', 
+        bordercolor: '#e5e7eb', 
+        borderwidth: 1, 
+        tracegroupgap: 0 
+      },
+      margin: { l: 60, r: 150, t: 40, b: 40 },
+      yaxis: {
+        tickprefix: '$',
+        separatethousands: true,
+        tickformat: ',.0f',
+        rangemode: 'tozero',
+        autorange: true,
+        automargin: true,
+      },
+      xaxis: { dtick: 1, range: [2015.5, 2030.5] },
+      autosize: true,
+      height: chartHeight,
+    }
+  }, [chartHeight])
 
   // Loading indicator component
-  if (!isDataReady || containerWidth === null) {
-    // Use CSS aspect ratio to maintain correct height while measuring
-    const aspectRatioPercent = (aspectRatio * 100).toFixed(2)
+  if (!isDataReady) {
+    return (
+      <div
+        ref={containerRef}
+        style={{
+          flex: 1,
+          minWidth: 600,
+          maxWidth: 1400,
+          margin: '0 auto',
+          borderRadius: 8,
+          background: '#f9fafb',
+          padding: 12,
+        }}
+      >
+        <div style={{ 
+          border: '1px solid #d1d5db', 
+          borderRadius: 6, 
+          background: '#ffffff', 
+          padding: 4, 
+          boxShadow: '0 6px 10px rgba(0, 0, 0, 0.15)',
+          height: 600,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 16
+        }}>
+          <div style={{
+            width: 48,
+            height: 48,
+            border: '4px solid #e5e7eb',
+            borderTop: '4px solid #1976d2',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }} />
+          <div style={{ 
+            fontSize: 16, 
+            color: '#6b7280',
+            fontWeight: 500
+          }}>
+            Loading chart data and projections...
+          </div>
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render chart until we have the container width to prevent layout shift
+  if (containerWidth === null) {
+    const aspectRatioPercent = (ASPECT_RATIO * 100).toFixed(2)
     
     return (
       <div
@@ -428,37 +547,24 @@ export default function HistoricAndProjectionChart() {
             right: 0,
             bottom: 0,
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center',
-            gap: 16
+            justifyContent: 'center'
           }}>
-            <div style={{
-              width: 48,
-              height: 48,
-              border: '4px solid #e5e7eb',
-              borderTop: '4px solid #1976d2',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite'
-            }} />
-            <div style={{ 
-              fontSize: 16, 
-              color: '#6b7280',
-              fontWeight: 500
-            }}>
-              {!isDataReady ? 'Loading chart data and projections...' : 'Loading chart...'}
-            </div>
-            <style>{`
-              @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-              }
-            `}</style>
+            <div style={{ color: '#666', fontSize: 14 }}>Loading chart...</div>
           </div>
         </div>
       </div>
     )
   }
+
+  console.log('🎨 [HistoricChart] Rendering chart with:', {
+    containerWidth,
+    chartHeight,
+    isDataReady,
+    hasLayoutMemoized: !!chartLayout,
+    layoutHeight: chartLayout.height,
+    styleHeight: chartHeight
+  })
 
   return (
     <div
@@ -468,6 +574,7 @@ export default function HistoricAndProjectionChart() {
         minWidth: 600,
         maxWidth: 1400,
         margin: '0 auto',
+        //border: '2px solid #d1d5db',
         borderRadius: 8,
         background: '#f9fafb',
         padding: 12,
@@ -736,7 +843,7 @@ export default function HistoricAndProjectionChart() {
           return false // Prevent default behavior
         }}
         useResizeHandler={true}
-        style={{ width: '100%' }}
+        style={{ width: '100%', height: chartHeight }}
       />
       </div>
     </div>
