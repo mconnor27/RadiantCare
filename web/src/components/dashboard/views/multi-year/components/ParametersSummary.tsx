@@ -364,7 +364,11 @@ export default function ParametersSummary() {
   return (
     <div style={{ marginTop: 0 }}>
       {renderScenario('A')}
-      {store.scenarioBEnabled && store.scenarioB && renderScenario('B')}
+      {store.scenarioBEnabled && store.scenarioB && (
+        <div style={{ marginTop: 16 }}>
+          {renderScenario('B')}
+        </div>
+      )}
     </div>
   )
 }

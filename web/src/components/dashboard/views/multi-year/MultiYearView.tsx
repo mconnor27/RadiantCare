@@ -835,7 +835,7 @@ export default function MultiYearView() {
 
       <div style={{
         maxWidth: 1400,
-        minWidth: store.scenarioBEnabled ? 1660 : 1000,
+        minWidth: store.scenarioBEnabled ? 1400 : 1000,
         margin: '0 auto',
         border: '1px solid #d1d5db',
         borderRadius: 6,
