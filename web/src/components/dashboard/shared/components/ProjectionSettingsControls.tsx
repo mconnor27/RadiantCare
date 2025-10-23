@@ -39,7 +39,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
     suffix: string = '%',
     isDollar: boolean = false,
     glowType: 'income' | 'cost' = 'cost',
-    resetTooltip: string = 'Reset to 2016-2024 Trend',
+    resetTooltip: string = 'Reset to Loaded Scenario',
     bare: boolean = false,
     tooltipText?: string
   ) => {
@@ -102,7 +102,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.opacity = '1'
-                    createTooltip('reset-tooltip', 'Reset to Default', e)
+                    createTooltip('reset-tooltip', 'Reset to Loaded Scenario', e)
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.opacity = '0.7'
@@ -620,7 +620,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+      {/* <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
         <button
           onClick={() => {
             removeTooltip('reset-all-tooltip')
@@ -653,42 +653,42 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
         >
           ↺ Reset All
         </button>
-      </div>
+      </div> */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, padding: '0 8px' }}>
         {/* First Column - Income Panels */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {createSlider('Therapy Income Growth', 'incomeGrowthPct', sc.projection.incomeGrowthPct ?? 3.7, -10, 20, 0.1, '%', false, 'income', 'Reset to 2016-2024 Trend', false, THERAPY_INCOME_GROWTH_TOOLTIP)}
+          {createSlider('Therapy Income Growth', 'incomeGrowthPct', sc.projection.incomeGrowthPct ?? 3.7, -10, 20, 0.1, '%', false, 'income', 'Reset to Loaded Scenario', false, THERAPY_INCOME_GROWTH_TOOLTIP)}
 
           <div className={'panel-green'} style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 0 10px rgba(16, 185, 129, 0.08), 0 0 6px rgba(16, 185, 129, 0.4)' }}>
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2, textAlign: 'left' }}>Medical Director Hours (Annual Overrides)</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
-              {createSlider('Shared', 'medicalDirectorHours', sc.projection.medicalDirectorHours ?? PROJECTION_DEFAULTS[scenario].medicalDirectorHours, SLIDER_CONFIGS.medicalDirectorHours.min, SLIDER_CONFIGS.medicalDirectorHours.max, SLIDER_CONFIGS.medicalDirectorHours.step, '', true, 'income', 'Reset to Default', true)}
-              {createSlider('PRCS', 'prcsMedicalDirectorHours', sc.projection.prcsMedicalDirectorHours ?? PROJECTION_DEFAULTS[scenario].prcsMedicalDirectorHours, SLIDER_CONFIGS.prcsMedicalDirectorHours.min, SLIDER_CONFIGS.prcsMedicalDirectorHours.max, SLIDER_CONFIGS.prcsMedicalDirectorHours.step, '', true, 'income', 'Reset to Default', true)}
+              {createSlider('Shared', 'medicalDirectorHours', sc.projection.medicalDirectorHours ?? PROJECTION_DEFAULTS[scenario].medicalDirectorHours, SLIDER_CONFIGS.medicalDirectorHours.min, SLIDER_CONFIGS.medicalDirectorHours.max, SLIDER_CONFIGS.medicalDirectorHours.step, '', true, 'income', 'Reset to Loaded Scenario', true)}
+              {createSlider('PRCS', 'prcsMedicalDirectorHours', sc.projection.prcsMedicalDirectorHours ?? PROJECTION_DEFAULTS[scenario].prcsMedicalDirectorHours, SLIDER_CONFIGS.prcsMedicalDirectorHours.min, SLIDER_CONFIGS.prcsMedicalDirectorHours.max, SLIDER_CONFIGS.prcsMedicalDirectorHours.step, '', true, 'income', 'Reset to Loaded Scenario', true)}
             </div>
           </div>
 
-          {createSlider('Consulting Services Agreement (Annual Override)', 'consultingServicesAgreement', sc.projection.consultingServicesAgreement ?? PROJECTION_DEFAULTS[scenario].consultingServicesAgreement, SLIDER_CONFIGS.consultingServicesAgreement.min, SLIDER_CONFIGS.consultingServicesAgreement.max, SLIDER_CONFIGS.consultingServicesAgreement.step, '', true, 'income', 'Reset to Default', false, CONSULTING_SERVICES_TOOLTIP)}
+          {createSlider('Consulting Services Agreement (Annual Override)', 'consultingServicesAgreement', sc.projection.consultingServicesAgreement ?? PROJECTION_DEFAULTS[scenario].consultingServicesAgreement, SLIDER_CONFIGS.consultingServicesAgreement.min, SLIDER_CONFIGS.consultingServicesAgreement.max, SLIDER_CONFIGS.consultingServicesAgreement.step, '', true, 'income', 'Reset to Loaded Scenario', false, CONSULTING_SERVICES_TOOLTIP)}
         </div>
 
         {/* Second Column - Cost Panels */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {createSlider('Non-Employment Costs Growth', 'nonEmploymentCostsPct', sc.projection.nonEmploymentCostsPct ?? 7.8, -10, 20, 0.1, '%', false, 'cost', 'Reset to 2016-2024 Trend', false, NON_EMPLOYMENT_COSTS_GROWTH_TOOLTIP)}
+          {createSlider('Non-Employment Costs Growth', 'nonEmploymentCostsPct', sc.projection.nonEmploymentCostsPct ?? 7.8, -10, 20, 0.1, '%', false, 'cost', 'Reset to Loaded Scenario', false, NON_EMPLOYMENT_COSTS_GROWTH_TOOLTIP)}
 
           <div className={'panel-red'} style={{ padding: 8, backgroundColor: '#ffffff', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05), 0 0 10px rgba(239, 68, 68, 0.08), 0 0 6px rgba(239, 68, 68, 0.4)' }}>
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2, textAlign: 'left' }}>Employment Costs Growth</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
-              {createSlider('Staff W2', 'nonMdEmploymentCostsPct', sc.projection.nonMdEmploymentCostsPct ?? 6.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Default', true, STAFF_W2_TOOLTIP)}
-              {createSlider('Benefits', 'benefitCostsGrowthPct', sc.projection.benefitCostsGrowthPct ?? 5.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Default', true, BENEFITS_TOOLTIP)}
+              {createSlider('Staff W2', 'nonMdEmploymentCostsPct', sc.projection.nonMdEmploymentCostsPct ?? 6.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Loaded Scenario', true, STAFF_W2_TOOLTIP)}
+              {createSlider('Benefits', 'benefitCostsGrowthPct', sc.projection.benefitCostsGrowthPct ?? 5.0, -10, 20, 0.1, '%', false, 'cost', 'Reset to Loaded Scenario', true, BENEFITS_TOOLTIP)}
             </div>
           </div>
 
-          {createSlider('Misc Employment Costs Growth', 'miscEmploymentCostsPct', sc.projection.miscEmploymentCostsPct ?? 6.7, -10, 20, 0.1, '%', false, 'cost', 'Reset to 2016-2024 Trend', false, MISC_EMPLOYMENT_COSTS_TOOLTIP)}
+          {createSlider('Misc Employment Costs Growth', 'miscEmploymentCostsPct', sc.projection.miscEmploymentCostsPct ?? 6.7, -10, 20, 0.1, '%', false, 'cost', 'Reset to Loaded Scenario', false, MISC_EMPLOYMENT_COSTS_TOOLTIP)}
         </div>
       </div>
 
       {/* Locums Panel - Full Width */}
       <div style={{ marginTop: 16, padding: '0 8px 8px 8px' }}>
-        {createSlider('Locums Costs (Annual Override)', 'locumsCosts', sc.projection.locumsCosts ?? PROJECTION_DEFAULTS[scenario].locumsCosts, SLIDER_CONFIGS.locumsCosts.min, SLIDER_CONFIGS.locumsCosts.max, SLIDER_CONFIGS.locumsCosts.step, '', true, 'cost', 'Reset to Default', false, createLocumsTooltip(sc.projection.locumsCosts ?? PROJECTION_DEFAULTS[scenario].locumsCosts))}
+        {createSlider('Locums Costs (Annual Override)', 'locumsCosts', sc.projection.locumsCosts ?? PROJECTION_DEFAULTS[scenario].locumsCosts, SLIDER_CONFIGS.locumsCosts.min, SLIDER_CONFIGS.locumsCosts.max, SLIDER_CONFIGS.locumsCosts.step, '', true, 'cost', 'Reset to Loaded Scenario', false, createLocumsTooltip(sc.projection.locumsCosts ?? PROJECTION_DEFAULTS[scenario].locumsCosts))}
       </div>
     </>
   )

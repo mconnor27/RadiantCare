@@ -52,6 +52,87 @@ function createProjectionSummary(scenario: 'A' | 'B', store: Store): string {
   return summaryParts.join(' • ')
 }
 
+// Helper function to check if any future years (2026-2030) have overrides or modified physicians
+function hasFutureYearOverrides(scenario: 'A' | 'B', store: Store): boolean {
+  const scenarioData = scenario === 'A' ? store.scenarioA : store.scenarioB
+  if (!scenarioData) return false
+  
+  const snapshot = scenario === 'A' ? store.loadedScenarioSnapshot : store.loadedScenarioBSnapshot
+  if (!snapshot) return false
+  
+  const snapshotScenario = scenario === 'A' 
+    ? ('scenarioA' in snapshot ? snapshot.scenarioA : null)
+    : ('scenarioB' in snapshot ? snapshot.scenarioB : null)
+  if (!snapshotScenario) return false
+  
+  // Check each future year (2026-2030)
+  for (const fy of scenarioData.future) {
+    if (fy.year < 2026 || fy.year > 2030) continue
+    
+    // Check if year has any override flags
+    if (fy._overrides && Object.keys(fy._overrides).length > 0) {
+      return true
+    }
+    
+    // Check if physicians have been modified from snapshot
+    const snapshotFy = snapshotScenario.future.find((f: any) => f.year === fy.year)
+    if (snapshotFy) {
+      // Compare physician count
+      if (fy.physicians.length !== snapshotFy.physicians.length) {
+        return true
+      }
+      
+      // Compare each physician (basic check - different from detailed hasChangesFromLoadedScenario)
+      for (let i = 0; i < fy.physicians.length; i++) {
+        const current = fy.physicians[i]
+        const snapshotPhysician = snapshotFy.physicians[i]
+        
+        // Quick dirty check - compare key fields
+        if (
+          current.name !== snapshotPhysician.name ||
+          current.type !== snapshotPhysician.type ||
+          Math.abs((current.salary ?? 0) - (snapshotPhysician.salary ?? 0)) > 100 ||
+          current.receivesBenefits !== snapshotPhysician.receivesBenefits ||
+          Math.abs((current.employeePortionOfYear ?? 0) - (snapshotPhysician.employeePortionOfYear ?? 0)) > 0.01
+        ) {
+          return true
+        }
+      }
+    }
+  }
+  
+  return false
+}
+
+// Helper function to reset all future years (2026-2030) to be calculated from current projection settings
+function resetFutureYearsToProjection(scenario: 'A' | 'B', store: Store) {
+  console.log(`🔄 Resetting all future years for Scenario ${scenario} to current projection settings...`)
+  
+  const scenarioData = scenario === 'A' ? store.scenarioA : store.scenarioB
+  if (!scenarioData) {
+    console.warn(`⚠️ No data for Scenario ${scenario}`)
+    return
+  }
+  
+  // Clear all overrides for years 2026-2030
+  scenarioData.future.forEach((fy) => {
+    if (fy.year >= 2026 && fy.year <= 2030) {
+      fy._overrides = {}
+      console.log(`  ✓ Cleared overrides for year ${fy.year}`)
+    }
+  })
+  
+  // Reset physicians for years 2026-2030 to loaded snapshot
+  for (let year = 2026; year <= 2030; year++) {
+    store.resetPhysicians(scenario, year)
+    console.log(`  ✓ Reset physicians for year ${year}`)
+  }
+  
+  // Recompute all future years from baseline using current projection settings
+  store.applyProjectionFromLastActual(scenario)
+  console.log(`✅ Reset complete - all future years recalculated from current projection settings`)
+}
+
 export default function MultiYearView() {
   const store = useDashboardStore()
   const { profile } = useAuth()
@@ -1122,7 +1203,46 @@ export default function MultiYearView() {
               >
                 <ProjectionSettingsControls scenario={'A'} />
               </CollapsibleSection>
-              <CollapsibleSection title={`Per Year Settings (Baseline: ${getBaselineYear(store.scenarioA.dataMode)})`} open={yearPanelOpen} onOpenChange={setYearPanelOpen} tone="neutral">
+              <CollapsibleSection 
+                title={`Per Year Settings (Baseline: ${getBaselineYear(store.scenarioA.dataMode)})`} 
+                open={yearPanelOpen} 
+                onOpenChange={setYearPanelOpen} 
+                tone="neutral"
+                right={
+                  hasFutureYearOverrides('A', store) ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeTooltip('year-panel-reset-a-tooltip')
+                        resetFutureYearsToProjection('A', store)
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                        transition: 'opacity 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.opacity = '0.7'
+                        createTooltip('year-panel-reset-a-tooltip', 'Reset to current projection settings', e, { placement: 'below-center' })
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.opacity = '1'
+                        removeTooltip('year-panel-reset-a-tooltip')
+                      }}
+                    >
+                      <img 
+                        src="/recalc2.png" 
+                        alt="Reset" 
+                        style={{ width: 34, height: 34 }}
+                      />
+                    </button>
+                  ) : null
+                }
+              >
                 <YearPanel year={store.scenarioA.selectedYear ?? store.scenarioA.future[0]?.year ?? 2025} scenario={'A'} />
               </CollapsibleSection>
             </div>
@@ -1313,7 +1433,46 @@ export default function MultiYearView() {
                 >
                   <ProjectionSettingsControls scenario={'B'} />
                 </CollapsibleSection>
-                <CollapsibleSection title={`Per Year Settings (Baseline: ${getBaselineYear(store.scenarioB?.dataMode || '2025 Data')})`} open={yearPanelOpen} onOpenChange={setYearPanelOpen} tone="neutral">
+                <CollapsibleSection 
+                  title={`Per Year Settings (Baseline: ${getBaselineYear(store.scenarioB?.dataMode || '2025 Data')})`} 
+                  open={yearPanelOpen} 
+                  onOpenChange={setYearPanelOpen} 
+                  tone="neutral"
+                  right={
+                    hasFutureYearOverrides('B', store) ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeTooltip('year-panel-reset-b-tooltip')
+                          resetFutureYearsToProjection('B', store)
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: 4,
+                          display: 'flex',
+                          alignItems: 'center',
+                          transition: 'opacity 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.opacity = '0.7'
+                          createTooltip('year-panel-reset-b-tooltip', 'Reset to current projection settings', e, { placement: 'below-center' })
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.opacity = '1'
+                          removeTooltip('year-panel-reset-b-tooltip')
+                        }}
+                      >
+                        <img 
+                          src="/recalc2.png" 
+                          alt="Reset" 
+                          style={{ width: 34, height: 34 }}
+                        />
+                      </button>
+                    ) : null
+                  }
+                >
                   <YearPanel year={store.scenarioB.selectedYear ?? store.scenarioB.future[0]?.year ?? 2025} scenario={'B'} />
                 </CollapsibleSection>
               </div>

@@ -32,6 +32,58 @@ import {
 import type { ScenarioKey, FutureYear } from '../types'
 import PhysiciansEditor from './PhysiciansEditor'
 
+// Helper function to check if a specific year has overrides
+function hasYearOverrides(year: number, scenario: ScenarioKey, store: any): boolean {
+  if (year < 2026) return false // Only check future years
+  
+  const scenarioData = scenario === 'A' ? store.scenarioA : store.scenarioB
+  if (!scenarioData) return false
+  
+  const snapshot = scenario === 'A' ? store.loadedScenarioSnapshot : store.loadedScenarioBSnapshot
+  if (!snapshot) return false
+  
+  const snapshotScenario = scenario === 'A' 
+    ? ('scenarioA' in snapshot ? snapshot.scenarioA : null)
+    : ('scenarioB' in snapshot ? snapshot.scenarioB : null)
+  if (!snapshotScenario) return false
+  
+  const fy = scenarioData.future.find((f: any) => f.year === year)
+  if (!fy) return false
+  
+  // Check if year has any override flags
+  if (fy._overrides && Object.keys(fy._overrides).length > 0) {
+    return true
+  }
+  
+  // Check if physicians have been modified from snapshot
+  const snapshotFy = snapshotScenario.future.find((f: any) => f.year === year)
+  if (snapshotFy) {
+    // Compare physician count
+    if (fy.physicians.length !== snapshotFy.physicians.length) {
+      return true
+    }
+    
+    // Compare each physician
+    for (let i = 0; i < fy.physicians.length; i++) {
+      const current = fy.physicians[i]
+      const snapshotPhysician = snapshotFy.physicians[i]
+      
+      // Quick dirty check - compare key fields
+      if (
+        current.name !== snapshotPhysician.name ||
+        current.type !== snapshotPhysician.type ||
+        Math.abs((current.salary ?? 0) - (snapshotPhysician.salary ?? 0)) > 100 ||
+        current.receivesBenefits !== snapshotPhysician.receivesBenefits ||
+        Math.abs((current.employeePortionOfYear ?? 0) - (snapshotPhysician.employeePortionOfYear ?? 0)) > 0.01
+      ) {
+        return true
+      }
+    }
+  }
+  
+  return false
+}
+
 export default function YearPanel({ year, scenario }: { year: number; scenario: ScenarioKey }) {
   const store = useDashboardStore()
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
@@ -128,22 +180,39 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {/* Year Navigation Buttons */}
       <div className="year-buttons" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', overflowX: 'visible', whiteSpace: 'normal', marginBottom: 8, paddingLeft: 8 }}>
-        {availableYears.map((yr) => (
-          <button
-            key={`${scenario}-${yr}`}
-            onClick={() => store.setSelectedYear(scenario, yr)}
-            style={{
-              padding: '8px 12px',
-              borderRadius: 6,
-              border: '1px solid #ccc',
-              background: sc.selectedYear === yr ? '#f0f4ff' : 'white',
-              fontWeight: sc.selectedYear === yr ? 700 : 500,
-              cursor: 'pointer',
-            }}
-          >
-            {yr === 2025 ? 'Baseline' : yr}
-          </button>
-        ))}
+        {availableYears.map((yr) => {
+          const hasOverrides = hasYearOverrides(yr, scenario, store)
+          return (
+            <button
+              key={`${scenario}-${yr}`}
+              onClick={() => store.setSelectedYear(scenario, yr)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: 6,
+                border: '1px solid #ccc',
+                background: sc.selectedYear === yr ? '#f0f4ff' : 'white',
+                fontWeight: sc.selectedYear === yr ? 700 : 500,
+                cursor: 'pointer',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}
+            >
+              {yr === 2025 ? 'Baseline' : yr}
+              {hasOverrides && (
+                <span style={{
+                  display: 'inline-block',
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  backgroundColor: '#f59e0b',
+                  flexShrink: 0
+                }} />
+              )}
+            </button>
+          )
+        })}
       </div>
       
       {year === 2025 ? (
