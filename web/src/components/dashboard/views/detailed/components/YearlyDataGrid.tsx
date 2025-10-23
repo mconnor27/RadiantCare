@@ -474,6 +474,117 @@ export default function YearlyDataGrid({
     }))
   )
   
+  // Check if all editable values are already annualized (all cells yellow)
+  // This checks by iterating through grid rows and comparing their effective values against annualized baseline
+  const areAllValuesAnnualized = useCallback((): boolean => {
+    if (!gridData.allRows || gridData.allRows.length === 0 || !gridData.columns) {
+      return false
+    }
+    
+    const isPrcsCalculated = store.ytdData.prcsMdHoursMode === 'calculated'
+    const ytdColIndex = gridData.columns.length - 2
+    const projectedColIndex = gridData.columns.length - 1
+    
+    // Helper to check approximate equality (within rounding tolerance)
+    const approximatelyEqual = (a: number, b: number) => Math.abs(Math.round(a) - Math.round(b)) <= 1
+    
+    let allAnnualized = true
+    const nonAnnualizedRows: string[] = []
+    
+    // Helper to get the effective projected value (from custom values or grid)
+    const getEffectiveValue = (accountName: string, annualizedValue: number): number => {
+      const normalizedAccountName = normalizeAccountName(accountName)
+      
+      // Check if there's a custom value set
+      if (customProjectedValues[accountName] !== undefined) {
+        return customProjectedValues[accountName]
+      }
+      if (customProjectedValues[normalizedAccountName] !== undefined) {
+        return customProjectedValues[normalizedAccountName]
+      }
+      
+      // Otherwise, use the default value logic
+      const defaultValue = getDefaultValue(normalizedAccountName, annualizedValue)
+      return defaultValue
+    }
+    
+    for (const row of gridData.allRows) {
+      const accountCell = row.cells?.[0] as any
+      const accountName = accountCell?.text?.trim() || ''
+      const cell = row.cells?.[projectedColIndex] as any
+      
+      // Skip section rows, spacer rows
+      const isSpacer = cell?.rowType === 'Spacer'
+      const isSection = cell?.rowType === 'Section'
+      
+      if (isSpacer || isSection || !accountName) {
+        continue
+      }
+      
+      // Skip calculated rows (not user-editable, don't affect annualization status)
+      const isCalculatedRow = isCalculatedAccount(accountName)
+      if (isCalculatedRow) {
+        continue
+      }
+      
+      // Skip summary group rows (except therapy total which is editable)
+      const isSummaryGroup = cell?.rowType === 'Summary' && !accountName.startsWith('Total 7100')
+      if (isSummaryGroup) {
+        continue
+      }
+      
+      // Skip therapy components (they're summed into Total 7100 Therapy Income)
+      const isTherapyComponent = accountName === '7105 Therapy - Lacey' || 
+                                 accountName === '7108 Therapy - Aberdeen' || 
+                                 accountName === '7110 Therapy - Centralia' || 
+                                 accountName === '7149 Refunds - Therapy'
+      if (isTherapyComponent) {
+        continue
+      }
+      
+      // Skip non-data rows (computed rows) - use same logic as Annualize All
+      const isRowTypeData = cell?.rowType === 'Data'
+      const isComputed = cell?.computedRow === true
+      const isTherapyTotalSummary = (cell?.rowType === 'Summary' && accountName === 'Total 7100 Therapy Income')
+      const isEditableRow = (isRowTypeData && !isComputed) || isTherapyTotalSummary
+      
+      if (!isEditableRow) {
+        continue
+      }
+      
+      // Calculate annualized baseline from YTD
+      const ytdCell = row.cells?.[ytdColIndex] as any
+      const ytdText = (ytdCell?.text || '0').toString()
+      const ytdValue = parseFloat(ytdText.replace(/[$,\s]/g, '')) || 0
+      const annualizedValue = ytdValue * projectionRatio
+      
+      // Get the effective value (what it should be after defaults/customs are applied)
+      const effectiveValue = getEffectiveValue(accountName, annualizedValue)
+      
+      // Check if the effective value matches the annualized baseline
+      if (!approximatelyEqual(effectiveValue, annualizedValue)) {
+        allAnnualized = false
+        nonAnnualizedRows.push(`${normalizeAccountName(accountName)}: effective=${Math.round(effectiveValue)}, annualized=${Math.round(annualizedValue)}`)
+      }
+    }
+    
+    // Special check for PRCS MD Hours - if it's in calculated mode, it's not "annualized"
+    if (isPrcsCalculated) {
+      allAnnualized = false
+      nonAnnualizedRows.push('PRCS MD Hours is in calculated mode')
+    }
+    
+    if (!allAnnualized && nonAnnualizedRows.length > 0) {
+      console.log('🔍 [Annualize Check] Not all values annualized:', nonAnnualizedRows)
+    } else if (allAnnualized) {
+      console.log('✅ [Annualize Check] All values are annualized!')
+    }
+    
+    return allAnnualized
+  }, [gridData, projectionRatio, store.ytdData.prcsMdHoursMode, customProjectedValues])
+  
+  const allValuesAreAnnualized = areAllValuesAnnualized()
+  
   const loadData = useCallback(async () => {
     console.log('🔄 [Grid loadData] Called!')
     try {
@@ -1070,37 +1181,39 @@ export default function YearlyDataGrid({
       tone="neutral"
       right={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Annualize All Button (always visible) */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              removeTooltip('grid-annualize-tooltip')
-              onAnnualizeAll?.()
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 4,
-              display: 'flex',
-              alignItems: 'center',
-              transition: 'opacity 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.opacity = '0.7'
-              createTooltip('grid-annualize-tooltip', 'Annualize all grid values', e, { placement: 'below-center' })
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.opacity = '1'
-              removeTooltip('grid-annualize-tooltip')
-            }}
-          >
-            <img 
-              src="/recalc2.png" 
-              alt="Annualize" 
-              style={{ width: 34, height: 34 }}
-            />
-          </button>
+          {/* Annualize All Button (only visible when not all values are annualized) */}
+          {!allValuesAreAnnualized && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                removeTooltip('grid-annualize-tooltip')
+                onAnnualizeAll?.()
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 4,
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'opacity 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '0.7'
+                createTooltip('grid-annualize-tooltip', 'Annualize all grid values', e, { placement: 'below-center' })
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1'
+                removeTooltip('grid-annualize-tooltip')
+              }}
+            >
+              <img 
+                src="/recalc2.png" 
+                alt="Annualize" 
+                style={{ width: 34, height: 34 }}
+              />
+            </button>
+          )}
 
           {/* Reset Grid Button (only visible when dirty) */}
           {isGridDirty && (
