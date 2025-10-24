@@ -166,26 +166,73 @@ export default function HistoricAndProjectionChart() {
     [store.historic, baselineA.employmentCosts]
   )
   
-  // Memoize historic Net Income for MDs values (2016-2025)
-  const netIncomeForMDsHistoric = useMemo(() => historicYears.map((year, index) => {
-    if (year === 2025) {
-      // Use scenario-derived 2025 value to avoid discontinuity
-      return calculateNetIncomeForMDs(2025, 'A')
+  // Cache for Net Income for MDs calculations to avoid unnecessary recalculations
+  const netIncomeForMDsCacheRef = useRef<{
+    cacheKey: string
+    value: number[]
+  }>({ cacheKey: '', value: [] })
+
+  // Memoize historic Net Income for MDs values (2016-2025) with stable caching
+  const netIncomeForMDsHistoric = useMemo(() => {
+    // Create a stable cache key based on actual data content, not object reference
+    const fy2025 = store.scenarioA.future.find(f => f.year === 2025)
+    const cacheKey = fy2025 ? JSON.stringify({
+      year: fy2025.year,
+      physicians: fy2025.physicians.map(p => ({
+        id: p.id,
+        name: p.name,
+        type: p.type,
+        salary: p.salary,
+        employeePortionOfYear: p.employeePortionOfYear,
+        partnerPortionOfYear: p.partnerPortionOfYear,
+        startPortionOfYear: p.startPortionOfYear,
+        terminatePortionOfYear: p.terminatePortionOfYear,
+        receivesBenefits: p.receivesBenefits,
+        receivesBonuses: p.receivesBonuses,
+        bonusAmount: p.bonusAmount,
+        hasMedicalDirectorHours: p.hasMedicalDirectorHours,
+        medicalDirectorHoursPercentage: p.medicalDirectorHoursPercentage,
+        buyoutCost: p.buyoutCost,
+        trailingSharedMdAmount: p.trailingSharedMdAmount,
+        additionalDaysWorked: p.additionalDaysWorked
+      })),
+      nonMdEmploymentCosts: fy2025.nonMdEmploymentCosts,
+      miscEmploymentCosts: fy2025.miscEmploymentCosts,
+      locumCosts: fy2025.locumCosts,
+      nonEmploymentCosts: fy2025.nonEmploymentCosts,
+      therapyIncome: fy2025.therapyIncome
+    }) : 'no-2025-data'
+
+    // Return cached value if data hasn't changed
+    if (netIncomeForMDsCacheRef.current.cacheKey === cacheKey) {
+      return netIncomeForMDsCacheRef.current.value
     }
-    // Historic values from the yearly data grid
-    const historicValues = [
-      1969715, // 2016
-      2022908, // 2017  
-      2036882, // 2018
-      2107215, // 2019
-      2136804, // 2020
-      2250440, // 2021
-      2118718, // 2022
-      2549332, // 2023
-      2583878, // 2024
-    ]
-    return historicValues[index] || 0
-  }), [historicYears, store.scenarioA.future])
+
+    // Calculate new value
+    const result = historicYears.map((year, index) => {
+      if (year === 2025) {
+        // Use scenario-derived 2025 value to avoid discontinuity
+        return calculateNetIncomeForMDs(2025, 'A')
+      }
+      // Historic values from the yearly data grid
+      const historicValues = [
+        1969715, // 2016
+        2022908, // 2017  
+        2036882, // 2018
+        2107215, // 2019
+        2136804, // 2020
+        2250440, // 2021
+        2118718, // 2022
+        2549332, // 2023
+        2583878, // 2024
+      ]
+      return historicValues[index] || 0
+    })
+
+    // Update cache
+    netIncomeForMDsCacheRef.current = { cacheKey, value: result }
+    return result
+  }, [historicYears, store.scenarioA.future])
 
   // Memoize historic Staff Employment Costs values (2016-2025)
   const staffEmploymentHistoric = useMemo(() => historicYears.map((year, index) => {
