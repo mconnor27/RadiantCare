@@ -1,4 +1,5 @@
 import type { Physician } from './types'
+import { logger } from '../../../lib/logger'
 import React from 'react'
 import { PRCS_MD_ANNUAL_MAX } from './defaults'
 
@@ -438,7 +439,7 @@ export function createPrcsAmountTooltip(
         let annualizedValue: number | undefined
         if (ytdActualValue !== undefined && projectionRatio !== undefined) {
           annualizedValue = ytdActualValue * projectionRatio
-          console.log(`📊 [PRCS Toggle] Calculated annualized value: YTD $${ytdActualValue.toLocaleString()} * ${projectionRatio.toFixed(3)} = $${Math.round(annualizedValue).toLocaleString()}`)
+          logger.debug('UI', `📊 [PRCS Toggle] Calculated annualized value: YTD $${ytdActualValue.toLocaleString()} * ${projectionRatio.toFixed(3)} = $${Math.round(annualizedValue).toLocaleString()}`)
         }
         onModeToggle('annualized', annualizedValue)
         removeTooltip(tooltipId)

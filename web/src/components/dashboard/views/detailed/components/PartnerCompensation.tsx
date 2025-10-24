@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { logger } from '../../../../../lib/logger'
 import equityDataStatic from '../../../../../historical_data/2025_equity.json'
 import summaryDataStatic from '../../../../../historical_data/2025_summary.json'
 import { PARTNER_COMPENSATION_CONFIG } from '../../../shared/defaults'
@@ -305,7 +306,7 @@ export default function PartnerCompensation({
   const fy2025 = store.ytdData
   const physicians = fy2025?.physicians || []
   
-  console.log('👥 [PartnerComp] Using data source:', {
+  logger.debug('COMPENSATION', '👥 [PartnerComp] Using data source:', {
     source: 'store.ytdData',
     therapyIncome: fy2025?.therapyIncome,
     nonEmploymentCosts: fy2025?.nonEmploymentCosts,
@@ -321,7 +322,7 @@ export default function PartnerCompensation({
     
     // DEBUG: Comprehensive logging for compensation debugging
     console.group('🧮 [PartnerComp] Compensation Calculation Summary')
-    console.log('📊 Input Parameters from store.ytdData:', {
+    logger.debug('COMPENSATION', '📊 Input Parameters from store.ytdData:', {
       therapyIncome: fy2025?.therapyIncome,
       nonEmploymentCosts: fy2025?.nonEmploymentCosts,
       nonMdEmploymentCosts: fy2025?.nonMdEmploymentCosts,
@@ -333,12 +334,12 @@ export default function PartnerCompensation({
       benefitCostsGrowthPct: 5
     })
     
-    console.log('👥 Partner Compensations:', result.totals)
+    logger.debug('COMPENSATION', '👥 Partner Compensations:', result.totals)
     
     const totalPartnerComp = Object.values(result.totals).reduce((sum, val) => sum + val, 0)
-    console.log('💰 Total Partner Compensation (sum):', totalPartnerComp.toLocaleString('en-US', { style: 'currency', currency: 'USD' }))
+    logger.debug('COMPENSATION', '💰 Total Partner Compensation (sum):', totalPartnerComp.toLocaleString('en-US', { style: 'currency', currency: 'USD' }))
     
-    console.log('ℹ️ Compare this total to "Net Income" in the grid!')
+    logger.debug('COMPENSATION', 'ℹ️ Compare this total to "Net Income" in the grid!')
     console.groupEnd()
     
     return result

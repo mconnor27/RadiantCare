@@ -1,4 +1,5 @@
 import { type Row } from '@silevis/reactgrid'
+import { logger } from '../../../../../lib/logger'
 import getDefaultValue from '../config/projectedDefaults'
 import { calculateMDAssociatesCosts, calculateGuaranteedPayments, calculateLocumsSalary } from '../../../shared/calculations'
 import { type Physician } from '../../../shared/types'
@@ -218,8 +219,8 @@ function calculateProjectionRatio(data2025: MonthlyData): number {
   // Calculate the projection ratio
   const projectionRatio = fullYearDays / dataPeriodDays
   
-  // console.log(`Data period: ${startPeriod} to ${endPeriod} (${dataPeriodDays} days)`)
-  // console.log(`Projection ratio: ${projectionRatio.toFixed(3)} (${fullYearDays}/${dataPeriodDays})`)
+  // logger.debug('DATA_TRANSFORM', `Data period: ${startPeriod} to ${endPeriod} (${dataPeriodDays} days)`)
+  // logger.debug('DATA_TRANSFORM', `Projection ratio: ${projectionRatio.toFixed(3)} (${fullYearDays}/${dataPeriodDays})`)
   
   return projectionRatio
 }
@@ -271,11 +272,11 @@ function merge2025Data(
           const normalizedAccountName = accountName.replace(/\s+/g, ' ').trim()
           if (normalizedAccountName.match(/Medical Director Hours.*Shared/i)) {
             value2025Default = physicianData.medicalDirectorHours ?? value2025Annualized
-            console.log(`🔍 [Transformer] Medical Director Hours (Shared): physicianData.medicalDirectorHours = ${physicianData.medicalDirectorHours}, using value: ${value2025Default}`)
+            logger.debug('DATA_TRANSFORM', `🔍 [Transformer] Medical Director Hours (Shared): physicianData.medicalDirectorHours = ${physicianData.medicalDirectorHours}, using value: ${value2025Default}`)
             isCalculated = false // Not marked as calculated so it shows as editable (green)
           } else if (normalizedAccountName.match(/Consulting Agreement/i)) {
             value2025Default = physicianData.consultingServicesAgreement ?? value2025Annualized
-            console.log(`🔍 [Transformer] Consulting Agreement/Other: physicianData.consultingServicesAgreement = ${physicianData.consultingServicesAgreement}, using value: ${value2025Default}`)
+            logger.debug('DATA_TRANSFORM', `🔍 [Transformer] Consulting Agreement/Other: physicianData.consultingServicesAgreement = ${physicianData.consultingServicesAgreement},  using value: ${value2025Default}`)
             isCalculated = false // Not marked as calculated so it shows as editable (green)
           } else {
             const calculatedInfo = isCalculatedRow(accountName)
@@ -311,7 +312,7 @@ function merge2025Data(
                   break
               }
               isCalculated = true
-              console.log(`💜 [Calculated] ${accountName}: type=${calculatedInfo.type}, value2025Default=${value2025Default}`)
+              logger.debug('DATA_TRANSFORM', `💜 [Calculated] ${accountName}: type=${calculatedInfo.type},  value2025Default=${value2025Default}`)
             } else {
               // Use config default or fallback to annualized for other accounts
               value2025Default = getDefaultValue(accountName, value2025Annualized)
@@ -347,11 +348,11 @@ function merge2025Data(
           const normalizedAccountName = accountName.replace(/\s+/g, ' ').trim()
           if (normalizedAccountName.match(/Medical Director Hours.*Shared/i)) {
             value2025Default = physicianData.medicalDirectorHours ?? value2025Annualized
-            console.log(`🔍 [Transformer] Medical Director Hours (Shared): physicianData.medicalDirectorHours = ${physicianData.medicalDirectorHours}, using value: ${value2025Default}`)
+            logger.debug('DATA_TRANSFORM', `🔍 [Transformer] Medical Director Hours (Shared): physicianData.medicalDirectorHours = ${physicianData.medicalDirectorHours}, using value: ${value2025Default}`)
             isCalculated = false // Not marked as calculated so it shows as editable (green)
           } else if (normalizedAccountName.match(/Consulting Agreement/i)) {
             value2025Default = physicianData.consultingServicesAgreement ?? value2025Annualized
-            console.log(`🔍 [Transformer] Consulting Agreement/Other: physicianData.consultingServicesAgreement = ${physicianData.consultingServicesAgreement}, using value: ${value2025Default}`)
+            logger.debug('DATA_TRANSFORM', `🔍 [Transformer] Consulting Agreement/Other: physicianData.consultingServicesAgreement = ${physicianData.consultingServicesAgreement},  using value: ${value2025Default}`)
             isCalculated = false // Not marked as calculated so it shows as editable (green)
           } else {
             const calculatedInfo = isCalculatedRow(accountName)
@@ -387,7 +388,7 @@ function merge2025Data(
                   break
               }
               isCalculated = true
-              console.log(`💜 [Calculated] ${accountName}: type=${calculatedInfo.type}, value2025Default=${value2025Default}`)
+              logger.debug('DATA_TRANSFORM', `💜 [Calculated] ${accountName}: type=${calculatedInfo.type},  value2025Default=${value2025Default}`)
             } else {
               // Use config default or fallback to annualized for other accounts
               value2025Default = getDefaultValue(accountName, value2025Annualized)
@@ -438,7 +439,7 @@ function flattenRows(rows: any[], level = 0, parentGroup?: string, sectionCounte
       const sectionId = isSection ? `section-${sectionCounter.count++}` : undefined
       
       // if (isSection) {
-      //   console.log('Creating section:', headerText, 'with ID:', sectionId, 'at level:', level)
+      //   logger.debug('DATA_TRANSFORM', 'Creating section:',  headerText, 'with ID:', sectionId, 'at level:', level)
       // }
       
       flattened.push({
@@ -486,7 +487,7 @@ function flattenRows(rows: any[], level = 0, parentGroup?: string, sectionCounte
 
 // Mark rows as visually hidden based on collapsed sections (but keep ALL rows in the data structure)
 function filterCollapsedRows(rows: any[], collapsedSections: CollapsibleState): any[] {
-  // console.log('Marking collapsed rows with collapsed sections:', collapsedSections)
+  // logger.debug('DATA_TRANSFORM', 'Marking collapsed rows with collapsed sections:',  collapsedSections)
   const processedRows: any[] = []
   let hideUntilLevel: number | null = null
 
@@ -516,7 +517,7 @@ function filterCollapsedRows(rows: any[], collapsedSections: CollapsibleState): 
     processedRows.push(row)
   }
 
-  // console.log(`Processed ${rows.length} rows, all kept for calculations`)
+  // logger.debug('DATA_TRANSFORM', `Processed ${rows.length} rows,  all kept for calculations`)
   return processedRows
 }
 
@@ -547,7 +548,7 @@ const isCalculatedRow = (accountName: string, prcsMdHoursMode?: 'calculated' | '
   }
   // NOTE: "Medical Director Hours (Shared)" and "Consulting Agreement/Other" are NOT marked as calculated - they're editable in the grid
 
-  // console.log('isCalculatedRow check:', { original: accountName, normalized })
+  // logger.debug('DATA_TRANSFORM', 'isCalculatedRow check:',  { original: accountName, normalized })
   return { isCalculated: false, type: null }
 }
 
@@ -598,7 +599,7 @@ export function transformYearlyDataToGrid(
     const prcsMode = _physicianData?.prcsMdHoursMode || 'calculated'
     ;(window as any).__prcsMdHoursMode = prcsMode
     
-    console.log('🔍 [transformYearlyDataToGrid] Called with:', {
+    logger.debug('CHART', '🔍 [transformYearlyDataToGrid] Called with:', {
       hasData: !!data,
       dataRows: data?.Rows?.Row?.length,
       collapsedCount: Object.keys(collapsedSections).length,
@@ -814,7 +815,7 @@ export function transformYearlyDataToGrid(
     // Dynamic calculation for bottom custom data rows
     if (isBottomCustomGroup(r) && r.type === 'Data') {
       const dynamicVal = calculateBottomCustomValue(name)
-      // console.log(`    🔁 Bottom custom dynamic for "${normalizeLabel(name)}": ${dynamicVal}`)
+      // logger.debug('DATA_TRANSFORM', `    🔁 Bottom custom dynamic for "${normalizeLabel(name)}": ${dynamicVal}`)
       return dynamicVal
     }
     // Prefer custom override
@@ -823,13 +824,13 @@ export function transformYearlyDataToGrid(
     const customValueOverride = customProjectedValues[normalizedName] ?? customProjectedValues[name]
     if (customValueOverride !== undefined) {
       const customValue = Number(customValueOverride) || 0
-      // console.log(`    🎛️  Using custom override for "${name}": ${customValue}`)
+      // logger.debug('DATA_TRANSFORM', `    🎛️  Using custom override for "${name}": ${customValue}`)
       return customValue
     }
     const raw = r.colData?.[lastIdx]?.value
     const num = parseFloat((raw ?? '0').toString().replace(/[,$\s]/g, '')) || 0
     if (num !== 0) {
-      // console.log(`    📊 Using calculated value for "${name}": ${num} (raw: "${raw}")`)
+      // logger.debug('DATA_TRANSFORM', `    📊 Using calculated value for "${name}": ${num} (raw: "${raw}")`)
     }
     return num
   }
@@ -916,27 +917,27 @@ export function transformYearlyDataToGrid(
       
       // Debug which calculation path each summary row takes
       if (isProjectedColumn && row.type === 'Summary') {
-        // console.log(`\n🔍 SUMMARY ROW PROCESSING: "${accountName}"`)
-        // console.log(`  📊 Row type: ${row.type}`)
-        // console.log(`  🎛️  Has custom value: ${hasCustomValue}`)
-        // console.log(`  📈 Current value: "${value}"`)
+        // logger.debug('DATA_TRANSFORM', `\n🔍 SUMMARY ROW PROCESSING: "${accountName}"`)
+        // logger.debug('DATA_TRANSFORM', `  📊 Row type: ${row.type}`)
+        // logger.debug('DATA_TRANSFORM', `  🎛️  Has custom value: ${hasCustomValue}`)
+        // logger.debug('DATA_TRANSFORM', `  📈 Current value: "${value}"`)
       }
       
       // Apply custom projected value if available (but NOT for calculated rows!)
       if (hasCustomValue && !calculatedInfo.isCalculated) {
         if (isProjectedColumn && row.type === 'Summary') {
-          // console.log(`  ✅ Using custom override: ${customProjectedValues[accountName]}`)
+          // logger.debug('DATA_TRANSFORM', `  ✅ Using custom override: ${customProjectedValues[accountName]}`)
         }
         // Use normalized name to get the value, falling back to original
         const customVal = customProjectedValues[normalizedAccountName] ?? customProjectedValues[accountName]
         value = customVal?.toString() ?? value
       } else if (calculatedInfo.isCalculated && hasCustomValue) {
-        console.log(`⚠️ [Grid] Skipping custom value override for calculated row: ${accountName}`)
+        logger.debug('DATA_TRANSFORM', `⚠️ [Grid] Skipping custom value override for calculated row: ${accountName}`)
       }
       
       // Special calculated summaries (projected column only)
       if (isProjectedColumn && row.type === 'Summary') {
-        // console.log('🔍 SUMMARY CALCULATION DEBUG:', accountName)
+        // logger.debug('DATA_TRANSFORM', '🔍 SUMMARY CALCULATION DEBUG:',  accountName)
         
         const computeSummaryByName = (pattern: RegExp): number => {
           // Find the summary row in flattenedRows and sum its section data
@@ -945,12 +946,12 @@ export function transformYearlyDataToGrid(
             return r.type === 'Summary' && pattern.test(n)
           })
           if (!target) {
-            // console.log('  ❌ Target summary row not found for pattern:', pattern)
+            // logger.debug('DATA_TRANSFORM', '  ❌ Target summary row not found for pattern:',  pattern)
             return 0
           }
           const originalIndex = flattenedRows.indexOf(target)
           if (originalIndex < 0) {
-            // console.log('  ❌ Target not found in flattenedRows')
+            // logger.debug('DATA_TRANSFORM', '  ❌ Target not found in flattenedRows')
             return 0
           }
           // find nearest Section above at the same level
@@ -959,7 +960,7 @@ export function transformYearlyDataToGrid(
             const r = flattenedRows[i]
             if (r.type === 'Section' && r.level === target.level) {
               startIdx = i
-              // console.log(`  📍 Found section at index ${i}:`, r.colData?.[0]?.value, `(level ${r.level})`)
+              // logger.debug('DATA_TRANSFORM', `  📍 Found section at index ${i}:`,  r.colData?.[0]?.value, `(level ${r.level})`)
               break
             }
           }
@@ -973,46 +974,46 @@ export function transformYearlyDataToGrid(
               dataRowsIncluded.push({ name: r.colData?.[0]?.value, value, index: i })
             }
           }
-          // console.log(`  📊 Data rows included (${dataRowsIncluded.length}):`, dataRowsIncluded)
-          // console.log(`  💰 Total sum: ${sum}`)
+          // logger.debug('DATA_TRANSFORM', `  📊 Data rows included (${dataRowsIncluded.length}):`, dataRowsIncluded)
+          // logger.debug('DATA_TRANSFORM', `  💰 Total sum: ${sum}`)
           return sum
         }
 
         if (/^net\s+operating\s+income$/i.test(accountName)) {
-          // console.log(`  🧮 Using SPECIAL calculation: Net Operating Income`)
+          // logger.debug('DATA_TRANSFORM', `  🧮 Using SPECIAL calculation: Net Operating Income`)
           const totalIncome = computeSummaryByName(/^total\s+income$/i)
           const totalCOGS = computeSummaryByName(/^total\s+cost\s+of\s+goods\s+sold$/i)
           const grossProfit = totalIncome - totalCOGS
           const totalExpenses = computeSummaryByName(/^total\s+expenses$/i)
           const result = grossProfit - totalExpenses
-          // console.log(`    Gross Profit: ${grossProfit} - Total Expenses: ${totalExpenses} = ${result}`)
+          // logger.debug('DATA_TRANSFORM', `    Gross Profit: ${grossProfit} - Total Expenses: ${totalExpenses} = ${result}`)
           value = result.toString()
         } else if (/^gross\s+profit$/i.test(accountName)) {
-          // console.log(`  🧮 Using SPECIAL calculation: Gross Profit`)
+          // logger.debug('DATA_TRANSFORM', `  🧮 Using SPECIAL calculation: Gross Profit`)
           const totalIncome = computeSummaryByName(/^total\s+income$/i)
           const totalCOGS = computeSummaryByName(/^total\s+cost\s+of\s+goods\s+sold$/i)
           const result = totalIncome - totalCOGS
-          // console.log(`    Total Income: ${totalIncome} - Total COGS: ${totalCOGS} = ${result}`)
+          // logger.debug('DATA_TRANSFORM', `    Total Income: ${totalIncome} - Total COGS: ${totalCOGS} = ${result}`)
           value = result.toString()
         } else if (/^net\s+other\s+income$/i.test(accountName)) {
-          // console.log(`  🧮 Using SPECIAL calculation: Net Other Income`)
+          // logger.debug('DATA_TRANSFORM', `  🧮 Using SPECIAL calculation: Net Other Income`)
           const totalOtherIncome = computeSummaryByName(/^total\s+other\s+income$/i)
           const totalOtherExpenses = computeSummaryByName(/^total\s+other\s+expenses$/i)
           const result = totalOtherIncome - totalOtherExpenses
-          // console.log(`    Total Other Income: ${totalOtherIncome} - Total Other Expenses: ${totalOtherExpenses} = ${result}`)
+          // logger.debug('DATA_TRANSFORM', `    Total Other Income: ${totalOtherIncome} - Total Other Expenses: ${totalOtherExpenses} = ${result}`)
           value = result.toString()
         } else if (/^net\s+income\s+for\s+mds$/i.test(accountName)) {
-          // console.log(`  🧮 Using SPECIAL calculation: Net Income for MDs (dynamic from main data)`)
+          // logger.debug('DATA_TRANSFORM', `  🧮 Using SPECIAL calculation: Net Income for MDs (dynamic from main data)`)
           const netIncome = getMainProjectedByPattern(/^Net\s+Income$/i)
           const mdSalary = getMainProjectedByPattern(/8322.*MD.*Associates.*Salary/i)
           const mdBenefits = getMainProjectedByPattern(/8325.*MD.*Associates.*Benefits/i)
           const locumsSalary = getMainProjectedByPattern(/8322.*Locums.*Salary/i)
           const guaranteedPayments = getMainProjectedByPattern(/8343.*Guaranteed.*Payments/i)
           const result = netIncome + mdSalary + mdBenefits + locumsSalary + guaranteedPayments
-          // console.log(`    NetIncome(${netIncome}) + MDSalary(${mdSalary}) + MDBenefits(${mdBenefits}) + Locums(${locumsSalary}) + Guaranteed(${guaranteedPayments}) = ${result}`)
+          // logger.debug('DATA_TRANSFORM', `    NetIncome(${netIncome}) + MDSalary(${mdSalary}) + MDBenefits(${mdBenefits}) + Locums(${locumsSalary}) + Guaranteed(${guaranteedPayments}) = ${result}`)
           value = result.toString()
         } else if (/^net\s+income$/i.test(accountName)) {
-          // console.log(`  🧮 Using SPECIAL calculation: Net Income`)
+          // logger.debug('DATA_TRANSFORM', `  🧮 Using SPECIAL calculation: Net Income`)
           // compute from NOI and Net Other Income
           // Compute NOI
           const totalIncome = computeSummaryByName(/^total\s+income$/i)
@@ -1025,24 +1026,24 @@ export function transformYearlyDataToGrid(
           const totalOtherExpenses = computeSummaryByName(/^total\s+other\s+expenses$/i)
           const noiOther = totalOtherIncome - totalOtherExpenses
           const result = noi + noiOther
-          // console.log(`    NOI: ${noi} + Net Other Income: ${noiOther} = ${result}`)
+          // logger.debug('DATA_TRANSFORM', `    NOI: ${noi} + Net Other Income: ${noiOther} = ${result}`)
           value = result.toString()
         } else {
-          // console.log(`  🔄 Using REGULAR calculation (fallback)`)
+          // logger.debug('DATA_TRANSFORM', `  🔄 Using REGULAR calculation (fallback)`)
           // For Summary rows that don't match special cases, dynamically sum all Data rows in the same section
           // Find this summary row in the visibleRows array (not flattenedRows, since row is from visibleRows)
           const originalIndex = visibleRows.indexOf(row)
-          // console.log('  📍 Summary row index:', originalIndex)
+          // logger.debug('DATA_TRANSFORM', '  📍 Summary row index:',  originalIndex)
 
           let startIdx = 0
           if (originalIndex > -1) {
             // Search for section header
             for (let i = originalIndex - 1; i >= 0; i--) {
               const r = visibleRows[i]
-              // console.log(`    Checking index ${i}: type=${r.type}, level=${r.level}, name="${r.colData?.[0]?.value}"`)
+              // logger.debug('DATA_TRANSFORM', `    Checking index ${i}: type=${r.type},  level=${r.level}, name="${r.colData?.[0]?.value}"`)
               if (r.type === 'Section' && r.level === row.level) {
                 startIdx = i
-                // console.log(`  🎯 Found matching section at index ${i}: "${r.colData?.[0]?.value}" (level ${r.level})`)
+                // logger.debug('DATA_TRANSFORM', `  🎯 Found matching section at index ${i}: "${r.colData?.[0]?.value}" (level ${r.level})`)
                 break
               }
             }
@@ -1050,10 +1051,10 @@ export function transformYearlyDataToGrid(
             // Sum Data rows between startIdx and originalIndex (exclusive)
             let sum = 0
             const includedRows = []
-            // console.log(`  🔢 Summing data rows from index ${startIdx + 1} to ${originalIndex - 1}:`)
+            // logger.debug('DATA_TRANSFORM', `  🔢 Summing data rows from index ${startIdx + 1} to ${originalIndex - 1}:`)
             for (let i = startIdx + 1; i < originalIndex; i++) {
               const r = visibleRows[i]
-              // console.log(`    Index ${i}: type="${r.type}", name="${r.colData?.[0]?.value}"`)
+              // logger.debug('DATA_TRANSFORM', `    Index ${i}: type="${r.type}",  name="${r.colData?.[0]?.value}"`)
               if (r.type === 'Data') {
                 const rowValue = getProjectedNumericForRow(r)
                 sum += rowValue
@@ -1065,11 +1066,11 @@ export function transformYearlyDataToGrid(
                 })
               }
             }
-            // console.log('  📊 Included data rows:', includedRows)
-            // console.log(`  💰 Final sum: ${sum}`)
+            // logger.debug('DATA_TRANSFORM', '  📊 Included data rows:',  includedRows)
+            // logger.debug('DATA_TRANSFORM', `  💰 Final sum: ${sum}`)
             value = sum.toString()
           } else {
-            // console.log('  ❌ Summary row not found in visibleRows array')
+            // logger.debug('DATA_TRANSFORM', '  ❌ Summary row not found in visibleRows array')
           }
         }
       }
@@ -1080,7 +1081,7 @@ export function transformYearlyDataToGrid(
         (row.group && (row.group.startsWith('Summary') || row.group === 'SummaryIncome' || row.group === 'SummaryCosts' || row.group === 'SummaryNetIncome'))
       ) {
         const dynamic = calculateBottomCustomValue(accountName)
-        // console.log(`  🔁 Rendering bottom custom data "${normalizeLabel(accountName)}" = ${dynamic}`)
+        // logger.debug('DATA_TRANSFORM', `  🔁 Rendering bottom custom data "${normalizeLabel(accountName)}" = ${dynamic}`)
         value = dynamic.toString()
       }
       // Apply display adjustments for specific labels (but not for custom projected values)
@@ -1111,11 +1112,11 @@ export function transformYearlyDataToGrid(
 
       // Add info icon for calculated rows AFTER formatting
       if (isProjectedColumn && calculatedInfo.isCalculated) {
-        // console.log('Attempting to add info icon for calculated row:', accountName, 'type:', calculatedInfo.type, 'formatted value:', formattedValue)
+        // logger.debug('DATA_TRANSFORM', 'Attempting to add info icon for calculated row:',  accountName, 'type:', calculatedInfo.type, 'formatted value:', formattedValue)
         formattedValue = formattedValue + ' ⓘ'
-        // console.log('Added info icon to calculated projected cell:', accountName, '→', formattedValue)
+        // logger.debug('DATA_TRANSFORM', 'Added info icon to calculated projected cell:',  accountName, '→', formattedValue)
       } else if (isProjectedColumn) {
-        // console.log('Projected column but not calculated row:', accountName)
+        // logger.debug('DATA_TRANSFORM', 'Projected column but not calculated row:',  accountName)
       }
 
       // Add info icon to account name column (first column) for calculated rows
@@ -1228,16 +1229,16 @@ export function transformYearlyDataToGrid(
               if (snapshotValue === undefined) {
                 // NEW value added this session
                 isDirty = true
-                console.log(`🔴 [Outline] NEW (dirty): ${accountName} - current: ${currentDisplayedValue}, not in snapshot`)
+                logger.debug('DATA_TRANSFORM', `🔴 [Outline] NEW (dirty): ${accountName} - current: ${currentDisplayedValue}, not in snapshot`)
               } else if (Math.abs(currentDisplayedValue - snapshotValue) > 0.5) {
                 // CHANGED from snapshot
                 isDirty = true
-                console.log(`🔴 [Outline] CHANGED (dirty): ${accountName} - current: ${currentDisplayedValue}, snapshot: ${snapshotValue}`)
+                logger.debug('DATA_TRANSFORM', `🔴 [Outline] CHANGED (dirty): ${accountName} - current: ${currentDisplayedValue}, snapshot: ${snapshotValue}`)
               }
             } else if (snapshotValue !== undefined) {
               // REMOVED: was custom in snapshot but now annualized
               isDirty = true
-              console.log(`🔴 [Outline] REMOVED/ANNUALIZED (dirty): ${accountName} - was ${snapshotValue}, now annualized to ${currentDisplayedValue}`)
+              logger.debug('DATA_TRANSFORM', `🔴 [Outline] REMOVED/ANNUALIZED (dirty): ${accountName} - was ${snapshotValue}, now annualized to ${currentDisplayedValue}`)
             }
             
             if (isDirty) {
@@ -1301,9 +1302,9 @@ export function transformYearlyDataToGrid(
           tooltipText = 'This 2016 interest income is displayed but excluded from all calculations and summaries to maintain operational focus.'
         } else if (isCalculatedInfoIcon) {
           // Get the appropriate tooltip for the calculated row type
-          // console.log('Setting calculated tooltip for:', accountName, 'type:', calculatedInfo.type, 'formattedValue:', formattedValue)
+          // logger.debug('DATA_TRANSFORM', 'Setting calculated tooltip for:',  accountName, 'type:', calculatedInfo.type, 'formattedValue:', formattedValue)
           tooltipText = getTooltipForCalculatedRow(calculatedInfo.type!)
-          // console.log('Calculated tooltip set to:', tooltipText)
+          // logger.debug('DATA_TRANSFORM', 'Calculated tooltip set to:',  tooltipText)
         } else if (isMedicalDirectorShared) {
           tooltipText = 'Shared contract terms: $270/hr up to $97,200 maximum annual. Click to adjust the total pool. Individual physician allocations are set in the physician panel and will be redistributed proportionally.'
         } else if (isMedicalDirectorPRCS) {
@@ -1349,7 +1350,7 @@ export function transformYearlyDataToGrid(
     
     const rowId = row.sectionId || `row-${index}`
     if (row.type === 'Section') {
-      // console.log('Generated section row with ID:', rowId, 'for text:', row.colData[0]?.value)
+      // logger.debug('DATA_TRANSFORM', 'Generated section row with ID:',  rowId, 'for text:', row.colData[0]?.value)
     }
     
     return {
@@ -1369,7 +1370,7 @@ export function transformYearlyDataToGrid(
     width: index === 0 ? 290 : (index === columnTitles.length - 1 ? 140 : 100) // Make last column wider to fit title
   }))
   
-    console.log('✅ [transformYearlyDataToGrid] Returning:', {
+    logger.debug('CHART', '✅ [transformYearlyDataToGrid] Returning:', {
       totalRows: displayRows.length + 1, // +1 for header
       allRowsCount: allDataRows.length + 1,
       columnsCount: columns.length,
@@ -1384,8 +1385,8 @@ export function transformYearlyDataToGrid(
       columns
     }
   } catch (error) {
-    console.error('❌ [transformYearlyDataToGrid] ERROR:', error)
-    console.error('Stack trace:', (error as Error).stack)
+    logger.error('DATA_TRANSFORM', '❌ [transformYearlyDataToGrid] ERROR:',  error)
+    logger.error('DATA_TRANSFORM', 'Stack trace:',  (error as Error).stack)
     // Return empty grid on error
     return {
       rows: [],
@@ -1678,32 +1679,32 @@ function addSummaryRows(data: YearlyData, projectionRatio: number): any[] {
 // Debug utility to analyze summary calculations
 export function debugSummaryCalculations(gridData: { rows: Row[], columns: any[] }, customProjectedValues: Record<string, number> = {}): void {
   return // Disabled for now
-  // console.log('🔍 === SUMMARY CALCULATION ANALYSIS ===')
+  // logger.debug('DATA_TRANSFORM', '🔍 === SUMMARY CALCULATION ANALYSIS ===')
   
   const summaryRows = gridData.rows.filter(row => {
     const firstCell = row.cells?.[0] as any
     return firstCell?.rowType === 'Summary'
   })
   
-  // console.log(`📊 Found ${summaryRows.length} summary rows:`)
+  // logger.debug('DATA_TRANSFORM', `📊 Found ${summaryRows.length} summary rows:`)
   
   summaryRows.forEach((row, index) => {
     const firstCell = row.cells?.[0] as any
     const accountName = firstCell?.text || `Summary ${index}`
     
-    // console.log(`\n${index + 1}. "${accountName}":`)
-    // console.log(`   🎛️  Has Custom Override: ${customProjectedValues[accountName] !== undefined}`)
+    // logger.debug('DATA_TRANSFORM', `\n${index + 1}. "${accountName}":`)
+    // logger.debug('DATA_TRANSFORM', `   🎛️  Has Custom Override: ${customProjectedValues[accountName] !== undefined}`)
     if (customProjectedValues[accountName] !== undefined) {
-      // console.log(`   ⚡ Custom Value: ${customProjectedValues[accountName]}`)
+      // logger.debug('DATA_TRANSFORM', `   ⚡ Custom Value: ${customProjectedValues[accountName]}`)
     }
   })
   
-  // console.log('\n🎛️  All Custom Overrides:')
+  // logger.debug('DATA_TRANSFORM', '\n🎛️  All Custom Overrides:')
   Object.entries(customProjectedValues).forEach(() => {
-    // console.log(`   "${name}": ${value}`)
+    // logger.debug('DATA_TRANSFORM', `   "${name}": ${value}`)
   })
   
-  // console.log('🔍 === END ANALYSIS ===\n')
+  // logger.debug('DATA_TRANSFORM', '🔍 === END ANALYSIS ===\n')
 }
 
 // Load and transform the yearly data
@@ -1723,7 +1724,7 @@ export async function loadYearlyGridData(
   cached2025Summary?: any,
   gridSnapshot?: Record<string, number> | null
 ): Promise<{ rows: Row[], allRows: Row[], columns: any[] }> {
-  console.log('🔍 [loadYearlyGridData] Starting load with:', {
+  logger.debug('CHART', '🔍 [loadYearlyGridData] Starting load with:', {
     collapsedSectionsCount: Object.keys(collapsedSections).length,
     customValuesCount: Object.keys(customProjectedValues).length,
     hasPhysicianData: !!physicianData,
@@ -1746,11 +1747,11 @@ export async function loadYearlyGridData(
     let data2025Raw: any
     if (cached2025Summary) {
       // Use cached data from API
-      console.log('📦 [loadYearlyGridData] Using cached 2025 data from API')
+      logger.debug('DATA_TRANSFORM', '📦 [loadYearlyGridData] Using cached 2025 data from API')
       data2025Raw = cached2025Summary
     } else {
       // Fall back to static JSON file
-      console.log('📦 [loadYearlyGridData] Loading 2025 data from static JSON file')
+      logger.debug('DATA_TRANSFORM', '📦 [loadYearlyGridData] Loading 2025 data from static JSON file')
       const data2025Module = await import('../../../../../historical_data/2025_summary.json')
       data2025Raw = data2025Module.default || data2025Module
     }
@@ -1783,7 +1784,7 @@ export async function loadYearlyGridData(
       }
     }
     
-    console.log('📊 [loadYearlyGridData] Calling transformYearlyDataToGrid with:', {
+    logger.debug('CHART', '📊 [loadYearlyGridData] Calling transformYearlyDataToGrid with:', {
       extendedDataRows: extendedData?.Rows?.Row?.length,
       hasExtendedData: !!extendedData,
       collapsedSections: Object.keys(collapsedSections).length,
@@ -1794,11 +1795,11 @@ export async function loadYearlyGridData(
     
     return transformYearlyDataToGrid(extendedData, collapsedSections, customProjectedValues, physicianData, gridSnapshot)
   } catch (error) {
-    // console.error('Failed to load yearly data:', error)
+    // logger.error('DATA_TRANSFORM', 'Failed to load yearly data:',  error)
     
     // If it's a projection ratio error, provide more specific feedback
     if (error instanceof Error && error.message.includes('projection ratio')) {
-      console.error('Projection calculation failed. This likely means the 2025 data is missing required date information.')
+      logger.error('DATA_TRANSFORM', 'Projection calculation failed. This likely means the 2025 data is missing required date information.')
       // You could also trigger a user-facing error dialog here if your app has that capability
     }
     

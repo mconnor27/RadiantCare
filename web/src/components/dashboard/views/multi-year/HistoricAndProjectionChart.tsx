@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
+import { logger } from '../../../../lib/logger'
 import createPlotlyComponent from 'react-plotly.js/factory'
 import Plotly from 'plotly.js-dist-min'
 const Plot = createPlotlyComponent(Plotly)
@@ -19,7 +20,7 @@ export default function HistoricAndProjectionChart() {
     const updateWidth = () => {
       if (containerRef.current) {
         const newWidth = containerRef.current.offsetWidth
-        console.log('📐 [HistoricChart] Container width update:', {
+        logger.debug('CHART', '📐 [HistoricChart] Container width update:', {
           newWidth,
           currentWidth: containerWidth,
           hasPositiveWidth: newWidth > 0,
@@ -31,7 +32,7 @@ export default function HistoricAndProjectionChart() {
         if (newWidth > 0) {
           setContainerWidth(newWidth)
         } else {
-          console.warn('📐 [HistoricChart] Ignoring zero/negative width')
+          logger.warn('CHART', '📐 [HistoricChart] Ignoring zero/negative width')
         }
       }
     }
@@ -45,7 +46,7 @@ export default function HistoricAndProjectionChart() {
         // Use ResizeObserver entries for more accurate measurements
         for (const entry of entries) {
           const newWidth = entry.contentRect.width
-          console.log('📐 [HistoricChart] ResizeObserver triggered:', {
+          logger.debug('CHART', '📐 [HistoricChart] ResizeObserver triggered:', {
             newWidth,
             currentWidth: containerWidth,
             hasPositiveWidth: newWidth > 0
@@ -55,7 +56,7 @@ export default function HistoricAndProjectionChart() {
           if (newWidth > 0) {
             setContainerWidth(newWidth)
           } else {
-            console.warn('📐 [HistoricChart] ResizeObserver: Ignoring zero/negative width')
+            logger.warn('CHART', '📐 [HistoricChart] ResizeObserver: Ignoring zero/negative width')
           }
         }
       })
@@ -83,14 +84,14 @@ export default function HistoricAndProjectionChart() {
     const dataReady = has2025Data && hasProjectedYears && scenarioBReady
     
     if (dataReady && !isDataReady) {
-      console.log('📊 Multi-Year Chart: Data ready, loaded projections for', store.scenarioA.future.map(f => f.year).join(', '))
+      logger.debug('CHART', '📊 Multi-Year Chart: Data ready,  loaded projections for', store.scenarioA.future.map(f => f.year).join(', '))
       if (store.scenarioBEnabled && store.scenarioB) {
-        console.log('📊 Multi-Year Chart: Scenario B also ready with', store.scenarioB.future.map(f => f.year).join(', '))
+        logger.debug('CHART', '📊 Multi-Year Chart: Scenario B also ready with',  store.scenarioB.future.map(f => f.year).join(', '))
       }
       setIsDataReady(true)
     } else if (!dataReady && isDataReady) {
       // Data became invalid (e.g., scenario loading)
-      console.log('📊 Multi-Year Chart: Data not ready, waiting...', { has2025Data, hasProjectedYears, scenarioBReady })
+      logger.debug('CHART', '📊 Multi-Year Chart: Data not ready,  waiting...', { has2025Data, hasProjectedYears, scenarioBReady })
       setIsDataReady(false)
     }
   }, [store.scenarioA.future, store.scenarioBEnabled, store.scenarioB?.future, isDataReady])
@@ -337,7 +338,7 @@ export default function HistoricAndProjectionChart() {
         
         // Debug specific year calculations
         if (f.year === 2030) {
-          console.log('📊 2030 Net Income Calculation (Legacy B):', {
+          logger.debug('CHART', '📊 2030 Net Income Calculation (Legacy B):', {
             year: f.year,
             totalIncome,
             nonEmploymentCosts: f.nonEmploymentCosts,
@@ -358,7 +359,11 @@ export default function HistoricAndProjectionChart() {
       result = [baseline2025, ...projectedYears]
     }
     
-    console.log('📊 Scenario B Net Income years:', store.scenarioB.future.map(f => f.year), 'values:', result, 'has2025:', has2025)
+    logger.debug('CHART', 'Scenario B Net Income', {
+      years: store.scenarioB.future.map(f => f.year),
+      values: result,
+      has2025
+    })
     return result
   }, [store.scenarioB?.future, baselineA.netIncome])
   
@@ -412,7 +417,7 @@ export default function HistoricAndProjectionChart() {
     ? Math.max(MIN_HEIGHT, Math.round(containerWidth * ASPECT_RATIO))
     : DEFAULT_HEIGHT
   
-  console.log('📏 [HistoricChart] Height calculation:', {
+  logger.debug('CHART', '📏 [HistoricChart] Height calculation:', {
     containerWidth,
     aspectRatio: ASPECT_RATIO,
     calculatedHeight: containerWidth !== null ? Math.round(containerWidth * ASPECT_RATIO) : null,
@@ -423,12 +428,12 @@ export default function HistoricAndProjectionChart() {
 
   // Track chartHeight changes
   useEffect(() => {
-    console.log('⚡ [HistoricChart] chartHeight changed:', chartHeight)
+    logger.debug('CHART', '⚡ [HistoricChart] chartHeight changed:',  chartHeight)
   }, [chartHeight])
 
   // Memoize layout to ensure it updates when chartHeight changes
   const chartLayout = useMemo(() => {
-    console.log('📋 [HistoricChart] Creating new layout with height:', chartHeight)
+    logger.debug('CHART', '📋 [HistoricChart] Creating new layout with height:',  chartHeight)
     return {
       title: { text: 'Historic and Projected Totals', font: { weight: 700 } },
       dragmode: false as any,
@@ -557,7 +562,7 @@ export default function HistoricAndProjectionChart() {
     )
   }
 
-  console.log('🎨 [HistoricChart] Rendering chart with:', {
+  logger.debug('CHART', '🎨 [HistoricChart] Rendering chart with:', {
     containerWidth,
     chartHeight,
     isDataReady,
@@ -704,7 +709,7 @@ export default function HistoricAndProjectionChart() {
             const scenarioBYears = [2025, ...store.scenarioB.future.filter(f => f.year !== 2025).map(f => f.year)]
             const scenarioBValues = [baselineB!.netIncome, ...scBNet.slice(1)]
             
-            console.log('📊 Net Income Trace Debug:', {
+            logger.debug('CHART', '📊 Net Income Trace Debug:', {
               scenarioAYears,
               scenarioAValues,
               scenarioBYears,

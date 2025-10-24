@@ -1,4 +1,5 @@
 import { Fragment } from 'react'
+import { logger } from '../../../../lib/logger'
 import { useDashboardStore, usePartnerComp, calculateProjectedValue } from '../../../Dashboard'
 import { calculateDelayedW2Payment, computeDefaultNonMdEmploymentCosts, getTotalIncome, getEmployeePortionOfYear } from '../calculations'
 import { createTooltip, removeTooltip } from '../tooltips'
@@ -170,7 +171,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
     : (sc.future.find((f) => f.year === year) as FutureYear)
 
   if (!fy) {
-    console.error(`YearPanel: No data found for year ${year} in scenario ${scenario}`)
+    logger.error('COMPENSATION', `YearPanel: No data found for year ${year} in scenario ${scenario}`)
     return null
   }
 
@@ -720,7 +721,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
           const isChanged = projectedValue > 0 && Math.abs(currentValue - projectedValue) > UI_DEFAULTS.changeThreshold
           const shouldShowReset = isChanged && !isReadOnly
 
-          console.log(`🎯 [YearPanel] Staff Employment Costs reset icon check for year ${year}:`, {
+          logger.debug('COMPENSATION', `🎯 [YearPanel] Staff Employment Costs reset icon check for year ${year}:`, {
             projectedValue,
             currentValue,
             diff: Math.abs(currentValue - projectedValue),

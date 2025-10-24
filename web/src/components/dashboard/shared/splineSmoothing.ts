@@ -1,19 +1,20 @@
 // Spline and Rolling Average Smoothing Algorithms
+import { logger } from '../../../lib/logger'
 // Test function to verify smoothing algorithms work correctly
 export function testSmoothingAlgorithms() {
   // Create test data with known endpoints
   const x = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   const y = [10, 12, 15, 18, 22, 25, 28, 30, 32, 33, 35];
 
-  console.log('Original data:');
-  console.log('x:', x);
-  console.log('y:', y);
+  logger.debug('DATA_TRANSFORM', 'Original data:');
+  logger.debug('DATA_TRANSFORM', 'x:', x);
+  logger.debug('DATA_TRANSFORM', 'y:', y);
 
   // Test with different smoothing factors (0-10 range) - now uses full linear range
   const smoothingFactors = [0, 2, 4, 6, 8, 10];
 
   smoothingFactors.forEach(factor => {
-    console.log(`\n=== Smoothing factor ${factor} ===`);
+    logger.debug('DATA_TRANSFORM', `\n=== Smoothing factor ${factor} ===`);
 
     // Test B-spline smoothing
     const bSplineSmoothed = applySmoothing(x, y, factor, SmoothingMethod.B_SPLINE);
@@ -23,13 +24,19 @@ export function testSmoothingAlgorithms() {
     const reductionPercent = factor / 10;
     const reduction = Math.floor(reductionPercent * (maxControlPoints - minControlPoints));
     const controlPointCount = Math.max(minControlPoints, maxControlPoints - reduction);
-    console.log(`B-spline smoothed (${controlPointCount} control points):`, bSplineSmoothed);
-    console.log('B-spline endpoints preserved:', Math.abs(bSplineSmoothed[0] - y[0]) < 0.01, Math.abs(bSplineSmoothed[bSplineSmoothed.length - 1] - y[y.length - 1]) < 0.01);
+    logger.debug('DATA_TRANSFORM', `B-spline smoothed (${controlPointCount} control points):`, bSplineSmoothed);
+    logger.debug('DATA_TRANSFORM', 'B-spline endpoints preserved', {
+      startPreserved: Math.abs(bSplineSmoothed[0] - y[0]) < 0.01,
+      endPreserved: Math.abs(bSplineSmoothed[bSplineSmoothed.length - 1] - y[y.length - 1]) < 0.01
+    });
 
     // Test rolling average smoothing
     const rollingSmoothed = applySmoothing(x, y, factor, SmoothingMethod.ROLLING_AVERAGE);
-    console.log('Rolling average smoothed:', rollingSmoothed);
-    console.log('Rolling average endpoints preserved:', Math.abs(rollingSmoothed[0] - y[0]) < 0.01, Math.abs(rollingSmoothed[rollingSmoothed.length - 1] - y[y.length - 1]) < 0.01);
+    logger.debug('DATA_TRANSFORM', 'Rolling average smoothed:', rollingSmoothed);
+    logger.debug('DATA_TRANSFORM', 'Rolling average endpoints preserved', {
+      startPreserved: Math.abs(rollingSmoothed[0] - y[0]) < 0.01,
+      endPreserved: Math.abs(rollingSmoothed[rollingSmoothed.length - 1] - y[y.length - 1]) < 0.01
+    });
 
     // Test improved rolling average smoothing (scales based on dataset size)
     const improvedRolled = applySmoothing(x, y, factor, SmoothingMethod.IMPROVED_ROLLING_AVERAGE);
@@ -38,18 +45,21 @@ export function testSmoothingAlgorithms() {
     const datasetScalingFactor = 365 / testDataLength;
     const maxEffectiveSmoothing = baseEffectiveRange * datasetScalingFactor;
     const effectiveFactor = (factor / 100) * maxEffectiveSmoothing;
-    console.log(`Improved rolling average (display: ${factor}, dataset: ${testDataLength} pts, max effective: ${maxEffectiveSmoothing.toFixed(1)}, effective: ${effectiveFactor.toFixed(1)}):`, improvedRolled);
-    console.log('Improved rolling average endpoints preserved:', Math.abs(improvedRolled[0] - y[0]) < 0.01, Math.abs(improvedRolled[improvedRolled.length - 1] - y[y.length - 1]) < 0.01);
+    logger.debug('DATA_TRANSFORM', `Improved rolling average (display: ${factor}, dataset: ${testDataLength} pts, max effective: ${maxEffectiveSmoothing.toFixed(1)}, effective: ${effectiveFactor.toFixed(1)}):`, improvedRolled);
+    logger.debug('DATA_TRANSFORM', 'Improved rolling average endpoints preserved', {
+      startPreserved: Math.abs(improvedRolled[0] - y[0]) < 0.01,
+      endPreserved: Math.abs(improvedRolled[improvedRolled.length - 1] - y[y.length - 1]) < 0.01
+    });
 
 
     // Compare the methods
     const diffRolling = bSplineSmoothed.map((val, i) => Math.abs(val - rollingSmoothed[i]));
     const avgDiffRolling = diffRolling.reduce((a, b) => a + b, 0) / diffRolling.length;
-    console.log('Average difference B-spline vs Rolling:', avgDiffRolling.toFixed(3));
+    logger.debug('DATA_TRANSFORM', 'Average difference B-spline vs Rolling:', avgDiffRolling.toFixed(3));
 
     const diffImproved = bSplineSmoothed.map((val, i) => Math.abs(val - improvedRolled[i]));
     const avgDiffImproved = diffImproved.reduce((a, b) => a + b, 0) / diffImproved.length;
-    console.log('Average difference B-spline vs Improved Rolling:', avgDiffImproved.toFixed(3));
+    logger.debug('DATA_TRANSFORM', 'Average difference B-spline vs Improved Rolling:', avgDiffImproved.toFixed(3));
   });
 
   return true;
@@ -410,7 +420,7 @@ export function applySmoothing(
 
   // Validate inputs
   if (x.length !== y.length) {
-    console.error('Smoothing error: x and y arrays must have the same length.');
+    logger.error('DATA_TRANSFORM', 'Smoothing error: x and y arrays must have the same length.');
     return y.slice();
   }
 

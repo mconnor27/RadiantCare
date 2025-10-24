@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
+import { logger } from '../../../../lib/logger'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUser, faSignOutAlt, faKey, faFolderOpen, faStar as faSolidStar } from '@fortawesome/free-solid-svg-icons'
 import { faStar as faRegularStar } from '@fortawesome/free-regular-svg-icons'
@@ -92,7 +93,7 @@ function MobileScenarioLoadModal({
       setMyScenarios(dataWithFavorites)
       setFavoritesMap(favoritesMap)
     } catch (err) {
-      console.error('Error loading scenarios:', err)
+      logger.error('CHART', 'Error loading scenarios:',  err)
       setError(err instanceof Error ? err.message : 'Failed to load scenarios')
     } finally {
       setLoading(false)
@@ -181,7 +182,7 @@ function MobileScenarioLoadModal({
         }
       }
     } catch (err) {
-      console.error('Error toggling favorite:', err)
+      logger.error('CHART', 'Error toggling favorite:',  err)
       setError(err instanceof Error ? err.message : 'Failed to toggle favorite')
     }
   }
@@ -536,7 +537,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
 
   // Ensure mobile mode only uses scenario A - clear scenario B state on mount
   useEffect(() => {
-    console.log('[Mobile] Clearing scenario B state for mobile mode')
+    logger.debug('CHART', '[Mobile] Clearing scenario B state for mobile mode')
     // Disable scenario B and clear all scenario B data
     store.setScenarioEnabled(false)
     // Force clear scenario B data to ensure it's not loaded
@@ -560,7 +561,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
 
           await handleSharedLinkData(data)
         } catch (err) {
-          console.error('Failed to load hash-based shared link:', err)
+          logger.error('CHART', 'Failed to load hash-based shared link:',  err)
         }
         return
       }
@@ -576,13 +577,13 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
             await handleSharedLinkData(data)
           }
         } catch (err) {
-          console.error('Failed to load path-based shared link:', err)
+          logger.error('CHART', 'Failed to load path-based shared link:',  err)
         }
       }
     }
 
     const handleSharedLinkData = async (data: any) => {
-      console.log('[Mobile] Processing shared link data:', data)
+      logger.debug('CHART', '[Mobile] Processing shared link data:',  data)
 
       // Check if scenario A exists and is in 2025 baseline mode
       if (!data.scenario_a || !data.scenario_a.id) {
@@ -620,9 +621,9 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
         // Clear the URL after successful load
         window.history.pushState({}, '', '/')
 
-        console.log('[Mobile] Successfully loaded shared link')
+        logger.debug('CHART', '[Mobile] Successfully loaded shared link')
       } catch (error) {
-        console.error('Error loading shared link scenario:', error)
+        logger.error('CHART', 'Error loading shared link scenario:',  error)
         alert('Failed to load shared link scenario')
         window.location.href = '/'
       }
@@ -654,7 +655,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
   
   // DEBUG: Log initial freeze state
   useEffect(() => {
-    console.log('[Mobile] 🔒 Initial freeze state:', {
+    logger.debug('CHART', '[Mobile] 🔒 Initial freeze state:', {
       isResyncingCompensation: true,
       hasScenarioData: !!store.scenarioA?.future?.length,
       hasSnapshot: !!store.loadedScenarioSnapshot,
@@ -688,10 +689,10 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
   // Ensure 2025 entry exists in the store (for PhysiciansEditor and other components)
   useEffect(() => {
     if (!fy2025) {
-      console.log('[Mobile] 🆕 Creating baseline year 2025 in YTD store')
+      logger.debug('CHART', '[Mobile] 🆕 Creating baseline year 2025 in YTD store')
       store.ensureBaselineYear('A', 2025)
     } else {
-      console.log('[Mobile] ✅ YTD store has 2025 data:', {
+      logger.debug('CHART', '[Mobile] ✅ YTD store has 2025 data:', {
         therapyIncome: fy2025.therapyIncome,
         physicians: fy2025.physicians?.length
       })
@@ -706,7 +707,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
 
       // Skip loading if there's a pending shared link
       if (hasPendingSharedLink) {
-        console.log('[YTD Mobile Init] Skipping default scenario load - shared link pending')
+        logger.debug('CHART', '[YTD Mobile Init] Skipping default scenario load - shared link pending')
         return
       }
 
@@ -717,12 +718,12 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
 
         if (hasPersistedId && !hasData && store.currentYearSettingId) {
           // Reload from persisted ID
-          console.log('[YTD Mobile Init] Reloading from persisted ID:', store.currentYearSettingId)
+          logger.debug('CHART', '[YTD Mobile Init] Reloading from persisted ID:',  store.currentYearSettingId)
           await store.loadCurrentYearSettings(store.currentYearSettingId)
           return
         } else if (hasPersistedId && hasData) {
           // We have both ID and data (shouldn't happen with hybrid persistence, but handle it)
-          console.log('[YTD Mobile Init] Already loaded:', store.currentYearSettingName)
+          logger.debug('CHART', '[YTD Mobile Init] Already loaded:',  store.currentYearSettingName)
           return
         }
 
@@ -746,7 +747,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
         const currentYear = new Date().getFullYear()
         await store.loadDefaultYTDScenario(currentYear)
       } catch (error) {
-        console.error('Error loading initial scenario:', error)
+        logger.error('CHART', 'Error loading initial scenario:',  error)
         // Fallback to current year default
         const currentYear = new Date().getFullYear()
         await store.loadDefaultYTDScenario(currentYear)
@@ -760,7 +761,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
   useEffect(() => {
     if (onRefreshRequest) {
       onRefreshRequest(() => {
-        console.log('🔄 Triggering data refresh after sync')
+        logger.debug('CHART', '🔄 Triggering data refresh after sync')
         setRefreshTrigger(prev => prev + 1)
       })
     }
@@ -780,7 +781,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
         authenticatedFetch('/api/qbo/cached-2025')
           .then((res: Response) => {
             if (!res.ok) {
-              console.log('No cached data available, using historical JSON fallback')
+              logger.debug('CHART', 'No cached data available,  using historical JSON fallback')
               return { data: historical2025Data, cache: { daily: null, summary: null, equity: null, lastSyncTimestamp: null } }
             }
             return res.json().then((cache: any) => {
@@ -796,7 +797,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
             })
           })
           .catch((err: any) => {
-            console.error('Error loading cached data, using fallback:', err)
+            logger.error('CHART', 'Error loading cached data,  using fallback:', err)
             return { data: historical2025Data, cache: { daily: null, summary: null, equity: null, lastSyncTimestamp: null } }
           })
           .then(async (result: any) => {
@@ -817,7 +818,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
   // Post-load resync: wait for scenarios to load, then sync from cache once
   useEffect(() => {
     console.group('🔄 [Mobile] Post-load resync effect triggered')
-    console.log('State check:', {
+    logger.debug('CHART', 'State check:', {
       hasCachedSummary: !!cachedData?.summary,
       hasLoadedSnapshot: !!store.loadedCurrentYearSettingsSnapshot,
       currentYearSettingId: store.currentYearSettingId,
@@ -828,7 +829,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
 
     // Reset sync tracking when refresh happens
     if (refreshTrigger > 0) {
-      console.log('🔃 Manual refresh detected, resetting sync tracking')
+      logger.debug('CHART', '🔃 Manual refresh detected,  resetting sync tracking')
       lastSyncRef.current = { scenarioId: null, syncTimestamp: null }
       setIsResyncingCompensation(true) // Re-freeze on manual refresh
     }
@@ -838,9 +839,9 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
     if (!cachedData?.summary || !store.loadedCurrentYearSettingsSnapshot || !store.currentYearSettingId || !isInitialScenarioLoadComplete) {
       // Keep frozen while waiting
       if (!isInitialScenarioLoadComplete && cachedData?.summary && store.loadedCurrentYearSettingsSnapshot) {
-        console.log('⏸️  Waiting for Dashboard initial scenario load to complete...')
+        logger.debug('CHART', '⏸️  Waiting for Dashboard initial scenario load to complete...')
       } else {
-        console.log('⏸️  Missing prerequisites:', {
+        logger.debug('CHART', '⏸️  Missing prerequisites:', {
           cachedSummary: !!cachedData?.summary,
           loadedSnapshot: !!store.loadedCurrentYearSettingsSnapshot,
           scenarioId: !!store.currentYearSettingId,
@@ -852,7 +853,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
     }
 
     // Log current store state BEFORE sync
-    console.log('📊 Store state BEFORE sync:', {
+    logger.debug('CHART', '📊 Store state BEFORE sync:', {
       dataSource: 'store.ytdData',
       therapyIncome: store.ytdData?.therapyIncome,
       nonEmploymentCosts: store.ytdData?.nonEmploymentCosts,
@@ -870,7 +871,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
 
     // If this is a new scenario or different cache version, run the sync
     if (syncKey !== lastSyncKey) {
-      console.log('🔄 Sync needed (keys differ):', { syncKey, lastSyncKey })
+      logger.debug('CHART', '🔄 Sync needed (keys differ):', { syncKey, lastSyncKey })
 
       lastSyncRef.current = {
         scenarioId: store.currentYearSettingId,
@@ -880,7 +881,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
       syncStoreFrom2025Cache(store, cachedData.summary)
         .then(() => {
           // Log store state AFTER sync
-          console.log('📊 Store state AFTER sync:', {
+          logger.debug('CHART', '📊 Store state AFTER sync:', {
             dataSource: 'store.ytdData',
             therapyIncome: store.ytdData?.therapyIncome,
             nonEmploymentCosts: store.ytdData?.nonEmploymentCosts,
@@ -892,19 +893,19 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
 
           // Small delay to let React propagate the state updates
           setTimeout(() => {
-            console.log('✅ QBO sync complete, unfreezing compensation')
+            logger.debug('CHART', '✅ QBO sync complete,  unfreezing compensation')
             console.groupEnd()
             setIsResyncingCompensation(false)
           }, 100)
         })
         .catch(error => {
-          console.error('❌ Post-load resync failed:', error)
+          logger.error('CHART', '❌ Post-load resync failed:',  error)
           console.groupEnd()
           setIsResyncingCompensation(false)
         })
     } else {
       // Sync already complete, unfreeze
-      console.log('✅ Sync already complete (keys match), unfreezing')
+      logger.debug('CHART', '✅ Sync already complete (keys match), unfreezing')
       console.groupEnd()
       setIsResyncingCompensation(false)
     }
@@ -959,7 +960,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
 
       // Note: setIsResyncingCompensation(false) will be called by post-load resync effect
     } catch (error) {
-      console.error('Error loading scenario:', error)
+      logger.error('CHART', 'Error loading scenario:',  error)
       alert('Failed to load scenario')
       setIsResyncingCompensation(false)
     }

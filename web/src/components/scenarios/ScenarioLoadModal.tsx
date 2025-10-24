@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { SavedScenario } from '../dashboard/shared/types'
+import { logger } from '../../lib/logger'
 import { 
   isYTDScenario, 
   isMultiYearScenario, 
@@ -198,7 +199,7 @@ export default function ScenarioLoadModal({
         setPublicScenarios([])
       }
     } catch (err) {
-      console.error('Error loading scenarios:', err)
+      logger.error('SCENARIO', 'Failed to load scenarios', err)
       setError(err instanceof Error ? err.message : 'Failed to load scenarios')
     } finally {
       setLoading(false)
@@ -312,7 +313,7 @@ export default function ScenarioLoadModal({
         ))
       }
     } catch (error) {
-      console.error('Error toggling favorite:', error)
+      logger.error('SCENARIO', 'Failed to toggle favorite', error)
       setError('Failed to update favorite. Please try again.')
     }
   }

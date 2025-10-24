@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useState, useRef } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faFolderOpen, faFloppyDisk, faCopy, faCircleXmark, faGear, faRotateLeft } from '@fortawesome/free-solid-svg-icons'
+import { logger } from '../../../../lib/logger'
 import { useDashboardStore } from '../../../Dashboard'
 import type { Store, Physician } from '../../shared/types'
 import YearPanel from '../../shared/components/YearPanel'
@@ -106,11 +107,11 @@ function hasFutureYearOverrides(scenario: 'A' | 'B', store: Store): boolean {
 
 // Helper function to reset all future years (2026-2030) to be calculated from current projection settings
 function resetFutureYearsToProjection(scenario: 'A' | 'B', store: Store) {
-  console.log(`🔄 Resetting all future years for Scenario ${scenario} to current projection settings...`)
+  logger.debug('CHART', `🔄 Resetting all future years for Scenario ${scenario} to current projection settings...`)
   
   const scenarioData = scenario === 'A' ? store.scenarioA : store.scenarioB
   if (!scenarioData) {
-    console.warn(`⚠️ No data for Scenario ${scenario}`)
+    logger.warn('CHART', `⚠️ No data for Scenario ${scenario}`)
     return
   }
   
@@ -118,19 +119,19 @@ function resetFutureYearsToProjection(scenario: 'A' | 'B', store: Store) {
   scenarioData.future.forEach((fy) => {
     if (fy.year >= 2026 && fy.year <= 2030) {
       fy._overrides = {}
-      console.log(`  ✓ Cleared overrides for year ${fy.year}`)
+      logger.debug('CHART', `  ✓ Cleared overrides for year ${fy.year}`)
     }
   })
   
   // Reset physicians for years 2026-2030 to loaded snapshot
   for (let year = 2026; year <= 2030; year++) {
     store.resetPhysicians(scenario, year)
-    console.log(`  ✓ Reset physicians for year ${year}`)
+    logger.debug('CHART', `  ✓ Reset physicians for year ${year}`)
   }
   
   // Recompute all future years from baseline using current projection settings
   store.applyProjectionFromLastActual(scenario)
-  console.log(`✅ Reset complete - all future years recalculated from current projection settings`)
+  logger.debug('CHART', `✅ Reset complete - all future years recalculated from current projection settings`)
 }
 
 interface MultiYearViewProps {
@@ -155,7 +156,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
 
   // Log only on mount (not on every render)
   useEffect(() => {
-    console.log('🚀 Multi-Year: View initializing')
+    logger.debug('CHART', '🚀 Multi-Year: View initializing')
   }, [])
 
   // Get current scenario info from store using selectors for reactivity
@@ -174,7 +175,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
 
     // Skip loading if there's a pending shared link
     if (hasPendingSharedLink) {
-      console.log('[Multi-Year Init] Skipping default scenario load - shared link pending')
+      logger.debug('CHART', '[Multi-Year Init] Skipping default scenario load - shared link pending')
       return
     }
 
@@ -209,7 +210,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
         if (hasPersistedIdA && !hasDataA) {
           // We have a persisted ID but no data - reload that scenario
           scenarioToLoadA = scenarios?.find(s => s.id === store.currentScenarioId)
-          console.log('[Multi-Year Init] Reloading scenario A from persisted ID:', store.currentScenarioId)
+          logger.debug('CHART', '[Multi-Year Init] Reloading scenario A from persisted ID:',  store.currentScenarioId)
         } else if (!hasPersistedIdA || !hasDataA) {
           // No persisted state or incomplete - load favorite or default
           const favoriteA = scenarios?.find(s => s.id === favoriteAId)
@@ -228,23 +229,23 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
         if (hasPersistedIdB && !hasDataB) {
           // We have a persisted ID but no data - reload that scenario
           scenarioToLoadB = scenarios?.find(s => s.id === store.currentScenarioBId)
-          console.log('[Multi-Year Init] Reloading scenario B from persisted ID:', store.currentScenarioBId)
+          logger.debug('CHART', '[Multi-Year Init] Reloading scenario B from persisted ID:',  store.currentScenarioBId)
         } else if (!hasPersistedIdB || !hasDataB) {
           // No persisted state - ONLY load if user has a favorite
           const favoriteB = scenarios?.find(s => s.id === favoriteBId)
           if (favoriteB) {
             scenarioToLoadB = favoriteB
             isFavoriteB = true
-            console.log('[Multi-Year Init] Found favorite B, will load and enable')
+            logger.debug('CHART', '[Multi-Year Init] Found favorite B,  will load and enable')
           } else {
-            console.log('[Multi-Year Init] No favorite B, scenario B will remain disabled')
+            logger.debug('CHART', '[Multi-Year Init] No favorite B,  scenario B will remain disabled')
           }
         }
 
         // Load scenario A if needed
         if (scenarioToLoadA) {
           const isFavorite = scenarioToLoadA.id === favoriteAId
-          console.log(`[Multi-Year Init] Loading ${isFavorite ? 'favorite A' : 'Default (Optimistic)'}...`, scenarioToLoadA.name)
+          logger.debug('CHART', `[Multi-Year Init] Loading ${isFavorite ? 'favorite A' : 'Default (Optimistic)'}...`, scenarioToLoadA.name)
           await store.loadScenarioFromDatabase(scenarioToLoadA.id, 'A', true)
           // Ensure selectedYear is set to 2025 (Baseline) after load
           store.setSelectedYear('A', 2025)
@@ -252,7 +253,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
 
         // Load scenario B if needed (only if persisted or favorite)
         if (scenarioToLoadB) {
-          console.log(`[Multi-Year Init] Loading scenario B...`, scenarioToLoadB.name)
+          logger.debug('CHART', `[Multi-Year Init] Loading scenario B...`,  scenarioToLoadB.name)
           
           // Load the data into B
           await store.loadScenarioFromDatabase(scenarioToLoadB.id, 'B', false)
@@ -263,14 +264,14 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
           // Enable visibility if it's a favorite or if it was persisted as enabled
           if (isFavoriteB || store.scenarioBEnabled) {
             store.setScenarioEnabled(true)
-            console.log('[Multi-Year Init] Enabled scenario B visibility')
+            logger.debug('CHART', '[Multi-Year Init] Enabled scenario B visibility')
           } else {
             store.setScenarioEnabled(false)
-            console.log('[Multi-Year Init] Loaded scenario B but keeping it hidden')
+            logger.debug('CHART', '[Multi-Year Init] Loaded scenario B but keeping it hidden')
           }
         }
       } catch (err) {
-        console.error('[Multi-Year Init] Error loading default scenarios:', err)
+        logger.error('CHART', '[Multi-Year Init] Error loading default scenarios:',  err)
       }
     }
 
@@ -289,7 +290,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
     if (needsLoad) {
       const loadScenarioB = async () => {
         try {
-          console.log('[Scenario B] User enabled checkbox, determining which scenario to load...')
+          logger.debug('CHART', '[Scenario B] User enabled checkbox,  determining which scenario to load...')
           
           // Fetch user's favorite B
           const { data: favoritesData } = await supabase
@@ -309,7 +310,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
           
           if (error) throw error
           if (!scenarios || scenarios.length === 0) {
-            console.error('[Scenario B] No scenarios found in database')
+            logger.error('CHART', '[Scenario B] No scenarios found in database')
             store.setScenarioEnabled(false)
             return
           }
@@ -319,19 +320,19 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
           if (favoriteBId) {
             scenarioToLoad = scenarios.find(s => s.id === favoriteBId)
             if (scenarioToLoad) {
-              console.log('[Scenario B] Loading favorite:', scenarioToLoad.name)
+              logger.debug('CHART', '[Scenario B] Loading favorite:',  scenarioToLoad.name)
             }
           }
           
           if (!scenarioToLoad) {
             scenarioToLoad = scenarios.find(s => s.name === 'Default (Pessimistic)')
             if (scenarioToLoad) {
-              console.log('[Scenario B] No favorite found, loading Default (Pessimistic)')
+              logger.debug('CHART', '[Scenario B] No favorite found,  loading Default (Pessimistic)')
             }
           }
           
           if (!scenarioToLoad) {
-            console.error('[Scenario B] No suitable scenario found (no favorite or Default (Pessimistic))')
+            logger.error('CHART', '[Scenario B] No suitable scenario found (no favorite or Default (Pessimistic))')
             store.setScenarioEnabled(false)
             return
           }
@@ -339,9 +340,9 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
           // Load the scenario
           await store.loadScenarioFromDatabase(scenarioToLoad.id, 'B', false)
           store.setSelectedYear('B', 2025)
-          console.log('[Scenario B] Loaded successfully:', scenarioToLoad.name)
+          logger.debug('CHART', '[Scenario B] Loaded successfully:',  scenarioToLoad.name)
         } catch (err) {
-          console.error('[Scenario B] Error loading scenario:', err)
+          logger.error('CHART', '[Scenario B] Error loading scenario:',  err)
           // Disable checkbox on error
           store.setScenarioEnabled(false)
         }
@@ -357,11 +358,11 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
 
     const handleUnloadScenario = async () => {
       try {
-        console.log('[Unload A] Current scenario:', currentScenarioName)
+        logger.debug('CHART', '[Unload A] Current scenario:',  currentScenarioName)
 
         // Cannot unload "Default (Optimistic)" - it's the fallback
         if (currentScenarioName === 'Default (Optimistic)') {
-          console.log('[Unload A] Cannot unload Default (Optimistic)')
+          logger.debug('CHART', '[Unload A] Cannot unload Default (Optimistic)')
           return
         }
 
@@ -387,11 +388,11 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
         const scenarioToLoad = favoriteA || defaultOptimistic
 
         if (scenarioToLoad) {
-          console.log(`[Unload A] Loading ${favoriteA ? 'favorite A' : 'Default (Optimistic)'}...`, scenarioToLoad.name)
+          logger.debug('CHART', `[Unload A] Loading ${favoriteA ? 'favorite A' : 'Default (Optimistic)'}...`, scenarioToLoad.name)
           await store.loadScenarioFromDatabase(scenarioToLoad.id, 'A', true)
         }
       } catch (err) {
-        console.error('[Unload A] Error reloading scenario:', err)
+        logger.error('CHART', '[Unload A] Error reloading scenario:',  err)
       }
     }
 
@@ -405,11 +406,11 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
 
     const handleUnloadScenarioB = async () => {
       try {
-        console.log('[Unload B] Current scenario:', currentScenarioBName)
+        logger.debug('CHART', '[Unload B] Current scenario:',  currentScenarioBName)
 
         // Cannot unload "Default (Pessimistic)" - it's the fallback
         if (currentScenarioBName === 'Default (Pessimistic)') {
-          console.log('[Unload B] Cannot unload Default (Pessimistic)')
+          logger.debug('CHART', '[Unload B] Cannot unload Default (Pessimistic)')
           return
         }
 
@@ -435,11 +436,11 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
         const scenarioToLoad = favoriteB || defaultPessimistic
 
         if (scenarioToLoad) {
-          console.log(`[Unload B] Loading ${favoriteB ? 'favorite B' : 'Default (Pessimistic)'}...`, scenarioToLoad.name)
+          logger.debug('CHART', `[Unload B] Loading ${favoriteB ? 'favorite B' : 'Default (Pessimistic)'}...`, scenarioToLoad.name)
           await store.loadScenarioFromDatabase(scenarioToLoad.id, 'B', false)
         }
       } catch (err) {
-        console.error('[Unload B] Error reloading scenario:', err)
+        logger.error('CHART', '[Unload B] Error reloading scenario:',  err)
       }
     }
 
@@ -481,7 +482,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
 
   // Mark scenario A as dirty when settings change from loaded snapshot
   useEffect(() => {
-    console.log('[DIRTY CHECK A] Running dirty check', {
+    logger.debug('CHART', '[DIRTY CHECK A] Running dirty check', {
       hasScenarioId: !!store.currentScenarioId,
       hasProjectionId: !!store.currentProjectionId,
       hasSnapshot: !!store.loadedScenarioSnapshot,
@@ -493,7 +494,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
     // NEW: For modular projection scenarios, use the new dirty detection system
     if (store.currentProjectionId && store.scenarioA.dataMode === '2025 Data') {
       const projectionDirty = store.isProjectionDirty()
-      console.log('[DIRTY CHECK A] Using new projection dirty detection:', projectionDirty)
+      logger.debug('CHART', '[DIRTY CHECK A] Using new projection dirty detection:',  projectionDirty)
       setIsScenarioDirty(projectionDirty)
       return
     }
@@ -508,7 +509,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
     const snapshot = store.loadedScenarioSnapshot.scenarioA
     const current = store.scenarioA
 
-    console.log('[DIRTY CHECK A] Snapshot data:', {
+    logger.debug('CHART', '[DIRTY CHECK A] Snapshot data:', {
       snapshotFutureCount: snapshot.future?.length,
       currentFutureCount: current.future.length,
       snapshotHasFuture: !!snapshot.future,
@@ -523,7 +524,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
       const k = key as keyof typeof current.projection
       const diff = Math.abs(current.projection[k] - snapshot.projection[k])
       if (diff > 0.001) {
-        console.log(`[DIRTY CHECK A] Projection diff for ${key}:`, { current: current.projection[k], snapshot: snapshot.projection[k], diff })
+        logger.debug('CHART', `[DIRTY CHECK A] Projection diff for ${key}:`,  { current: current.projection[k], snapshot: snapshot.projection[k], diff })
       }
       return diff > 0.001
     })
@@ -532,18 +533,18 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
     const otherDirty = current.dataMode !== snapshot.dataMode
 
     // Check if per-year data differs in any future year
-    console.log('[DIRTY CHECK A] Starting per-year comparison, future count:', current.future.length)
+    logger.debug('CHART', '[DIRTY CHECK A] Starting per-year comparison,  future count:', current.future.length)
     const perYearDirty = current.future.some((currentFy, idx) => {
       const snapshotFy = snapshot.future[idx]
       if (!snapshotFy) {
-        console.log(`[DIRTY CHECK A] Year ${currentFy.year}: No snapshot found`)
+        logger.debug('CHART', `[DIRTY CHECK A] Year ${currentFy.year}: No snapshot found`)
         return true
       }
 
       // Compare all per-year override fields
       const threshold = 0.01
       if (Math.abs(currentFy.therapyIncome - snapshotFy.therapyIncome) > threshold) {
-        console.log(`[DIRTY CHECK A] therapyIncome differs`)
+        logger.debug('CHART', `[DIRTY CHECK A] therapyIncome differs`)
         return true
       }
       if (Math.abs(currentFy.nonEmploymentCosts - snapshotFy.nonEmploymentCosts) > threshold) return true
@@ -557,7 +558,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
 
       // Compare physician arrays
       if (currentFy.physicians.length !== snapshotFy.physicians.length) {
-        console.log(`[DIRTY CHECK A] Year ${currentFy.year}: Physician count differs (${currentFy.physicians.length} vs ${snapshotFy.physicians.length})`)
+        logger.debug('CHART', `[DIRTY CHECK A] Year ${currentFy.year}: Physician count differs (${currentFy.physicians.length} vs ${snapshotFy.physicians.length})`)
         return true
       }
 
@@ -584,19 +585,19 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
                currentPhys.additionalDaysWorked !== snapshotPhys.additionalDaysWorked
 
         if (differs) {
-          console.log(`[DIRTY CHECK A] Year ${currentFy.year}: Physician ${currentPhys.name} has changes`)
+          logger.debug('CHART', `[DIRTY CHECK A] Year ${currentFy.year}: Physician ${currentPhys.name} has changes`)
         }
         return differs
       })
 
       if (!physiciansDiffer) {
-        console.log(`[DIRTY CHECK A] Year ${currentFy.year}: All ${currentFy.physicians.length} physicians match`)
+        logger.debug('CHART', `[DIRTY CHECK A] Year ${currentFy.year}: All ${currentFy.physicians.length} physicians match`)
       }
       
       return physiciansDiffer
     })
 
-    console.log('[DIRTY CHECK A] Results:', {
+    logger.debug('CHART', '[DIRTY CHECK A] Results:', {
       projectionDirty,
       otherDirty,
       perYearDirty,
@@ -618,7 +619,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
 
   // Mark scenario B as dirty when settings change from loaded snapshot
   useEffect(() => {
-    console.log('[DIRTY CHECK B] Running dirty check', {
+    logger.debug('CHART', '[DIRTY CHECK B] Running dirty check', {
       hasScenarioBId: !!store.currentScenarioBId,
       hasSnapshot: !!store.loadedScenarioBSnapshot,
       hasScenarioB: !!store.scenarioB,
@@ -628,7 +629,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
     })
 
     if (!store.currentScenarioBId || !store.loadedScenarioBSnapshot || !store.scenarioB) {
-      console.log('[DIRTY CHECK B] Early return - missing required data')
+      logger.debug('CHART', '[DIRTY CHECK B] Early return - missing required data')
       setIsScenarioBDirty(false)
       return
     }
@@ -738,7 +739,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
       })
     })
 
-    console.log('[DIRTY CHECK B] Results:', {
+    logger.debug('CHART', '[DIRTY CHECK B] Results:', {
       projectionDirty,
       otherDirty,
       perYearDirty,
@@ -766,7 +767,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
   useEffect(() => {
     // Only reset if the ID actually changed to a different value
     if (prevScenarioIdRef.current !== store.currentScenarioId) {
-      console.log('[DIRTY RESET A] Scenario ID changed, resetting dirty flag', {
+      logger.debug('CHART', '[DIRTY RESET A] Scenario ID changed, resetting dirty flag', {
         prev: prevScenarioIdRef.current,
         current: store.currentScenarioId
       })
@@ -778,7 +779,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
   useEffect(() => {
     // Only reset if the ID actually changed to a different value
     if (prevScenarioBIdRef.current !== store.currentScenarioBId) {
-      console.log('[DIRTY RESET B] Scenario B ID changed, resetting dirty flag', {
+      logger.debug('CHART', '[DIRTY RESET B] Scenario B ID changed, resetting dirty flag', {
         prev: prevScenarioBIdRef.current,
         current: store.currentScenarioBId
       })
@@ -806,7 +807,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
           setScenarioAIsPublic(data.is_public)
         }
       } catch (err) {
-        console.error('Failed to fetch scenario A public status:', err)
+        logger.error('CHART', 'Failed to fetch scenario A public status:',  err)
       }
     }
 
@@ -832,7 +833,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
           setScenarioBIsPublic(data.is_public)
         }
       } catch (err) {
-        console.error('Failed to fetch scenario B public status:', err)
+        logger.error('CHART', 'Failed to fetch scenario B public status:',  err)
       }
     }
 

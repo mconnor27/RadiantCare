@@ -1,3 +1,4 @@
+import { logger } from '../../../../../lib/logger'
 import {
   parseTherapyIncome2016,
   parseTherapyIncome2017,
@@ -111,7 +112,7 @@ export function buildProportionData(selectedYears: number[] = [2016, 2017, 2018,
         }
       }
     } catch (err) {
-      console.error(`buildProportionData year ${year} error`, err)
+      logger.error('CHART', `buildProportionData year ${year} error`, err)
     }
   }
 

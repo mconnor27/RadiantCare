@@ -2,6 +2,7 @@ import { parseTherapyIncome2025 } from '../../../../../historical_data/therapyIn
 import { loadYearlyGridData } from './yearlyDataTransformer'
 import { authenticatedFetch } from '../../../../../lib/api'
 import type { Physician } from '../../../shared/types'
+import { logger } from '../../../../../lib/logger'
 
 export type Cached2025Data = {
   daily: any
@@ -37,7 +38,7 @@ export type Extracted2025Values = {
  */
 export async function load2025Data(environment?: 'sandbox' | 'production'): Promise<Load2025Result> {
   if (environment === 'sandbox') {
-    // Sandbox mode: use historical JSON files
+    logger.info('QBO_CACHE', 'Using sandbox mode - loading historical JSON')
     const ytdPoints = parseTherapyIncome2025()
     return {
       ytdPoints,
@@ -47,11 +48,11 @@ export async function load2025Data(environment?: 'sandbox' | 'production'): Prom
 
   // Production mode (or auto-detect): try to load cached data, fall back to historical
   try {
+    logger.debug('QBO_CACHE', 'Attempting to load cached 2025 data')
     const res = await authenticatedFetch('/api/qbo/cached-2025')
 
     if (!res.ok) {
-      // No cached data, use fallback
-      console.log('No cached data available, using historical JSON fallback')
+      logger.info('QBO_CACHE', 'No cached data available, using historical JSON fallback')
       return {
         ytdPoints: parseTherapyIncome2025(),
         cachedData: null
@@ -61,7 +62,11 @@ export async function load2025Data(environment?: 'sandbox' | 'production'): Prom
     const cache = await res.json()
 
     if (cache?.daily) {
-      // Parse the cached daily report
+      logger.info('QBO_CACHE', 'Successfully loaded cached 2025 data', {
+        hasSummary: !!cache.summary,
+        hasEquity: !!cache.equity,
+        lastSync: cache.lastSyncTimestamp
+      })
       const ytdPoints = parseTherapyIncome2025(cache.daily)
       return {
         ytdPoints,
@@ -72,14 +77,14 @@ export async function load2025Data(environment?: 'sandbox' | 'production'): Prom
         }
       }
     } else {
-      // Fallback to historical
+      logger.warn('QBO_CACHE', 'Cache exists but missing daily data, using fallback')
       return {
         ytdPoints: parseTherapyIncome2025(),
         cachedData: null
       }
     }
   } catch (err) {
-    console.error('Error loading cached data, using fallback:', err)
+    logger.error('QBO_CACHE', 'Error loading cached data, using fallback', err)
     return {
       ytdPoints: parseTherapyIncome2025(),
       cachedData: null
@@ -162,7 +167,7 @@ export async function load2025ValuesForReset(
   const prcsMedicalDirectorHours = extractGridValue(gridData, 'Medical Director Hours (PRCS)')
   const consultingServicesAgreement = extractGridValue(gridData, 'Consulting Agreement/Other')
 
-  console.log('📦 Extracted 2025 values for reset:', {
+  logger.info('DATA_TRANSFORM', 'Extracted 2025 values for reset', {
     therapyIncome,
     therapyLacey: laceyIncome,
     therapyCentralia: centraliaIncome,
@@ -204,18 +209,18 @@ export async function syncStoreFrom2025Cache(
   cachedSummary: any | null
 ): Promise<void> {
   if (!cachedSummary) {
-    console.log('⏭️  No cached summary, skipping store sync')
+    logger.debug('QBO_CACHE', 'No cached summary, skipping store sync')
     return
   }
 
   // Use store.ytdData (the YTD store, not scenarioA.future)
   const ytdData = store.ytdData
   if (!ytdData) {
-    console.log('⏭️  No YTD data found, skipping store sync')
+    logger.warn('QBO_CACHE', 'No YTD data found, skipping store sync')
     return
   }
 
-  console.log('🔄 [Mobile] Syncing QBO cache → store.ytdData')
+  logger.info('QBO_CACHE', 'Syncing cache to store (mobile mode)')
 
   try {
     // IMPORTANT: Pass ytdCustomProjectedValues to preserve user overrides from scenarios/desktop
@@ -239,7 +244,10 @@ export async function syncStoreFrom2025Cache(
       // First check if there's a custom value (preserve user overrides)
       const ytdCustomProjectedValues = store.ytdCustomProjectedValues || {}
       if (ytdCustomProjectedValues[accountName] !== undefined) {
-        console.log(`  ✓ Using custom value for "${accountName}": $${ytdCustomProjectedValues[accountName].toLocaleString()}`)
+        logger.debug('GRID', 'Using custom value', {
+          account: accountName,
+          value: ytdCustomProjectedValues[accountName]
+        })
         return ytdCustomProjectedValues[accountName]
       }
 
@@ -254,10 +262,10 @@ export async function syncStoreFrom2025Cache(
         const projectedCell = row.cells?.[projectedColIndex] as any
         const cellText = projectedCell?.text || '0'
         const value = parseFloat(cellText.replace(/[$,\s]/g, '')) || 0
-        console.log(`  📊 Extracted "${accountName}": ${value} (from cell text: "${cellText}")`)
+        logger.debug('GRID', 'Extracted grid value', { account: accountName, value })
         return value
       }
-      console.log(`  ⚠️  Row not found for "${accountName}"`)
+      logger.warn('GRID', 'Row not found in grid', { account: accountName })
       return 0
     }
 
@@ -273,7 +281,7 @@ export async function syncStoreFrom2025Cache(
     const prcsMedicalDirectorHours = extractValue('Medical Director Hours (PRCS)')
     const consultingServicesAgreement = extractValue('Consulting Agreement/Other')
 
-    console.log('🔍 [Mobile Sync] Extracted values from grid:', {
+    logger.debug('QBO_CACHE', 'Extracted values from grid', {
       therapyIncomeTotal,
       otherIncomeTotal,
       therapyIncome,
@@ -288,7 +296,7 @@ export async function syncStoreFrom2025Cache(
 
     // IMPORTANT: Update store.ytdData (which PartnerCompensation reads from)
     // NOT store.scenarioA.future[2025] (which is only for multi-year projections)
-    console.log('🔧 [Mobile Sync] Calling setYtdValue for each field...')
+    logger.debug('STORE', 'Updating YTD values from cache')
     store.setYtdValue('therapyIncome', therapyIncome)
     store.setYtdValue('nonEmploymentCosts', nonEmploymentCosts)
     store.setYtdValue('nonMdEmploymentCosts', nonMdEmploymentCosts)
@@ -298,20 +306,21 @@ export async function syncStoreFrom2025Cache(
     store.setYtdValue('prcsMedicalDirectorHours', prcsMedicalDirectorHours)
     store.setYtdValue('consultingServicesAgreement', consultingServicesAgreement)
 
-    console.log('✅ [Mobile Sync] setYtdValue calls completed (Zustand state will update on next render)')
-
     const customCount = Object.keys(store.ytdCustomProjectedValues || {}).length
-    console.log('✅ [Mobile] Store synced with QBO values to store.ytdData (respecting', customCount, 'YTD custom overrides):', {
-      therapyIncome,
-      nonEmploymentCosts,
-      nonMdEmploymentCosts,
-      locumCosts,
-      miscEmploymentCosts,
-      medicalDirectorHours,
-      prcsMedicalDirectorHours,
-      consultingServicesAgreement
+    logger.info('QBO_CACHE', 'Store sync completed', {
+      customOverrides: customCount,
+      values: {
+        therapyIncome,
+        nonEmploymentCosts,
+        nonMdEmploymentCosts,
+        locumCosts,
+        miscEmploymentCosts,
+        medicalDirectorHours,
+        prcsMedicalDirectorHours,
+        consultingServicesAgreement
+      }
     })
   } catch (error) {
-    console.error('❌ [Mobile] Failed to sync store from cache:', error)
+    logger.error('QBO_CACHE', 'Failed to sync store from cache', error)
   }
 }

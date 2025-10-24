@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { logger } from '../../../../../lib/logger'
 import { ReactGrid, type Row } from '@silevis/reactgrid'
 import '@silevis/reactgrid/styles.css'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -39,7 +40,7 @@ async function calculateProjectionRatio(cached2025?: any): Promise<number> {
     const endPeriod = data2025.Header.EndPeriod
     
     if (!startPeriod || !endPeriod) {
-      console.warn('Missing date information in 2025 data, falling back to 1.5 multiplier')
+      logger.warn('GRID', 'Missing date information in 2025 data,  falling back to 1.5 multiplier')
       return 1.5
     }
     
@@ -47,12 +48,12 @@ async function calculateProjectionRatio(cached2025?: any): Promise<number> {
     const endDate = new Date(endPeriod)
     
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      console.warn('Invalid date format in 2025 data, falling back to 1.5 multiplier')
+      logger.warn('GRID', 'Invalid date format in 2025 data,  falling back to 1.5 multiplier')
       return 1.5
     }
     
     if (endDate <= startDate) {
-      console.warn('Invalid date range in 2025 data, falling back to 1.5 multiplier')
+      logger.warn('GRID', 'Invalid date range in 2025 data,  falling back to 1.5 multiplier')
       return 1.5
     }
     
@@ -60,11 +61,11 @@ async function calculateProjectionRatio(cached2025?: any): Promise<number> {
     const fullYearDays = 365
     const projectionRatio = fullYearDays / dataPeriodDays
     
-    console.log(`📅 Data period: ${startPeriod} to ${endPeriod} (${dataPeriodDays} days, ratio: ${projectionRatio.toFixed(3)})`)
+    logger.debug('GRID', `📅 Data period: ${startPeriod} to ${endPeriod} (${dataPeriodDays} days,  ratio: ${projectionRatio.toFixed(3)})`)
     
     return projectionRatio
   } catch (error) {
-    console.warn('Failed to calculate projection ratio, falling back to 1.5 multiplier:', error)
+    logger.warn('GRID', 'Failed to calculate projection ratio,  falling back to 1.5 multiplier:', error)
     return 1.5
   }
 }
@@ -85,7 +86,7 @@ function syncGridValuesToMultiyear(
   gridData: { rows: any[], allRows: any[], columns: any[] },
   mode: 'scenario' | 'ytd' = 'scenario'
 ) {
-  console.log(`🔄 Syncing grid → ${mode === 'ytd' ? 'YTD' : 'Scenario A/B'}`)
+  logger.debug('GRID', `🔄 Syncing grid → ${mode === 'ytd' ? 'YTD' : 'Scenario A/B'}`)
   try {
     // Helper to get current projected value for an account
     const getProjectedValue = (accountName: string): number => {
@@ -123,10 +124,10 @@ function syncGridValuesToMultiyear(
         const projectedCell = row.cells?.[projectedColIndex] as any
         const cellText = projectedCell?.text || '0'
         const value = parseFloat(cellText.replace(/[$,\s]/g, '')) || 0
-        // console.log(`📋 Found "${accountName}" -> "${normalizeAccountName(accountName)}" = ${value}`)
+        // logger.debug('GRID', `📋 Found "${accountName}" -> "${normalizeAccountName(accountName)}" = ${value}`)
         return value
       } else {
-        // console.log(`❌ No match found for "${accountName}" -> "${normalizeAccountName(accountName)}"`)
+        // logger.debug('GRID', `❌ No match found for "${accountName}" -> "${normalizeAccountName(accountName)}"`)
       }
       
       return 0
@@ -147,7 +148,7 @@ function syncGridValuesToMultiyear(
           }
         }
       } catch (error) {
-        console.error(`Failed to sync ${multiyearField}:`, error)
+        logger.error('GRID', `Failed to sync ${multiyearField}:`,  error)
       }
     })
 
@@ -178,7 +179,7 @@ function syncGridValuesToMultiyear(
         }
       }
     } catch (error) {
-      console.error(`Failed to sync therapyIncome:`, error)
+      logger.error('GRID', `Failed to sync therapyIncome:`,  error)
     }
 
     // Additionally sync per-site therapy projected totals to store for per-site projections
@@ -202,12 +203,12 @@ function syncGridValuesToMultiyear(
         }
       }
     } catch (error) {
-      console.error('Failed to sync per-site therapy values:', error)
+      logger.error('GRID', 'Failed to sync per-site therapy values:',  error)
     }
     
     // Log what was synced
     if (mode === 'ytd') {
-      console.log('✅ [Sync] Grid → YTD store complete:', {
+      logger.debug('CHART', '✅ [Sync] Grid → YTD store complete:', {
         therapyIncome: therapyIncomeTotal,
         nonEmploymentCosts: getProjectedValue('Non-Employment Costs'),
         nonMdEmploymentCosts: getProjectedValue('8320 Non-MD Payroll'),
@@ -219,7 +220,7 @@ function syncGridValuesToMultiyear(
       // Now that all YTD values are synced, trigger ONE recomputation of projections
       store.recomputeProjectionsFromBaseline()
     } else {
-      console.log('✅ [Sync] Grid → Scenario A/B complete:', {
+      logger.debug('CHART', '✅ [Sync] Grid → Scenario A/B complete:', {
         therapyIncome: therapyIncomeTotal,
         nonEmploymentCosts: getProjectedValue('Non-Employment Costs'),
         nonMdEmploymentCosts: getProjectedValue('8320 Non-MD Payroll')
@@ -227,7 +228,7 @@ function syncGridValuesToMultiyear(
     }
     
   } catch (error) {
-    console.error('Error syncing grid values to multiyear store:', error)
+    logger.error('GRID', 'Error syncing grid values to multiyear store:',  error)
   }
 }
 
@@ -327,7 +328,7 @@ export default function YearlyDataGrid({
       })
       
       if (!prcsRow) {
-        console.warn('⚠️ Could not find PRCS MD Hours row in grid')
+        logger.warn('GRID', '⚠️ Could not find PRCS MD Hours row in grid')
         return null
       }
       
@@ -340,11 +341,11 @@ export default function YearlyDataGrid({
       // Calculate annualized value
       const annualized = ytdValue * projectionRatio
       
-      console.log(`📊 [calculateAnnualizedPrcsMdHours] YTD: $${ytdValue.toLocaleString()}, Ratio: ${projectionRatio.toFixed(3)}, Annualized: $${Math.round(annualized).toLocaleString()}`)
+      logger.debug('GRID', `📊 [calculateAnnualizedPrcsMdHours] YTD: $${ytdValue.toLocaleString()}, Ratio: ${projectionRatio.toFixed(3)}, Annualized: $${Math.round(annualized).toLocaleString()}`)
       
       return annualized
     } catch (error) {
-      console.error('❌ Error calculating annualized PRCS MD Hours:', error)
+      logger.error('GRID', '❌ Error calculating annualized PRCS MD Hours:',  error)
       return null
     }
   }, [gridData, projectionRatio]) // Default fallback
@@ -357,7 +358,7 @@ export default function YearlyDataGrid({
 
   // Debug tooltip state changes
   // useEffect(() => {
-  //   console.log('[tooltip state]', tooltip)
+  //   logger.debug('GRID', '[tooltip state]',  tooltip)
   // }, [tooltip])
   
   // Slider state for projected value editing
@@ -440,7 +441,7 @@ export default function YearlyDataGrid({
   // Reset first sync flag when component mounts, mode changes, or scenario loads (including explicit reloads)
   useEffect(() => {
     hasCompletedFirstSync.current = false
-    console.log('🔄 [Grid] Reset first sync flag (mode, scenario, or reload trigger changed)')
+    logger.debug('GRID', '🔄 [Grid] Reset first sync flag (mode,  scenario, or reload trigger changed)')
   }, [mode, store.currentYearSettingId, store.currentScenarioId, reloadTrigger])
   
   // Extract key physician values for dependency tracking
@@ -575,9 +576,9 @@ export default function YearlyDataGrid({
     }
     
     if (!allAnnualized && nonAnnualizedRows.length > 0) {
-      console.log('🔍 [Annualize Check] Not all values annualized:', nonAnnualizedRows)
+      logger.debug('GRID', '🔍 [Annualize Check] Not all values annualized:',  nonAnnualizedRows)
     } else if (allAnnualized) {
-      console.log('✅ [Annualize Check] All values are annualized!')
+      logger.debug('GRID', '✅ [Annualize Check] All values are annualized!')
     }
     
     return allAnnualized
@@ -586,18 +587,18 @@ export default function YearlyDataGrid({
   const allValuesAreAnnualized = areAllValuesAnnualized()
   
   const loadData = useCallback(async () => {
-    console.log('🔄 [Grid loadData] Called!')
+    logger.debug('GRID', '🔄 [Grid loadData] Called!')
     try {
       // In production, wait for cached data to arrive before loading stale historical data
       if (environment === 'production' && !cachedSummary && isLoadingCache) {
-        console.log('⏳ Waiting for fresh cached data...')
+        logger.debug('GRID', '⏳ Waiting for fresh cached data...')
         setLoading(true)
         return
       }
       
       // Get 2025 physician data and benefit growth rate from store based on mode
       const fy2025 = store.ytdData
-      console.log('🔍 [Grid loadData] Physician data from store:', {
+      logger.debug('CHART', '🔍 [Grid loadData] Physician data from store:', {
         physiciansCount: fy2025?.physicians?.length,
         prcsMedicalDirectorHours: fy2025?.prcsMedicalDirectorHours,
         medicalDirectorHours: fy2025?.medicalDirectorHours,
@@ -652,22 +653,22 @@ export default function YearlyDataGrid({
       
       // Skip if we just loaded the exact same configuration AND scenario/trigger hasn't changed
       if (!isScenarioChanged && !isExplicitReload && lastLoadRef.current === dataSignature) {
-        console.log('⏭️  Skipping redundant load (same data)')
+        logger.debug('GRID', '⏭️  Skipping redundant load (same data)')
         return
       }
       
       if (isModeChanged) {
-        console.log(`🎨 [Grid] PRCS mode changed in dataSignature: ${lastPrcsMdHoursMode} → ${currentPrcsMdHoursMode}, forcing reload`)
+        logger.debug('GRID', `🎨 [Grid] PRCS mode changed in dataSignature: ${lastPrcsMdHoursMode} → ${currentPrcsMdHoursMode},  forcing reload`)
       }
       
       if (isScenarioChanged) {
-        console.log(`📋 [Grid] Scenario changed: ${lastScenarioId} → ${currentScenarioId}, forcing grid reload`)
+        logger.debug('GRID', `📋 [Grid] Scenario changed: ${lastScenarioId} → ${currentScenarioId},  forcing grid reload`)
       }
       if (isExplicitReload) {
-        console.log(`🔄 [Grid] Explicit reload requested (trigger: ${lastReloadTrigger} → ${reloadTrigger})`)
+        logger.debug('GRID', `🔄 [Grid] Explicit reload requested (trigger: ${lastReloadTrigger} → ${reloadTrigger})`)
       }
       
-      console.log('📊 YearlyDataGrid: Loading data...')
+      logger.debug('GRID', '📊 YearlyDataGrid: Loading data...')
       setLoading(true)
       setError(null)
 
@@ -686,12 +687,12 @@ export default function YearlyDataGrid({
       setGridData(data)
       setProjectionRatio(ratio)
       lastLoadRef.current = dataSignature
-      console.log(`📊 YearlyDataGrid: Loaded ${data.rows.length} rows, projection ratio: ${ratio.toFixed(3)}`)
+      logger.debug('GRID', `📊 YearlyDataGrid: Loaded ${data.rows.length} rows,  projection ratio: ${ratio.toFixed(3)}`)
       
       // Check if suppression flag is set AND consume it before sync
       const shouldSuppress = store.consumeSuppressNextGridSync()
       if (shouldSuppress) {
-        console.log('⏭️  Skipping initial sync (suppressed)')
+        logger.debug('GRID', '⏭️  Skipping initial sync (suppressed)')
         return  // Skip sync entirely during reset operations
       }
 
@@ -707,17 +708,17 @@ export default function YearlyDataGrid({
           hasCompletedFirstSync.current = true
 
           if (mode === 'ytd') {
-            console.log('📸 [YTD] Updating YTD snapshot after first QBO cache sync')
+            logger.debug('GRID', '📸 [YTD] Updating YTD snapshot after first QBO cache sync')
             // Note: Store state is updated asynchronously, so immediate debug logs may show stale values
             store.updateCurrentYearSettingsSnapshot()
           } else {
             // Multi-Year mode: update scenario snapshots
             if (store.loadedScenarioSnapshot && store.currentScenarioId) {
-              console.log('📸 [Multi-Year] Updating Scenario A snapshot after first QBO cache sync')
+              logger.debug('GRID', '📸 [Multi-Year] Updating Scenario A snapshot after first QBO cache sync')
               store.updateScenarioSnapshot('A')
             }
             if (store.scenarioBEnabled && store.loadedScenarioBSnapshot && store.currentScenarioBId) {
-              console.log('📸 [Multi-Year] Updating Scenario B snapshot after first QBO cache sync')
+              logger.debug('GRID', '📸 [Multi-Year] Updating Scenario B snapshot after first QBO cache sync')
               store.updateScenarioSnapshot('B')
             }
           }
@@ -728,7 +729,7 @@ export default function YearlyDataGrid({
         
         // Capture the grid snapshot for dirty detection
         // Only capture if we don't already have a snapshot (null check)
-        console.log('🔍 [Grid] Snapshot check:', {
+        logger.debug('CHART', '🔍 [Grid] Snapshot check:', {
           hasCompletedFirstSync: hasCompletedFirstSync.current,
           hasFullSnapshot: !!store.loadedCurrentYearSettingsSnapshot,
           currentCustomValuesCount: Object.keys(store.ytdCustomProjectedValues).length
@@ -737,7 +738,7 @@ export default function YearlyDataGrid({
         // Snapshot now comes solely from loadedCurrentYearSettingsSnapshot; no grid snapshot capture
       }, 200)
     } catch (err) {
-      console.error('Error loading yearly data:', err)
+      logger.error('GRID', 'Error loading yearly data:',  err)
       setError('Failed to load yearly financial data')
     } finally {
       setLoading(false)
@@ -759,19 +760,19 @@ export default function YearlyDataGrid({
   // Listen for annualize all event
   useEffect(() => {
     const handleAnnualizeAll = () => {
-      console.log('🔢 Annualizing all grid values...')
+      logger.debug('GRID', '🔢 Annualizing all grid values...')
       
       // Special handling: Switch PRCS to annualized mode if currently in calculated mode
       const isPrcsCalculated = store.ytdData.prcsMdHoursMode === 'calculated'
       if (isPrcsCalculated) {
-        console.log('🔀 [Annualize All] Switching PRCS from calculated to annualized mode')
+        logger.debug('GRID', '🔀 [Annualize All] Switching PRCS from calculated to annualized mode')
         const annualizedPrcsValue = calculateAnnualizedPrcsMdHours()
         if (annualizedPrcsValue !== null) {
           store.setPrcsMdHoursMode('annualized', annualizedPrcsValue)
-          console.log(`  ✓ PRCS switched to annualized: $${Math.round(annualizedPrcsValue).toLocaleString()}`)
+          logger.debug('GRID', `  ✓ PRCS switched to annualized: $${Math.round(annualizedPrcsValue).toLocaleString()}`)
         }
       } else {
-        console.log('  ℹ️  PRCS already in annualized mode, value will be preserved')
+        logger.debug('GRID', '  ℹ️  PRCS already in annualized mode,  value will be preserved')
       }
       
       // Iterate through all rows and set projected values to annualized amounts
@@ -823,16 +824,16 @@ export default function YearlyDataGrid({
           // Value matches default - remove any existing custom override
           if (store.ytdCustomProjectedValues[normalizedAccountName] !== undefined) {
             store.removeYtdCustomProjectedValue(normalizedAccountName)
-            console.log(`  ✓ ${normalizedAccountName}: Removed override (matches default)`)
+            logger.debug('GRID', `  ✓ ${normalizedAccountName}: Removed override (matches default)`)
           }
         } else {
           // Value differs from default - set custom override
           store.setYtdCustomProjectedValue(normalizedAccountName, annualizedValue)
-          console.log(`  ✓ ${normalizedAccountName}: ${annualizedValue.toFixed(0)} (custom override)`)
+          logger.debug('GRID', `  ✓ ${normalizedAccountName}: ${annualizedValue.toFixed(0)} (custom override)`)
         }
       })
       
-      console.log('✅ Annualization complete')
+      logger.debug('GRID', '✅ Annualization complete')
     }
     
     window.addEventListener('annualizeAllGridValues', handleAnnualizeAll)
@@ -893,7 +894,7 @@ export default function YearlyDataGrid({
   }, [])
 
   const handleCellClick = useCallback((rowId: string, columnId: string, event?: React.MouseEvent) => {
-    console.log('handleCellClick called with:', { rowId, columnId })
+    logger.debug('GRID', 'handleCellClick called with:',  { rowId, columnId })
 
     // Handle section collapse/expand for first column
     if (columnId === 'col-0' && rowId.startsWith('section-')) {
@@ -902,14 +903,14 @@ export default function YearlyDataGrid({
         event.stopPropagation()
       }
 
-      console.log('Toggling section:', rowId)
-      console.log('Current collapsed state before toggle:', collapsedSections)
+      logger.debug('GRID', 'Toggling section:',  rowId)
+      logger.debug('GRID', 'Current collapsed state before toggle:',  collapsedSections)
       setCollapsedSections(prev => {
         const newState = {
           ...prev,
           [rowId]: !prev[rowId] // Toggle: undefined/false -> true, true -> false
         }
-        console.log('New collapsed state after toggle:', newState)
+        logger.debug('GRID', 'New collapsed state after toggle:',  newState)
         return newState
       })
       return
@@ -938,7 +939,7 @@ export default function YearlyDataGrid({
       const isPrcsMdHours = accountText.match(/Medical Director Hours.*PRCS/i)
       const prcsMdHoursMode = store.ytdData.prcsMdHoursMode || 'calculated'
       
-      console.log('🔍 [Click] Cell details:', {
+      logger.debug('CHART', '🔍 [Click] Cell details:', {
         accountText,
         isPrcsMdHours,
         prcsMdHoursMode,
@@ -950,7 +951,7 @@ export default function YearlyDataGrid({
       
       // Special handling for PRCS MD Hours - ALWAYS show toggle tooltip (in both calculated and annualized modes)
       if (isPrcsMdHours && cell && accountCell && !isSpacer) {
-        console.log(`✅ PRCS MD Hours (${prcsMdHoursMode} mode) clicked - showing mode toggle`)
+        logger.debug('GRID', `✅ PRCS MD Hours (${prcsMdHoursMode} mode) clicked - showing mode toggle`)
         
         // Get cell position for tooltip placement (use viewport coordinates for fixed positioning)
         let cellPosition = { x: 0, y: 0 }
@@ -981,7 +982,7 @@ export default function YearlyDataGrid({
           }
         }
         
-        console.log('📍 Tooltip position:', cellPosition, 'cellRect:', cellRect)
+        logger.debug('GRID', 'Tooltip position', { cellPosition, cellRect })
         
         // Show PRCS mode toggle tooltip
         const cellText = cell.text || '0'
@@ -1000,7 +1001,7 @@ export default function YearlyDataGrid({
       const isEditableCell = !isCalculatedRow || (isPrcsMdHours && prcsMdHoursMode === 'annualized')
       
       if (cell && accountCell && !isSpacer && isEditableCell && (((isRowTypeData && !isComputed) && !isTherapyComponent) || isTherapyTotalSummary)) {
-        console.log('Projected cell clicked:', { rowIndex, colIndex, accountName: accountCell.text })
+        logger.debug('GRID', 'Projected cell clicked:',  { rowIndex, colIndex, accountName: accountCell.text })
         
         // Parse the displayed projected value (may be custom) and compute baseline
         const cellText = cell.text || '0'
@@ -1094,13 +1095,13 @@ export default function YearlyDataGrid({
       const oldTotal = slider.currentValue
       const newTotal = newValue
 
-      console.log(`📊 [${normalizedAccountName}] ==== STARTING UPDATE ====`)
-      console.log(`📊 [${normalizedAccountName}] Value changing from ${oldTotal} to ${newTotal}`)
+      logger.debug('GRID', `📊 [${normalizedAccountName}] ==== STARTING UPDATE ====`)
+      logger.debug('GRID', `📊 [${normalizedAccountName}] Value changing from ${oldTotal} to ${newTotal}`)
 
       // Get current physician data (grid is only used in YTD mode)
       const fy = store.ytdData
 
-      console.log(`📊 [${normalizedAccountName}] Current fy.${fieldName} BEFORE update: ${fy?.[fieldName]}`)
+      logger.debug('GRID', `📊 [${normalizedAccountName}] Current fy.${fieldName} BEFORE update: ${fy?.[fieldName]}`)
 
       if (fy && fy.physicians) {
         // Calculate current trailing total (for retired partners)
@@ -1118,38 +1119,38 @@ export default function YearlyDataGrid({
         const oldRemainder = Math.max(0, oldTotal - trailingTotal)
         const newRemainder = Math.max(0, newTotal - trailingTotal)
 
-        console.log(`📊 [Shared MD Hours] Trailing: ${trailingTotal}, Old remainder: ${oldRemainder}, New remainder: ${newRemainder}`)
+        logger.debug('GRID', `📊 [Shared MD Hours] Trailing: ${trailingTotal},  Old remainder: ${oldRemainder}, New remainder: ${newRemainder}`)
 
         // Redistribute: keep the same percentage allocations, but scale to new total
         // The percentage-based allocations will automatically scale to the new remainder
         // No need to modify individual physician percentages - they stay the same!
 
-        console.log(`✅ [Shared MD Hours] Percentages remain unchanged, will scale to new total automatically`)
+        logger.debug('GRID', `✅ [Shared MD Hours] Percentages remain unchanged,  will scale to new total automatically`)
       }
 
       // Update the value in the store (grid is only used in YTD mode)
-      console.log(`📊 [${normalizedAccountName}] Calling store.setYtdValue('${fieldName}', ${newValue})`)
+      logger.debug('GRID', `📊 [${normalizedAccountName}] Calling store.setYtdValue('${fieldName}',  ${newValue})`)
       store.setYtdValue(fieldName as any, newValue)
 
       // Verify the update (read from store again to get latest value)
       const fyAfter = useDashboardStore.getState().ytdData
-      console.log(`📊 [${normalizedAccountName}] Current fy.${fieldName} AFTER update: ${fyAfter?.[fieldName]}`)
+      logger.debug('GRID', `📊 [${normalizedAccountName}] Current fy.${fieldName} AFTER update: ${fyAfter?.[fieldName]}`)
 
       // Also update custom projected value for grid persistence (grid is only used in YTD mode)
-      console.log(`📊 [${normalizedAccountName}] Default value: ${defaultValue}, approximatelyEqual: ${approximatelyEqual(newValue, defaultValue)}`)
+      logger.debug('GRID', `📊 [${normalizedAccountName}] Default value: ${defaultValue},  approximatelyEqual: ${approximatelyEqual(newValue, defaultValue)}`)
       if (approximatelyEqual(newValue, defaultValue)) {
-        console.log(`📊 [${normalizedAccountName}] Removing custom projected value (matches default)`)
+        logger.debug('GRID', `📊 [${normalizedAccountName}] Removing custom projected value (matches default)`)
         store.removeYtdCustomProjectedValue(accountName)
       } else {
-        console.log(`📊 [${normalizedAccountName}] Setting custom projected value: ${accountName} = ${newValue}`)
+        logger.debug('GRID', `📊 [${normalizedAccountName}] Setting custom projected value: ${accountName} = ${newValue}`)
         store.setYtdCustomProjectedValue(accountName, newValue)
       }
 
       // Read custom projected values from store again
       const currentCustomValues = useDashboardStore.getState().ytdCustomProjectedValues
-      console.log(`📊 [${normalizedAccountName}] Custom projected values:`, currentCustomValues)
-      console.log(`📊 [${normalizedAccountName}] Specifically for "${accountName}":`, currentCustomValues[accountName])
-      console.log(`📊 [${normalizedAccountName}] ==== UPDATE COMPLETE ====`)
+      logger.debug('GRID', `📊 [${normalizedAccountName}] Custom projected values:`,  currentCustomValues)
+      logger.debug('GRID', `📊 [${normalizedAccountName}] Specifically for "${accountName}":`,  currentCustomValues[accountName])
+      logger.debug('GRID', `📊 [${normalizedAccountName}] ==== UPDATE COMPLETE ====`)
     } else {
       // Standard handling for other accounts (grid is only used in YTD mode)
       if (approximatelyEqual(newValue, defaultValue)) {
@@ -1167,7 +1168,7 @@ export default function YearlyDataGrid({
       // Use setTimeout to allow any dynamic recalculations to complete first
       setTimeout(() => {
         if (gridData.rows.length > 0) {
-          // console.log('🎯 Syncing after projected value change...')
+          // logger.debug('GRID', '🎯 Syncing after projected value change...')
           const customValues = store.ytdCustomProjectedValues
           syncGridValuesToMultiyear(store, customValues, gridData, 'ytd')
         }
@@ -1753,7 +1754,7 @@ export default function YearlyDataGrid({
               wordWrap: 'break-word',
               whiteSpace: 'pre-line'
             }}
-            onMouseEnter={() => console.log('[tooltip] tooltip rendered with text:', tooltip.text)}
+            onMouseEnter={() => logger.debug('GRID', '[tooltip] tooltip rendered with text:',  tooltip.text)}
           >
             {tooltip.text}
           </div>
@@ -1789,7 +1790,7 @@ export default function YearlyDataGrid({
               : prcsModeTooltip.position.x + padding
           }
           
-          console.log('🎯 Tooltip rendering:', { shouldRenderLeft, spaceOnRight, tooltipPosition })
+          logger.debug('GRID', '🎯 Tooltip rendering:',  { shouldRenderLeft, spaceOnRight, tooltipPosition })
           
           return (
             <>
@@ -1805,7 +1806,7 @@ export default function YearlyDataGrid({
                   backgroundColor: 'transparent'
                 }}
                 onClick={() => {
-                  console.log('🚪 Closing PRCS tooltip (clicked outside)')
+                  logger.debug('GRID', '🚪 Closing PRCS tooltip (clicked outside)')
                   setPrcsModeTooltip({ isVisible: false, position: { x: 0, y: 0 }, currentValue: 0, cellRect: undefined })
                 }}
               />
@@ -1851,9 +1852,9 @@ export default function YearlyDataGrid({
                       <button
                         onClick={() => {
                           if (isCalculated) {
-                            console.log('🔀 Already in calculated mode, closing')
+                            logger.debug('GRID', '🔀 Already in calculated mode,  closing')
                           } else {
-                            console.log('🔀 Switching to calculated mode')
+                            logger.debug('GRID', '🔀 Switching to calculated mode')
                             store.setPrcsMdHoursMode('calculated')
                           }
                           setPrcsModeTooltip({ isVisible: false, position: { x: 0, y: 0 }, currentValue: 0, cellRect: undefined })
@@ -1889,14 +1890,14 @@ export default function YearlyDataGrid({
                       <button
                         onClick={() => {
                           if (!isCalculated) {
-                            console.log('🔀 Already in annualized mode, closing')
+                            logger.debug('GRID', '🔀 Already in annualized mode,  closing')
                           } else {
-                            console.log('🔀 Switching to annualized mode')
+                            logger.debug('GRID', '🔀 Switching to annualized mode')
                             const annualizedValue = calculateAnnualizedPrcsMdHours()
                             if (annualizedValue !== null) {
                               store.setPrcsMdHoursMode('annualized', annualizedValue)
                             } else {
-                              console.error('❌ Could not calculate annualized value')
+                              logger.error('GRID', '❌ Could not calculate annualized value')
                             }
                           }
                           setPrcsModeTooltip({ isVisible: false, position: { x: 0, y: 0 }, currentValue: 0, cellRect: undefined })

@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { SavedScenario } from '../dashboard/shared/types'
-import { 
-  isMultiYearScenario, 
-  isCurrentYearSettingsScenario, 
-  isProjectionScenario 
+import {
+  isMultiYearScenario,
+  isCurrentYearSettingsScenario,
+  isProjectionScenario
 } from '../dashboard/shared/types'
 import { useAuth } from '../auth/AuthProvider'
 import { useDashboardStore } from '../Dashboard'
 import ScenarioList from './ScenarioList'
 import ScenarioForm from './ScenarioForm'
 import BaselineWarningModal from './BaselineWarningModal'
+import { logger } from '../../lib/logger'
 
 interface ScenarioManagerProps {
   isOpen: boolean
@@ -223,7 +224,7 @@ export default function ScenarioManager({
         setPublicScenarios([])
       }
     } catch (err) {
-      console.error('Error loading scenarios:', err)
+      logger.error('SCENARIO', 'Failed to load scenarios', err)
       setError(err instanceof Error ? err.message : 'Failed to load scenarios')
     } finally {
       setLoading(false)
@@ -462,7 +463,7 @@ export default function ScenarioManager({
           qboSyncTimestamp = cacheData.last_sync_timestamp
         }
       } catch (err) {
-        console.warn('Could not fetch QBO sync timestamp:', err)
+        logger.warn('QBO_SYNC', 'Could not fetch QBO sync timestamp', err)
         // Continue with update even if timestamp fetch fails
       }
 

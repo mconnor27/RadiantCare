@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { logger } from '../../../../lib/logger'
 import {
   DndContext,
   closestCenter,
@@ -85,14 +86,14 @@ export function DragDropPhysicians({ children, physicians, onReorder }: DragDrop
   // During drag, visual updates happen via handleDragOver
   // After drag ends and parent updates physicians, this syncs the final state
   React.useEffect(() => {
-    console.log('[Effect] Physicians changed, isDragging:', isDragging)
-    console.log('[Effect] New physicians order:', physicians.map(p => p.name))
-    console.log('[Effect] Current items order:', items.map(p => p.name))
+    logger.debug('UI', '[Effect] Physicians changed, isDragging:', isDragging)
+    logger.debug('UI', '[Effect] New physicians order:', physicians.map(p => p.name))
+    logger.debug('UI', '[Effect] Current items order:', items.map(p => p.name))
     if (!isDragging) {
-      console.log('[Effect] Syncing items with physicians')
+      logger.debug('UI', '[Effect] Syncing items with physicians')
       setItems(physicians)
     } else {
-      console.log('[Effect] Skipping sync (dragging in progress)')
+      logger.debug('UI', '[Effect] Skipping sync (dragging in progress)')
     }
   }, [physicians]) // Don't depend on isDragging - only sync when physicians actually changes
 
@@ -112,7 +113,7 @@ export function DragDropPhysicians({ children, physicians, onReorder }: DragDrop
   )
 
   function handleDragStart() {
-    console.log('[DragStart] Starting drag')
+    logger.debug('UI', '[DragStart] Starting drag')
     setIsDragging(true)
     document.body.classList.add('dragging')
   }
@@ -139,9 +140,9 @@ export function DragDropPhysicians({ children, physicians, onReorder }: DragDrop
       // newIndex: where the item ended up in the visually reordered items array
       const newIndex = items.findIndex((p) => p.id === active.id)
       
-      console.log('[DragEnd] Calling onReorder:', { oldIndex, newIndex, activeId: active.id })
-      console.log('[DragEnd] Items order:', items.map(p => p.name))
-      console.log('[DragEnd] Physicians order:', physicians.map(p => p.name))
+      logger.debug('UI', '[DragEnd] Calling onReorder:', { oldIndex, newIndex, activeId: active.id })
+      logger.debug('UI', '[DragEnd] Items order:', items.map(p => p.name))
+      logger.debug('UI', '[DragEnd] Physicians order:', physicians.map(p => p.name))
       
       if (oldIndex !== -1 && newIndex !== -1) {
         onReorder(oldIndex, newIndex)

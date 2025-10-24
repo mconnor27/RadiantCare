@@ -84,7 +84,7 @@ export default function ProjectedValueSlider({
   const defaultValue = getDefaultValue(accountName, annualizedValue)
 
   // Debug logging (commented out to reduce console spam)
-  // console.log('ProjectedValueSlider:', { accountName, annualizedValue, defaultValue, configFound: findAccountConfig(accountName) })
+  // logger.debug('UI', 'ProjectedValueSlider:', { accountName, annualizedValue, defaultValue, configFound: findAccountConfig(accountName) })
 
   // Calculate slider range based on config (falls back to standard strategy)
   // Use YTD actual value as the minimum (can't project lower than what's already happened)

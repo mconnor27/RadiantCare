@@ -1,4 +1,5 @@
 import historical2025Data from './2025_daily.json'
+import { logger } from '../lib/logger'
 import historical2024Data from './2024.json'
 import historical2023Data from './2023.json'
 import historical2022Data from './2022.json'
@@ -98,7 +99,7 @@ export function parseSiteIncomeFromSummary(): YTDPointWithSites[] {
     }]
     
   } catch (error) {
-    console.error('Error parsing 2025 site income data:', error)
+    logger.error('DATA_TRANSFORM', 'Error parsing 2025 site income data:', error)
     return []
   }
 }
@@ -179,7 +180,7 @@ export function getSiteYearTotals(year: string): SiteData {
       aberdeen: getYearTotal(aberdeenVals)
     }
   } catch (e) {
-    console.error('getSiteYearTotals error', year, e)
+    logger.error('DATA_TRANSFORM', 'getSiteYearTotals error', { year, error: e })
     return { lacey: 0, centralia: 0, aberdeen: 0 }
   }
 }
@@ -224,7 +225,7 @@ export function getSiteMonthTotals(year: string): { month: string, sites: SiteDa
     }
     return monthNames.map((m, i) => ({ month: m, sites: sums[i] }))
   } catch (e) {
-    console.error('getSiteMonthTotals error', year, e)
+    logger.error('DATA_TRANSFORM', 'getSiteMonthTotals error', { year, error: e })
     return []
   }
 }
@@ -260,7 +261,7 @@ export function estimateSiteBreakdownForYear(totalIncome: number, year: string):
   const centraliaProportion = sites.centralia / total2025  
   const aberdeenProportion = sites.aberdeen / total2025
   
-  console.log(`${year} estimated proportions:`, { laceyProportion, centraliaProportion, aberdeenProportion })
+  logger.debug('DATA_TRANSFORM', `${year} estimated proportions:`, { laceyProportion, centraliaProportion, aberdeenProportion })
   
   return {
     lacey: totalIncome * laceyProportion,
@@ -423,11 +424,11 @@ export function getSiteMonthlyEndPoints(year: string): YTDPointWithSites[] {
       }
     }
     
-    console.log(`Generated ${points.length} interpolated daily points for ${year} site data`)
+    logger.debug('DATA_TRANSFORM', `Generated ${points.length} interpolated daily points for ${year} site data`)
     return points
     
   } catch (error) {
-    console.error(`Error extracting site data for ${year}:`, error)
+    logger.error('DATA_TRANSFORM', `Error extracting site data for ${year}:`, error)
     return []
   }
 }
@@ -466,11 +467,11 @@ export function get2025SiteMonthlyEndPoints(): YTDPointWithSites[] {
     const lastReliableDay = isEndOfMonth ? lastDataDay : new Date(2025, lastReliableMonth, 0).getDate()
     
     if (lastReliableMonth < 1) {
-      console.warn('No complete months of site data available')
+      logger.warn('DATA_TRANSFORM', 'No complete months of site data available')
       return []
     }
     
-    console.log(`2025 site data: Last data date is ${lastDataDate}, last reliable site data through ${lastReliableMonth}/${lastReliableDay}/2025`)
+    logger.debug('DATA_TRANSFORM', `2025 site data: Last data date is ${lastDataDate}, last reliable site data through ${lastReliableMonth}/${lastReliableDay}/2025`)
     
     // Get the YTD totals for each site
     const current2025Data = parseSiteIncomeFromSummary()
@@ -596,11 +597,11 @@ export function get2025SiteMonthlyEndPoints(): YTDPointWithSites[] {
       }
     }
     
-    console.log(`Generated ${points.length} month-to-month interpolated daily points for 2025 site data (through end of month ${lastReliableMonth})`)
+    logger.debug('DATA_TRANSFORM', `Generated ${points.length} month-to-month interpolated daily points for 2025 site data (through end of month ${lastReliableMonth})`)
     return points
     
   } catch (error) {
-    console.error('Error extracting 2025 site data:', error)
+    logger.error('DATA_TRANSFORM', 'Error extracting 2025 site data:', error)
     return []
   }
 }
@@ -716,7 +717,7 @@ export function generateProjectedSiteMonthlyPoints(
     }
   }
   
-  console.log(`Generated ${projectedPoints.length} projected daily points for 2025 site data (from ${lastReliableMonth}/${lastReliableDay} to Dec 31)`)
+  logger.debug('DATA_TRANSFORM', `Generated ${projectedPoints.length} projected daily points for 2025 site data (from ${lastReliableMonth}/${lastReliableDay} to Dec 31)`)
   return projectedPoints
 }
 

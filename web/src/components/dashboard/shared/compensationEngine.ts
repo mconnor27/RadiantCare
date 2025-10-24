@@ -10,6 +10,7 @@ import {
   DEFAULT_MD_SHARED_PROJECTION,
   DEFAULT_MD_PRCS_PROJECTION
 } from './defaults'
+import { logger } from '../../../lib/logger'
 
 export type CompensationResult = {
   id: string
@@ -171,46 +172,36 @@ export function calculateAllCompensations(params: CompensationParams): Compensat
   const basePool = Math.max(0, totalIncome - totalCosts)
   const pool = Math.max(0, basePool - totalMedicalDirectorAllocations - totalAdditionalDaysAllocations)
 
-  // DEBUG: Log pool calculation with full breakdown for 2025
-  if (year === 2025) {
-    const now = Date.now()
-    const lastLog = (globalThis as any).__lastCompCalcLog ?? 0
-    if (now - lastLog > 100) {  // Throttle to max 10 logs/sec
-      console.log('💰 [Comp] Calculation triggered:', {
-        summary: `Income=$${(totalIncome/1000).toFixed(0)}K, Costs=$${(totalCosts/1000).toFixed(0)}K, Pool=$${(pool/1000).toFixed(0)}K`,
-        income: {
-          total: totalIncome,
-          therapyIncome: fy.therapyIncome ?? 0,
-          medicalDirectorIncome,
-          prcsMedicalDirectorIncome,
-          consultingServicesAgreement: fy.consultingServicesAgreement ?? 0,
-          note: fy.therapyIncome === 0 ? '⚠️ ZERO therapyIncome - using fallback?' : '✓'
-        },
-        costs: {
-          total: totalCosts,
-          nonEmploymentCosts: fy.nonEmploymentCosts ?? 0,
-          nonMdEmploymentCosts: fy.nonMdEmploymentCosts ?? 0,
-          miscEmploymentCosts: fy.miscEmploymentCosts ?? 0,
-          locumCosts: fy.locumCosts ?? 0,
-          totalEmployeeCosts,
-          totalBuyoutCosts,
-          totalDelayedW2Costs,
-          note: fy.nonEmploymentCosts === 0 ? '⚠️ ZERO nonEmploymentCosts - using fallback?' : '✓'
-        },
-        pool: {
-          basePool,
-          mdAllocations: totalMedicalDirectorAllocations,
-          additionalDays: totalAdditionalDaysAllocations,
-          finalPool: pool
-        },
-        fySource: {
-          year: fy.year,
-          physicians: fy.physicians?.length ?? 0
-        }
-      })
-      ;(globalThis as any).__lastCompCalcLog = now
+  // Log compensation calculation
+  logger.debug('COMPENSATION', 'Calculation completed', {
+    year,
+    summary: {
+      income: totalIncome,
+      costs: totalCosts,
+      pool,
+      partners: partners.length,
+      employees: employees.length
+    },
+    income: {
+      therapy: fy.therapyIncome ?? 0,
+      mdShared: medicalDirectorIncome,
+      mdPRCS: prcsMedicalDirectorIncome,
+      consulting: fy.consultingServicesAgreement ?? 0
+    },
+    costs: {
+      nonEmployment: fy.nonEmploymentCosts ?? 0,
+      nonMdEmployment: fy.nonMdEmploymentCosts ?? 0,
+      misc: fy.miscEmploymentCosts ?? 0,
+      locum: fy.locumCosts ?? 0,
+      employees: totalEmployeeCosts,
+      buyouts: totalBuyoutCosts,
+      delayedW2: totalDelayedW2Costs
+    },
+    allocations: {
+      mdTotal: totalMedicalDirectorAllocations,
+      additionalDays: totalAdditionalDaysAllocations
     }
-  }
+  })
 
   // === STEP 8: Distribute pool by FTE weight ===
   const partnerFTEs = partners.map((p) => ({ p, weight: getPartnerFTEWeightProper(p) }))

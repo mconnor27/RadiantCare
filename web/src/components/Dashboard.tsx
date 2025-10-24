@@ -6,11 +6,12 @@ import { immer } from 'zustand/middleware/immer'
 import * as LZString from 'lz-string'
 import { useAuth } from './auth/AuthProvider'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faGear, faSignOutAlt } from '@fortawesome/free-solid-svg-icons'
+import { faGear, faSignOutAlt, faBug } from '@fortawesome/free-solid-svg-icons'
 import LoginModal from './auth/LoginModal'
 import SignupModal from './auth/SignupModal'
 import PasswordResetModal from './auth/PasswordResetModal'
 import ScenarioManager from './scenarios/ScenarioManager'
+import LoggingControlPanel from './admin/LoggingControlPanel'
 import YTDDetailed from './dashboard/views/detailed/YTDDetailed'
 import YTDDetailedMobile from './dashboard/views/detailed/YTDDetailedMobile'
 import MultiYearView from './dashboard/views/multi-year/MultiYearView'
@@ -19,6 +20,7 @@ import SharedLinkWarningModal from './shared/SharedLinkWarningModal'
 import MobileWarningModal from './shared/MobileWarningModal'
 import { DEFAULT_YTD_SETTINGS } from './dashboard/views/detailed/config/chartConfig'
 import { authenticatedFetch } from '../lib/api'
+import { logger } from '../lib/logger'
 // Import types from types.ts to avoid duplication and binding conflicts
 import type { YearRow, PhysicianType, Physician, FutureYear, ScenarioKey, Store, YTDSettings, SavedScenario, ScenarioState } from './dashboard/shared/types'
 
@@ -175,7 +177,7 @@ export const useDashboardStore = create<Store>()(
               if (f.year >= 2026) {
                 if (!f._overrides) f._overrides = {}
                 f._overrides.prcsDirectorPhysicianId = true
-                console.log(`🏷️ [Override] Marked prcsDirectorPhysicianId as overridden for year ${f.year}`)
+                logger.debug('STORE', 'Marked prcsDirectorPhysicianId as overridden', { year: f.year })
               }
             }
           }),
@@ -202,7 +204,7 @@ export const useDashboardStore = create<Store>()(
               if (year >= 2026) {
                 if (!fy._overrides) fy._overrides = {}
                 fy._overrides[field] = true
-                console.log(`🏷️ [Override] Marked ${field} as overridden for year ${year}`)
+                logger.debug('STORE', 'Marked field as overridden', { field, year })
               }
 
               // If we're updating a 2025 baseline value, trigger projection recalculation
@@ -291,10 +293,19 @@ export const useDashboardStore = create<Store>()(
                 
                 // Calculate the DELTA
                 const delta = desiredTargetPct - oldTargetPct
-                
-                console.log(`[Store Redistribution - DELTA] Total MD Budget: $${totalMdBudget}, Retiree Fixed: $${retireeFixedDollars} (${retireePct.toFixed(6)}%)`)
-                console.log(`[Store Redistribution - DELTA] Target ${target.name}: ${oldTargetPct.toFixed(6)}% → ${desiredTargetPct.toFixed(6)}% (Δ = ${delta.toFixed(6)}%)`)
-                console.log(`[Store Redistribution - DELTA] BEFORE - Others:`, others.map(p => `${p.name}: ${p.medicalDirectorHoursPercentage?.toFixed(6)}%`))
+
+                logger.debug('MD_HOURS', 'Redistribution delta calculated', {
+                  totalMdBudget,
+                  retireeFixedDollars,
+                  retireePct: retireePct.toFixed(6),
+                  target: target.name,
+                  oldTargetPct: oldTargetPct.toFixed(6),
+                  desiredTargetPct: desiredTargetPct.toFixed(6),
+                  delta: delta.toFixed(6)
+                })
+                logger.debug('MD_HOURS', 'Before redistribution - others', {
+                  others: others.map(p => ({ name: p.name, pct: p.medicalDirectorHoursPercentage?.toFixed(6) }))
+                })
                 
                 if (others.length === 0) {
                   // Only one active partner - they get all available percentage
@@ -355,18 +366,25 @@ export const useDashboardStore = create<Store>()(
                 }
 
                 // Log final state after redistribution
-                console.log(`[Store Redistribution] AFTER - Target ${target.name}: ${target.medicalDirectorHoursPercentage?.toFixed(6)}%`)
-                console.log(`[Store Redistribution] AFTER - Others:`, others.map(p => `${p.name}: ${p.medicalDirectorHoursPercentage?.toFixed(6)}%`))
                 const totalActivePct = target.medicalDirectorHoursPercentage! + others.reduce((s, p) => s + (p.medicalDirectorHoursPercentage ?? 0), 0)
-                console.log(`[Store Redistribution] Total Active %: ${totalActivePct.toFixed(6)}%, Max Allowed: ${maxActivePartnersPct.toFixed(6)}%`)
-                console.log(`[Store Redistribution] Grand Total %: ${(totalActivePct + retireePct).toFixed(6)}% (should be 100%)`)
-                
-                // Log dollar amounts
                 const targetDollars = (target.medicalDirectorHoursPercentage! / 100) * totalMdBudget
-                console.log(`[Store Redistribution] Target ${target.name} dollars: $${targetDollars.toFixed(2)}`)
-                others.forEach(p => {
-                  const dollars = ((p.medicalDirectorHoursPercentage ?? 0) / 100) * totalMdBudget
-                  console.log(`[Store Redistribution] Other ${p.name} dollars: $${dollars.toFixed(2)}`)
+
+                logger.debug('MD_HOURS', 'After redistribution - target', {
+                  name: target.name,
+                  pct: target.medicalDirectorHoursPercentage?.toFixed(6),
+                  dollars: targetDollars.toFixed(2)
+                })
+                logger.debug('MD_HOURS', 'After redistribution - others', {
+                  others: others.map(p => ({
+                    name: p.name,
+                    pct: p.medicalDirectorHoursPercentage?.toFixed(6),
+                    dollars: (((p.medicalDirectorHoursPercentage ?? 0) / 100) * totalMdBudget).toFixed(2)
+                  }))
+                })
+                logger.debug('MD_HOURS', 'Redistribution totals', {
+                  totalActivePct: totalActivePct.toFixed(6),
+                  maxActivePartnersPct: maxActivePartnersPct.toFixed(6),
+                  grandTotalPct: (totalActivePct + retireePct).toFixed(6)
                 })
               }
             } else if (partnerMixChanged) {
@@ -528,7 +546,7 @@ export const useDashboardStore = create<Store>()(
             if (year >= 2026) {
               if (!fy._overrides) fy._overrides = {}
               fy._overrides.physicians = true
-              console.log(`🏷️ [Override] Marked physicians as overridden for year ${year}`)
+              logger.debug('STORE', 'Marked physicians as overridden', { year })
             }
           }),
         removePhysician: (scenario, year, physicianId) =>
@@ -571,8 +589,8 @@ export const useDashboardStore = create<Store>()(
         // YTD-specific physician methods
         upsertYtdPhysician: (physician) =>
           set((state) => {
-            console.log(`[Upsert YTD Physician] Updating ${physician.name}`)
-            
+            logger.debug('PHYSICIAN', 'Updating YTD physician', { name: physician.name })
+
             const idx = state.ytdData.physicians.findIndex((p) => p.id === physician.id)
             const previousInYear = idx >= 0 ? state.ytdData.physicians[idx] : undefined
             const prev = previousInYear
@@ -586,7 +604,7 @@ export const useDashboardStore = create<Store>()(
                 }
               }
               if (changes.length > 0) {
-                console.log(`[Upsert YTD Physician] Changes:`, changes)
+                logger.debug('PHYSICIAN', 'YTD physician changes detected', { changes })
               }
             }
 
@@ -601,8 +619,12 @@ export const useDashboardStore = create<Store>()(
             const newPartnerPortion = getPartnerPortionOfYear(physician)
             const partnerPortionChanged = prevPartnerPortion !== newPartnerPortion
 
-            console.log(`[Upsert YTD Physician] MD percentage changed: ${mdPctChanged}`)
-            console.log(`[Upsert YTD Physician] Partner portion changed: ${partnerPortionChanged} (${prevPartnerPortion} -> ${newPartnerPortion})`)
+            logger.debug('PHYSICIAN', 'YTD physician change analysis', {
+              mdPctChanged,
+              partnerPortionChanged,
+              prevPartnerPortion,
+              newPartnerPortion
+            })
 
             if (mdPctChanged) {
               // DELTA TRACKING: Redistribute based on change, not recalculation
@@ -628,9 +650,18 @@ export const useDashboardStore = create<Store>()(
                 // Calculate the DELTA
                 const delta = desiredTargetPct - oldTargetPct
 
-                console.log(`[YTD Store Redistribution - DELTA] Total MD Budget: $${totalMdBudget}, Retiree Fixed: $${retireeFixedDollars} (${retireePct.toFixed(6)}%)`)
-                console.log(`[YTD Store Redistribution - DELTA] Target ${target.name}: ${oldTargetPct.toFixed(6)}% → ${desiredTargetPct.toFixed(6)}% (Δ = ${delta.toFixed(6)}%)`)
-                console.log(`[YTD Store Redistribution - DELTA] BEFORE - Others:`, others.map(p => `${p.name}: ${p.medicalDirectorHoursPercentage?.toFixed(6)}%`))
+                logger.debug('MD_HOURS', 'YTD redistribution delta calculated', {
+                  totalMdBudget,
+                  retireeFixedDollars,
+                  retireePct: retireePct.toFixed(6),
+                  target: target.name,
+                  oldTargetPct: oldTargetPct.toFixed(6),
+                  desiredTargetPct: desiredTargetPct.toFixed(6),
+                  delta: delta.toFixed(6)
+                })
+                logger.debug('MD_HOURS', 'YTD before redistribution - others', {
+                  others: others.map(p => ({ name: p.name, pct: p.medicalDirectorHoursPercentage?.toFixed(6) }))
+                })
 
                 if (others.length === 0) {
                   // Only one active partner - they get all available percentage
@@ -691,30 +722,36 @@ export const useDashboardStore = create<Store>()(
                 }
 
                 // Log final state after redistribution
-                console.log(`[YTD Store Redistribution] AFTER - Target ${target.name}: ${target.medicalDirectorHoursPercentage?.toFixed(6)}%`)
-                console.log(`[YTD Store Redistribution] AFTER - Others:`, others.map(p => `${p.name}: ${p.medicalDirectorHoursPercentage?.toFixed(6)}%`))
                 const totalActivePct = target.medicalDirectorHoursPercentage! + others.reduce((s, p) => s + (p.medicalDirectorHoursPercentage ?? 0), 0)
-                console.log(`[YTD Store Redistribution] Total Active %: ${totalActivePct.toFixed(6)}%, Max Allowed: ${maxActivePartnersPct.toFixed(6)}%`)
-                console.log(`[YTD Store Redistribution] Grand Total %: ${(totalActivePct + retireePct).toFixed(6)}% (should be 100%)`)
-
-                // Log dollar amounts
                 const targetDollars = (target.medicalDirectorHoursPercentage! / 100) * totalMdBudget
-                console.log(`[YTD Store Redistribution] Target ${target.name} dollars: $${targetDollars.toFixed(2)}`)
-                others.forEach(p => {
-                  const dollars = ((p.medicalDirectorHoursPercentage ?? 0) / 100) * totalMdBudget
-                  console.log(`[YTD Store Redistribution] Other ${p.name} dollars: $${dollars.toFixed(2)}`)
+
+                logger.debug('MD_HOURS', 'YTD after redistribution - target', {
+                  name: target.name,
+                  pct: target.medicalDirectorHoursPercentage?.toFixed(6),
+                  dollars: targetDollars.toFixed(2)
+                })
+                logger.debug('MD_HOURS', 'YTD after redistribution - others', {
+                  others: others.map(p => ({
+                    name: p.name,
+                    pct: p.medicalDirectorHoursPercentage?.toFixed(6),
+                    dollars: (((p.medicalDirectorHoursPercentage ?? 0) / 100) * totalMdBudget).toFixed(2)
+                  }))
+                })
+                logger.debug('MD_HOURS', 'YTD redistribution totals', {
+                  totalActivePct: totalActivePct.toFixed(6),
+                  maxActivePartnersPct: maxActivePartnersPct.toFixed(6),
+                  grandTotalPct: (totalActivePct + retireePct).toFixed(6)
                 })
               }
             } else if (partnerPortionChanged) {
               // Only auto-redistribute when partner portion changes
-              console.log(`[Upsert YTD Physician] Calling calculateMedicalDirectorHourPercentages (partner portion changed)`)
               const before = state.ytdData.physicians.map(p => ({ name: p.name, pct: p.medicalDirectorHoursPercentage }))
+              logger.debug('MD_HOURS', 'YTD calling calculateMedicalDirectorHourPercentages', { reason: 'partner portion changed' })
               state.ytdData.physicians = calculateMedicalDirectorHourPercentages(state.ytdData.physicians)
               const after = state.ytdData.physicians.map(p => ({ name: p.name, pct: p.medicalDirectorHoursPercentage }))
-              console.log(`[Upsert YTD Physician] MD percentages before:`, before)
-              console.log(`[Upsert YTD Physician] MD percentages after:`, after)
+              logger.debug('MD_HOURS', 'YTD MD percentages recalculated', { before, after })
             } else {
-              console.log(`[Upsert YTD Physician] Skipping MD redistribution (mdPctChanged=${mdPctChanged}, partnerPortionChanged=${partnerPortionChanged})`)
+              logger.debug('PHYSICIAN', 'Skipping MD redistribution', { mdPctChanged, partnerPortionChanged })
             }
 
             // NEW: Trigger recomputation of projections if baseline changed
@@ -753,34 +790,39 @@ export const useDashboardStore = create<Store>()(
           set((state) => {
             const previousMode = state.ytdData.prcsMdHoursMode || 'calculated'
             state.ytdData.prcsMdHoursMode = mode
-            console.log(`🔀 [setPrcsMdHoursMode] Changed PRCS MD Hours mode: ${previousMode} → ${mode}`)
-            console.log(`📊 [setPrcsMdHoursMode] Current PRCS value: ${state.ytdData.prcsMedicalDirectorHours}`)
-            
+            logger.debug('STORE', 'Changed PRCS MD Hours mode', {
+              previousMode,
+              newMode: mode,
+              currentPrcsValue: state.ytdData.prcsMedicalDirectorHours
+            })
+
             const customKey = 'Medical Director Hours (PRCS)'
-            
+
             if (mode === 'calculated') {
               // When switching to calculated mode, remove any custom value for PRCS MD Hours
               if (state.ytdCustomProjectedValues[customKey] !== undefined) {
                 delete state.ytdCustomProjectedValues[customKey]
-                console.log(`🗑️ [setPrcsMdHoursMode] Removed custom value for ${customKey} (switching to calculated)`)
-                console.log(`🎨 [setPrcsMdHoursMode] Cell will be PURPLE (calculated from physician panel)`)
+                logger.debug('STORE', 'Removed custom PRCS value (switching to calculated)', { customKey, cellColor: 'PURPLE' })
               }
             } else if (mode === 'annualized') {
               // When switching to annualized mode, set the annualized projection as a custom value
               if (annualizedValue !== undefined) {
                 state.ytdCustomProjectedValues[customKey] = annualizedValue
-                console.log(`📊 [setPrcsMdHoursMode] Set annualized value for ${customKey}: $${Math.round(annualizedValue).toLocaleString()}`)
-                console.log(`🎨 [setPrcsMdHoursMode] Cell will be GREEN (custom annualized projection)`)
+                logger.debug('STORE', 'Set annualized PRCS value', {
+                  customKey,
+                  value: Math.round(annualizedValue),
+                  cellColor: 'GREEN'
+                })
               } else {
-                console.warn(`⚠️ [setPrcsMdHoursMode] Switching to annualized but no annualizedValue provided!`)
+                logger.warn('STORE', 'Switching to annualized but no annualizedValue provided')
               }
             }
           }),
         
         setProjectionField: (scenario, field, value) =>
           set((state) => {
-            console.log(`🎯 [setProjectionField] Called with scenario=${scenario}, field=${field}, value=${value}`)
-            
+            logger.debug('SCENARIO', 'setProjectionField called', { scenario, field, value })
+
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!sc) return
             
@@ -820,12 +862,16 @@ export const useDashboardStore = create<Store>()(
             const dataMode = sc.dataMode
             const last2024 = state.historic.find((h) => h.year === 2024)
             const last2025 = state.historic.find((h) => h.year === 2025)
-            
-            console.log(`📊 [setProjectionField] dataMode=${dataMode}, has2024=${!!last2024}, has2025=${!!last2025}`)
-            
+
+            logger.debug('SCENARIO', 'setProjectionField data mode check', {
+              dataMode,
+              has2024: !!last2024,
+              has2025: !!last2025
+            })
+
             // Check current 2025 value in future array
             const current2025 = sc.future.find(f => f.year === 2025)
-            console.log(`📋 [setProjectionField] current2025 in future array:`, {
+            logger.debug('SCENARIO', 'setProjectionField current 2025 data', {
               therapyIncome: current2025?.therapyIncome,
               historic2025: last2025?.therapyIncome
             })
@@ -842,7 +888,7 @@ export const useDashboardStore = create<Store>()(
                   miscEmploymentCosts: customBaseline.miscEmploymentCosts,
                   nonMdEmploymentCosts: customBaseline.nonMdEmploymentCosts,
                 }
-                console.log(`✅ [setProjectionField] Using CUSTOM baseline from future[2025]`)
+                logger.debug('SCENARIO', 'Using CUSTOM baseline from future[2025]')
               } else {
                 // Fallback if Custom baseline missing (shouldn't happen)
                 baselineData = {
@@ -851,7 +897,7 @@ export const useDashboardStore = create<Store>()(
                   miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                   nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
                 }
-                console.log(`⚠️ [setProjectionField] Custom mode but no baseline found, using historic 2025`)
+                logger.warn('SCENARIO', 'Custom mode but no baseline found, using historic 2025')
               }
             } else if (dataMode === '2024 Data' && last2024) {
               baselineData = {
@@ -860,13 +906,13 @@ export const useDashboardStore = create<Store>()(
                 miscEmploymentCosts: ACTUAL_2024_MISC_EMPLOYMENT_COSTS,
                 nonMdEmploymentCosts: ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS,
               }
-              console.log(`✅ [setProjectionField] Using 2024 Data baseline from historic[2024]`)
+              logger.debug('SCENARIO', 'Using 2024 Data baseline from historic[2024]')
             } else if (last2025) {
               // In '2025 Data' mode, ALWAYS use future[2025] (synced from YTD grid)
               // The historic[2025] data is stale and should NOT be used as fallback
               const baseline2025 = sc.future.find(f => f.year === 2025)
               if (!baseline2025) {
-                console.error('❌ [setProjectionField] No 2025 baseline found in future array!')
+                logger.error('SCENARIO', 'No 2025 baseline found in future array!')
                 return
               }
               baselineData = {
@@ -875,8 +921,10 @@ export const useDashboardStore = create<Store>()(
                 miscEmploymentCosts: baseline2025.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
                 nonMdEmploymentCosts: baseline2025.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
               }
-              console.log(`✅ [setProjectionField] Using 2025 Data baseline from FUTURE[2025] (grid-synced)`)
-              console.log(`    📝 therapyIncome: ${baselineData.therapyIncome} (historic was: ${last2025.therapyIncome})`)
+              logger.debug('SCENARIO', 'Using 2025 Data baseline from FUTURE[2025] (grid-synced)', {
+                therapyIncome: baselineData.therapyIncome,
+                historicTherapyIncome: last2025.therapyIncome
+              })
             } else {
               // Fallback to 2025 hardcoded values
               baselineData = {
@@ -885,10 +933,10 @@ export const useDashboardStore = create<Store>()(
                 miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                 nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
               }
-              console.log(`⚠️ [setProjectionField] Using fallback hardcoded baseline`)
+              logger.warn('SCENARIO', 'Using fallback hardcoded baseline')
             }
-            
-            console.log(`💰 [setProjectionField] Baseline data:`, baselineData)
+
+            logger.debug('SCENARIO', 'Baseline data determined', baselineData)
             
             // Convert percentage growth rates to decimal multipliers
             const incomeGpct = sc.projection.incomeGrowthPct / 100
@@ -896,8 +944,14 @@ export const useDashboardStore = create<Store>()(
             const nonMdEmploymentGpct = sc.projection.nonMdEmploymentCostsPct / 100
             const miscEmploymentGpct = sc.projection.miscEmploymentCostsPct / 100
             const benefitGrowthPct = sc.projection.benefitCostsGrowthPct
-            
-            console.log(`📈 [setProjectionField] Growth rates: incomeGpct=${incomeGpct}, nonEmploymentGpct=${nonEmploymentGpct}`)
+
+            logger.debug('SCENARIO', 'Growth rates calculated', {
+              incomeGpct,
+              nonEmploymentGpct,
+              nonMdEmploymentGpct,
+              miscEmploymentGpct,
+              benefitGrowthPct
+            })
             
             // Starting values from the selected baseline
             let income = baselineData.therapyIncome
@@ -927,7 +981,7 @@ export const useDashboardStore = create<Store>()(
 
               // Only update the specific field(s) affected by the changed projection setting
               if (field === 'incomeGrowthPct') {
-                console.log(`  📅 [setProjectionField] Year ${fy.year}: therapyIncome = ${income.toFixed(0)}`)
+                logger.debug('SCENARIO', 'Updating therapyIncome for year', { year: fy.year, value: income.toFixed(0) })
                 fy.therapyIncome = income
               } else if (field === 'nonEmploymentCostsPct') {
                 fy.nonEmploymentCosts = nonEmploymentCosts
@@ -938,12 +992,12 @@ export const useDashboardStore = create<Store>()(
               }
               // Note: locumsCosts, medicalDirectorHours, etc. are handled above and return early
             }
-            
-            console.log(`✅ [setProjectionField] Complete\n`)
+
+            logger.debug('SCENARIO', 'setProjectionField complete')
           }),
         applyProjectionFromLastActual: (scenario) =>
           set((state) => {
-            console.log(`🔄 [applyProjectionFromLastActual] Called for scenario=${scenario}`)
+            logger.debug('SCENARIO', 'applyProjectionFromLastActual called', { scenario })
             
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!sc) return
@@ -953,11 +1007,15 @@ export const useDashboardStore = create<Store>()(
             const last2024 = state.historic.find((h) => h.year === 2024)
             const last2025 = state.historic.find((h) => h.year === 2025)
 
-            console.log(`📊 [applyProjectionFromLastActual] dataMode=${dataMode}, has2024=${!!last2024}, has2025=${!!last2025}`)
-            
+            logger.debug('SCENARIO', 'applyProjectionFromLastActual data mode check', {
+              dataMode,
+              has2024: !!last2024,
+              has2025: !!last2025
+            })
+
             // Check current 2025 value in future array
             const updated2025 = sc.future.find(f => f.year === 2025)
-            console.log(`📋 [applyProjectionFromLastActual] updated2025 in future array:`, {
+            logger.debug('SCENARIO', 'applyProjectionFromLastActual updated 2025 data', {
               therapyIncome: updated2025?.therapyIncome,
               historic2025: last2025?.therapyIncome
             })
@@ -974,7 +1032,7 @@ export const useDashboardStore = create<Store>()(
                   miscEmploymentCosts: customBaseline.miscEmploymentCosts,
                   nonMdEmploymentCosts: customBaseline.nonMdEmploymentCosts,
                 }
-                console.log(`✅ [applyProjectionFromLastActual] Using CUSTOM baseline from future[2025]`)
+                logger.debug('SCENARIO', 'Using CUSTOM baseline from future[2025]')
               } else {
                 // Fallback if Custom baseline missing (shouldn't happen)
                 baselineData = {
@@ -983,7 +1041,7 @@ export const useDashboardStore = create<Store>()(
                   miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                   nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
                 }
-                console.log(`⚠️ [applyProjectionFromLastActual] Custom mode but no baseline found, using historic 2025`)
+                logger.warn('SCENARIO', 'Custom mode but no baseline found, using historic 2025')
               }
             } else if (dataMode === '2024 Data' && last2024) {
               baselineData = {
@@ -992,13 +1050,13 @@ export const useDashboardStore = create<Store>()(
                 miscEmploymentCosts: ACTUAL_2024_MISC_EMPLOYMENT_COSTS,
                 nonMdEmploymentCosts: ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS,
               }
-              console.log(`✅ [applyProjectionFromLastActual] Using 2024 Data baseline from historic[2024]`)
+              logger.debug('SCENARIO', 'Using 2024 Data baseline from historic[2024]')
             } else if (last2025) {
               // In '2025 Data' mode, ALWAYS use future[2025] (synced from YTD grid)
               // The historic[2025] data is stale and should NOT be used as fallback
               const baseline2025 = updated2025
               if (!baseline2025) {
-                console.error('❌ [applyProjectionFromLastActual] No 2025 baseline found in future array!')
+                logger.error('SCENARIO', 'No 2025 baseline found in future array!')
                 return
               }
               baselineData = {
@@ -1007,8 +1065,10 @@ export const useDashboardStore = create<Store>()(
                 miscEmploymentCosts: baseline2025.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
                 nonMdEmploymentCosts: baseline2025.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
               }
-              console.log(`✅ [applyProjectionFromLastActual] Using 2025 Data baseline from FUTURE[2025] (grid-synced)`)
-              console.log(`    📝 therapyIncome: ${baselineData.therapyIncome} (historic was: ${last2025.therapyIncome})`)
+              logger.debug('SCENARIO', 'Using 2025 Data baseline from FUTURE[2025] (grid-synced)', {
+                therapyIncome: baselineData.therapyIncome,
+                historicTherapyIncome: last2025.therapyIncome
+              })
             } else {
               // Fallback to 2025 hardcoded values
               baselineData = {
@@ -1017,19 +1077,19 @@ export const useDashboardStore = create<Store>()(
                 miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
                 nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
               }
-              console.log(`⚠️ [applyProjectionFromLastActual] Using fallback hardcoded baseline`)
+              logger.warn('SCENARIO', 'Using fallback hardcoded baseline')
             }
-            
-            console.log(`💰 [applyProjectionFromLastActual] Baseline data:`, baselineData)
-            
+
+            logger.debug('SCENARIO', 'Baseline data determined', baselineData)
+
             // Convert percentage growth rates to decimal multipliers
             const incomeGpct = sc.projection.incomeGrowthPct / 100
             const nonEmploymentGpct = sc.projection.nonEmploymentCostsPct / 100
             const nonMdEmploymentGpct = sc.projection.nonMdEmploymentCostsPct / 100
             const miscEmploymentGpct = sc.projection.miscEmploymentCostsPct / 100
             const benefitGrowthPct = sc.projection.benefitCostsGrowthPct
-            
-            console.log(`📈 [applyProjectionFromLastActual] Growth rates: incomeGpct=${incomeGpct}`)
+
+            logger.debug('SCENARIO', 'Growth rates for applyProjectionFromLastActual', { incomeGpct, nonEmploymentGpct })
             
             // Starting values from the selected baseline
             let income = baselineData.therapyIncome
@@ -1054,52 +1114,52 @@ export const useDashboardStore = create<Store>()(
               const wagesAndTaxes = baseWagesTaxes2025 * Math.pow(1 + nonMdEmploymentGpct, yearsSince2025)
               const benefits = getBenefitCostsForYear(fy.year, benefitGrowthPct)
               const staffEmploymentCosts = wagesAndTaxes + benefits
-              
-              console.log(`  📅 [applyProjectionFromLastActual] Year ${fy.year}: therapyIncome = ${income.toFixed(0)}`)
-              
+
+              logger.debug('SCENARIO', 'Applying projection to year', { year: fy.year, therapyIncome: income.toFixed(0) })
+
               // Preserve user overrides - only update fields that haven't been manually overridden
               const overrides = fy._overrides
-              
+
               if (!overrides?.therapyIncome) {
                 fy.therapyIncome = income
               } else {
-                console.log(`  🔒 [applyProjectionFromLastActual] Preserving therapyIncome override for year ${fy.year}`)
+                logger.debug('SCENARIO', 'Preserving therapyIncome override', { year: fy.year })
               }
-              
+
               if (!overrides?.nonEmploymentCosts) {
                 fy.nonEmploymentCosts = nonEmploymentCosts
               } else {
-                console.log(`  🔒 [applyProjectionFromLastActual] Preserving nonEmploymentCosts override for year ${fy.year}`)
+                logger.debug('SCENARIO', 'Preserving nonEmploymentCosts override', { year: fy.year })
               }
-              
+
               if (!overrides?.nonMdEmploymentCosts) {
                 fy.nonMdEmploymentCosts = staffEmploymentCosts
               } else {
-                console.log(`  🔒 [applyProjectionFromLastActual] Preserving nonMdEmploymentCosts override for year ${fy.year}`)
+                logger.debug('SCENARIO', 'Preserving nonMdEmploymentCosts override', { year: fy.year })
               }
-              
+
               if (!overrides?.miscEmploymentCosts) {
                 fy.miscEmploymentCosts = miscEmploymentCosts
               } else {
-                console.log(`  🔒 [applyProjectionFromLastActual] Preserving miscEmploymentCosts override for year ${fy.year}`)
+                logger.debug('SCENARIO', 'Preserving miscEmploymentCosts override', { year: fy.year })
               }
-              
+
               // Set locums costs from the global override (except 2026 which defaults to 60K)
               if (!overrides?.locumCosts) {
                 fy.locumCosts = sc.projection.locumsCosts
               } else {
-                console.log(`  🔒 [applyProjectionFromLastActual] Preserving locumCosts override for year ${fy.year}`)
+                logger.debug('SCENARIO', 'Preserving locumCosts override', { year: fy.year })
               }
-              
+
               // Set consulting services agreement from the global override
               if (!overrides?.consultingServicesAgreement) {
                 fy.consultingServicesAgreement = sc.projection.consultingServicesAgreement
               } else {
-                console.log(`  🔒 [applyProjectionFromLastActual] Preserving consultingServicesAgreement override for year ${fy.year}`)
+                logger.debug('SCENARIO', 'Preserving consultingServicesAgreement override', { year: fy.year })
               }
             }
 
-            console.log(`✅ [applyProjectionFromLastActual] Complete\n`)
+            logger.debug('SCENARIO', 'applyProjectionFromLastActual complete')
             
             // Do not modify PRCS Director assignment during projection recalculation
           }),
@@ -1138,7 +1198,7 @@ export const useDashboardStore = create<Store>()(
                 // When switching from '2025 Data' to Custom, capture current future[2025] state (NOT historic)
                 const current2025 = sc.future.find(f => f.year === 2025)
                 if (!current2025) {
-                  console.error('❌ [setDataMode] No 2025 baseline found in future array when switching to Custom!')
+                  logger.error('SCENARIO', 'No 2025 baseline found in future array when switching to Custom!')
                   return
                 }
                 baselineData = {
@@ -1150,7 +1210,7 @@ export const useDashboardStore = create<Store>()(
                   miscEmploymentCosts: current2025.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
                   physicians: current2025.physicians ?? (scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)),
                 }
-                console.log(`🔄 [setDataMode] Captured current 2025 baseline from future[2025] for Custom mode: therapyIncome=${baselineData.therapyIncome}`)
+                logger.debug('SCENARIO', 'Captured 2025 baseline for Custom mode', { therapyIncome: baselineData.therapyIncome })
               } else {
                 // Fallback to 2025 defaults (should rarely happen)
                 const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
@@ -1170,7 +1230,7 @@ export const useDashboardStore = create<Store>()(
                   prcsDirectorPhysicianId: current2025?.prcsDirectorPhysicianId ?? js?.id,
                   physicians: current2025?.physicians ?? physicians,
                 }
-                console.log(`⚠️ [setDataMode] Using fallback baseline (from future[2025] if available): therapyIncome=${baselineData.therapyIncome}`)
+                logger.warn('SCENARIO', 'Using fallback baseline for Custom mode', { therapyIncome: baselineData.therapyIncome })
               }
               
               // Set the baseline data as the first entry in future years (replacing or adding 2025)
@@ -1300,7 +1360,7 @@ export const useDashboardStore = create<Store>()(
             }
 
             // NEW: Clear all override flags - everything will be recomputed from formulas
-            console.log('🧹 [resetProjectionSettings] Clearing all override flags')
+            logger.debug('SCENARIO', 'Clearing all override flags for projection reset')
             scenarioState.future.forEach(fy => {
               if (fy.year >= 2026) {
                 delete fy._overrides
@@ -1403,7 +1463,7 @@ export const useDashboardStore = create<Store>()(
             }
 
             // Reset app-level state (not handled by section resets)
-            console.log('[SNAPSHOT B] Clearing B snapshot (resetToDefaults)')
+            logger.debug('SNAPSHOT', 'Clearing B snapshot (resetToDefaults)')
             state.scenarioBEnabled = false
             state.scenarioB = undefined
             // REMOVED: customProjectedValues = {} (legacy)
@@ -1420,7 +1480,7 @@ export const useDashboardStore = create<Store>()(
 
         // Reset only 2025 data (for YTD Detailed view)
         resetOnly2025: async (scenario: ScenarioKey) => {
-          console.log('[RESET DEBUG] ========== resetOnly2025 START ==========')
+          logger.debug('SCENARIO', 'resetOnly2025 START')
           // Import the load function dynamically to avoid circular dependencies
           const { load2025ValuesForReset } = await import('./dashboard/views/detailed/utils/load2025Data')
 
@@ -1436,7 +1496,7 @@ export const useDashboardStore = create<Store>()(
             if (!year2025) return
           }
 
-          console.log('[RESET DEBUG] Current store values before reset:', {
+          logger.debug('SCENARIO', 'Current 2025 values before reset', {
             therapyIncome: year2025.therapyIncome,
             nonEmploymentCosts: year2025.nonEmploymentCosts,
             nonMdEmploymentCosts: year2025.nonMdEmploymentCosts
@@ -1453,20 +1513,20 @@ export const useDashboardStore = create<Store>()(
             : scenarioBDefaultsByYear(2025)
 
           // Load 2025 values dynamically based on environment (tries production, falls back to sandbox)
-          console.log('[RESET DEBUG] Loading 2025 values from grid...')
+          logger.debug('SCENARIO', 'Loading 2025 values from grid...')
           const values = await load2025ValuesForReset(
             defaultPhysicians,
             sc.projection.benefitCostsGrowthPct,
             year2025.locumCosts ?? DEFAULT_LOCUM_COSTS_2025
           )
-          console.log('[RESET DEBUG] Loaded values:', {
+          logger.debug('SCENARIO', 'Loaded values from grid', {
             therapyIncome: values.therapyIncome,
             nonEmploymentCosts: values.nonEmploymentCosts,
             nonMdEmploymentCosts: values.nonMdEmploymentCosts
           })
 
           // Batch all updates in a single set call to avoid intermediate renders
-          console.log('[RESET DEBUG] Batching state updates...')
+          logger.debug('SCENARIO', 'Batching state updates for reset...')
           set((state) => {
             // REMOVED: customProjectedValues = {} (legacy)
             
@@ -1495,8 +1555,8 @@ export const useDashboardStore = create<Store>()(
             // Reset PRCS Director to default
             const jsPhysician = year2025.physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
             year2025.prcsDirectorPhysicianId = jsPhysician?.id
-            
-            console.log('[RESET DEBUG] Batched update complete. New values:', {
+
+            logger.debug('SCENARIO', 'Batched update complete - new 2025 values', {
               therapyIncome: year2025.therapyIncome,
               nonEmploymentCosts: year2025.nonEmploymentCosts,
               nonMdEmploymentCosts: year2025.nonMdEmploymentCosts
@@ -1508,13 +1568,13 @@ export const useDashboardStore = create<Store>()(
             const api = get()
             api.applyProjectionFromLastActual(scenario)
           } catch (e) {
-            console.warn('Post-reset projection update encountered an issue:', e)
+            logger.warn('SCENARIO', 'Post-reset projection update encountered an issue', e)
           }
 
           // REMOVED: Nudge listeners via customProjectedValues (legacy)
           // No longer needed - grid is only in YTD view
-          
-          console.log('[RESET DEBUG] ========== resetOnly2025 END ==========')
+
+          logger.debug('SCENARIO', 'resetOnly2025 END')
         },
 
         // Ensure baseline year exists in future years array for PhysiciansEditor
@@ -1620,7 +1680,10 @@ export const useDashboardStore = create<Store>()(
             state.currentScenarioUserId = userId ?? null
             // Clear snapshots whenever scenario changes (loading new, unloading, or reloading same)
             if (scenarioChanged) {
-              console.log(`🗑️ [setCurrentScenario] Clearing snapshots due to scenario change: ${state.currentScenarioId} → ${id}`)
+              logger.debug('SNAPSHOT', 'Clearing snapshots due to scenario change', {
+                from: state.currentScenarioId,
+                to: id
+              })
               state.loadedScenarioSnapshot = null
             }
           }),
@@ -1643,10 +1706,10 @@ export const useDashboardStore = create<Store>()(
                 scenarioA: JSON.parse(JSON.stringify(scenarioAWithoutUI))
                 // REMOVED: customProjectedValues (legacy)
               }
-              console.log('📸 [Snapshot] Updated Scenario A after cache sync')
+              logger.debug('SNAPSHOT', 'Updated Scenario A after cache sync')
             } else {
               if (!state.scenarioB) {
-                console.warn('Cannot update snapshot: Scenario B does not exist')
+                logger.warn('SNAPSHOT', 'Cannot update snapshot: Scenario B does not exist')
                 return
               }
               const { selectedYear: _selectedYear, ...scenarioBWithoutUI } = state.scenarioB
@@ -1654,7 +1717,7 @@ export const useDashboardStore = create<Store>()(
               state.loadedScenarioBSnapshot = {
                 scenarioB: JSON.parse(JSON.stringify(scenarioBWithoutUI))
               }
-              console.log('📸 [Snapshot] Updated Scenario B after cache sync')
+              logger.debug('SNAPSHOT', 'Updated Scenario B after cache sync')
             }
           })
         },
@@ -1663,33 +1726,33 @@ export const useDashboardStore = create<Store>()(
         resetScenarioFromSnapshot: (scenario: 'A' | 'B' = 'A') => {
           set((state) => {
             const snapshot = scenario === 'A' ? state.loadedScenarioSnapshot : state.loadedScenarioBSnapshot
-            
+
             // If no snapshot exists, can't reset
             if (!snapshot) {
-              console.warn(`No snapshot available for scenario ${scenario}`)
+              logger.warn('SNAPSHOT', 'No snapshot available for scenario', { scenario })
               return
             }
 
             if (scenario === 'A') {
               // Preserve UI state (selectedYear)
               const preservedSelectedYear = state.scenarioA.selectedYear
-              
+
               // Get snapshot data
               const snapshotScenarioA = 'scenarioA' in snapshot ? snapshot.scenarioA : null
-              
+
               if (snapshotScenarioA) {
                 // Deep clone the snapshot scenario to avoid reference issues
                 state.scenarioA = JSON.parse(JSON.stringify(snapshotScenarioA))
-                
+
                 // Restore preserved UI state
                 state.scenarioA.selectedYear = preservedSelectedYear
-                
+
                 // REMOVED: Restore customProjectedValues (legacy)
               }
             } else {
               // Scenario B
               if (!state.scenarioB) {
-                console.warn('Scenario B does not exist in current state')
+                logger.warn('SNAPSHOT', 'Scenario B does not exist in current state')
                 return
               }
               
@@ -1746,12 +1809,12 @@ export const useDashboardStore = create<Store>()(
 
           // Route to modular load methods based on scenario_type
           if ('scenario_type' in data && data.scenario_type === 'projection') {
-            console.log('🔄 [loadScenarioFromDatabase] Routing PROJECTION scenario to loadProjection()')
+            logger.debug('SCENARIO', 'Routing PROJECTION scenario to loadProjection()')
             return await get().loadProjection(id, target)
           }
 
           if ('scenario_type' in data && data.scenario_type === 'current_year') {
-            console.log('🔄 [loadScenarioFromDatabase] Routing CURRENT_YEAR scenario to loadCurrentYearSettings()')
+            logger.debug('SCENARIO', 'Routing CURRENT_YEAR scenario to loadCurrentYearSettings()')
             return await get().loadCurrentYearSettings(id)
           }
 
@@ -1774,7 +1837,10 @@ export const useDashboardStore = create<Store>()(
             // Clear snapshot whenever scenario changes (loading new, unloading, or reloading same)
             // This ensures a fresh snapshot is captured for the newly loaded scenario
             if (scenarioChanged) {
-              console.log(`🗑️ [setCurrentYearSetting] Clearing snapshot due to scenario change: ${state.currentYearSettingId} → ${id}`)
+              logger.debug('SNAPSHOT', 'Clearing current year setting snapshot', {
+                from: state.currentYearSettingId,
+                to: id
+              })
             }
           })
         },
@@ -1796,50 +1862,62 @@ export const useDashboardStore = create<Store>()(
           const snapshotYtdStr = JSON.stringify(state.loadedCurrentYearSettingsSnapshot.ytdData)
           
           if (currentYtdStr !== snapshotYtdStr) {
-            console.log('[Dirty Check] YTD data changed')
-            
+            logger.debug('SCENARIO', 'YTD data changed - dirty state detected')
+
             // Find the specific differences
             const current = state.ytdData
             const snapshot = state.loadedCurrentYearSettingsSnapshot.ytdData
-            
+
             // Check simple fields
             const simpleFields = ['year', 'therapyIncome', 'nonEmploymentCosts', 'nonMdEmploymentCosts', 'locumCosts', 'miscEmploymentCosts', 'medicalDirectorHours', 'prcsMedicalDirectorHours', 'prcsMdHoursMode', 'prcsDirectorPhysicianId', 'consultingServicesAgreement']
+            const changedFields: Record<string, any> = {}
             for (const field of simpleFields) {
               if (current[field as keyof typeof current] !== snapshot[field as keyof typeof snapshot]) {
-                console.log(`[Dirty Check]   Field changed: ${field}`)
-                console.log(`[Dirty Check]     Current:  ${JSON.stringify(current[field as keyof typeof current])}`)
-                console.log(`[Dirty Check]     Snapshot: ${JSON.stringify(snapshot[field as keyof typeof snapshot])}`)
+                changedFields[field] = {
+                  current: current[field as keyof typeof current],
+                  snapshot: snapshot[field as keyof typeof snapshot]
+                }
               }
             }
-            
+            if (Object.keys(changedFields).length > 0) {
+              logger.debug('SCENARIO', 'YTD fields changed', changedFields)
+            }
+
             // Check physicians array
             if (JSON.stringify(current.physicians) !== JSON.stringify(snapshot.physicians)) {
-              console.log('[Dirty Check]   Physicians changed')
-              console.log(`[Dirty Check]     Current count:  ${current.physicians.length}`)
-              console.log(`[Dirty Check]     Snapshot count: ${snapshot.physicians.length}`)
-              
+              logger.debug('SCENARIO', 'YTD physicians changed', {
+                currentCount: current.physicians.length,
+                snapshotCount: snapshot.physicians.length
+              })
+
               // Compare each physician
               for (let i = 0; i < Math.max(current.physicians.length, snapshot.physicians.length); i++) {
                 const currPhys = current.physicians[i]
                 const snapPhys = snapshot.physicians[i]
-                
+
                 if (JSON.stringify(currPhys) !== JSON.stringify(snapPhys)) {
-                  console.log(`[Dirty Check]     Physician ${i} (${currPhys?.name || snapPhys?.name}) differs:`)
+                  const physicianDiffs: Record<string, any> = {}
                   if (currPhys && snapPhys) {
-                    // Find specific field differences
                     const allKeys = new Set([...Object.keys(currPhys), ...Object.keys(snapPhys)])
                     for (const key of allKeys) {
                       if (JSON.stringify(currPhys[key as keyof typeof currPhys]) !== JSON.stringify(snapPhys[key as keyof typeof snapPhys])) {
-                        console.log(`[Dirty Check]       ${key}: ${JSON.stringify(currPhys[key as keyof typeof currPhys])} -> ${JSON.stringify(snapPhys[key as keyof typeof snapPhys])}`)
+                        physicianDiffs[key] = {
+                          current: currPhys[key as keyof typeof currPhys],
+                          snapshot: snapPhys[key as keyof typeof snapPhys]
+                        }
                       }
                     }
-                  } else {
-                    console.log(`[Dirty Check]       One is missing: current=${!!currPhys}, snapshot=${!!snapPhys}`)
                   }
+                  logger.debug('SCENARIO', `Physician ${i} differs`, {
+                    name: currPhys?.name || snapPhys?.name,
+                    differences: physicianDiffs,
+                    missing: currPhys ? false : 'current missing',
+                    extra: snapPhys ? false : 'snapshot missing'
+                  })
                 }
               }
             }
-            
+
             return true
           }
 
@@ -1848,28 +1926,31 @@ export const useDashboardStore = create<Store>()(
           const snapshotCustomStr = JSON.stringify(state.loadedCurrentYearSettingsSnapshot.ytdCustomProjectedValues)
           
           if (currentCustomStr !== snapshotCustomStr) {
-            console.log('[Dirty Check] YTD custom projected values changed')
-            console.log('[Dirty Check]   Current keys:', Object.keys(state.ytdCustomProjectedValues).length)
-            console.log('[Dirty Check]   Snapshot keys:', Object.keys(state.loadedCurrentYearSettingsSnapshot.ytdCustomProjectedValues).length)
-            
+            logger.debug('SCENARIO', 'YTD custom projected values changed', {
+              currentKeys: Object.keys(state.ytdCustomProjectedValues).length,
+              snapshotKeys: Object.keys(state.loadedCurrentYearSettingsSnapshot.ytdCustomProjectedValues).length
+            })
+
             // Show differences
             const allKeys = new Set([
               ...Object.keys(state.ytdCustomProjectedValues),
               ...Object.keys(state.loadedCurrentYearSettingsSnapshot.ytdCustomProjectedValues)
             ])
-            
+
+            const differences: Record<string, any> = {}
             for (const key of allKeys) {
               const curr = state.ytdCustomProjectedValues[key]
               const snap = state.loadedCurrentYearSettingsSnapshot.ytdCustomProjectedValues[key]
               if (curr !== snap) {
-                console.log(`[Dirty Check]   ${key}: ${curr} vs ${snap}`)
+                differences[key] = { current: curr, snapshot: snap }
               }
             }
-            
+            logger.debug('SCENARIO', 'YTD custom value differences', differences)
+
             return true
           }
 
-          console.log('[Dirty Check] No changes detected - clean state')
+          logger.debug('SCENARIO', 'No changes detected - clean state')
           return false
         },
 
@@ -1893,13 +1974,16 @@ export const useDashboardStore = create<Store>()(
             : state.loadedScenarioBSnapshot?.scenarioB?.dataMode
           
           if (loadedBaselineMode && scenario.dataMode !== loadedBaselineMode) {
-            console.log(`✏️ [isProjectionDirty ${target}] Baseline mode changed from ${loadedBaselineMode} to ${scenario.dataMode}`)
+            logger.debug('SCENARIO', `Projection ${target} dirty - baseline mode changed`, {
+              from: loadedBaselineMode,
+              to: scenario.dataMode
+            })
             return true
           }
 
           // NEW: If we're in 2025 Data mode with expected snapshot, use baseline-aware dirty detection
           if (scenario.dataMode === '2025 Data' && expectedSnapshot) {
-            console.log(`🔍 [isProjectionDirty ${target}] Using baseline-aware dirty detection with snapshot`)
+            logger.debug('SCENARIO', `Using baseline-aware dirty detection for ${target}`)
 
             // Step 2: Compare projection INPUTS (not outputs) to detect user changes
             const snapshotProjection = target === 'A'
@@ -1914,7 +1998,7 @@ export const useDashboardStore = create<Store>()(
             })
 
             if (projectionDirty) {
-              console.log(`✏️ [isProjectionDirty ${target}] Projection settings changed`)
+              logger.debug('SCENARIO', `Projection ${target} dirty - settings changed`)
               return true
             }
 
@@ -1927,7 +2011,7 @@ export const useDashboardStore = create<Store>()(
               : state.loadedScenarioBSnapshot?.scenarioB?.future?.filter(f => f.year >= 2026 && f.year <= 2030)
 
             if (!loadedFutureYears) {
-              console.log(`⚠️ [isProjectionDirty ${target}] No loaded future years found`)
+              logger.warn('SCENARIO', `No loaded future years found for ${target}`)
               return false
             }
 
@@ -1951,7 +2035,9 @@ export const useDashboardStore = create<Store>()(
 
                 if (typeof currentVal === 'number' && typeof loadedVal === 'number') {
                   if (Math.abs(currentVal - loadedVal) > 0.01) {
-                    console.log(`✏️ [isProjectionDirty ${target}] Year ${currentYear.year} ${field} differs from loaded:`, {
+                    logger.debug('SCENARIO', `Projection ${target} dirty - year field differs`, {
+                      year: currentYear.year,
+                      field,
                       current: currentVal,
                       loaded: loadedVal
                     })
@@ -1962,12 +2048,12 @@ export const useDashboardStore = create<Store>()(
 
               // Check physicians array
               if (JSON.stringify(currentYear.physicians) !== JSON.stringify(loadedYear.physicians)) {
-                console.log(`✏️ [isProjectionDirty ${target}] Year ${currentYear.year} physicians changed`)
+                logger.debug('SCENARIO', `Projection ${target} dirty - physicians changed`, { year: currentYear.year })
                 return true
               }
             }
 
-            console.log(`✅ [isProjectionDirty ${target}] No projection-specific changes detected (clean)`)
+            logger.debug('SCENARIO', `Projection ${target} clean - no changes detected`)
             return false
           }
 
@@ -2127,7 +2213,7 @@ export const useDashboardStore = create<Store>()(
               qboSyncTimestamp = cacheData.last_sync_timestamp
             }
           } catch (err) {
-            console.warn('Could not fetch QBO sync timestamp:', err)
+            logger.warn('QBO_SYNC', 'Could not fetch QBO sync timestamp', err)
           }
 
           // Extract YTD data (current year 2025)
@@ -2242,7 +2328,7 @@ export const useDashboardStore = create<Store>()(
               qboSyncTimestamp = cacheData.last_sync_timestamp
             }
           } catch (err) {
-            console.warn('Could not fetch QBO sync timestamp:', err)
+            logger.warn('QBO_SYNC', 'Could not fetch QBO sync timestamp', err)
           }
 
           // Extract projection settings
@@ -2252,7 +2338,7 @@ export const useDashboardStore = create<Store>()(
           let future2026Plus: FutureYear[] = []
 
           if (scenario.dataMode === '2025 Data') {
-            console.log('💾 [saveProjection] 2025 Data mode - using override flags for sparse saving')
+            logger.debug('SCENARIO', 'saveProjection: 2025 Data mode - using override flags for sparse saving')
 
             const currentFuture = scenario.future.filter(f => f.year >= 2026 && f.year <= 2030)
 
@@ -2262,7 +2348,7 @@ export const useDashboardStore = create<Store>()(
               const hasPhysicians = currentYear.physicians && currentYear.physicians.length > 0
 
               if (!hasOverrides && !hasPhysicians) {
-                console.log(`💾 [saveProjection] Year ${currentYear.year} has no overrides or physicians, skipping`)
+                logger.debug('SCENARIO', 'saveProjection: Year has no overrides or physicians, skipping', { year: currentYear.year })
                 continue
               }
 
@@ -2279,16 +2365,16 @@ export const useDashboardStore = create<Store>()(
                   if (isOverridden && field !== 'physicians') {  // Skip physicians - already included above
                     const key = field as keyof FutureYear;
                     (sparse as Record<string, unknown>)[field] = currentYear[key]
-                    console.log(`💾 [saveProjection] Year ${currentYear.year} ${field} marked as override, saving`)
+                    logger.debug('SCENARIO', 'saveProjection: Field marked as override', { year: currentYear.year, field })
                   }
                 }
               }
 
-              console.log(`💾 [saveProjection] Year ${currentYear.year} saving ${currentYear.physicians.length} physicians`)
+              logger.debug('SCENARIO', 'saveProjection: Saving physicians for year', { year: currentYear.year, count: currentYear.physicians.length })
               future2026Plus.push(sparse as FutureYear)
             }
 
-            console.log(`💾 [saveProjection] Saving ${future2026Plus.length} years with overrides (out of ${currentFuture.length} total)`)
+            logger.debug('SCENARIO', 'saveProjection: Saving years with overrides', { withOverrides: future2026Plus.length, total: currentFuture.length })
           } else {
             // Legacy: For non-2025 modes, save all years as before
             future2026Plus = scenario.future.filter(f => f.year >= 2026 && f.year <= 2030)
@@ -2332,7 +2418,7 @@ export const useDashboardStore = create<Store>()(
 
           // Check if updating existing Projection (unless forceNew is true for "Save As")
           if (currentId && !forceNew) {
-            console.log(`💾 [saveProjection] Updating existing projection ${target}:`, currentId)
+            logger.debug('SCENARIO', 'saveProjection: Updating existing projection', { target, currentId })
             const { data, error } = await supabase
               .from('scenarios')
               .update(saveData)
@@ -2353,7 +2439,7 @@ export const useDashboardStore = create<Store>()(
 
             return data
           } else {
-            console.log(`💾 [saveProjection] Creating new projection scenario ${target}`)
+            logger.debug('SCENARIO', 'saveProjection: Creating new projection scenario', { target })
             const { data, error } = await supabase
               .from('scenarios')
               .insert({
@@ -2435,7 +2521,7 @@ export const useDashboardStore = create<Store>()(
               Object.assign(complete2025, data.year_2025_data)
             }
             
-            console.log('🔍 [Load] Fresh YTD scenario load from DB:', {
+            logger.debug('SCENARIO', 'Fresh YTD scenario load from DB', {
               scenarioName: data.name,
               scenarioId: data.id,
               loadedData: {
@@ -2446,7 +2532,7 @@ export const useDashboardStore = create<Store>()(
               }
             })
             
-            console.log('📦 [Load] Complete 2025 data after merging defaults:', {
+            logger.debug('SCENARIO', 'Complete 2025 data after merging defaults', {
               locumCosts: complete2025.locumCosts,
               prcsMedicalDirectorHours: complete2025.prcsMedicalDirectorHours,
               medicalDirectorHours: complete2025.medicalDirectorHours,
@@ -2461,14 +2547,14 @@ export const useDashboardStore = create<Store>()(
 
             // Restore YTD grid overrides
             state.ytdCustomProjectedValues = data.custom_projected_values || {}
-            console.log('📥 [Load] Loaded ytdCustomProjectedValues:', {
+            logger.debug('SCENARIO', 'Loaded ytdCustomProjectedValues', {
               keys: Object.keys(state.ytdCustomProjectedValues),
               values: state.ytdCustomProjectedValues
             })
 
             // Grid baseline now uses full snapshot's ytdCustomProjectedValues
             
-            console.log('✅ [Load] Loaded into YTD store state:', {
+            logger.debug('SCENARIO', 'Loaded into YTD store state', {
               ytdDataYear: state.ytdData?.year,
               ytdDataPhysicians: state.ytdData?.physicians?.length,
               ytdCustomValuesCount: Object.keys(state.ytdCustomProjectedValues).length
@@ -2522,7 +2608,7 @@ export const useDashboardStore = create<Store>()(
 
           // NEW: Handle PROJECTION scenarios with 2025 baseline
           if (baselineMode === '2025 Data') {
-            console.log('🔄 [loadProjection] Loading PROJECTION scenario with 2025 baseline:', data.name)
+            logger.debug('SCENARIO', 'loadProjection: Loading PROJECTION scenario with 2025 baseline', { name: data.name })
 
             // Step 1: Ensure YTD baseline is loaded
             await get().ensureYtdBaseline2025()
@@ -2592,7 +2678,7 @@ export const useDashboardStore = create<Store>()(
                 state.expectedProjectionSnapshotB = snapshot
               }
 
-              console.log(`📸 [loadProjection] Snapshotted LOADED state as expected for ${target}`)
+              logger.debug('SNAPSHOT', 'loadProjection: Snapshotted LOADED state as expected', { target })
             })
 
             // Step 6: Update loaded snapshot based on target
@@ -2602,7 +2688,7 @@ export const useDashboardStore = create<Store>()(
               get().updateScenarioSnapshot('B')
             }
 
-            console.log(`✅ [loadProjection] Loaded PROJECTION ${target} with 2025 baseline successfully`)
+            logger.debug('SCENARIO', 'loadProjection: Loaded PROJECTION with 2025 baseline successfully', { target })
 
             return data
           }
@@ -2704,13 +2790,13 @@ export const useDashboardStore = create<Store>()(
               .single()
 
             if (data && !error) {
-              console.log(`📥 Loading "${defaultName}" scenario on initialization`)
+              logger.debug('SCENARIO', 'Loading default scenario on initialization', { name: defaultName })
               await get().loadCurrentYearSettings(data.id)
             } else {
-              console.log(`📝 No "${defaultName}" scenario found, using defaults`)
+              logger.debug('SCENARIO', 'No default scenario found, using defaults', { name: defaultName })
             }
           } catch (err) {
-            console.log('📝 Could not load default scenario, using defaults:', err)
+            logger.warn('SCENARIO', 'Could not load default scenario, using defaults', err)
           }
         },
 
@@ -2721,11 +2807,11 @@ export const useDashboardStore = create<Store>()(
 
           // If we already have a current year setting loaded, we're done
           if (state.currentYearSettingId) {
-            console.log('✅ [ensureYtdBaseline2025] YTD baseline already loaded:', state.currentYearSettingName)
+            logger.debug('SCENARIO', 'ensureYtdBaseline2025: YTD baseline already loaded', { name: state.currentYearSettingName })
             return
           }
 
-          console.log('🔍 [ensureYtdBaseline2025] No YTD baseline loaded, attempting to load default...')
+          logger.debug('SCENARIO', 'ensureYtdBaseline2025: No YTD baseline loaded, attempting to load default')
 
           try {
             // Try to find user's favorite CURRENT scenario
@@ -2739,7 +2825,7 @@ export const useDashboardStore = create<Store>()(
                 .single()
 
               if (favorites?.scenario_id) {
-                console.log('📥 [ensureYtdBaseline2025] Loading user favorite CURRENT:', favorites.scenario_id)
+                logger.debug('SCENARIO', 'ensureYtdBaseline2025: Loading user favorite CURRENT', { scenarioId: favorites.scenario_id })
                 await get().loadCurrentYearSettings(favorites.scenario_id)
                 return
               }
@@ -2750,10 +2836,10 @@ export const useDashboardStore = create<Store>()(
 
             // If still no baseline, log warning but continue (will use store defaults)
             if (!get().currentYearSettingId) {
-              console.warn('⚠️ [ensureYtdBaseline2025] No YTD baseline found, using store defaults')
+              logger.warn('SCENARIO', 'ensureYtdBaseline2025: No YTD baseline found, using store defaults')
             }
           } catch (err) {
-            console.warn('⚠️ [ensureYtdBaseline2025] Error loading YTD baseline:', err)
+            logger.warn('SCENARIO', 'ensureYtdBaseline2025: Error loading YTD baseline', err)
           }
         },
 
@@ -2778,7 +2864,7 @@ export const useDashboardStore = create<Store>()(
             therapyAberdeen: state.ytdData.therapyAberdeen,
           }
 
-          console.log('📦 [getYtdBaselineFutureYear2025] Returning 2025 baseline:', {
+          logger.debug('SCENARIO', 'getYtdBaselineFutureYear2025: Returning 2025 baseline', {
             therapyIncome: baseline2025.therapyIncome,
             physicians: baseline2025.physicians?.length,
             locumCosts: baseline2025.locumCosts,
@@ -2843,10 +2929,10 @@ export const useDashboardStore = create<Store>()(
             }
 
             expectedFuture.push(futureYear)
-            console.log(`🔧 [computeExpectedFromBaseline] Created year ${year}:`, futureYear.year)
+            logger.debug('SCENARIO', 'computeExpectedFromBaseline: Created year', { year: futureYear.year })
           }
           
-          console.log(`🔧 [computeExpectedFromBaseline] Total years created:`, expectedFuture.length, 'Years:', expectedFuture.map(f => f.year))
+          logger.debug('SCENARIO', 'computeExpectedFromBaseline: Total years created', { count: expectedFuture.length, years: expectedFuture.map(f => f.year) })
 
           // compute removed
 
@@ -2871,14 +2957,15 @@ export const useDashboardStore = create<Store>()(
             const sparseOverrides = futureYearsFromScenario.find(f => f.year === year)
             const expectedYear = expectedDerived.find(f => f.year === year)
 
-            console.log(`🏗️ [buildScenarioFromProjection] Processing year ${year}:`, {
+            logger.debug('SCENARIO', 'buildScenarioFromProjection: Processing year', {
+              year,
               hasSparseOverrides: !!sparseOverrides,
               hasExpectedYear: !!expectedYear,
               expectedYearYear: expectedYear?.year
             })
 
             if (!expectedYear) {
-              console.log(`❌ [buildScenarioFromProjection] Skipping year ${year} - no expected year found`)
+              logger.warn('SCENARIO', 'buildScenarioFromProjection: Skipping year - no expected year found', { year })
               continue
             }
 
@@ -2887,7 +2974,7 @@ export const useDashboardStore = create<Store>()(
 
             // Apply sparse overrides if present
             if (sparseOverrides) {
-              console.log(`🏗️ [buildScenarioFromProjection] Year ${year}: Merging user overrides into computed values`)
+              logger.debug('SCENARIO', 'buildScenarioFromProjection: Merging user overrides into computed values', { year })
 
               // Merge each field from sparse overrides
               const overrideKeys = Object.keys(sparseOverrides) as (keyof FutureYear)[]
@@ -2900,10 +2987,10 @@ export const useDashboardStore = create<Store>()(
             }
 
             future.push(mergedYear)
-            console.log(`✅ [buildScenarioFromProjection] Added year ${year} to future array`)
+            logger.debug('SCENARIO', 'buildScenarioFromProjection: Added year to future array', { year })
           }
           
-          console.log(`🏗️ [buildScenarioFromProjection] Final future array length:`, future.length, 'Years:', future.map(f => f.year))
+          logger.debug('SCENARIO', 'buildScenarioFromProjection: Final future array', { count: future.length, years: future.map(f => f.year) })
 
           // compute removed
 
@@ -2917,7 +3004,7 @@ export const useDashboardStore = create<Store>()(
 
             // Only snapshot if we're in 2025 Data mode (baseline-driven)
             if (scenario.dataMode !== '2025 Data') {
-              console.log(`⏭️ [snapshotExpectedProjection] Skipping snapshot for ${which} (not in 2025 Data mode)`)
+              logger.debug('SNAPSHOT', 'snapshotExpectedProjection: Skipping snapshot (not in 2025 Data mode)', { target: which })
               return
             }
 
@@ -2943,7 +3030,7 @@ export const useDashboardStore = create<Store>()(
               state.expectedProjectionSnapshotB = snapshot
             }
 
-            console.log(`📸 [snapshotExpectedProjection] Snapshotted expected projection for ${which}`)
+            logger.debug('SNAPSHOT', 'snapshotExpectedProjection: Snapshotted expected projection', { target: which })
           })
         },
 
@@ -3079,12 +3166,12 @@ export const useDashboardStore = create<Store>()(
             // Expire data after 8 hours
             const EXPIRATION_HOURS = 8
             if (ageHours > EXPIRATION_HOURS) {
-              console.log(`[STORAGE] ⏰ Data expired (age: ${ageMinutes}m, limit: ${EXPIRATION_HOURS}h) - clearing sessionStorage`)
+              logger.debug('SESSION', 'Data expired - clearing sessionStorage', { ageMinutes, limitHours: EXPIRATION_HOURS })
               sessionStorage.removeItem(name)
               return null
             }
 
-            console.log(`[STORAGE] Loading persisted state from session (age: ${ageMinutes}m)`)
+            logger.debug('SESSION', 'Loading persisted state from session', { ageMinutes })
             return str
           } catch {
             return str
@@ -3164,12 +3251,12 @@ setTimeout(() => {
   if (!persistedViewMode || persistedViewMode === 'YTD Detailed' || persistedViewMode === 'YTD Mobile') {
     // Fresh visit or was in YTD mode - skip projection initialization
     // Projections will be loaded on-demand when user switches to Multi-Year view
-    console.log(`[Init] ${persistedViewMode ? 'Resuming YTD session' : 'Fresh visit'} - skipping projection initialization`)
+    logger.debug('SCENARIO', persistedViewMode ? 'Resuming YTD session - skipping projection initialization' : 'Fresh visit - skipping projection initialization')
     return
   }
   
   // Resuming Multi-Year session - restore projection data if needed
-  console.log('[Init] Resuming Multi-Year session - checking projection data')
+  logger.debug('SCENARIO', 'Resuming Multi-Year session - checking projection data')
   
   // Only apply projections if data doesn't exist from sessionStorage
   // On page refresh, sessionStorage already has the correct computed data
@@ -3177,18 +3264,18 @@ setTimeout(() => {
   const hasScenarioBData = store.scenarioB?.future?.some(fy => fy.year >= 2026 && fy.therapyIncome > 0)
   
   if (!hasScenarioAData) {
-    console.log('🔄 [Init] No scenario A data found, computing projections')
+    logger.debug('SCENARIO', 'No scenario A data found, computing projections')
     store.applyProjectionFromLastActual('A')
   } else {
-    console.log('✅ [Init] Scenario A data exists from sessionStorage, skipping recomputation')
+    logger.debug('SCENARIO', 'Scenario A data exists from sessionStorage, skipping recomputation')
   }
   
   if (store.scenarioB) {
     if (!hasScenarioBData) {
-      console.log('🔄 [Init] No scenario B data found, computing projections')
+      logger.debug('SCENARIO', 'No scenario B data found, computing projections')
       store.applyProjectionFromLastActual('B')
     } else {
-      console.log('✅ [Init] Scenario B data exists from sessionStorage, skipping recomputation')
+      logger.debug('SCENARIO', 'Scenario B data exists from sessionStorage, skipping recomputation')
     }
   }
 }, 0)
@@ -3462,11 +3549,11 @@ export function hasChangesFromLoadedScenario(
     
     if (isDifferent) {
       const failedChecks = Object.entries(checks).filter(([, v]) => v).map(([k]) => k)
-      console.log(`[DIRTY CHECK A] Physician ${current.name} differs on:`, failedChecks)
-      console.log('  Current:', { 
+      logger.debug('PHYSICIAN', 'Physician differs during dirty check', { name: current.name, failedChecks })
+      logger.debug('PHYSICIAN', 'Current physician state', { 
         ...failedChecks.reduce((acc, k) => ({ ...acc, [k]: current[k as keyof typeof current] }), {})
       })
-      console.log('  Snapshot:', { 
+      logger.debug('PHYSICIAN', 'Snapshot physician state', { 
         ...failedChecks.reduce((acc, k) => ({ ...acc, [k]: snapshot[k as keyof typeof snapshot] }), {})
       })
       return true
@@ -3564,7 +3651,7 @@ export function calculateProjectedValue(
       }
     } else {
       // Fallback if Custom baseline missing (shouldn't happen)
-      console.error('❌ [calculateProjectedValue] No Custom baseline found in future array!')
+      logger.error('SCENARIO', 'calculateProjectedValue: No Custom baseline found in future array!')
       baselineData = {
         therapyIncome: 0,
         nonEmploymentCosts: 0,
@@ -3585,7 +3672,7 @@ export function calculateProjectedValue(
     // The historic[2025] data is stale and should NOT be used
     const baseline2025 = sc.future.find((f: FutureYear) => f.year === 2025)
     if (!baseline2025) {
-      console.error('❌ [calculateProjectedValue] No 2025 baseline found in future array!')
+      logger.error('SCENARIO', 'calculateProjectedValue: No 2025 baseline found in future array!')
       return 0
     }
     baselineData = {
@@ -3628,7 +3715,8 @@ export function calculateProjectedValue(
     const benefits = getBenefitCostsForYear(year, benefitGrowthPct)
     const projectedValue = wagesAndTaxes + benefits
 
-    console.log(`🔍 [calculateProjectedValue] nonMdEmploymentCosts for year ${year}:`, {
+    logger.debug('SCENARIO', 'calculateProjectedValue: nonMdEmploymentCosts calculation', {
+      year,
       baselineDataValue: baselineData.nonMdEmploymentCosts,
       usingBaselineValue: baseStaff2025,
       baseWagesTaxes2025,
@@ -3655,6 +3743,7 @@ export function Dashboard() {
   // Track whether MultiYearView has been visited (for lazy initialization)
   const [multiYearInitialized, setMultiYearInitialized] = useState(false)
   const [showHelpModal, setShowHelpModal] = useState(false)
+  const [showLoggingPanel, setShowLoggingPanel] = useState(false)
   const [showPasswordReset, setShowPasswordReset] = useState(false)
   const [showSignupModal, setShowSignupModal] = useState(false)
   const [showScenarioManager, setShowScenarioManager] = useState(false)
@@ -3709,7 +3798,7 @@ export function Dashboard() {
     const persistedViewMode = store.lastViewMode
     
     if (persistedViewMode) {
-      console.log(`[INIT] Restoring last view mode: ${persistedViewMode}`)
+      logger.debug('UI', 'Restoring last view mode', { viewMode: persistedViewMode })
       setViewMode(persistedViewMode)
       
       // If user was in Multi-Year view, mark it as initialized
@@ -3718,7 +3807,7 @@ export function Dashboard() {
       }
     } else {
       // No persisted view mode - this is a fresh visit or expired session
-      console.log('[INIT] No persisted view mode - fresh visit, clearing stale projection data')
+      logger.debug('UI', 'No persisted view mode - fresh visit, clearing stale projection data')
       
       // Clear projection scenarios A/B data (not needed in default YTD view)
       // This prevents stale projection data from lingering across browser session restoration
@@ -3731,7 +3820,7 @@ export function Dashboard() {
   // Track viewMode changes and persist to store for session restoration
   useEffect(() => {
     store.setLastViewMode(viewMode)
-    console.log(`[ViewMode] Changed to: ${viewMode}`)
+    logger.debug('UI', 'View mode changed', { viewMode })
   }, [viewMode]) // Only re-run when viewMode changes (store is still accessible via closure)
 
   // Detect mobile and show warning on initial load
@@ -3808,7 +3897,7 @@ export function Dashboard() {
         setScenarioManagerInitialScenario(data)
         setShowScenarioManager(true)
       } catch (err) {
-        console.error('Error loading scenario:', err)
+        logger.error('SCENARIO', 'Error loading scenario', err)
         alert('Failed to load scenario for editing')
       }
     }
@@ -3856,7 +3945,7 @@ export function Dashboard() {
         setScenarioManagerInitialScenario(data)
         setShowScenarioManager(true)
       } catch (err) {
-        console.error('Error loading Scenario B:', err)
+        logger.error('SCENARIO', 'Error loading Scenario B', err)
         alert('Failed to load Scenario B for editing')
       }
     }
@@ -3936,14 +4025,14 @@ export function Dashboard() {
           const fallbackScenario = favoriteA || defaultOptimistic
 
           if (fallbackScenario) {
-            console.log(`[Unload A] Loading fallback: ${fallbackScenario.name}`)
+            logger.debug('SCENARIO', 'Loading fallback scenario A', { name: fallbackScenario.name })
             await store.loadScenarioFromDatabase(fallbackScenario.id, 'A')
           } else {
             // Ultimate fallback: just clear the name
             store.setCurrentScenario(null, 'Default (A)')
           }
         } catch (err) {
-          console.error('[Unload A] Error loading fallback scenario:', err)
+          logger.error('SCENARIO', 'Error loading fallback scenario A', err)
           store.setCurrentScenario(null, 'Default (A)')
         }
       }
@@ -3999,14 +4088,14 @@ export function Dashboard() {
           const fallbackScenario = favoriteB || defaultPessimistic
 
           if (fallbackScenario) {
-            console.log(`[Unload B] Loading fallback: ${fallbackScenario.name}`)
+            logger.debug('SCENARIO', 'Loading fallback scenario B', { name: fallbackScenario.name })
             await store.loadScenarioFromDatabase(fallbackScenario.id, 'B')
           } else {
             // Ultimate fallback: just clear the name
             store.setCurrentScenarioB(null, 'Default (B)')
           }
         } catch (err) {
-          console.error('[Unload B] Error loading fallback scenario:', err)
+          logger.error('SCENARIO', 'Error loading fallback scenario B', err)
           store.setCurrentScenarioB(null, 'Default (B)')
         }
       }
@@ -4057,7 +4146,7 @@ export function Dashboard() {
           setYtdSettings(snap.ytdSettings)
         }
       } catch (err) {
-        console.error('Failed to load shareable link:', err)
+        logger.error('SHARE_LINK', 'Failed to load shareable link', err)
         // ignore malformed
       }
     }
@@ -4067,7 +4156,7 @@ export function Dashboard() {
   // Log shared link detection (state already initialized from URL)
   useEffect(() => {
     if (pendingSharedLinkId && !sharedLinkProcessedRef.current) {
-      console.log('🔗 [Shared Link] Detected shared link in URL:', pendingSharedLinkId)
+      logger.debug('SHARE_LINK', 'Detected shared link in URL', { linkId: pendingSharedLinkId })
       sharedLinkProcessedRef.current = true
     }
   }, [pendingSharedLinkId])
@@ -4101,7 +4190,7 @@ export function Dashboard() {
 
   // Load shared link after user confirmation
   const loadSharedLink = useCallback(async (linkId: string) => {
-    console.log('🔗 [Shared Link] Loading shared link:', linkId)
+    logger.debug('SHARE_LINK', 'Loading shared link', { linkId })
     try {
       const response = await authenticatedFetch(`/api/shared-links?id=${linkId}`)
 
@@ -4114,7 +4203,7 @@ export function Dashboard() {
       }
 
       const data = await response.json()
-      console.log('🔗 [Shared Link] Received data:', {
+      logger.debug('SHARE_LINK', 'Received shared link data', {
         view_mode: data.view_mode,
         scenario_a_id: data.scenario_a.id,
         scenario_a_name: data.scenario_a.name,
@@ -4124,7 +4213,7 @@ export function Dashboard() {
       })
 
       // Apply view mode FIRST before loading scenarios
-      console.log('🔗 [Shared Link] Setting view mode:', data.view_mode)
+      logger.debug('SHARE_LINK', 'Setting view mode', { viewMode: data.view_mode })
       setViewMode(data.view_mode)
       if (data.view_mode === 'Multi-Year') {
         setMultiYearInitialized(true)
@@ -4132,17 +4221,17 @@ export function Dashboard() {
 
       // Clear current scenario first to ensure grid detects the change
       if (data.view_mode === 'YTD Detailed') {
-        console.log('🔗 [Shared Link] Clearing current YTD scenario before load')
+        logger.debug('SHARE_LINK', 'Clearing current YTD scenario before load')
         store.setCurrentYearSetting(null, null, null)
       }
 
       // Load Scenario A
-      console.log('🔗 [Shared Link] Loading Scenario A:', data.scenario_a.id)
+      logger.debug('SHARE_LINK', 'Loading Scenario A', { scenarioId: data.scenario_a.id })
       await store.loadScenarioFromDatabase(data.scenario_a.id, 'A')
 
       // Load Scenario B if enabled
       if (data.scenario_b_enabled && data.scenario_b) {
-        console.log('🔗 [Shared Link] Loading Scenario B:', data.scenario_b.id)
+        logger.debug('SHARE_LINK', 'Loading Scenario B', { scenarioId: data.scenario_b.id })
         store.setScenarioEnabled(true)
         await store.loadScenarioFromDatabase(data.scenario_b.id, 'B')
       }
@@ -4150,26 +4239,26 @@ export function Dashboard() {
       // Apply UI settings
       if (data.ui_settings) {
         if (data.view_mode === 'YTD Detailed' && data.ui_settings.ytdDetailed) {
-          console.log('🔗 [Shared Link] Applying YTD UI settings:', data.ui_settings.ytdDetailed)
+          logger.debug('SHARE_LINK', 'Applying YTD UI settings', data.ui_settings.ytdDetailed)
           setYtdSettings(data.ui_settings.ytdDetailed)
         }
         if (data.view_mode === 'Multi-Year' && data.ui_settings.multiYear) {
-          console.log('🔗 [Shared Link] Multi-Year UI settings:', data.ui_settings.multiYear)
+          logger.debug('SHARE_LINK', 'Multi-Year UI settings', data.ui_settings.multiYear)
           // Multi-Year UI settings (selected years) should be applied
           if (data.ui_settings.multiYear.selectedYearA) {
-            store.setSelectedYear(data.ui_settings.multiYear.selectedYearA, 'A')
+            store.setSelectedYear('A', Number(data.ui_settings.multiYear.selectedYearA))
           }
           if (data.ui_settings.multiYear.selectedYearB && data.scenario_b_enabled) {
-            store.setSelectedYear(data.ui_settings.multiYear.selectedYearB, 'B')
+            store.setSelectedYear('B', Number(data.ui_settings.multiYear.selectedYearB))
           }
         }
       }
 
-      console.log('🔗 [Shared Link] Successfully loaded shared link')
+      logger.debug('SHARE_LINK', 'Successfully loaded shared link')
       // Clear the URL after successful load
       window.history.pushState({}, '', '/')
     } catch (error) {
-      console.error('🔗 [Shared Link] Error loading shared link:', error)
+      logger.error('SHARE_LINK', 'Error loading shared link', error)
       alert('Failed to load shared link')
       // Clear the URL
       window.history.pushState({}, '', '/')
@@ -4178,7 +4267,7 @@ export function Dashboard() {
 
   // Handle shared link warning confirmation
   const handleSharedLinkConfirm = useCallback(async () => {
-    console.log('🔗 [Shared Link] User confirmed loading shared link')
+    logger.debug('SHARE_LINK', 'User confirmed loading shared link')
     if (pendingSharedLinkId) {
       // Close modal and clear state FIRST to prevent re-triggering
       const linkIdToLoad = pendingSharedLinkId
@@ -4192,7 +4281,7 @@ export function Dashboard() {
 
   // Handle shared link warning cancel
   const handleSharedLinkCancel = useCallback(() => {
-    console.log('🔗 [Shared Link] User cancelled loading shared link')
+    logger.debug('SHARE_LINK', 'User cancelled loading shared link')
     setPendingSharedLinkId(null)
     setShowSharedLinkWarning(false)
     // Clear the URL
@@ -4205,13 +4294,13 @@ export function Dashboard() {
     if (!profile || !urlLoaded) return
 
     // YTD is default view - Multi-Year scenarios only load when user switches to that view
-    console.log('[INIT] Skipping Multi-Year scenario auto-load (YTD is default view)')
+    logger.debug('SCENARIO', 'Skipping Multi-Year scenario auto-load (YTD is default view)')
     setIsInitialScenarioLoadComplete(true)
     return
 
     // Prevent duplicate loads using ref
     if (defaultScenariosLoadedRef.current) {
-      console.log('[INIT] Skipping default load - already loaded once')
+      logger.debug('SCENARIO', 'Skipping default load - already loaded once')
       return
     }
 
@@ -4231,7 +4320,7 @@ export function Dashboard() {
         store.loadedScenarioBSnapshot &&
         store.scenarioA &&
         store.scenarioB) {
-      console.log('[INIT] Skipping default load - scenarios and snapshots already present')
+      logger.debug('SCENARIO', 'Skipping default load - scenarios and snapshots already present')
       defaultScenariosLoadedRef.current = true
       setIsInitialScenarioLoadComplete(true)
       return
@@ -4274,25 +4363,25 @@ export function Dashboard() {
 
         // Load scenario A
         if (scenarioA) {
-          console.log(`[INIT] Loading ${favoriteA ? 'favorite' : 'Default'} (A)...`, scenarioA.name)
+          logger.debug('SCENARIO', favoriteA ? 'Loading favorite scenario A' : 'Loading default scenario A', { name: scenarioA.name })
           await store.loadScenarioFromDatabase(scenarioA.id, 'A')
         }
 
         // Load scenario B and enable checkbox if favorite B exists
         if (scenarioB) {
-          console.log(`[INIT] Loading ${favoriteB ? 'favorite' : 'Default'} (B)...`, scenarioB.name)
+          logger.debug('SCENARIO', favoriteB ? 'Loading favorite scenario B' : 'Loading default scenario B', { name: scenarioB.name })
           await store.loadScenarioFromDatabase(scenarioB.id, 'B')
           // Enable scenario B if it's a favorite, otherwise keep it disabled
           if (favoriteB) {
             store.setScenarioEnabled(true)
-            console.log('[INIT] Enabled scenario B visibility (favorite)')
+            logger.debug('SCENARIO', 'Enabled scenario B visibility (favorite)')
           } else {
             store.setScenarioEnabled(false)
-            console.log('[INIT] Disabled scenario B visibility')
+            logger.debug('SCENARIO', 'Disabled scenario B visibility')
           }
         }
       } catch (err) {
-        console.error('Error loading default scenarios:', err)
+        logger.error('SCENARIO', 'Error loading default scenarios', err)
       } finally {
         // Mark as complete after scenarios are loaded (or failed)
         setIsInitialScenarioLoadComplete(true)
@@ -4549,6 +4638,46 @@ export function Dashboard() {
         >
           <FontAwesomeIcon icon={faGear} />
         </button>
+        {/* Admin Logging Control Button - Only for admins */}
+        {profile?.is_admin && (
+          <button
+            onClick={() => setShowLoggingPanel(true)}
+            style={{
+              padding: '8px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              color: '#ffffff',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '4px',
+              fontSize: 16,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              width: 32,
+              height: 32,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'
+              createTooltip('logging-tooltip', 'Logging Controls (Admin)', e, { placement: 'below-center' })
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
+              removeTooltip('logging-tooltip')
+            }}
+            onTouchStart={(e) => {
+              createTooltip('logging-tooltip', 'Logging Controls (Admin)', e, { placement: 'below-center' })
+            }}
+            onTouchEnd={() => {
+              removeTooltip('logging-tooltip')
+            }}
+          >
+            <FontAwesomeIcon icon={faBug} />
+          </button>
+        )}
+
         <button
           onClick={() => {
             signOut()
@@ -4880,6 +5009,14 @@ export function Dashboard() {
         isOpen={showMobileWarning}
         onClose={() => setShowMobileWarning(false)}
       />
+
+      {/* Admin Logging Control Panel */}
+      {profile?.is_admin && (
+        <LoggingControlPanel
+          isOpen={showLoggingPanel}
+          onClose={() => setShowLoggingPanel(false)}
+        />
+      )}
     </div>
 
     {/* Footer - outside dashboard container */}

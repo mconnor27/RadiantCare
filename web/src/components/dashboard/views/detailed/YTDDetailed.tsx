@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { logger } from '../../../../lib/logger'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faFolderOpen, faFloppyDisk, faCopy, faCircleXmark, faGear, faRotateLeft } from '@fortawesome/free-solid-svg-icons'
 import {
@@ -169,7 +170,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
   useEffect(() => {
     if (onRefreshRequest) {
       onRefreshRequest(() => {
-        console.log('🔄 Triggering data refresh after sync')
+        logger.debug('CHART', '🔄 Triggering data refresh after sync')
         setRefreshTrigger(prev => prev + 1)
       })
     }
@@ -212,7 +213,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
             .then((res: Response) => {
               if (!res.ok) {
                 // No cached data, use fallback
-                console.log('No cached data available, using historical JSON fallback')
+                logger.debug('CHART', 'No cached data available,  using historical JSON fallback')
                 return { data: historical2025Data, cache: null }
               }
               return res.json().then((cache: any) => {
@@ -230,7 +231,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
               })
             })
             .catch((err: any) => {
-              console.error('Error loading cached data, using fallback:', err)
+              logger.error('CHART', 'Error loading cached data,  using fallback:', err)
               return { data: historical2025Data, cache: null }
             })
             .then((result: any) => {
@@ -251,12 +252,12 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
 
   // Callback for when YearlyDataGrid completes cache sync
   const handleSyncComplete = useCallback(() => {
-    console.log('✅ [Desktop] Cache synced to store, waiting for compensation recalc...')
+    logger.debug('CHART', '✅ [Desktop] Cache synced to store,  waiting for compensation recalc...')
     // Use requestAnimationFrame + small timeout to ensure React has re-rendered
     // with the new values before unfreezing the compensation table
     requestAnimationFrame(() => {
       setTimeout(() => {
-        console.log('✅ [Desktop] Unfreezing compensation table')
+        logger.debug('CHART', '✅ [Desktop] Unfreezing compensation table')
         setIsResyncingCompensation(false)
       }, 100) // Small delay to ensure compensation has recalculated
     })
@@ -269,7 +270,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
 
       // Skip loading if there's a pending shared link
       if (hasPendingSharedLink) {
-        console.log('[YTD Init] Skipping default scenario load - shared link pending')
+        logger.debug('CHART', '[YTD Init] Skipping default scenario load - shared link pending')
         return
       }
 
@@ -280,12 +281,12 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
 
         if (hasPersistedId && !hasData && store.currentYearSettingId) {
           // Reload from persisted ID
-          console.log('[YTD Init] Reloading from persisted ID:', store.currentYearSettingId)
+          logger.debug('CHART', '[YTD Init] Reloading from persisted ID:',  store.currentYearSettingId)
           await store.loadCurrentYearSettings(store.currentYearSettingId)
           return
         } else if (hasPersistedId && hasData) {
           // We have both ID and data (shouldn't happen with hybrid persistence, but handle it)
-          console.log('[YTD Init] Already loaded:', store.currentYearSettingName)
+          logger.debug('CHART', '[YTD Init] Already loaded:',  store.currentYearSettingName)
           return
         }
 
@@ -307,7 +308,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         const currentYear = new Date().getFullYear()
         await store.loadDefaultYTDScenario(currentYear)
       } catch (error) {
-        console.error('Error loading initial scenario:', error)
+        logger.error('CHART', 'Error loading initial scenario:',  error)
         // Fallback to current year default
         const currentYear = new Date().getFullYear()
         await store.loadDefaultYTDScenario(currentYear)
@@ -319,7 +320,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
 
   // Debug: snapshot/store baseline on scenario ID change or after grid reload
   useEffect(() => {
-    console.log('[YTD Debug] Scenario change or reload detected:', {
+    logger.debug('CHART', '[YTD Debug] Scenario change or reload detected:', {
       currentYearSettingId: store.currentYearSettingId,
       currentYearSettingName: store.currentYearSettingName,
       hasLoadedSnapshot: !!store.loadedCurrentYearSettingsSnapshot,
@@ -341,7 +342,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
   useEffect(() => {
     const currentScenarioId = store.currentYearSettingId
     if (currentScenarioId) {
-      console.log('🔄 [Desktop] Scenario loaded/reloaded, freezing compensation until grid re-syncs')
+      logger.debug('CHART', '🔄 [Desktop] Scenario loaded/reloaded,  freezing compensation until grid re-syncs')
       setIsResyncingCompensation(true)
     }
   }, [store.currentYearSettingId, gridReloadTrigger])
@@ -453,21 +454,21 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
 
   // Mark scenario as dirty when scenario data changes compared to loaded snapshot
   useEffect(() => {
-    console.log('[YTD Debug] Dirty check (scenario-level) starting...', {
+    logger.debug('CHART', '[YTD Debug] Dirty check (scenario-level) starting...', {
       hasScenarioId: !!store.currentYearSettingId,
       hasSnapshot: !!store.loadedCurrentYearSettingsSnapshot,
     })
     // Skip if no scenario loaded
     if (!store.currentYearSettingId || !store.loadedCurrentYearSettingsSnapshot) {
       setIsScenarioDirty(false)
-      console.log('[YTD Debug] Dirty check (scenario-level) skipped: missing id or snapshot')
+      logger.debug('CHART', '[YTD Debug] Dirty check (scenario-level) skipped: missing id or snapshot')
       return
     }
 
     // Check if current state differs from snapshot
     const isDirty = store.isCurrentYearSettingsDirty()
     setIsScenarioDirty(isDirty)
-    console.log('[YTD Debug] Dirty check (scenario-level) result:', { isDirty })
+    logger.debug('CHART', '[YTD Debug] Dirty check (scenario-level) result:', { isDirty })
   }, [
     store.currentYearSettingId,
     store.loadedCurrentYearSettingsSnapshot,
@@ -478,7 +479,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
 
   // Track grid-specific dirty state (tracks both grid overrides AND physician panel changes that affect grid)
   useEffect(() => {
-    console.log('[YTD Debug] Dirty check (grid-level) starting...', {
+    logger.debug('CHART', '[YTD Debug] Dirty check (grid-level) starting...', {
       hasScenarioId: !!store.currentYearSettingId,
       hasSnapshot: !!store.loadedCurrentYearSettingsSnapshot,
       isResyncingCompensation
@@ -486,7 +487,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     // Skip if no scenario loaded
     if (!store.currentYearSettingId || !store.loadedCurrentYearSettingsSnapshot) {
       setIsGridDirty(false)
-      console.log('[YTD Debug] Dirty check (grid-level) skipped: missing id or snapshot')
+      logger.debug('CHART', '[YTD Debug] Dirty check (grid-level) skipped: missing id or snapshot')
       return
     }
 
@@ -494,7 +495,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     // This prevents false positives during the transition period
     if (isResyncingCompensation) {
       setIsGridDirty(false)
-      console.log('[YTD Debug] Dirty check (grid-level) skipped: resync in progress')
+      logger.debug('CHART', '[YTD Debug] Dirty check (grid-level) skipped: resync in progress')
       return
     }
 
@@ -504,7 +505,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     if (currentCustomStr !== snapshotCustomStr) {
       const currentKeys = Object.keys(store.ytdCustomProjectedValues || {})
       const snapshotKeys = Object.keys(store.loadedCurrentYearSettingsSnapshot.ytdCustomProjectedValues || {})
-      console.log('[YTD Debug] Custom values differ', {
+      logger.debug('CHART', '[YTD Debug] Custom values differ', {
         currentCount: currentKeys.length,
         snapshotCount: snapshotKeys.length,
         added: currentKeys.filter(k => !snapshotKeys.includes(k)),
@@ -535,7 +536,8 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
       
       for (const field of gridAffectingFields) {
         if (current[field as keyof typeof current] !== snapshot[field as keyof typeof snapshot]) {
-          console.log('[YTD Debug] Grid-affecting field differs:', field, {
+          logger.debug('CHART', '[YTD Debug] Grid-affecting field differs', {
+            field,
             current: current[field as keyof typeof current],
             snapshot: snapshot[field as keyof typeof snapshot]
           })
@@ -548,7 +550,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
       const currentPhysiciansStr = JSON.stringify(current.physicians)
       const snapshotPhysiciansStr = JSON.stringify(snapshot.physicians)
       if (currentPhysiciansStr !== snapshotPhysiciansStr) {
-        console.log('[YTD Debug] Physicians array differs (lengths or content)')
+        logger.debug('CHART', '[YTD Debug] Physicians array differs (lengths or content)')
         setIsGridDirty(true)
         return
       }
@@ -556,7 +558,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     
     // No changes detected
     setIsGridDirty(false)
-    console.log('[YTD Debug] Dirty check (grid-level) result: clean')
+    logger.debug('CHART', '[YTD Debug] Dirty check (grid-level) result: clean')
   }, [
     store.currentYearSettingId,
     store.loadedCurrentYearSettingsSnapshot,
@@ -585,7 +587,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
           setScenarioAIsPublic(data.is_public)
         }
       } catch (err) {
-        console.error('Failed to fetch scenario public status:', err)
+        logger.error('CHART', 'Failed to fetch scenario public status:',  err)
       }
     }
 

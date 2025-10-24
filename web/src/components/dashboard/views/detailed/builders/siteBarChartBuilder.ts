@@ -1,4 +1,5 @@
 import type { YTDPoint } from '../../../../../historical_data/therapyIncomeParser'
+import { logger } from '../../../../../lib/logger'
 import type { SiteData, FutureYear } from '../../../shared/types'
 import {
   estimateSiteBreakdownForYear,
@@ -574,9 +575,9 @@ export const buildSiteBarChartData = ({
       
       // Get projected monthly data using site-specific projections that properly handle end-of-month logic
       const actual2025SiteData = get2025SiteMonthlyEndPoints()
-      console.log('[Monthly Combined] actual2025SiteData length:', actual2025SiteData.length)
+      logger.debug('CHART', '[Monthly Combined] actual2025SiteData length:', actual2025SiteData.length)
       if (actual2025SiteData.length > 0) {
-        console.log('[Monthly Combined] Last actual site data point:', actual2025SiteData[actual2025SiteData.length - 1])
+        logger.debug('CHART', '[Monthly Combined] Last actual site data point:', actual2025SiteData[actual2025SiteData.length - 1])
       }
       // Calculate projected increment per month using PROJECTED site data from grid/store
       // Only show projections for incomplete months (current month if incomplete + future months)
@@ -690,9 +691,9 @@ export const buildSiteBarChartData = ({
     
     // Calculate projected increments for 2025 using site-specific projections that properly handle end-of-month logic
     const actual2025SiteData = get2025SiteMonthlyEndPoints()
-    console.log('[Monthly Individual] actual2025SiteData length:', actual2025SiteData.length)
+    logger.debug('CHART', '[Monthly Individual] actual2025SiteData length:', actual2025SiteData.length)
     if (actual2025SiteData.length > 0) {
-      console.log('[Monthly Individual] Last actual site data point:', actual2025SiteData[actual2025SiteData.length - 1])
+      logger.debug('CHART', '[Monthly Individual] Last actual site data point:', actual2025SiteData[actual2025SiteData.length - 1])
     }
     // Add 2025 current data with REAL site breakdown - only include complete months
     // For per-site data, we only trust complete months since site breakdown is not available intra-month

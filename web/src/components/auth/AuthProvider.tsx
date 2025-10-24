@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase, type Profile } from '../../lib/supabase'
+import { logger } from '../../lib/logger'
 
 interface AuthContextType {
   session: Session | null
@@ -22,8 +23,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       if (session) {
+        logger.info('AUTH', 'Session initialized', { userId: session.user.id })
         loadProfile(session.user.id)
       } else {
+        logger.debug('AUTH', 'No active session found')
         setLoading(false)
       }
     })
@@ -31,7 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      logger.debug('AUTH', 'Auth state changed', { event })
       setSession(session)
       if (session) {
         loadProfile(session.user.id)
@@ -60,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         (payload) => {
           // Show toast notification to user
           const message = payload.new.message || 'QuickBooks sync starting'
+          logger.info('QBO_SYNC', 'Sync notification received', { message })
 
           // Create a simple toast notification
           const toast = document.createElement('div')
@@ -107,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function loadProfile(userId: string) {
     try {
+      logger.debug('AUTH', 'Loading user profile', { userId })
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -114,9 +120,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single()
 
       if (error) throw error
+      logger.info('AUTH', 'Profile loaded successfully', { isAdmin: data.is_admin })
       setProfile(data)
     } catch (error) {
-      console.error('Error loading profile:', error)
+      logger.error('AUTH', 'Failed to load profile', error)
       setProfile(null)
     } finally {
       setLoading(false)
@@ -124,11 +131,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function handleSignOut() {
+    logger.info('AUTH', 'User signing out')
     await supabase.auth.signOut()
     setSession(null)
     setProfile(null)
     // Clear the persisted dashboard state on sign out
     localStorage.removeItem('radiantcare-state-v1')
+    logger.debug('AUTH', 'Session and state cleared')
   }
 
   const value = {

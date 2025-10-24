@@ -1,5 +1,6 @@
 import { DragDropPhysicians } from './DragDropPhysicians'
 import type { PhysicianType, Physician, FutureYear, ScenarioKey } from '../types'
+import { logger } from '../../../../lib/logger'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCalendar } from '@fortawesome/free-regular-svg-icons'
 import {
@@ -2167,7 +2168,7 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
           <>
             {(() => {
               const sliderDay = employeePortionToTransitionDay(p.employeePortionOfYear ?? 0.5, year)
-              console.log(`[${p.name}] Render - employeePortionOfYear: ${p.employeePortionOfYear}, Calculated slider day: ${sliderDay}`)
+              logger.debug('PHYSICIAN', `[${p.name}] Render - employeePortionOfYear: ${p.employeePortionOfYear}, Calculated slider day: ${sliderDay}`)
               return null
             })()}
             <div className="control-panel" style={{ display: 'grid', gridTemplateRows: 'auto auto auto', gap: 8 }}>
@@ -2190,33 +2191,33 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
                       ;(document as any).__dragStartPartnerPortion = startingPartnerPortion
                       ;(document as any).__dragStartMdHoursPercentage = p.medicalDirectorHoursPercentage ?? 0
 
-                      console.log(`[${p.name} Drag Start] ==============================`)
-                      console.log(`[${p.name} Drag Start] Current state:`)
-                      console.log(`[${p.name} Drag Start]   employeePortionOfYear: ${p.employeePortionOfYear?.toFixed(10)}`)
-                      console.log(`[${p.name} Drag Start]   partnerPortionOfYear: ${startingPartnerPortion.toFixed(10)}`)
-                      console.log(`[${p.name} Drag Start]   medicalDirectorHoursPercentage: ${(p.medicalDirectorHoursPercentage ?? 0).toFixed(10)}%`)
-                      console.log(`[${p.name} Drag Start]   totalVacationWeeks: ${totalAtStart}`)
-                      console.log(`[${p.name} Drag Start] ==============================`)
+                      logger.debug('PHYSICIAN', `[${p.name} Drag Start] ==============================`)
+                      logger.debug('PHYSICIAN', `[${p.name} Drag Start] Current state:`)
+                      logger.debug('PHYSICIAN', `[${p.name} Drag Start]   employeePortionOfYear: ${p.employeePortionOfYear?.toFixed(10)}`)
+                      logger.debug('PHYSICIAN', `[${p.name} Drag Start]   partnerPortionOfYear: ${startingPartnerPortion.toFixed(10)}`)
+                      logger.debug('PHYSICIAN', `[${p.name} Drag Start]   medicalDirectorHoursPercentage: ${(p.medicalDirectorHoursPercentage ?? 0).toFixed(10)}%`)
+                      logger.debug('PHYSICIAN', `[${p.name} Drag Start]   totalVacationWeeks: ${totalAtStart}`)
+                      logger.debug('PHYSICIAN', `[${p.name} Drag Start] ==============================`)
                     }}
                     onChange={(e) => {
                       const transitionDay = Number(e.target.value)
                       const employeePortion = transitionDayToEmployeePortion(transitionDay, year)
-                      console.log(`[${p.name}] Slider onChange - Day: ${transitionDay}, Calculated employeePortion: ${employeePortion}, Current stored: ${p.employeePortionOfYear}`)
+                      logger.debug('PHYSICIAN', `[${p.name}] Slider onChange - Day: ${transitionDay}, Calculated employeePortion: ${employeePortion}, Current stored: ${p.employeePortionOfYear}`)
                       const totalVacationWeeks = (document as any).__dragStartTotalVacation ?? 8
 
                       // Re-apportion vacation weeks based on new proportions
                       let employeeVacation = Math.round(totalVacationWeeks * employeePortion)
                       let partnerVacation = totalVacationWeeks - employeeVacation
 
-                      console.log(`[${p.name}] Setting vacation - employeeWeeksVacation: ${p.employeeWeeksVacation} → ${employeeVacation}, weeksVacation: ${p.weeksVacation} → ${partnerVacation}`)
+                      logger.debug('PHYSICIAN', `[${p.name}] Setting vacation - employeeWeeksVacation: ${p.employeeWeeksVacation} → ${employeeVacation}, weeksVacation: ${p.weeksVacation} → ${partnerVacation}`)
 
                       // Scale MD hours with partner portion
                       const startingPartnerPortion = (document as any).__dragStartPartnerPortion ?? (1 - (p.employeePortionOfYear ?? 0))
                       const startingMdHoursPercentage = (document as any).__dragStartMdHoursPercentage ?? 0
                       const newPartnerPortion = 1 - employeePortion
                       
-                      console.log(`[${p.name} Transition Slider] Day ${transitionDay} → employeePortion: ${employeePortion.toFixed(10)}`)
-                      console.log(`[${p.name} Transition Slider] Partner portion: ${startingPartnerPortion.toFixed(10)} → ${newPartnerPortion.toFixed(10)}`)
+                      logger.debug('PHYSICIAN', `[${p.name} Transition Slider] Day ${transitionDay} → employeePortion: ${employeePortion.toFixed(10)}`)
+                      logger.debug('PHYSICIAN', `[${p.name} Transition Slider] Partner portion: ${startingPartnerPortion.toFixed(10)} → ${newPartnerPortion.toFixed(10)}`)
                       
                       let newMdHoursPercentage = startingMdHoursPercentage
                       if (startingPartnerPortion > 0 && startingMdHoursPercentage > 0) {
@@ -2225,9 +2226,9 @@ export default function PhysiciansEditor({ year, scenario, mode = 'scenario', re
                         const unrounded = startingMdHoursPercentage * ratio
                         // Round to 6 decimal places to avoid floating point drift
                         newMdHoursPercentage = Math.round(unrounded * 1e6) / 1e6
-                        console.log(`[${p.name} Transition Slider] MD Hours scaling: ${startingMdHoursPercentage.toFixed(10)}% * ${ratio.toFixed(10)} = ${unrounded.toFixed(10)}% → ${newMdHoursPercentage.toFixed(10)}% (rounded)`)
+                        logger.debug('PHYSICIAN', `[${p.name} Transition Slider] MD Hours scaling: ${startingMdHoursPercentage.toFixed(10)}% * ${ratio.toFixed(10)} = ${unrounded.toFixed(10)}% → ${newMdHoursPercentage.toFixed(10)}% (rounded)`)
                       } else {
-                        console.log(`[${p.name} Transition Slider] No MD hours scaling (starting partner portion: ${startingPartnerPortion}, starting MD %: ${startingMdHoursPercentage})`)
+                        logger.debug('PHYSICIAN', `[${p.name} Transition Slider] No MD hours scaling (starting partner portion: ${startingPartnerPortion}, starting MD %: ${startingMdHoursPercentage})`)
                       }
 
                       // Update this physician - the store will handle redistribution to other partners
