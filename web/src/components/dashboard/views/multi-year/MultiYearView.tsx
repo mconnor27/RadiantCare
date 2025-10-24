@@ -925,9 +925,9 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
         viewMode="Multi-Year"
       />
 
-      <div style={{
+      <div className="multiyear-chart-container" style={{
         maxWidth: 1400,
-        minWidth: store.scenarioBEnabled ? 1400 : 1000,
+        minWidth: 1000,
         margin: '0 auto',
         border: '1px solid #d1d5db',
         borderRadius: 6,
@@ -1492,19 +1492,19 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
         </div>
       </div>
       
-      <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, minWidth: store.scenarioBEnabled ? 1660 : 1000, margin: '0 auto' }}>
+      <div className="overall-compensation-container" style={{ maxWidth: 1000, minWidth: 1000, margin: '0 auto' }}>
         <CollapsibleSection title="Overall Compensation Summary (2025-2030)" open={overallOpen} onOpenChange={setOverallOpen} tone="neutral">
           <OverallCompensationSummary />
         </CollapsibleSection>
       </div>
 
-      <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, minWidth: store.scenarioBEnabled ? 1660 : 1000, margin: '0 auto' }}>
+      <div className="workforce-analysis-container" style={{ maxWidth: 1000, minWidth: 1000, margin: '0 auto' }}>
         <CollapsibleSection title="Workforce Analysis" open={workforceOpen} onOpenChange={setWorkforceOpen} tone="neutral">
           <WorkforceAnalysis />
         </CollapsibleSection>
       </div>
 
-      <div style={{ maxWidth: store.scenarioBEnabled ? 1200 : 1000, minWidth: store.scenarioBEnabled ? 1660 : 1000, margin: '0 auto' }}>
+      <div className="parameters-summary-container" style={{ maxWidth: 1000, minWidth: 1000, margin: '0 auto' }}>
         <CollapsibleSection title="Parameters Summary" open={parametersOpen} onOpenChange={setParametersOpen} tone="neutral">
           <ParametersSummary />
         </CollapsibleSection>

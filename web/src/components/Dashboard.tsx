@@ -2626,18 +2626,33 @@ export const useDashboardStore = create<Store>()(
 
             // Step 4: Apply to target scenario
             set((state) => {
-              const targetScenario = target === 'A' ? state.scenarioA : state.scenarioB
-              if (!targetScenario && target === 'B') {
-                throw new Error('Scenario B not initialized')
-              }
-
               if (target === 'A') {
                 state.scenarioA.projection = data.projection_settings
                 state.scenarioA.future = future
                 state.scenarioA.dataMode = '2025 Data'
-              } else if (state.scenarioB) {
+              } else {
+                // Initialize scenarioB if it doesn't exist
+                if (!state.scenarioB) {
+                  state.scenarioB = {
+                    future: [],
+                    projection: {
+                      incomeGrowthPct: PROJECTION_DEFAULTS.B.incomeGrowthPct,
+                      medicalDirectorHours: PROJECTION_DEFAULTS.B.medicalDirectorHours,
+                      prcsMedicalDirectorHours: PROJECTION_DEFAULTS.B.prcsMedicalDirectorHours,
+                      consultingServicesAgreement: PROJECTION_DEFAULTS.B.consultingServicesAgreement,
+                      nonEmploymentCostsPct: PROJECTION_DEFAULTS.B.nonEmploymentCostsPct,
+                      nonMdEmploymentCostsPct: PROJECTION_DEFAULTS.B.nonMdEmploymentCostsPct,
+                      locumsCosts: PROJECTION_DEFAULTS.B.locumsCosts,
+                      miscEmploymentCostsPct: PROJECTION_DEFAULTS.B.miscEmploymentCostsPct,
+                      benefitCostsGrowthPct: PROJECTION_DEFAULTS.B.benefitCostsGrowthPct
+                    },
+                    selectedYear: 2025,
+                    dataMode: '2025 Data',
+                  }
+                }
                 state.scenarioB.projection = data.projection_settings
-                state.scenarioB.future = future
+                // Deep copy future to avoid sharing references with scenario A
+                state.scenarioB.future = JSON.parse(JSON.stringify(future))
                 state.scenarioB.dataMode = '2025 Data'
               }
 
@@ -2695,15 +2710,29 @@ export const useDashboardStore = create<Store>()(
 
           // LEGACY: Handle non-2025 baselines (2024/Custom) - existing behavior
           set((state) => {
-            const targetScenario = target === 'A' ? state.scenarioA : state.scenarioB
-            if (!targetScenario && target === 'B') {
-              throw new Error('Scenario B not initialized')
-            }
-
             // Restore projection settings
             if (target === 'A') {
               state.scenarioA.projection = data.projection_settings
-            } else if (state.scenarioB) {
+            } else {
+              // Initialize scenarioB if it doesn't exist
+              if (!state.scenarioB) {
+                state.scenarioB = {
+                  future: [],
+                  projection: {
+                    incomeGrowthPct: PROJECTION_DEFAULTS.B.incomeGrowthPct,
+                    medicalDirectorHours: PROJECTION_DEFAULTS.B.medicalDirectorHours,
+                    prcsMedicalDirectorHours: PROJECTION_DEFAULTS.B.prcsMedicalDirectorHours,
+                    consultingServicesAgreement: PROJECTION_DEFAULTS.B.consultingServicesAgreement,
+                    nonEmploymentCostsPct: PROJECTION_DEFAULTS.B.nonEmploymentCostsPct,
+                    nonMdEmploymentCostsPct: PROJECTION_DEFAULTS.B.nonMdEmploymentCostsPct,
+                    locumsCosts: PROJECTION_DEFAULTS.B.locumsCosts,
+                    miscEmploymentCostsPct: PROJECTION_DEFAULTS.B.miscEmploymentCostsPct,
+                    benefitCostsGrowthPct: PROJECTION_DEFAULTS.B.benefitCostsGrowthPct
+                  },
+                  selectedYear: 2025,
+                  dataMode: '2025 Data',
+                }
+              }
               state.scenarioB.projection = data.projection_settings
             }
 
@@ -2714,11 +2743,12 @@ export const useDashboardStore = create<Store>()(
                 ...state.scenarioA.future.filter(f => f.year < 2026),
                 ...future2026Plus
               ].sort((a, b) => a.year - b.year)
-            } else if (state.scenarioB) {
-              state.scenarioB.future = [
-                ...state.scenarioB.future.filter(f => f.year < 2026),
+            } else {
+              // Deep copy to avoid sharing references with scenario A
+              state.scenarioB!.future = JSON.parse(JSON.stringify([
+                ...state.scenarioB!.future.filter(f => f.year < 2026),
                 ...future2026Plus
-              ].sort((a, b) => a.year - b.year)
+              ].sort((a, b) => a.year - b.year)))
             }
 
             // REMOVED: Restore future grid overrides (legacy customProjectedValues)

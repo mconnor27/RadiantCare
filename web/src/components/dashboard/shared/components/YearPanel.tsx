@@ -178,7 +178,7 @@ export default function YearPanel({ year, scenario }: { year: number; scenario: 
   const partnerComp = usePartnerComp(year, scenario, fy)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div className="year-panel-container" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {/* Year Navigation Buttons */}
       <div className="year-buttons" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', overflowX: 'visible', whiteSpace: 'normal', marginBottom: 8, paddingLeft: 8 }}>
         {availableYears.map((yr) => {

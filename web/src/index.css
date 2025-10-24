@@ -629,22 +629,24 @@ body.dragging [data-drag-handle] {
     width: 100% !important;
   }
   
-  /* Restore MultiYearView constraints */
+  /* Restore MultiYearView constraints - allow inline styles to override */
   .multiyear-scenario-container {
-    max-width: 1660px !important; /* Restore original MultiYearView constraint */
-    min-width: 1000px !important;
+    max-width: 1660px; /* Fallback - inline styles will override */
+    min-width: 1000px; /* Fallback - inline styles will override */
     width: 100% !important;
   }
   
-  /* Restore WorkforceAnalysis constraints */
+  /* Restore WorkforceAnalysis constraints - allow inline styles to override */
   .workforce-analysis-container {
-    max-width: 1200px !important; /* Restore original WorkforceAnalysis constraint */
+    max-width: 1200px; /* Fallback - inline styles will override */
+    min-width: 1000px; /* Fallback - inline styles will override */
     width: 100% !important;
   }
   
-  /* Restore OverallCompensationSummary constraints */
+  /* Restore OverallCompensationSummary constraints - allow inline styles to override */
   .overall-compensation-container {
-    max-width: 1200px !important; /* Restore original OverallCompensationSummary constraint */
+    max-width: 1200px; /* Fallback - inline styles will override */
+    min-width: 1000px; /* Fallback - inline styles will override */
     width: 100% !important;
   }
   
@@ -654,6 +656,42 @@ body.dragging [data-drag-handle] {
     min-width: 600px !important;
     width: 100% !important;
   }
+  
+  /* Restore MultiYearView chart container constraints - allow inline styles to override */
+  .multiyear-chart-container {
+    max-width: 1400px; /* Fallback - inline styles will override */
+    min-width: 1000px; /* Fallback - inline styles will override */
+    width: 100% !important;
+  }
+  
+  /* Restore MultiYearView section container constraints - allow inline styles to override */
+  .parameters-summary-container {
+    max-width: 1200px; /* Fallback - inline styles will override */
+    min-width: 1000px; /* Fallback - inline styles will override */
+    width: 100% !important;
+  }
+  
+  /* Ensure ProjectionSettingsControls respects parent constraints */
+  .projection-settings-controls {
+    max-width: 100%; /* Inherit from parent */
+    min-width: 100%; /* Inherit from parent */
+    width: 100% !important;
+  }
+  
+  /* Ensure YearPanel respects parent constraints */
+  .year-panel-container {
+    max-width: 100%; /* Inherit from parent */
+    min-width: 100%; /* Inherit from parent */
+    width: 100% !important;
+  }
+  
+  /* Ensure PhysiciansEditor respects parent constraints */
+  .physicians-editor-container {
+    max-width: 100%; /* Inherit from parent */
+    min-width: 100%; /* Inherit from parent */
+    width: 100% !important;
+  }
+  
 }
 
 /* Additional Chrome-specific fixes */

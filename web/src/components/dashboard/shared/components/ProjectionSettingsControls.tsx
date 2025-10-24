@@ -654,7 +654,7 @@ export default function ProjectionSettingsControls({ scenario }: { scenario: Sce
           ↺ Reset All
         </button>
       </div> */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, padding: '0 8px' }}>
+      <div className="projection-settings-controls" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, padding: '0 8px' }}>
         {/* First Column - Income Panels */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {createSlider('Therapy Income Growth', 'incomeGrowthPct', sc.projection.incomeGrowthPct ?? 3.7, -10, 20, 0.1, '%', false, 'income', 'Reset to Loaded Scenario', false, THERAPY_INCOME_GROWTH_TOOLTIP)}
