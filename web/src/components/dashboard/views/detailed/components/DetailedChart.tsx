@@ -121,7 +121,13 @@ export default function DetailedChart({
   useEffect(() => {
     const updateWidth = () => {
       if (containerRef.current) {
-        setContainerWidth(containerRef.current.offsetWidth)
+        const newWidth = containerRef.current.offsetWidth
+        // Only update if we have a valid positive width
+        // This prevents the chart from collapsing when container is temporarily hidden
+        // and fixes Edge browser timing issues on first load
+        if (newWidth > 0) {
+          setContainerWidth(newWidth)
+        }
       }
     }
 
@@ -131,8 +137,16 @@ export default function DetailedChart({
     // Use ResizeObserver to detect container size changes (not just window resize)
     // This handles cases like the controls panel changing width
     if (containerRef.current) {
-      const resizeObserver = new ResizeObserver(() => {
-        updateWidth()
+      const resizeObserver = new ResizeObserver((entries) => {
+        // Use ResizeObserver entries for more accurate measurements
+        // This fixes Edge browser timing issues where offsetWidth might be 0
+        for (const entry of entries) {
+          const newWidth = entry.contentRect.width
+          // Only update if we have a valid positive width
+          if (newWidth > 0) {
+            setContainerWidth(newWidth)
+          }
+        }
       })
       resizeObserver.observe(containerRef.current)
       
@@ -158,6 +172,22 @@ export default function DetailedChart({
     }, 320) // Match CSS transition duration (300ms) + small buffer
     return () => clearTimeout(timer)
   }, [incomeMode])
+
+  // Edge browser fix: Force Plotly resize after initial render to ensure proper fitting
+  useEffect(() => {
+    // Only run this fix once after the component mounts and has data
+    if (containerWidth !== null && data.length > 0) {
+      const timer = setTimeout(() => {
+        if (containerRef.current) {
+          const plotlyDiv = containerRef.current.querySelector('.js-plotly-plot') as HTMLElement
+          if (plotlyDiv) {
+            Plotly.Plots.resize(plotlyDiv)
+          }
+        }
+      }, 100) // Small delay to ensure Plotly has finished initial render
+      return () => clearTimeout(timer)
+    }
+  }, [containerWidth, data.length])
 
   // Animation for pulsing marker - only active in line mode
   useEffect(() => {
