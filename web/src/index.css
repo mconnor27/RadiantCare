@@ -620,6 +620,7 @@ body.dragging [data-drag-handle] {
   /* Allow chart container to expand beyond 1480px constraint */
   .chart-container-expandable {
     max-width: none !important;
+    min-width: fit-content !important; /* Match chart maxWidth (1280) + controls (~200) + spacing */
     width: 100% !important;
   }
   

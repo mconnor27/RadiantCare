@@ -979,7 +979,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
         viewMode="YTD Detailed"
       />
 
-      <div style={{
+      <div className="chart-container-expandable" style={{
         display: 'flex',
         gap: 16,
         alignItems: 'center',

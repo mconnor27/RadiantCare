@@ -4549,7 +4549,7 @@ export function Dashboard() {
           position: 'sticky',
           top: 0,
           zIndex: 1000,
-          minWidth: viewMode === 'Multi-Year' ? (store.scenarioBEnabled ? 1660 : 1000) : 0
+          minWidth: 1000
         }}>
           {/* Left side: Sync Button */}
           <div style={{ position: 'absolute', left: 16, display: 'flex', alignItems: 'center' }}>
