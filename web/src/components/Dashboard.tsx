@@ -6,7 +6,7 @@ import { immer } from 'zustand/middleware/immer'
 import * as LZString from 'lz-string'
 import { useAuth } from './auth/AuthProvider'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faGear, faSignOutAlt, faBug } from '@fortawesome/free-solid-svg-icons'
+import { faGear, faSignOutAlt, faBug, faUserShield } from '@fortawesome/free-solid-svg-icons'
 import LoginModal from './auth/LoginModal'
 import SignupModal from './auth/SignupModal'
 import PasswordResetModal from './auth/PasswordResetModal'
@@ -4705,6 +4705,46 @@ export function Dashboard() {
             }}
           >
             <FontAwesomeIcon icon={faBug} />
+          </button>
+        )}
+
+        {/* Admin Interface Button - Only for admins */}
+        {profile?.is_admin && (
+          <button
+            onClick={() => window.open('/admin-interface.html', '_blank')}
+            style={{
+              padding: '8px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              color: '#ffffff',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '4px',
+              fontSize: 16,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              width: 32,
+              height: 32,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'
+              createTooltip('admin-interface-tooltip', 'Admin Interface - User Management', e, { placement: 'below-center' })
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
+              removeTooltip('admin-interface-tooltip')
+            }}
+            onTouchStart={(e) => {
+              createTooltip('admin-interface-tooltip', 'Admin Interface - User Management', e, { placement: 'below-center' })
+            }}
+            onTouchEnd={() => {
+              removeTooltip('admin-interface-tooltip')
+            }}
+          >
+            <FontAwesomeIcon icon={faUserShield} />
           </button>
         )}
 
