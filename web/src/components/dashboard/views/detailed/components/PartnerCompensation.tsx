@@ -158,7 +158,36 @@ function parseYTDPhysicianData(physicians: Physician[], equityData: any, summary
   
   // Process partner equity data if available
   if (equitySection?.Rows?.Row) {
-    Object.entries(PARTNER_COMPENSATION_CONFIG).forEach(([partnerName, sectionName]) => {
+    // Process all physicians, not just those in PARTNER_COMPENSATION_CONFIG
+    physicians.forEach(physician => {
+      // Try to find the physician's section in equity data
+      // First try the exact name from PARTNER_COMPENSATION_CONFIG
+      let sectionName = PARTNER_COMPENSATION_CONFIG[physician.name as keyof typeof PARTNER_COMPENSATION_CONFIG]
+      
+      // If not found, try common patterns for the physician name
+      if (!sectionName) {
+        // Try patterns like "3200 Dr. [Name]", "3700 Dr. [Name]", etc.
+        const patterns = [
+          `3200 Dr. ${physician.name}`,
+          `3700 Dr. ${physician.name}`,
+          `3900 Dr ${physician.name}`,
+          `Dr. ${physician.name}`,
+          physician.name
+        ]
+        
+        for (const pattern of patterns) {
+          const found = equitySection.Rows.Row.find(
+            (row: any) => row.Header?.ColData?.[0]?.value === pattern
+          )
+          if (found) {
+            sectionName = pattern
+            break
+          }
+        }
+      }
+      
+      if (!sectionName) return
+      
       const partnerSection = equitySection.Rows.Row.find(
         (row: any) => row.Header?.ColData?.[0]?.value === sectionName
       )
@@ -180,11 +209,9 @@ function parseYTDPhysicianData(physicians: Physician[], equityData: any, summary
             }
             
             // Store the value for this partner
-            data[cleanName][partnerName] = value
-            // Only add to totals if it's not Beginning Equity or Member Contribution (capital items, not compensation)
-            if (cleanName !== 'Beginning Equity' && cleanName !== 'Member Contribution') {
-              totals[partnerName] += value
-            }
+            data[cleanName][physician.name] = value
+            // Add to totals for all items (Beginning Equity represents money already paid out)
+            totals[physician.name] += value
           }
         }
       })
@@ -199,7 +226,7 @@ function parseYTDPhysicianData(physicians: Physician[], equityData: any, summary
     const isEmployee = ['employee', 'employeeToPartner', 'newEmployee', 'employeeToTerminate'].includes(physician.type)
     const isRetiredPartner = physician.type === 'partnerToRetire' && (physician.partnerPortionOfYear ?? 0) === 0
     
-    // Add YTD W2 income for employees (including employeeToPartner) - negative since it's money paid OUT
+    // Add YTD W2 income for employees (including employeeToPartner) - negative since it's money paid OUT by practice
     if (isEmployee) {
       let w2Income = 0
       
@@ -214,7 +241,7 @@ function parseYTDPhysicianData(physicians: Physician[], equityData: any, summary
         w2Income += delayedW2.amount
       }
       
-      // Only add row if there's actual W2 income - make it negative since it's money paid OUT
+      // Only add row if there's actual W2 income - negative since it's money paid OUT by practice
       if (w2Income > 0) {
         if (!data['W2 Income']) {
           data['W2 Income'] = {}
@@ -224,7 +251,7 @@ function parseYTDPhysicianData(physicians: Physician[], equityData: any, summary
       }
     }
     
-    // Add YTD W2 income for retired partners (if any - should be negative as money paid OUT)
+    // Add YTD W2 income for retired partners (if any - negative since it's money paid OUT by practice)
     if (isRetiredPartner && ytdData.wages[physician.name]) {
       if (!data['W2 Income']) {
         data['W2 Income'] = {}
@@ -242,7 +269,7 @@ function parseYTDPhysicianData(physicians: Physician[], equityData: any, summary
       totals[physician.name] += ytdData.benefits[physician.name]
     }
     
-    // Add buyout costs for retired partners (negative - money paid OUT)
+    // Add buyout costs for retired partners (negative - money paid OUT for buyouts)
     if (isRetiredPartner && physician.buyoutCost) {
       if (!data['Buy In/Buy Out']) {
         data['Buy In/Buy Out'] = {}
@@ -251,7 +278,7 @@ function parseYTDPhysicianData(physicians: Physician[], equityData: any, summary
       totals[physician.name] -= physician.buyoutCost
     }
 
-    // Manual override for Connor's buy-in (negative - money paid OUT, reduces remaining comp)
+    // Manual override for Connor's buy-in (negative - money paid OUT for buy-in, reduces remaining comp)
     if (physician.name === 'Connor') {
       if (!data['Buy In/Buy Out']) {
         data['Buy In/Buy Out'] = {}
@@ -262,7 +289,7 @@ function parseYTDPhysicianData(physicians: Physician[], equityData: any, summary
     
     // Add medical director amounts
     if (isRetiredPartner && physician.trailingSharedMdAmount) {
-      // Trailing medical director amounts for retired partners (negative - money paid OUT)
+      // Trailing medical director amounts for retired partners (negative - money paid OUT by practice)
       if (!data['Medical Director']) {
         data['Medical Director'] = {}
       }
@@ -377,7 +404,7 @@ export default function PartnerCompensation({
     return dataSource[rowName]?.[physicianName] ?? 0
   }
   
-  // Define the desired row order (excluding Beginning Equity which will be separate)
+  // Define the desired row order
   const rowOrder = [
     'Buy In/Buy Out',
     'W2 Income',
@@ -386,7 +413,8 @@ export default function PartnerCompensation({
     'Medical Director',
     'Retirement Contributions',
     'HSA Contribution',
-    'Health Insurance'
+    'Health Insurance',
+    'Beginning Equity'
   ]
   
   // Get all unique row names from both data sources and filter out rows where all physician values are 0
@@ -524,10 +552,7 @@ export default function PartnerCompensation({
             {physicianNames.map((physician, idx) => {
               const projected = projectedData.totals[physician] || 0
               const paidToDate = ytdData.totals[physician] || 0
-              const beginningEquity = getValue('Beginning Equity', physician, ytdData.data)
-              // For mobile: include beginning equity in paid total
-              const paidWithEquity = paidToDate + beginningEquity
-              const remaining = projected + paidWithEquity
+              const remaining = projected + paidToDate
               const warnings = getPhysicianWarnings(physician)
               const hasWarnings = warnings.length > 0
 
@@ -571,7 +596,7 @@ export default function PartnerCompensation({
                   <div
                     style={{
                       textAlign: 'right',
-                      color: paidWithEquity < 0 ? '#dc3545' : paidWithEquity > 0 ? '#28a745' : '#6c757d',
+                      color: paidToDate < 0 ? '#dc3545' : paidToDate > 0 ? '#28a745' : '#6c757d',
                       fontWeight: 600,
                       cursor: 'pointer',
                       textDecoration: 'underline',
@@ -581,7 +606,7 @@ export default function PartnerCompensation({
                     }}
                     onClick={() => setSelectedPhysician(physician)}
                   >
-                    {formatCurrency(paidWithEquity)}
+                    {formatCurrency(paidToDate)}
                   </div>
                   <div style={{
                     textAlign: 'right',
@@ -666,38 +691,12 @@ export default function PartnerCompensation({
               <div style={{ fontSize: 13 }}>
                 {nonZeroRowNames.filter(rowName =>
                   getValue(rowName, selectedPhysician, ytdData.data) !== 0
-                ).length === 0 && getValue('Beginning Equity', selectedPhysician, ytdData.data) === 0 ? (
+                ).length === 0 ? (
                   <div style={{ textAlign: 'center', padding: 20, color: '#666' }}>
                     No detailed data available
                   </div>
                 ) : (
                   <>
-                    {/* Show Beginning Equity at the top if it exists */}
-                    {getValue('Beginning Equity', selectedPhysician, ytdData.data) !== 0 && (
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          padding: '8px 0',
-                          borderBottom: '1px solid #f0f0f0',
-                          gap: 12
-                        }}
-                      >
-                        <div style={{ flex: 1, color: '#333', minWidth: '130px', textAlign: 'left', fontSize: 15 }}>
-                          Prior Equity
-                        </div>
-                        <div style={{
-                          fontWeight: 600,
-                          fontSize: 15,
-                          color: getValue('Beginning Equity', selectedPhysician, ytdData.data) < 0 ? '#dc3545' :
-                                 getValue('Beginning Equity', selectedPhysician, ytdData.data) > 0 ? '#28a745' : '#6c757d',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {formatCurrency(getValue('Beginning Equity', selectedPhysician, ytdData.data))}
-                        </div>
-                      </div>
-                    )}
-
                     {nonZeroRowNames
                       .filter(rowName => getValue(rowName, selectedPhysician, ytdData.data) !== 0)
                       .map((rowName) => {
@@ -758,10 +757,10 @@ export default function PartnerCompensation({
                 }}>
                   <div>Total Paid</div>
                   <div style={{
-                    color: (ytdData.totals[selectedPhysician] + getValue('Beginning Equity', selectedPhysician, ytdData.data)) < 0 ? '#dc3545' :
-                           (ytdData.totals[selectedPhysician] + getValue('Beginning Equity', selectedPhysician, ytdData.data)) > 0 ? '#28a745' : '#6c757d'
+                    color: ytdData.totals[selectedPhysician] < 0 ? '#dc3545' :
+                           ytdData.totals[selectedPhysician] > 0 ? '#28a745' : '#6c757d'
                   }}>
-                    {formatCurrency((ytdData.totals[selectedPhysician] || 0) + getValue('Beginning Equity', selectedPhysician, ytdData.data))}
+                    {formatCurrency(ytdData.totals[selectedPhysician] || 0)}
                   </div>
                 </div>
               </div>
@@ -1011,36 +1010,8 @@ export default function PartnerCompensation({
         ))}
       </div>
       
-      {/* Beginning Equity row - separate from Paid to Date */}
-      {allRowNames.has('Beginning Equity') && physicianNames.some(physician => getValue('Beginning Equity', physician, ytdData.data) !== 0) && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: isMobile ? `1.5fr repeat(${physicianNames.length}, 1fr)` : `2.2fr repeat(${physicianNames.length}, 1fr)`,
-            gap: 4,
-            padding: '4px 0',
-            borderTop: '1px solid #f0f0f0',
-            background: '#f8f9fa',
-            fontWeight: 400,
-            fontSize: isMobile ? 11 : 14
-          }}
-        >
-          <div style={{ textAlign: 'right' }}>Beginning Equity</div>
-          {physicianNames.map(physician => {
-            const value = getValue('Beginning Equity', physician, ytdData.data)
-            return (
-              <div key={physician} style={{
-                textAlign: 'right',
-                color: value < 0 ? '#dc3545' : value > 0 ? '#28a745' : '#6c757d'
-              }}>
-                {value !== 0 ? formatCurrency(value) : '-'}
-              </div>
-            )
-          })}
-        </div>
-      )}
 
-      {/* Remaining row - sum of 2025 Projected + Paid to Date + Beginning Equity */}
+      {/* Remaining row - sum of 2025 Projected + Paid to Date */}
       <div
         style={{
           display: 'grid',
@@ -1058,8 +1029,7 @@ export default function PartnerCompensation({
         {physicianNames.map(physician => {
           const projected = projectedData.totals[physician] || 0
           const paidToDate = ytdData.totals[physician] || 0
-          const beginningEquity = getValue('Beginning Equity', physician, ytdData.data)
-          const remaining = projected + paidToDate + beginningEquity
+          const remaining = projected + paidToDate
           
           return (
             <div key={physician} style={{ 
