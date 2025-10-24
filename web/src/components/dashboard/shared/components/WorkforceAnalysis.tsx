@@ -211,7 +211,7 @@ export default function WorkforceAnalysis() {
   }
 
   return (
-    <div style={{ marginTop: 0, maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '16px auto 0 auto' }}>
+    <div className="workforce-analysis-container" style={{ marginTop: 0, maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '16px auto 0 auto' }}>
 
       <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#ffffff', padding: 4, position: 'relative', maxWidth: 1000, margin: '0 auto' }}>
         <Plot
@@ -374,7 +374,7 @@ export default function WorkforceAnalysis() {
             <div>Weeks Worked (Scenario B)</div>
             {years.map((y, idx) => (
               <div key={`WB-${y}`} style={{ textAlign: 'right' }}>
-                {weeksWorkedB[idx].toFixed(1)}
+                {weeksWorkedB[idx]?.toFixed(1) ?? '0.0'}
               </div>
             ))}
             <div style={{ textAlign: 'right' }}>
@@ -430,7 +430,7 @@ export default function WorkforceAnalysis() {
             <div>Weeks Vacation (Scenario B)</div>
             {years.map((y, idx) => (
               <div key={`VB-${y}`} style={{ textAlign: 'right' }}>
-                {weeksVacationB[idx].toFixed(1)}
+                {weeksVacationB[idx]?.toFixed(1) ?? '0.0'}
               </div>
             ))}
             <div style={{ textAlign: 'right' }}>

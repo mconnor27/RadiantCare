@@ -963,7 +963,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
 
         </div>
 
-        <div style={{ 
+        <div className="multiyear-scenario-container" style={{ 
           maxWidth: store.scenarioBEnabled ? 1660 : 1000,
           minWidth: store.scenarioBEnabled ? 1660 : 1000,
           margin: '0 auto' 

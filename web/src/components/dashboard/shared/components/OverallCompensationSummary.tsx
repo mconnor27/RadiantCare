@@ -190,7 +190,7 @@ export default function OverallCompensationSummary() {
 
 
   return (
-    <div style={{ marginTop: 0, maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '16px auto 0 auto' }}>
+    <div className="overall-compensation-container" style={{ marginTop: 0, maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '16px auto 0 auto' }}>
       
       <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#ffffff', padding: 4, position: 'relative', maxWidth: 1000, margin: '0 auto' }}>
         <Plot

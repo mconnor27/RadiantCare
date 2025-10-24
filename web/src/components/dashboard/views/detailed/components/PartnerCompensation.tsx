@@ -784,7 +784,7 @@ export default function PartnerCompensation({
 
   // Desktop view
   return (
-    <div style={{
+    <div className="compensation-table-expandable" style={{
       marginTop: 16,
       maxWidth: 900,
       margin: '16px auto 16px auto',

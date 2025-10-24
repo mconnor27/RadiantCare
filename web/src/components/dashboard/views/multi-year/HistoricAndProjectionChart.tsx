@@ -570,6 +570,7 @@ export default function HistoricAndProjectionChart() {
     return (
       <div
         ref={containerRef}
+        className="historic-chart-container"
         style={{
           flex: 1,
           minWidth: 600,

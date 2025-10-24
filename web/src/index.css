@@ -28,11 +28,11 @@ body {
   padding: 0;
   text-align: center;
   place-items: center;
-  min-width: 320px;
+  min-width: 1000px; /* Set reasonable minimum width for the app */
   width: 100%;
   min-height: 100vh;
   height: 100%;
-  overflow-x: hidden;
+  overflow-x: auto; /* Allow horizontal scroll if needed */
 }
 
 h1 {
@@ -593,6 +593,79 @@ body.dragging [data-drag-handle] {
   .splash-logo {
     max-height: 200px !important;
     max-width: 400px !important;
+  }
+}
+
+/* Chrome and Edge browser resize fix - allow elements to expand beyond max-width constraints */
+@supports (-webkit-appearance: none) {
+  /* Target Chrome and Edge specifically */
+  #root {
+    max-width: 1600px !important; /* Restore original App.css constraint */
+    min-width: 1000px !important; /* Ensure minimum width */
+    width: 100% !important;
+  }
+  
+  /* Override dashboard container max-width for Chrome/Edge */
+  .dashboard-container {
+    max-width: 1600px !important; /* Restore original Dashboard.tsx constraint */
+    width: 100% !important;
+  }
+  
+  /* Allow scenario manager section to expand fully */
+  .scenario-manager-section {
+    max-width: none !important;
+    width: 100% !important;
+  }
+  
+  /* Allow chart container to expand beyond 1480px constraint */
+  .chart-container-expandable {
+    max-width: none !important;
+    width: 100% !important;
+  }
+  
+  /* Keep compensation table at original size for readability */
+  .compensation-table-expandable {
+    max-width: 900px !important; /* Restore original constraint */
+    width: 100% !important;
+  }
+  
+  /* Restore MultiYearView constraints */
+  .multiyear-scenario-container {
+    max-width: 1660px !important; /* Restore original MultiYearView constraint */
+    min-width: 1000px !important;
+    width: 100% !important;
+  }
+  
+  /* Restore WorkforceAnalysis constraints */
+  .workforce-analysis-container {
+    max-width: 1200px !important; /* Restore original WorkforceAnalysis constraint */
+    width: 100% !important;
+  }
+  
+  /* Restore OverallCompensationSummary constraints */
+  .overall-compensation-container {
+    max-width: 1200px !important; /* Restore original OverallCompensationSummary constraint */
+    width: 100% !important;
+  }
+  
+  /* Restore HistoricAndProjectionChart constraints */
+  .historic-chart-container {
+    max-width: 1400px !important; /* Restore original HistoricAndProjectionChart constraint */
+    min-width: 600px !important;
+    width: 100% !important;
+  }
+}
+
+/* Additional Chrome-specific fixes */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  /* Ensure Chrome respects viewport width for resizing */
+  #root {
+    max-width: 100vw !important;
+    min-width: 1000px !important; /* Ensure minimum width */
+  }
+  
+  .dashboard-container {
+    max-width: 100vw !important;
   }
 }
 

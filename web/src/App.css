@@ -1,5 +1,6 @@
 #root {
   max-width: 1600px;
+  min-width: 1000px; /* Set minimum width for the app */
   align-items: center;
   align-content: center;
   padding: 2rem;

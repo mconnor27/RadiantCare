@@ -725,7 +725,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
       )}
 
       {/* Scenario Manager Section */}
-      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+      <div className="scenario-manager-section" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
         {currentScenarioName && (
           <div style={{
             padding: '8px 16px',
@@ -1119,7 +1119,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
           ytdLocumsMin={ytdLocumsAmount}
         />
       </div>
-      <div style={{ maxWidth: '1480px', margin: '0 auto' }}>
+      <div className="chart-container-expandable" style={{ maxWidth: '1480px', margin: '0 auto' }}>
         {/* Only render grid after scenario is loaded to prevent double-load */}
         {currentScenarioName ? (
           <YearlyDataGrid
