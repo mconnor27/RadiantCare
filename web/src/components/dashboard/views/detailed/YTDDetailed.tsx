@@ -30,9 +30,10 @@ interface YTDDetailedProps {
   initialSettings?: any
   onSettingsChange?: (settings: any) => void
   onRefreshRequest?: (callback: () => void) => void // Callback to register refresh function with parent
+  hasPendingSharedLink?: boolean // Skip loading default scenario if shared link is pending
 }
 
-export default function YTDDetailed({ initialSettings, onSettingsChange, onRefreshRequest }: YTDDetailedProps) {
+export default function YTDDetailed({ initialSettings, onSettingsChange, onRefreshRequest, hasPendingSharedLink }: YTDDetailedProps) {
   const store = useDashboardStore()
   const { profile } = useAuth()
   const [showLoadingModal, setShowLoadingModal] = useState(true)  // Start as true to show immediately
@@ -266,6 +267,12 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     const loadInitialScenario = async () => {
       if (!profile?.id) return
 
+      // Skip loading if there's a pending shared link
+      if (hasPendingSharedLink) {
+        console.log('[YTD Init] Skipping default scenario load - shared link pending')
+        return
+      }
+
       try {
         // Check if we have persisted ID from localStorage but no data (hybrid persistence)
         const hasPersistedId = !!store.currentYearSettingId
@@ -308,7 +315,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     }
 
     loadInitialScenario()
-  }, [profile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profile?.id, hasPendingSharedLink]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debug: snapshot/store baseline on scenario ID change or after grid reload
   useEffect(() => {

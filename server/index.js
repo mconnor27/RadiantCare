@@ -529,7 +529,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Create shared link
-app.post('/api/shared-links/create', async (req, res) => {
+app.post('/api/shared-links', async (req, res) => {
   if (!supabaseUrl || !supabaseAnonKey) {
     return res.status(500).json({ error: 'server_error', message: 'Supabase not configured' })
   }
@@ -681,15 +681,15 @@ app.post('/api/shared-links/create', async (req, res) => {
 })
 
 // Get shared link by ID
-app.get('/api/shared-links/:id', async (req, res) => {
+app.get('/api/shared-links', async (req, res) => {
   if (!supabaseUrl || !supabaseAnonKey) {
     return res.status(500).json({ error: 'server_error', message: 'Supabase not configured' })
   }
 
   try {
-    const { id } = req.params
+    const { id } = req.query
 
-    if (!id) {
+    if (!id || typeof id !== 'string') {
       return res.status(400).json({
         error: 'bad_request',
         message: 'Link ID is required'

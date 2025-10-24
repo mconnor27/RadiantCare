@@ -133,7 +133,11 @@ function resetFutureYearsToProjection(scenario: 'A' | 'B', store: Store) {
   console.log(`✅ Reset complete - all future years recalculated from current projection settings`)
 }
 
-export default function MultiYearView() {
+interface MultiYearViewProps {
+  hasPendingSharedLink?: boolean
+}
+
+export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewProps) {
   const store = useDashboardStore()
   const { profile } = useAuth()
   const [projectionOpen, setProjectionOpen] = useState(true)
@@ -167,6 +171,12 @@ export default function MultiYearView() {
   // Auto-load favorite or default scenarios on mount
   useEffect(() => {
     if (!profile?.id) return
+
+    // Skip loading if there's a pending shared link
+    if (hasPendingSharedLink) {
+      console.log('[Multi-Year Init] Skipping default scenario load - shared link pending')
+      return
+    }
 
     const loadInitialScenarios = async () => {
       try {
@@ -265,7 +275,7 @@ export default function MultiYearView() {
     }
 
     loadInitialScenarios()
-  }, [profile?.id]) // Only run when profile changes (on mount/login)
+  }, [profile?.id, hasPendingSharedLink]) // Only run when profile changes (on mount/login)
 
   // Handle user manually enabling Scenario B checkbox
   // If scenarioB doesn't exist or has no data, load user's favorite B or "Default (Pessimistic)"

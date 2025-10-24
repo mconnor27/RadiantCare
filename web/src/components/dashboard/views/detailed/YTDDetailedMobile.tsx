@@ -481,9 +481,10 @@ interface YTDDetailedMobileProps {
   onRefreshRequest?: (callback: () => void) => void
   onPasswordChange?: () => void
   isInitialScenarioLoadComplete?: boolean
+  hasPendingSharedLink?: boolean
 }
 
-export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, isInitialScenarioLoadComplete = false }: YTDDetailedMobileProps) {
+export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, isInitialScenarioLoadComplete = false, hasPendingSharedLink }: YTDDetailedMobileProps) {
   const store = useDashboardStore()
   const { signOut, profile } = useAuth()
   
@@ -703,6 +704,12 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
     const loadInitialScenario = async () => {
       if (!profile?.id) return
 
+      // Skip loading if there's a pending shared link
+      if (hasPendingSharedLink) {
+        console.log('[YTD Mobile Init] Skipping default scenario load - shared link pending')
+        return
+      }
+
       try {
         // Check if we have persisted ID from localStorage but no data (hybrid persistence)
         const hasPersistedId = !!store.currentYearSettingId
@@ -720,7 +727,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
         }
 
         const { supabase } = await import('../../../../lib/supabase')
-        
+
         // No persisted state - load favorite or default
         const { data: favoriteData } = await supabase
           .from('user_favorites')
@@ -747,7 +754,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
     }
 
     loadInitialScenario()
-  }, [profile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profile?.id, hasPendingSharedLink]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Register refresh callback with parent
   useEffect(() => {

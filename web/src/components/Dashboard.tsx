@@ -3221,16 +3221,7 @@ export function usePartnerComp(year: number, scenario: ScenarioKey, fyOverride?:
   }, [
     // Depend on specific fields that affect compensation, not entire objects
     year,
-    fy?.therapyIncome,
-    fy?.nonEmploymentCosts,
-    fy?.nonMdEmploymentCosts,
-    fy?.miscEmploymentCosts,
-    fy?.locumCosts,
-    fy?.medicalDirectorHours,
-    fy?.prcsMedicalDirectorHours,
-    fy?.consultingServicesAgreement,
-    fy?.prcsDirectorPhysicianId,
-    JSON.stringify(fy?.physicians),  // Serialize physicians array for deep comparison
+    fy,
     sc.projection.benefitCostsGrowthPct
   ])
 }
@@ -3674,9 +3665,13 @@ export function Dashboard() {
   // Track if default scenarios have been loaded to prevent duplicate loads
   const defaultScenariosLoadedRef = useRef(false)
   const [isInitialScenarioLoadComplete, setIsInitialScenarioLoadComplete] = useState(false)
-  // Shared link warning modal
-  const [showSharedLinkWarning, setShowSharedLinkWarning] = useState(false)
-  const [pendingSharedLinkId, setPendingSharedLinkId] = useState<string | null>(null)
+  // Shared link warning modal - check URL immediately to prevent default scenario load
+  const initialSharedLinkMatch = window.location.pathname.match(/^\/share\/([a-zA-Z0-9]+)$/)
+  const [showSharedLinkWarning, setShowSharedLinkWarning] = useState(!!initialSharedLinkMatch)
+  const [pendingSharedLinkId, setPendingSharedLinkId] = useState<string | null>(
+    initialSharedLinkMatch ? initialSharedLinkMatch[1] : null
+  )
+  const sharedLinkProcessedRef = useRef(false)
   // Mobile warning modal
   const [showMobileWarning, setShowMobileWarning] = useState(false)
 
@@ -4069,15 +4064,11 @@ export function Dashboard() {
     setUrlLoaded(true)
   }, [])
 
-  // Detect and handle shared links (/share/{id})
+  // Log shared link detection (state already initialized from URL)
   useEffect(() => {
-    const path = window.location.pathname
-    const sharedLinkMatch = path.match(/^\/share\/([a-zA-Z0-9]+)$/)
-
-    if (sharedLinkMatch && !pendingSharedLinkId) {
-      const linkId = sharedLinkMatch[1]
-      setPendingSharedLinkId(linkId)
-      setShowSharedLinkWarning(true)
+    if (pendingSharedLinkId && !sharedLinkProcessedRef.current) {
+      console.log('🔗 [Shared Link] Detected shared link in URL:', pendingSharedLinkId)
+      sharedLinkProcessedRef.current = true
     }
   }, [pendingSharedLinkId])
 
@@ -4110,6 +4101,7 @@ export function Dashboard() {
 
   // Load shared link after user confirmation
   const loadSharedLink = useCallback(async (linkId: string) => {
+    console.log('🔗 [Shared Link] Loading shared link:', linkId)
     try {
       const response = await authenticatedFetch(`/api/shared-links?id=${linkId}`)
 
@@ -4122,34 +4114,62 @@ export function Dashboard() {
       }
 
       const data = await response.json()
+      console.log('🔗 [Shared Link] Received data:', {
+        view_mode: data.view_mode,
+        scenario_a_id: data.scenario_a.id,
+        scenario_a_name: data.scenario_a.name,
+        scenario_b_enabled: data.scenario_b_enabled,
+        scenario_b_id: data.scenario_b?.id,
+        ui_settings: data.ui_settings
+      })
 
-      // Load Scenario A
-      await store.loadScenarioFromDatabase(data.scenario_a.id, 'A')
-
-      // Load Scenario B if enabled
-      if (data.scenario_b_enabled && data.scenario_b) {
-        store.setScenarioEnabled(true)
-        await store.loadScenarioFromDatabase(data.scenario_b.id, 'B')
-      }
-
-      // Apply view mode
+      // Apply view mode FIRST before loading scenarios
+      console.log('🔗 [Shared Link] Setting view mode:', data.view_mode)
       setViewMode(data.view_mode)
       if (data.view_mode === 'Multi-Year') {
         setMultiYearInitialized(true)
       }
 
+      // Clear current scenario first to ensure grid detects the change
+      if (data.view_mode === 'YTD Detailed') {
+        console.log('🔗 [Shared Link] Clearing current YTD scenario before load')
+        store.setCurrentYearSetting(null, null, null)
+      }
+
+      // Load Scenario A
+      console.log('🔗 [Shared Link] Loading Scenario A:', data.scenario_a.id)
+      await store.loadScenarioFromDatabase(data.scenario_a.id, 'A')
+
+      // Load Scenario B if enabled
+      if (data.scenario_b_enabled && data.scenario_b) {
+        console.log('🔗 [Shared Link] Loading Scenario B:', data.scenario_b.id)
+        store.setScenarioEnabled(true)
+        await store.loadScenarioFromDatabase(data.scenario_b.id, 'B')
+      }
+
       // Apply UI settings
       if (data.ui_settings) {
         if (data.view_mode === 'YTD Detailed' && data.ui_settings.ytdDetailed) {
+          console.log('🔗 [Shared Link] Applying YTD UI settings:', data.ui_settings.ytdDetailed)
           setYtdSettings(data.ui_settings.ytdDetailed)
         }
-        // Multi-Year UI settings (selected years) are already loaded with scenarios
+        if (data.view_mode === 'Multi-Year' && data.ui_settings.multiYear) {
+          console.log('🔗 [Shared Link] Multi-Year UI settings:', data.ui_settings.multiYear)
+          // Multi-Year UI settings (selected years) should be applied
+          if (data.ui_settings.multiYear.selectedYearA) {
+            store.setSelectedYear(data.ui_settings.multiYear.selectedYearA, 'A')
+          }
+          if (data.ui_settings.multiYear.selectedYearB && data.scenario_b_enabled) {
+            store.setSelectedYear(data.ui_settings.multiYear.selectedYearB, 'B')
+          }
+        }
       }
 
+      console.log('🔗 [Shared Link] Successfully loaded shared link')
       // Clear the URL after successful load
       window.history.pushState({}, '', '/')
     } catch (error) {
-      console.error('Error loading shared link:', error)
+      console.error('🔗 [Shared Link] Error loading shared link:', error)
       alert('Failed to load shared link')
       // Clear the URL
       window.history.pushState({}, '', '/')
@@ -4157,16 +4177,22 @@ export function Dashboard() {
   }, [store, setViewMode, setMultiYearInitialized, setYtdSettings])
 
   // Handle shared link warning confirmation
-  const handleSharedLinkConfirm = useCallback(() => {
+  const handleSharedLinkConfirm = useCallback(async () => {
+    console.log('🔗 [Shared Link] User confirmed loading shared link')
     if (pendingSharedLinkId) {
-      loadSharedLink(pendingSharedLinkId)
+      // Close modal and clear state FIRST to prevent re-triggering
+      const linkIdToLoad = pendingSharedLinkId
       setPendingSharedLinkId(null)
       setShowSharedLinkWarning(false)
+
+      // Then load the link
+      await loadSharedLink(linkIdToLoad)
     }
   }, [pendingSharedLinkId, loadSharedLink])
 
   // Handle shared link warning cancel
   const handleSharedLinkCancel = useCallback(() => {
+    console.log('🔗 [Shared Link] User cancelled loading shared link')
     setPendingSharedLinkId(null)
     setShowSharedLinkWarning(false)
     // Clear the URL
@@ -4350,13 +4376,6 @@ export function Dashboard() {
           isOpen={showSignupModal}
           onClose={() => setShowSignupModal(false)}
           onSwitchToLogin={() => setShowSignupModal(false)}
-        />
-
-        {/* Shared Link Warning Modal */}
-        <SharedLinkWarningModal
-          isOpen={showSharedLinkWarning}
-          onConfirm={handleSharedLinkConfirm}
-          onCancel={handleSharedLinkCancel}
         />
 
         <style>{`
@@ -4638,6 +4657,7 @@ export function Dashboard() {
                 onRefreshRequest={handleYtdRefreshRequest}
                 onPasswordChange={() => setShowPasswordReset(true)}
                 isInitialScenarioLoadComplete={isInitialScenarioLoadComplete}
+                hasPendingSharedLink={!!pendingSharedLinkId}
               />
             ) : (
               <>
@@ -4646,12 +4666,13 @@ export function Dashboard() {
                     initialSettings={ytdSettings}
                     onSettingsChange={handleYtdSettingsChange}
                     onRefreshRequest={handleYtdRefreshRequest}
+                    hasPendingSharedLink={!!pendingSharedLinkId}
                   />
                 </div>
                 {/* Only render MultiYearView after it's been visited once (lazy initialization) */}
                 {multiYearInitialized && (
                   <div style={{ display: viewMode === 'Multi-Year' ? 'block' : 'none' }}>
-                    <MultiYearView />
+                    <MultiYearView hasPendingSharedLink={!!pendingSharedLinkId} />
                   </div>
                 )}
               </>

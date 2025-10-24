@@ -40,13 +40,13 @@ export default function SharedLinkWarningModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <h2 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', textAlign: 'left' }}>
           ⚠️ Load Shared Link?
         </h2>
-        <p style={{ margin: '0 0 16px 0', fontSize: '14px', lineHeight: '1.5', color: '#333' }}>
+        <p style={{ margin: '0 0 16px 0', fontSize: '14px', lineHeight: '1.5', color: '#333', textAlign: 'left' }}>
           Loading this shared link will replace your current view and any unsaved changes.
         </p>
-        <p style={{ margin: '0 0 24px 0', fontSize: '14px', lineHeight: '1.5', color: '#666' }}>
+        <p style={{ margin: '0 0 24px 0', fontSize: '14px', lineHeight: '1.5', color: '#666', textAlign: 'left' }}>
           Make sure to save your current work before proceeding.
         </p>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
