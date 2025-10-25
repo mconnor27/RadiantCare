@@ -230,3 +230,4 @@ ORDER BY p.proname;
 --
 -- All functions now have explicit search_path settings for security.
 -- ============================================================================
+
