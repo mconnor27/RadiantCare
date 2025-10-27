@@ -1119,7 +1119,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
           ytdLocumsMin={ytdLocumsAmount}
         />
       </div>
-      <div className="chart-container-expandable" style={{ maxWidth: '1480px', margin: '0 auto' }}>
+      <div className="grid-container-expandable" style={{ margin: '0 auto' }}>
         {/* Only render grid after scenario is loaded to prevent double-load */}
         {currentScenarioName ? (
           <YearlyDataGrid

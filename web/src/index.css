@@ -621,9 +621,14 @@ body.dragging [data-drag-handle] {
   .chart-container-expandable {
     max-width: none !important;
     min-width: fit-content !important; /* Match chart maxWidth (1280) + controls (~200) + spacing */
+  }
+
+  /* Grid container: responsive width up to 1480px, allows horizontal scroll when narrower */
+  .grid-container-expandable {
+    max-width: 1480px !important;
     width: 100% !important;
   }
-  
+
   /* Keep compensation table at original size for readability */
   .compensation-table-expandable {
     max-width: 900px !important; /* Restore original constraint */
