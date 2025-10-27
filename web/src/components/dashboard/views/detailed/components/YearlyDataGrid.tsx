@@ -1022,7 +1022,7 @@ export default function YearlyDataGrid({
           ytdActualValue = 0
         }
         
-        // Get cell position and rect for slider placement
+        // Get cell position and rect for slider placement (use viewport coordinates for fixed positioning)
         let cellPosition = { x: 0, y: 0 }
         let cellRect = undefined
         if (event) {
@@ -1030,25 +1030,24 @@ export default function YearlyDataGrid({
           const cellElement = target.closest('[data-cell-rowidx]') || target.closest('[role="gridcell"]') || target.closest('.rg-cell')
           if (cellElement) {
             const rect = cellElement.getBoundingClientRect()
-            // Convert viewport-relative coordinates to document-relative coordinates
-            // by adding the current scroll position
-            cellPosition = { 
-              x: rect.right + window.scrollX, 
-              y: rect.top + rect.height / 2 + window.scrollY 
+            // Use viewport-relative coordinates directly for fixed positioning
+            cellPosition = {
+              x: rect.right,
+              y: rect.top + rect.height / 2
             }
             cellRect = {
-              top: rect.top + window.scrollY,
-              right: rect.right + window.scrollX,
-              bottom: rect.bottom + window.scrollY,
-              left: rect.left + window.scrollX,
+              top: rect.top,
+              right: rect.right,
+              bottom: rect.bottom,
+              left: rect.left,
               width: rect.width,
               height: rect.height
             }
           } else {
-            // Also add scroll offset for fallback mouse position
-            cellPosition = { 
-              x: event.clientX + window.scrollX, 
-              y: event.clientY + window.scrollY 
+            // Use mouse position for fallback
+            cellPosition = {
+              x: event.clientX,
+              y: event.clientY
             }
           }
         }

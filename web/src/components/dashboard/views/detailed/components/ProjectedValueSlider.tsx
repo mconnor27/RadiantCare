@@ -69,15 +69,67 @@ export default function ProjectedValueSlider({
   const [actualValue, setActualValue] = useState(currentValue) // Track the actual numeric value (can exceed slider range)
   const [animationStage, setAnimationStage] = useState<'initial' | 'width' | 'height' | 'complete'>('initial')
   const [isAnimating, setIsAnimating] = useState(true) // For scale-all animation
-  
+
   // Funnel animation progress (0 -> 1) for smooth transitions
   const [funnelProgress, setFunnelProgress] = useState({ width: 0, height: 0 })
+
+  // Track scroll offset to adjust position
+  const [scrollOffset, setScrollOffset] = useState({ x: 0, y: 0 })
+  const initialScrollRef = React.useRef({ x: 0, y: 0 })
 
   useEffect(() => {
     setSliderValue(currentValue)
     setInputValue(formatCurrency(currentValue))
     setActualValue(currentValue)
   }, [currentValue])
+
+  // Track page scroll to move slider with cell
+  useEffect(() => {
+    if (!isVisible) {
+      setScrollOffset({ x: 0, y: 0 })
+      return
+    }
+
+    // Capture initial scroll position
+    const initialWindowY = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop
+    const initialWindowX = window.pageXOffset || document.documentElement.scrollLeft || document.body.scrollLeft
+
+    initialScrollRef.current = {
+      x: initialWindowX,
+      y: initialWindowY
+    }
+
+    // Use requestAnimationFrame to continuously monitor scroll position
+    let rafId: number
+    let lastUpdateTime = 0
+    const updateThrottle = 8 // Update at most every 8ms (120fps max)
+
+    const checkScrollPosition = (timestamp: number) => {
+      const currentScrollY = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop
+      const currentScrollX = window.pageXOffset || document.documentElement.scrollLeft || document.body.scrollLeft
+
+      const newOffset = {
+        x: currentScrollX - initialScrollRef.current.x,
+        y: currentScrollY - initialScrollRef.current.y
+      }
+
+      // Only update if position changed AND enough time has passed (throttle)
+      const timeSinceLastUpdate = timestamp - lastUpdateTime
+      if ((newOffset.x !== scrollOffset.x || newOffset.y !== scrollOffset.y) && timeSinceLastUpdate >= updateThrottle) {
+        setScrollOffset(newOffset)
+        lastUpdateTime = timestamp
+      }
+
+      // Continue monitoring
+      rafId = requestAnimationFrame(checkScrollPosition)
+    }
+
+    rafId = requestAnimationFrame(checkScrollPosition)
+
+    return () => {
+      cancelAnimationFrame(rafId)
+    }
+  }, [isVisible])
 
   // Resolve immutable baselines
   const annualizedValue = annualizedBaseline
@@ -236,16 +288,16 @@ export default function ProjectedValueSlider({
   // Calculate animation positions
   const sliderWidth = 320
   const padding = 20
-  
+
   // Determine if slider should render to the right or left
   const spaceOnRight = window.innerWidth - (position.x + padding)
   const shouldRenderLeft = spaceOnRight < sliderWidth + 30 // 30px safety margin
-  
+
   const finalPosition = {
-    top: position.y - 50,
-    left: shouldRenderLeft 
-      ? Math.max(10, (originRect?.left || position.x) - sliderWidth - padding) // Render to left using cell's left edge
-      : position.x + padding // Render to right
+    top: position.y - 50 - scrollOffset.y,
+    left: shouldRenderLeft
+      ? Math.max(10, (originRect?.left || position.x) - sliderWidth - padding - scrollOffset.x) // Render to left using cell's left edge
+      : position.x + padding - scrollOffset.x // Render to right
   }
   
   // Calculate the actual height of the slider content for smooth animation
@@ -256,16 +308,16 @@ export default function ProjectedValueSlider({
   const targetHeight = `${sliderHeight}px`
   
   const startPosition = originPosition ? {
-    top: originPosition.y - 10,
+    top: originPosition.y - 10 - scrollOffset.y,
     left: shouldRenderLeft && originRect
-      ? originRect.left - 10  // Start from cell's left edge when rendering left
-      : originPosition.x - 10  // Start from click position when rendering right
+      ? originRect.left - 10 - scrollOffset.x  // Start from cell's left edge when rendering left
+      : originPosition.x - 10 - scrollOffset.x  // Start from click position when rendering right
   } : finalPosition
 
   return (
     <>
       {/* Backdrop */}
-      <div 
+      <div
         style={{
           position: 'fixed',
           top: 0,
@@ -280,22 +332,33 @@ export default function ProjectedValueSlider({
       />
       
       {/* Funnel connector (optional) */}
-      {originRect && ANIMATION_CONFIG.style === 'two-stage' && funnelProgress.width > 0 && (
+      {originRect && ANIMATION_CONFIG.style === 'two-stage' && funnelProgress.width > 0 && (() => {
+        // Adjust originRect coordinates for scroll offset
+        const adjustedOriginRect = {
+          top: originRect.top - scrollOffset.y,
+          bottom: originRect.bottom - scrollOffset.y,
+          left: originRect.left - scrollOffset.x,
+          right: originRect.right - scrollOffset.x,
+          width: originRect.width,
+          height: originRect.height
+        }
+
+        return (
         <svg
-          width={shouldRenderLeft 
-            ? Math.max(20, originRect.left - (finalPosition.left + sliderWidth) + 10)
-            : Math.max(20, finalPosition.left - originRect.right + 10)
+          width={shouldRenderLeft
+            ? Math.max(20, adjustedOriginRect.left - (finalPosition.left + sliderWidth) + 10)
+            : Math.max(20, finalPosition.left - adjustedOriginRect.right + 10)
           }
           height={Math.max(
-            originRect.height + 20,
-            Math.abs(originRect.bottom - (finalPosition.top - 10)) + 60
+            adjustedOriginRect.height + 20,
+            Math.abs(adjustedOriginRect.bottom - (finalPosition.top - 10)) + 60
           )}
           style={{
-            position: 'absolute',
-            top: Math.min(originRect.top, finalPosition.top - 10),
-            left: shouldRenderLeft 
+            position: 'fixed',
+            top: Math.min(adjustedOriginRect.top, finalPosition.top - 10),
+            left: shouldRenderLeft
               ? finalPosition.left + sliderWidth - 5
-              : originRect.right - 5,
+              : adjustedOriginRect.right - 5,
             pointerEvents: 'none',
             zIndex: 1599,
             opacity: 0.9
@@ -311,17 +374,17 @@ export default function ProjectedValueSlider({
           {(() => {
             // Animate funnel dimensions based on progress
             const fullWidth = shouldRenderLeft
-              ? Math.max(20, originRect.left - (finalPosition.left + sliderWidth) + 10)
-              : Math.max(20, finalPosition.left - originRect.right + 10)
+              ? Math.max(20, adjustedOriginRect.left - (finalPosition.left + sliderWidth) + 10)
+              : Math.max(20, finalPosition.left - adjustedOriginRect.right + 10)
             const animatedWidth = Math.max(10, fullWidth * (0.1 + 0.9 * funnelProgress.width))
-            
+
             // Calculate positions relative to our SVG container
-            const svgTop = Math.min(originRect.top, finalPosition.top - 10)
+            const svgTop = Math.min(adjustedOriginRect.top, finalPosition.top - 10)
             const sliderJoinYAbs = (finalPosition.top - 10) + 20 // 20px down from slider top
-            
+
             // Cell edge spans the full cell border height
-            const startY1 = originRect.top - svgTop
-            const startY2 = originRect.bottom - svgTop - 2
+            const startY1 = adjustedOriginRect.top - svgTop
+            const startY2 = adjustedOriginRect.bottom - svgTop - 2
             
             // Slider edge animates smoothly from cell level to slider level during width phase
             const cellCenterY = (startY1 + startY2) / 2
@@ -375,12 +438,13 @@ export default function ProjectedValueSlider({
             )
           })()}
         </svg>
-      )}
+        )
+      })()}
       
       {/* Slider Panel */}
       <div
         style={{
-          position: 'absolute',
+          position: 'fixed',
           ...(ANIMATION_CONFIG.style === 'two-stage' ? {
             // Two-stage animation styles
             top: animationStage === 'initial' ? startPosition.top : finalPosition.top,
