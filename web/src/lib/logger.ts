@@ -53,6 +53,8 @@ class Logger {
   private namespaceLevels: Map<LogNamespace, LogLevel> = new Map()
   private enabledNamespaces: Set<LogNamespace> | null = null
   private isProduction: boolean
+  private isAdminUser: boolean = false
+  private allowNonAdminLogging: boolean = false
 
   constructor() {
     this.isProduction = import.meta.env.PROD
@@ -80,12 +82,21 @@ class Logger {
           this.enabledNamespaces = new Set(namespaces)
         }
       }
+
+      // Load admin logging configuration
+      const allowNonAdmin = localStorage.getItem('LOG_ALLOW_NON_ADMIN')
+      this.allowNonAdminLogging = allowNonAdmin === 'true'
     } catch (e) {
       // localStorage might not be available
     }
   }
 
   private shouldLog(namespace: LogNamespace, level: LogLevel): boolean {
+    // Check admin permissions first
+    if (!this.isAdminUser && !this.allowNonAdminLogging) {
+      return false
+    }
+
     // Check if namespace is enabled
     if (this.enabledNamespaces !== null && !this.enabledNamespaces.has(namespace)) {
       return false
@@ -181,17 +192,35 @@ class Logger {
     this.setLevel('NONE')
   }
 
+  // Admin permission methods
+  setIsAdmin(isAdmin: boolean): void {
+    this.isAdminUser = isAdmin
+  }
+
+  setAllowNonAdminLogging(allow: boolean): void {
+    this.allowNonAdminLogging = allow
+    try {
+      localStorage.setItem('LOG_ALLOW_NON_ADMIN', allow.toString())
+    } catch (e) {
+      // Ignore localStorage errors
+    }
+  }
+
   getConfiguration(): {
     globalLevel: LogLevel
     isProduction: boolean
     enabledNamespaces: LogNamespace[] | 'ALL'
     namespaceLevels: Record<string, LogLevel>
+    isAdminUser: boolean
+    allowNonAdminLogging: boolean
   } {
     return {
       globalLevel: this.globalLevel,
       isProduction: this.isProduction,
       enabledNamespaces: this.enabledNamespaces === null ? 'ALL' : Array.from(this.enabledNamespaces),
-      namespaceLevels: Object.fromEntries(this.namespaceLevels.entries())
+      namespaceLevels: Object.fromEntries(this.namespaceLevels.entries()),
+      isAdminUser: this.isAdminUser,
+      allowNonAdminLogging: this.allowNonAdminLogging
     }
   }
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTimes, faRotateLeft, faBug } from '@fortawesome/free-solid-svg-icons'
 import { logger, type LogLevel, type LogNamespace } from '../../lib/logger'
+import { useAuth } from '../auth/AuthProvider'
 
 interface LoggingControlPanelProps {
   isOpen: boolean
@@ -58,9 +59,12 @@ const PRESETS = {
 }
 
 export default function LoggingControlPanel({ isOpen, onClose }: LoggingControlPanelProps) {
+  const { profile } = useAuth()
+  const isAdmin = profile?.is_admin || false
   const [currentLevel, setCurrentLevel] = useState<LogLevel>('INFO')
   const [enabledNamespaces, setEnabledNamespaces] = useState<LogNamespace[]>(ALL_NAMESPACES)
   const [config, setConfig] = useState(logger.getConfiguration())
+  const [allowNonAdminLogging, setAllowNonAdminLogging] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
@@ -71,9 +75,15 @@ export default function LoggingControlPanel({ isOpen, onClose }: LoggingControlP
           ? ALL_NAMESPACES
           : currentConfig.enabledNamespaces
       )
+      setAllowNonAdminLogging(currentConfig.allowNonAdminLogging)
       setConfig(currentConfig)
     }
   }, [isOpen])
+
+  // Update logger's admin status whenever profile changes
+  useEffect(() => {
+    logger.setIsAdmin(isAdmin)
+  }, [isAdmin])
 
   const handleLevelChange = (level: LogLevel) => {
     setCurrentLevel(level)
@@ -124,13 +134,23 @@ export default function LoggingControlPanel({ isOpen, onClose }: LoggingControlP
     const defaultLevel = import.meta.env.PROD ? 'WARN' : 'INFO'
     setCurrentLevel(defaultLevel as LogLevel)
     setEnabledNamespaces(ALL_NAMESPACES)
+    setAllowNonAdminLogging(false)
     logger.setLevel(defaultLevel as LogLevel)
     logger.enableAll()
+    logger.setAllowNonAdminLogging(false)
     setConfig(logger.getConfiguration())
 
     // Clear localStorage
     localStorage.removeItem('LOG_LEVEL')
     localStorage.removeItem('LOG_NAMESPACES')
+    localStorage.removeItem('LOG_ALLOW_NON_ADMIN')
+  }
+
+  const handleToggleNonAdminLogging = () => {
+    const newValue = !allowNonAdminLogging
+    setAllowNonAdminLogging(newValue)
+    logger.setAllowNonAdminLogging(newValue)
+    setConfig(logger.getConfiguration())
   }
 
   if (!isOpen) return null
@@ -236,8 +256,70 @@ export default function LoggingControlPanel({ isOpen, onClose }: LoggingControlP
               <div>Active Namespaces: <span style={{ fontWeight: 500, color: '#374151' }}>
                 {config.enabledNamespaces === 'ALL' ? 'All' : config.enabledNamespaces.length}
               </span></div>
+              <div>User Role: <span style={{ fontWeight: 500, color: '#374151' }}>{isAdmin ? 'Admin' : 'Non-Admin'}</span></div>
+              <div>Non-Admin Logging: <span style={{ fontWeight: 500, color: allowNonAdminLogging ? '#10b981' : '#ef4444' }}>
+                {allowNonAdminLogging ? 'Enabled' : 'Disabled'}
+              </span></div>
             </div>
           </div>
+
+          {/* Admin Controls */}
+          {isAdmin && (
+            <div
+              style={{
+                background: '#fef3c7',
+                border: '2px solid #f59e0b',
+                padding: 16,
+                borderRadius: 8,
+                marginBottom: 24,
+                fontSize: 13
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: 8, color: '#92400e', display: 'flex', alignItems: 'center', gap: 8 }}>
+                Admin Controls
+              </div>
+              <div style={{ marginBottom: 12, color: '#78350f' }}>
+                Enable logging for non-admin users. When disabled, only admins can see logs.
+              </div>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '12px 14px',
+                  background: '#fff',
+                  border: `2px solid ${allowNonAdminLogging ? '#10b981' : '#e5e7eb'}`,
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  transition: 'all 0.2s',
+                  userSelect: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#fefce8'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#fff'
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={allowNonAdminLogging}
+                  onChange={handleToggleNonAdminLogging}
+                  style={{
+                    width: 18,
+                    height: 18,
+                    cursor: 'pointer',
+                    accentColor: '#10b981'
+                  }}
+                />
+                <span style={{ color: allowNonAdminLogging ? '#059669' : '#6b7280' }}>
+                  Allow Non-Admin Users to See Logs
+                </span>
+              </label>
+            </div>
+          )}
 
           {/* Quick Presets */}
           <div style={{ marginBottom: 28 }}>

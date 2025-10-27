@@ -3804,6 +3804,13 @@ export function Dashboard() {
     ytdRefreshCallbackRef.current = callback
   }, [])
 
+  // Initialize logger admin status
+  useEffect(() => {
+    if (profile) {
+      logger.setIsAdmin(profile.is_admin || false)
+    }
+  }, [profile])
+
   // Warn user before closing tab/window if there's unsaved work
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
