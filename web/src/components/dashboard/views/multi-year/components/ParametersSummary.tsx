@@ -142,7 +142,7 @@ export default function ParametersSummary() {
     const hasExtraBaselineCol = Boolean(baselineLabel)
     // Narrow columns slightly when we include the extra Baseline column so everything fits without overflow
     const labelColWidth = hasExtraBaselineCol ? 120 : 150
-    const yearColWidth = hasExtraBaselineCol ? 120 : 135
+    const yearColWidth = hasExtraBaselineCol ? 120 : 130
     const columnGap = hasExtraBaselineCol ? 3 : 4
     const baselineDataObj = (() => {
       if (!baselineLabel) return null
@@ -166,7 +166,7 @@ export default function ParametersSummary() {
       return null
     })()
     return (
-      <div style={{ marginTop: 0, border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, background: '#f9fafb', maxWidth: 1000, marginLeft: 'auto', marginRight: 'auto' }}>
+      <div style={{ marginTop: 0, border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, background: '#f9fafb', marginLeft: 'auto', marginRight: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>Scenario {scenario} Parameters</div>
           <div style={{ fontSize: 13, color: '#374151', border: '1px solid #e5e7eb', borderRadius: 6, padding: 5, background: '#ffffff' }}>

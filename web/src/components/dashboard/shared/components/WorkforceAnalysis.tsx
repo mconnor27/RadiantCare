@@ -211,9 +211,9 @@ export default function WorkforceAnalysis() {
   }
 
   return (
-    <div className="workforce-analysis-container" style={{ marginTop: 0, maxWidth: store.scenarioBEnabled ? 1200 : 1000, margin: '16px auto 0 auto' }}>
+    <div className="workforce-analysis-container" style={{ marginTop: 0, margin: '16px auto 0 auto', maxWidth: 'none', minWidth: 'auto' }}>
 
-      <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#ffffff', padding: 4, position: 'relative', maxWidth: 1000, margin: '0 auto' }}>
+      <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#ffffff', padding: 4, position: 'relative', margin: '0 auto' }}>
         <Plot
           key={`plot-${isolated?.scenario}-${isolated?.metric}-${highlight?.scenario}-${highlight?.metric}`}
           data={(() => {
@@ -317,9 +317,9 @@ export default function WorkforceAnalysis() {
       </div>
 
       {/* Table */}
-      <div style={{ marginTop: 8, overflowX: 'visible', border: '1px solid #e5e7eb', borderRadius: 6, padding: 8, background: '#ffffff' }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>Workforce Metrics By Year</div>
-        <div style={{ display: 'grid', gridTemplateColumns: `2.2fr repeat(${years.length}, 1fr) 1fr`, gap: 2, fontWeight: 600 }}>
+      <div style={{ marginTop: 8, overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 6, padding: 0, background: '#ffffff', width: '100%' }}>
+        <div style={{ fontWeight: 600, marginBottom: 8, padding: '8px 8px 0 8px' }}>Workforce Metrics By Year</div>
+        <div style={{ display: 'grid', gridTemplateColumns: `${store.scenarioBEnabled ? '2.8fr' : '1.3fr'} repeat(${years.length}, 0.9fr) 0.9fr`, gap: 0, fontWeight: 600, padding: '0 8px' }}>
           <div>Metric</div>
           {years.map((y) => (
             <div key={y} style={{ textAlign: 'right' }}>{y}</div>
@@ -332,9 +332,9 @@ export default function WorkforceAnalysis() {
           className="table-row-hover"
           style={{
             display: 'grid',
-            gridTemplateColumns: `2.2fr repeat(${years.length}, 1fr) 1fr`,
-            gap: 4,
-            padding: '2px 0',
+            gridTemplateColumns: `${store.scenarioBEnabled ? '2.8fr' : '1.3fr'} repeat(${years.length}, 0.9fr) 0.9fr`,
+            gap: 0,
+            padding: '2px 8px',
             borderTop: '1px solid #f0f0f0',
             background: isRowHighlighted('A', 'worked') ? 'rgba(59, 130, 246, 0.08)' : '#f9fafb',
             cursor: 'pointer'
@@ -360,9 +360,9 @@ export default function WorkforceAnalysis() {
             className="table-row-hover"
             style={{
               display: 'grid',
-              gridTemplateColumns: `2.2fr repeat(${years.length}, 1fr) 1fr`,
-              gap: 4,
-              padding: '2px 0',
+              gridTemplateColumns: `${store.scenarioBEnabled ? '2.8fr' : '1.3fr'} repeat(${years.length}, 0.9fr) 0.9fr`,
+              gap: 0,
+              padding: '2px 8px',
               borderTop: '1px solid #f0f0f0',
               background: isRowHighlighted('B', 'worked') ? 'rgba(59, 130, 246, 0.08)' : '#f9fafb',
               cursor: 'pointer'
@@ -388,9 +388,9 @@ export default function WorkforceAnalysis() {
           className="table-row-hover"
           style={{
             display: 'grid',
-            gridTemplateColumns: `2.2fr repeat(${years.length}, 1fr) 1fr`,
-            gap: 4,
-            padding: '2px 0',
+            gridTemplateColumns: `${store.scenarioBEnabled ? '2.8fr' : '1.3fr'} repeat(${years.length}, 0.9fr) 0.9fr`,
+            gap: 0,
+            padding: '2px 8px',
             borderTop: '1px solid #f0f0f0',
             background: isRowHighlighted('A', 'vacation') ? 'rgba(59, 130, 246, 0.08)' : '#faf9f7',
             cursor: 'pointer'
@@ -416,9 +416,9 @@ export default function WorkforceAnalysis() {
             className="table-row-hover"
             style={{
               display: 'grid',
-              gridTemplateColumns: `2.2fr repeat(${years.length}, 1fr) 1fr`,
-              gap: 4,
-              padding: '2px 0',
+              gridTemplateColumns: `${store.scenarioBEnabled ? '2.8fr' : '1.3fr'} repeat(${years.length}, 0.9fr) 0.9fr`,
+              gap: 0,
+              padding: '2px 8px',
               borderTop: '1px solid #f0f0f0',
               background: isRowHighlighted('B', 'vacation') ? 'rgba(59, 130, 246, 0.08)' : '#faf9f7',
               cursor: 'pointer'
@@ -438,6 +438,7 @@ export default function WorkforceAnalysis() {
             </div>
           </div>
         )}
+        <div style={{ height: '8px' }}></div>
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faChevronRight, faArrowLeft } from '@fortawesome/free-solid-svg-icons'
 
@@ -16,7 +16,7 @@ type Chapter = {
 type Section = {
   id: string
   title: string
-  content: JSX.Element
+  content: React.JSX.Element
 }
 
 export default function ComprehensiveHelpGuide({ isOpen, onClose }: ComprehensiveHelpGuideProps) {
@@ -46,13 +46,6 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
                 <li><strong>Collaboration:</strong> Share scenarios publicly or keep them private, with shareable links for team review</li>
                 <li><strong>Comprehensive Modeling:</strong> Model physician hires, retirements, promotions, and compensation changes</li>
               </ul>
-              <h4>Who Should Use This Tool</h4>
-              <ul>
-                <li>Practice administrators planning physician compensation budgets</li>
-                <li>Financial analysts modeling different growth scenarios</li>
-                <li>Leadership teams making strategic workforce decisions</li>
-                <li>Medical directors planning medical director hours allocation</li>
-              </ul>
             </>
           )
         },
@@ -70,13 +63,13 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
                 <li><strong>Data Processing:</strong> Raw data is parsed, normalized, and enriched with site-specific breakdowns</li>
                 <li><strong>State Management:</strong> Application state is managed via Zustand with persistent storage</li>
                 <li><strong>Compensation Engine:</strong> Complex compensation calculations run on-demand based on current parameters</li>
-                <li><strong>Visualization:</strong> Interactive charts render using Recharts library with custom styling</li>
+                <li><strong>Visualization:</strong> Interactive plotly charts with custom styling</li>
               </ol>
               <h4>Data Persistence</h4>
               <ul>
                 <li><strong>Browser Storage:</strong> Current state is saved locally in the browser for session continuity</li>
                 <li><strong>Database Storage:</strong> Scenarios are saved to Supabase PostgreSQL database for sharing and long-term storage</li>
-                <li><strong>Caching:</strong> QBO data is cached for 15 minutes to reduce API calls and improve performance</li>
+                <li><strong>Caching:</strong> QBO data is cached to reduce API calls and improve performance</li>
               </ul>
             </>
           )
@@ -93,12 +86,11 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
           content: (
             <>
               <p>
-                The <strong>YTD Detailed View</strong> provides comprehensive tracking and analysis of the current fiscal year (2025) with a focus on year-to-date performance, projections, and physician compensation details.
+                The <strong>YTD Detailed View</strong> provides comprehensive tracking and analysis of the current fiscal year with a focus on year-to-date performance, projections, and physician compensation details.
               </p>
               <h4>Primary Components</h4>
               <ul>
                 <li><strong>Interactive Income Chart:</strong> Historical comparison with current year tracking</li>
-                <li><strong>Sync Button:</strong> Manual refresh of QuickBooks Online data</li>
                 <li><strong>Chart Controls:</strong> Extensive customization options for data visualization</li>
                 <li><strong>Yearly Data Grid:</strong> Detailed P&L breakdown with editable projections</li>
                 <li><strong>Physicians Editor:</strong> Manage current year physician roster and compensation</li>
@@ -124,20 +116,17 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
           content: (
             <>
               <p>
-                The <strong>Sync Button</strong> (top-right of the screen) triggers a manual refresh of financial data from QuickBooks Online.
+                <strong>Syncing with QuickBooks Online.</strong>
               </p>
               <h4>Sync Behavior</h4>
               <ul>
-                <li><strong>Automatic Caching:</strong> Data is cached for 15 minutes to prevent excessive API calls</li>
-                <li><strong>Manual Override:</strong> Click the sync button to force a fresh data fetch regardless of cache status</li>
-                <li><strong>Visual Feedback:</strong> A loading spinner indicates when data is being fetched</li>
+                <li><strong>Automatic Caching:</strong> Data is cached for to prevent excessive API calls</li>
                 <li><strong>Error Handling:</strong> If sync fails, an error message is displayed with retry options</li>
               </ul>
               <h4>What Gets Synced</h4>
               <ul>
                 <li><strong>Daily Income Data:</strong> Therapy income broken down by site (Lacey, Centralia, Aberdeen)</li>
-                <li><strong>Summary Totals:</strong> Year-to-date therapy income and related metrics</li>
-                <li><strong>Equity Partner Payments:</strong> Current year equity partner distributions</li>
+                <li><strong>Partner Payments:</strong> Current year partner distributions</li>
               </ul>
               <h4>Sync Timestamp</h4>
               <p>
@@ -152,12 +141,12 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
           content: (
             <>
               <p>
-                The main chart displays therapy income trends over time, comparing the current year (2025) with historical data (2016-2024).
+                The main chart displays therapy income trends over time, comparing the current year with historical data (2016+).
               </p>
               <h4>Chart Features</h4>
               <ul>
                 <li><strong>Historical Comparison:</strong> Overlay current year performance against previous years</li>
-                <li><strong>Normalization:</strong> Toggle normalization to compare years with different numbers of working days</li>
+                <li><strong>Normalization:</strong> Toggle normalization to compare relative pace</li>
                 <li><strong>Multiple Modes:</strong> Switch between line charts, bar charts, and proportion views</li>
                 <li><strong>Site Breakdown:</strong> Toggle between total income view and per-site income analysis</li>
                 <li><strong>Smoothing:</strong> Apply moving average smoothing to reduce noise in daily data</li>
@@ -169,8 +158,8 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
               </p>
               <ul>
                 <li><strong>Chart Mode:</strong> Line, Bar, or Proportion</li>
-                <li><strong>Normalization:</strong> Enable to adjust for different numbers of working days</li>
-                <li><strong>Smoothing:</strong> Slider to adjust moving average window (0-30 days)</li>
+                <li><strong>Normalization:</strong> Enable to normalize relative to each year's total income</li>
+                <li><strong>Smoothing:</strong> Slider to adjust moving average window</li>
                 <li><strong>Year Selection:</strong> Toggle individual years on/off</li>
                 <li><strong>Income Mode:</strong> Switch between total income and per-site breakdown</li>
                 <li><strong>Site Visibility:</strong> Show/hide individual sites (Lacey, Centralia, Aberdeen)</li>
@@ -178,7 +167,7 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
               </ul>
               <h4>Proportion Mode</h4>
               <p>
-                Proportion mode shows the <em>relative</em> income distribution over time, with each day's income stacked to 100%. This is useful for identifying seasonal patterns and site mix changes.
+                Proportion mode shows the <em>relative</em> income distribution over time, with each month's income stacked to 100%. This is useful for identifying seasonal patterns and site mix changes.
               </p>
             </>
           )
@@ -196,14 +185,14 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
                 The grid is divided into two main columns:
               </p>
               <ul>
-                <li><strong>Actual:</strong> Year-to-date values from QuickBooks Online (gray background, read-only)</li>
-                <li><strong>Projected:</strong> Estimated values for the full year (white background, some editable)</li>
+                <li><strong>Actual:</strong> Year-to-date values from QuickBooks Online (read-only)</li>
+                <li><strong>Projected:</strong> Estimated values for the full year (editable)</li>
               </ul>
               <h4>Row Categories</h4>
               <ul>
                 <li><strong>Income:</strong> Therapy income (total and by site) and medical director income</li>
                 <li><strong>Costs:</strong> Non-employment costs, staff payroll, locums, medical director hours</li>
-                <li><strong>Physicians:</strong> Per-physician compensation breakdown with salary, bonus, benefits, MD hours</li>
+                <li><strong>Physicians:</strong> Per-physician compensation breakdown with salary, bonus, benefits, medical director hours</li>
                 <li><strong>Summary:</strong> Total compensation, net income, and per-partner distribution</li>
               </ul>
               <h4>Editable Fields</h4>
@@ -217,7 +206,7 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
                 <li>Projected medical director hours (shared and PRCS)</li>
               </ul>
               <p>
-                When you edit a projected value, the cell border changes to <span style={{color: '#7c2a83'}}>purple</span> to indicate a manual override. A reset icon appears on hover to revert to the calculated value.
+                When you edit a projected value, the cell border changes color to indicate a manual override.
               </p>
               <h4>Physician Rows</h4>
               <p>
@@ -227,7 +216,7 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
                 <li><strong>Base Salary:</strong> For employees (W-2 compensation)</li>
                 <li><strong>Benefits:</strong> Medical/dental/vision costs</li>
                 <li><strong>Bonuses:</strong> Signing or relocation bonuses</li>
-                <li><strong>Medical Director Hours:</strong> Portion of shared MD income allocated to this physician</li>
+                <li><strong>Medical Director Hours:</strong> Portion of shared medical director income allocated to this physician</li>
                 <li><strong>K-1 Distribution:</strong> For partners (equity distribution based on net income)</li>
                 <li><strong>Total Compensation:</strong> Sum of all compensation components</li>
               </ul>
@@ -240,7 +229,7 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
           content: (
             <>
               <p>
-                The <strong>Physicians Editor</strong> allows you to manage the current year (2025) physician roster, including adding, editing, and removing physicians.
+                The <strong>Physicians Editor</strong> allows you to manage the current year physician roster, including adding, editing, and removing physicians.
               </p>
               <h4>Physician Types</h4>
               <ul>
@@ -255,7 +244,7 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
               <ul>
                 <li><strong>Name:</strong> Physician's name</li>
                 <li><strong>Weeks Off:</strong> Vacation/time off weeks (affects K-1 distribution)</li>
-                <li><strong>Medical Director Hours:</strong> Toggle whether this partner receives MD hours income</li>
+                <li><strong>Medical Director Hours:</strong> Toggle whether this partner receives PRCS medical director hours</li>
                 <li><strong>MD Hours Percentage:</strong> Percentage of shared MD hours allocated to this partner (must sum to 100% across all partners)</li>
                 <li><strong>Additional Days Worked:</strong> Internal locums coverage days ($2,000 per day)</li>
               </ul>
@@ -286,11 +275,11 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
                 <li><strong>Partner Portion of Year:</strong> Fraction of year working (0 = retired all year, 1 = worked full year)</li>
                 <li><strong>K-1 Distribution:</strong> Pro-rated based on partner portion</li>
                 <li><strong>Buyout Cost:</strong> One-time payment upon retirement</li>
-                <li><strong>Trailing Shared MD:</strong> Fixed dollar amount of MD hours income after retirement (prior year retirees only)</li>
+                <li><strong>Trailing Shared Medical Director Hours:</strong> Fixed dollar amount of medical director hours income after retirement (prior year retirees only)</li>
               </ul>
               <h4>Medical Director Hours Redistribution</h4>
               <p>
-                When you adjust one partner's MD hours percentage, the system automatically redistributes the change proportionally across other active partners to maintain a 100% total. Prior year retirees (partner portion = 0) receive a fixed dollar amount and do not participate in percentage-based redistribution.
+                When you adjust one partner's hours percentage, the system automatically redistributes the change proportionally across other active partners to maintain a 100% total. Prior year retirees (partner portion = 0) receive a fixed dollar amount and do not participate in percentage-based redistribution.
               </p>
               <h4>Drag and Drop Reordering</h4>
               <p>
@@ -321,15 +310,6 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
                 <li><strong>Add Consulting Services:</strong> Add consulting services to the designated PRCS director</li>
                 <li><strong>Add Internal Locums:</strong> Add $2,000 per additional day worked</li>
               </ol>
-              <h4>Display Format</h4>
-              <p>
-                Each partner shows:
-              </p>
-              <ul>
-                <li><strong>Name:</strong> Partner's name</li>
-                <li><strong>Total Compensation:</strong> Projected annual K-1 distribution</li>
-                <li><strong>Color-coded Status:</strong> Green if working full year, orange if transitioning, red if retiring</li>
-              </ul>
               <h4>Real-Time Updates</h4>
               <p>
                 The compensation panel updates instantly when you change:
@@ -337,7 +317,7 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
               <ul>
                 <li>Projected therapy income</li>
                 <li>Projected costs</li>
-                <li>Physician details (salary, weeks off, MD hours percentage)</li>
+                <li>Physician details (salary, weeks off, medical director hours percentage)</li>
                 <li>Medical director hours amounts</li>
                 <li>PRCS director selection</li>
               </ul>
@@ -356,13 +336,13 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
           content: (
             <>
               <p>
-                The <strong>Multi-Year View</strong> provides long-term financial projections spanning 2025-2030 (6 years total), with the ability to compare two scenarios side-by-side.
+                The <strong>Multi-Year View</strong> provides long-term financial projections (5) years total), with the ability to compare two scenarios side-by-side.
               </p>
               <h4>Key Features</h4>
               <ul>
                 <li><strong>Baseline Selection:</strong> Choose between 2024 Data, 2025 Data, or Custom baseline</li>
                 <li><strong>Scenario A vs B:</strong> Load and compare two different projection scenarios</li>
-                <li><strong>Year Tabs:</strong> Switch between Baseline, 2026, 2027, 2028, 2029, 2030</li>
+                <li><strong>Year Tabs:</strong> Switch between Baseline and Projected Years</li>
                 <li><strong>Projection Settings:</strong> Configure growth rates and global parameters</li>
                 <li><strong>Physician Planning:</strong> Model hires, retirements, promotions across years</li>
                 <li><strong>Visual Comparison:</strong> Chart showing income, costs, and compensation trends</li>
@@ -385,7 +365,7 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
           content: (
             <>
               <p>
-                The <strong>Projection Settings Panel</strong> (left side) controls the global growth rates and parameters applied to all future years (2026-2030).
+                The <strong>Projection Settings Panel</strong> (left side) controls the global growth rates and parameters applied to all future years.
               </p>
               <h4>Income Settings</h4>
               <ul>
@@ -400,21 +380,21 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
               </ul>
               <h4>Medical Director Settings</h4>
               <ul>
-                <li><strong>Shared MD Hours:</strong> Annual budget for shared medical director hours (typically $90k-$120k)</li>
-                <li><strong>PRCS MD Hours:</strong> Annual budget for PRCS medical director hours (typically $40k-$60k)</li>
-                <li><strong>Consulting Services Agreement:</strong> Annual amount for consulting services (typically $15k-$30k)</li>
+                <li><strong>Shared MD Hours:</strong> Annual budget for shared medical director hours</li>
+                <li><strong>PRCS MD Hours:</strong> Annual budget for PRCS medical director hours</li>
+                <li><strong>Consulting Services Agreement:</strong> Annual amount for consulting services (biller)</li>
               </ul>
               <h4>Other Settings</h4>
               <ul>
-                <li><strong>Locums Costs:</strong> Annual budget for locums coverage (typically $80k-$150k)</li>
+                <li><strong>Locums Costs:</strong> Annual budget for locums coverage</li>
               </ul>
               <h4>Global Application</h4>
               <p>
-                When you change a projection setting, it applies to <em>all</em> future years (2026-2030) unless you've manually overridden a specific year. Overridden years are marked with a purple indicator and are not affected by global changes.
+                When you change a projection setting, it applies to <em>all</em> future years unless you've manually overridden a specific year. Overridden years are marked with a purple indicator and are not affected by global changes.
               </p>
               <h4>Per-Year Overrides</h4>
               <p>
-                You can override projection settings for individual years by clicking on the fields in the year panel. Overridden fields show a purple border. To reset to the global projection setting, click the reset icon that appears on hover.
+                You can override projection settings for individual years. To reset to the global projection setting, click the reset icon that appears at the top of the year panel.
               </p>
             </>
           )
@@ -425,7 +405,7 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
           content: (
             <>
               <p>
-                Each year (Baseline, 2026-2030) has its own <strong>Year Panel</strong> showing financial parameters and physician roster for that specific year.
+                Each year (Baseline, projected) has its own <strong>Year Panel</strong> showing financial parameters and physician roster for that specific year.
               </p>
               <h4>Baseline Tab (2025 or 2024)</h4>
               <p>
@@ -439,7 +419,7 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
               <p>
                 The baseline tab is typically read-only in Multi-Year view. To edit the 2025 baseline, switch to YTD Detailed view.
               </p>
-              <h4>Future Year Tabs (2026-2030)</h4>
+              <h4>Future Year Tabs</h4>
               <p>
                 Each future year tab shows:
               </p>
@@ -456,7 +436,7 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
               <ul>
                 <li><strong>New Physician:</strong> Added to all future years automatically</li>
                 <li><strong>Employee to Partner:</strong> Becomes a full partner in subsequent years</li>
-                <li><strong>Partner to Retire:</strong> Removed from subsequent years (but may receive trailing MD hours)</li>
+                <li><strong>Partner to Retire:</strong> Removed from subsequent years (but may receive trailing medical director hours)</li>
                 <li><strong>Salary Changes:</strong> Propagate forward (minimum, not exact - allows increases)</li>
                 <li><strong>Weeks Off Changes:</strong> Propagate forward (minimum, not exact)</li>
               </ul>
@@ -479,13 +459,13 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
           content: (
             <>
               <p>
-                The <strong>Historic and Projection Chart</strong> (top of the screen) provides a visual timeline of financial trends from 2016 through 2030.
+                The <strong>Historic and Projection Chart</strong> (top of the screen) provides a visual timeline of financial trends from 2016 through the projected years.
               </p>
               <h4>Chart Sections</h4>
               <ul>
-                <li><strong>Historic Data (2016-2024):</strong> Actual historical financial performance (gray background)</li>
+                <li><strong>Historic Data (2016+):</strong> Actual historical financial performance (gray background)</li>
                 <li><strong>Baseline Year (2025 or 2024):</strong> Starting point for projections (highlighted)</li>
-                <li><strong>Projections (2026-2030):</strong> Forecasted values based on projection settings (white background)</li>
+                <li><strong>Projections:</strong> Forecasted values based on projection settings (white background)</li>
               </ul>
               <h4>Data Series</h4>
               <p>
@@ -583,40 +563,8 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
               </p>
               <h4>Workforce Metrics</h4>
               <ul>
-                <li><strong>Total Physicians:</strong> Count of all active physicians by year</li>
-                <li><strong>Partners:</strong> Number of equity partners</li>
-                <li><strong>Employees:</strong> Number of W-2 employees</li>
-                <li><strong>Full-Time Equivalents (FTE):</strong> Adjusted count accounting for part-year physicians</li>
-              </ul>
-              <h4>Workforce Events</h4>
-              <p>
-                The panel highlights key workforce events:
-              </p>
-              <ul>
-                <li><strong>New Hires:</strong> Physicians starting in a given year (green indicator)</li>
-                <li><strong>Promotions:</strong> Employees promoted to partner (blue indicator)</li>
-                <li><strong>Retirements:</strong> Partners retiring (red indicator)</li>
-                <li><strong>Terminations:</strong> Employees leaving (orange indicator)</li>
-              </ul>
-              <h4>Timeline View</h4>
-              <p>
-                The workforce analysis shows a timeline from baseline through 2030, making it easy to visualize:
-              </p>
-              <ul>
-                <li>When new physicians are needed</li>
-                <li>Impact of retirements on staffing levels</li>
-                <li>Partner vs employee mix over time</li>
-                <li>FTE capacity trends</li>
-              </ul>
-              <h4>Strategic Planning</h4>
-              <p>
-                Use this panel to:
-              </p>
-              <ul>
-                <li>Ensure adequate physician coverage across all years</li>
-                <li>Plan recruitment timelines to offset retirements</li>
-                <li>Maintain appropriate partner-to-employee ratios</li>
-                <li>Identify years with significant workforce transitions</li>
+                <li><strong>Weeks Worked:</strong> Total weeks worked by all physicians by year</li>
+                <li><strong>Weeks Vacation:</strong> Total weeks vacation by all physicians by year</li>
               </ul>
             </>
           )
@@ -637,14 +585,14 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
               </p>
               <h4>Current Year Settings</h4>
               <p>
-                <strong>Purpose:</strong> Save customizations to the 2025 baseline year only.
+                <strong>Purpose:</strong> Save customizations to the current year only.
               </p>
               <p>
                 <strong>What's Saved:</strong>
               </p>
               <ul>
-                <li>2025 physician roster (names, types, salaries, benefits, MD hours)</li>
-                <li>2025 financial parameters (therapy income, costs, medical director hours)</li>
+                <li>Physician roster (names, types, salaries, benefits, medical director hours)</li>
+                <li>Financial parameters (therapy income, costs, medical director hours)</li>
                 <li>Grid overrides (manual adjustments to projected values)</li>
               </ul>
               <p>
@@ -652,17 +600,16 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
               </p>
               <ul>
                 <li>Chart settings (normalization, smoothing, color scheme, etc.)</li>
-                <li>Future year projections (2026-2030)</li>
+                <li>Future year projections</li>
                 <li>Projection settings (growth rates)</li>
               </ul>
               <p>
                 <strong>Use Cases:</strong>
               </p>
               <ul>
-                <li>Save different 2025 staffing configurations to compare</li>
+                <li>Save different staffing configurations to compare</li>
                 <li>Create "what-if" scenarios for mid-year adjustments</li>
                 <li>Share current year assumptions with colleagues</li>
-                <li>Track changes to baseline over time</li>
               </ul>
               <h4>Projection Scenarios</h4>
               <p>
@@ -672,16 +619,16 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
                 <strong>What's Saved:</strong>
               </p>
               <ul>
-                <li>Baseline mode selection (2024 Data, 2025 Data, or Custom)</li>
+                <li>Baseline mode selection (2024 Data, 2025 Data, or Custom) (reference only)</li>
                 <li>Projection settings (all growth rates and global parameters)</li>
-                <li>Future year data (2026-2030 physicians, overrides, parameters)</li>
+                <li>Future year data (physicians, overrides, parameters)</li>
                 <li>Custom baseline values (for Custom mode only)</li>
               </ul>
               <p>
                 <strong>What's NOT Saved:</strong>
               </p>
               <ul>
-                <li>2025 baseline customizations (use Current Year Settings for this)</li>
+                <li>Current year baseline customizations (use Current Year Settings for this)</li>
                 <li>Chart settings or UI preferences</li>
               </ul>
               <p>
@@ -691,14 +638,14 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
                 <li>Compare different long-term growth assumptions</li>
                 <li>Model different physician hiring/retirement plans</li>
                 <li>Create conservative vs aggressive projections</li>
-                <li>Share strategic planning scenarios with leadership</li>
+                <li>Share strategic planning scenarios</li>
               </ul>
               <h4>Modular Design</h4>
               <p>
                 The separation of Current Year Settings and Projection scenarios allows you to mix and match:
               </p>
               <ul>
-                <li>Load a Current Year Settings scenario to update your 2025 baseline</li>
+                <li>Load a Current Year Settings scenario to update your current year baseline</li>
                 <li>Load a Projection scenario to apply 5-year growth assumptions</li>
                 <li>Both can be loaded independently without overwriting each other</li>
               </ul>
@@ -893,7 +840,7 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
                 <strong>Current Year Settings:</strong>
               </p>
               <ul>
-                <li>Changing any 2025 financial parameter (income, costs, MD hours)</li>
+                <li>Changing any financial parameter (income, costs, MD hours)</li>
                 <li>Adding, editing, or removing physicians</li>
                 <li>Reordering physicians</li>
                 <li>Manually overriding projected values in the grid</li>
@@ -953,13 +900,11 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
               </p>
               <ol>
                 <li>Calculate distributable net income (total income - costs - employee salaries - partner costs)</li>
-                <li>Subtract medical director hours and consulting services (distributed separately)</li>
+                <li>Subtract medical director hours (distributed separately)</li>
                 <li>Adjust each partner's share based on vacation weeks (partners with more time off receive slightly less)</li>
                 <li>Distribute remaining income proportionally</li>
                 <li>Add back allocated medical director hours (based on percentage)</li>
-                <li>Add consulting services (PRCS director only)</li>
                 <li>Add internal locums ($2,000 per additional day worked)</li>
-                <li>Subtract partner benefits (medical/dental/vision - automatically included for all partners)</li>
               </ol>
               <p>
                 <strong>Key Fields:</strong>
@@ -1250,20 +1195,23 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
               </p>
               <h4>Calculation Steps (High Level)</h4>
               <ol>
-                <li><strong>Calculate Total Income:</strong> Therapy income + medical director hours + consulting services</li>
-                <li><strong>Calculate Total Costs:</strong> Non-employment costs + staff payroll + locums + misc employment costs</li>
-                <li><strong>Calculate Employee Costs:</strong> Sum of all employee salaries, benefits, and bonuses</li>
-                <li><strong>Calculate Partner Fixed Costs:</strong> Partner benefits + buyout costs</li>
-                <li><strong>Calculate Net Income:</strong> Total income - total costs - employee costs - partner fixed costs</li>
-                <li><strong>Set Aside MD Hours and Consulting:</strong> Subtract from net income (distributed separately)</li>
-                <li><strong>Calculate Distributable Income:</strong> Net income - MD hours - consulting services</li>
-                <li><strong>Calculate Weeks-Adjusted Shares:</strong> Adjust each partner's share based on vacation weeks</li>
-                <li><strong>Distribute Base K-1:</strong> Allocate distributable income proportionally to partners</li>
-                <li><strong>Add MD Hours:</strong> Add back each partner's allocated MD hours (percentage-based)</li>
-                <li><strong>Add Consulting Services:</strong> Add consulting services to PRCS director</li>
-                <li><strong>Add Internal Locums:</strong> Add $2,000 per additional day worked</li>
-                <li><strong>Subtract Partner Benefits:</strong> Deduct medical/dental/vision from each partner's K-1</li>
+                <li><strong>Calculate Total Employee Costs:</strong> Sum of all employee salaries, benefits, payroll taxes, and bonuses (includes pro-rated amounts for partial-year employees)</li>
+                <li><strong>Calculate Buyout Costs:</strong> One-time buyout payments for retiring partners</li>
+                <li><strong>Calculate Delayed W2 Costs:</strong> Prior-year W2 payments for employeeToPartner transitions (paid in the year after transition)</li>
+                <li><strong>Calculate Medical Director Allocations:</strong> Shared MD hours allocated by percentage to active partners + PRCS MD hours assigned to PRCS director + trailing MD amounts for prior-year retirees</li>
+                <li><strong>Calculate Additional Days Worked:</strong> Internal locums coverage ($2,000 per day) for partners who work extra shifts</li>
+                <li><strong>Calculate Total Income:</strong> Therapy income + shared MD hours + PRCS MD hours + consulting services</li>
+                <li><strong>Calculate Total Costs:</strong> Non-employment costs + staff employment costs + locums + misc employment costs + total employee costs + buyouts + delayed W2</li>
+                <li><strong>Calculate Base Pool:</strong> Total income - total costs</li>
+                <li><strong>Calculate Distributable Pool:</strong> Base pool - total MD allocations - total additional days allocations (these are distributed separately)</li>
+                <li><strong>Calculate Partner FTE Weights:</strong> For each partner: (52 - weeksOff) × partnerPortionOfYear, then normalize by total weight</li>
+                <li><strong>Distribute Pool by FTE Weight:</strong> Each partner gets their FTE weight percentage of the distributable pool</li>
+                <li><strong>Add Direct Allocations:</strong> Add to each partner: MD hours allocation + additional days worked + buyout (if retiring) + trailing MD (if prior-year retiree)</li>
+                <li><strong>Final Partner K-1:</strong> Pool share + all direct allocations = total partner compensation</li>
               </ol>
+              <p>
+                <strong>Important Note:</strong> Partner benefits (medical/dental/vision insurance) are NOT individually tracked or subtracted from K-1 distributions. These costs are included in the practice's general overhead (non-employment costs or misc costs) and reduce the overall pool available for distribution.
+              </p>
               <h4>Weeks Adjustment Logic</h4>
               <p>
                 Partners with more vacation receive slightly less K-1 distribution:

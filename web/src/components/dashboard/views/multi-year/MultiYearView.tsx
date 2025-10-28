@@ -1492,19 +1492,19 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
         </div>
       </div>
       
-      <div className="overall-compensation-container" style={{ maxWidth: 1000, minWidth: 1000, margin: '0 auto' }}>
+      <div className="overall-compensation-container" style={{ maxWidth: store.scenarioBEnabled ? 1100 : 1000, minWidth: store.scenarioBEnabled ? 1100 : 1000, margin: '0 auto' }}>
         <CollapsibleSection title="Overall Compensation Summary (2025-2030)" open={overallOpen} onOpenChange={setOverallOpen} tone="neutral">
           <OverallCompensationSummary />
         </CollapsibleSection>
       </div>
 
-      <div className="workforce-analysis-container" style={{ maxWidth: 1000, minWidth: 1000, margin: '0 auto' }}>
+      <div className="workforce-analysis-container" style={{ maxWidth: store.scenarioBEnabled ? 1000 : 1000, minWidth: store.scenarioBEnabled ? 1000 : 1000, margin: '0 auto' }}>
         <CollapsibleSection title="Workforce Analysis" open={workforceOpen} onOpenChange={setWorkforceOpen} tone="neutral">
           <WorkforceAnalysis />
         </CollapsibleSection>
       </div>
 
-      <div className="parameters-summary-container" style={{ maxWidth: 1000, minWidth: 1000, margin: '0 auto' }}>
+      <div className="parameters-summary-container" style={{ maxWidth: store.scenarioBEnabled ? 1000 : 1000, minWidth: store.scenarioBEnabled ? 1000 : 1000, margin: '0 auto' }}>
         <CollapsibleSection title="Parameters Summary" open={parametersOpen} onOpenChange={setParametersOpen} tone="neutral">
           <ParametersSummary />
         </CollapsibleSection>
