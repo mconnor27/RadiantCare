@@ -2,10 +2,10 @@ import { useState } from 'react'
 import createPlotlyComponent from 'react-plotly.js/factory'
 import Plotly from 'plotly.js-dist-min'
 const Plot = createPlotlyComponent(Plotly)
-import { useDashboardStore } from '../../../Dashboard'
-import { getEmployeePortionOfYear, getPartnerPortionOfYear } from '../calculations'
-import { scenario2024Defaults } from '../defaults'
-import type { FutureYear, Physician } from '../types'
+import { useDashboardStore } from '../../../../Dashboard'
+import { getEmployeePortionOfYear, getPartnerPortionOfYear } from '../../../shared/calculations'
+import { scenario2024Defaults } from '../../../shared/defaults'
+import type { FutureYear, Physician } from '../../../shared/types'
 
 // Helper function to calculate weeks worked for a physician in a given year
 // Accounts for mid-year retirement, termination, and vacation

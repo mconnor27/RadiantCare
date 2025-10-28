@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTimes, faRotateLeft, faBug } from '@fortawesome/free-solid-svg-icons'
 import { logger, type LogLevel, type LogNamespace } from '../../lib/logger'
 import { useAuth } from '../auth/AuthProvider'
+import { getAppSetting, updateAppSetting, subscribeToAppSettings } from '../../services/settingsService'
 
 interface LoggingControlPanelProps {
   isOpen: boolean
@@ -75,10 +76,35 @@ export default function LoggingControlPanel({ isOpen, onClose }: LoggingControlP
           ? ALL_NAMESPACES
           : currentConfig.enabledNamespaces
       )
-      setAllowNonAdminLogging(currentConfig.allowNonAdminLogging)
+      setAllowNonAdminLogging(currentConfig.dbAllowNonAdminLogging || currentConfig.allowNonAdminLogging)
       setConfig(currentConfig)
     }
   }, [isOpen])
+
+  // Load database setting on mount and subscribe to changes
+  useEffect(() => {
+    const loadDbSetting = async () => {
+      const dbValue = await getAppSetting('allow_non_admin_logging')
+      if (dbValue !== null) {
+        const allow = dbValue === true || dbValue === 'true'
+        logger.setDbAllowNonAdminLogging(allow)
+        setAllowNonAdminLogging(allow)
+        setConfig(logger.getConfiguration())
+      }
+    }
+
+    loadDbSetting()
+
+    // Subscribe to real-time changes
+    const unsubscribe = subscribeToAppSettings(async (settings) => {
+      const allow = settings['allow_non_admin_logging'] === true || settings['allow_non_admin_logging'] === 'true'
+      logger.setDbAllowNonAdminLogging(allow)
+      setAllowNonAdminLogging(allow)
+      setConfig(logger.getConfiguration())
+    })
+
+    return unsubscribe
+  }, [])
 
   // Update logger's admin status whenever profile changes
   useEffect(() => {
@@ -130,7 +156,7 @@ export default function LoggingControlPanel({ isOpen, onClose }: LoggingControlP
     setConfig(logger.getConfiguration())
   }
 
-  const handleReset = () => {
+  const handleReset = async () => {
     const defaultLevel = import.meta.env.PROD ? 'WARN' : 'INFO'
     setCurrentLevel(defaultLevel as LogLevel)
     setEnabledNamespaces(ALL_NAMESPACES)
@@ -138,6 +164,13 @@ export default function LoggingControlPanel({ isOpen, onClose }: LoggingControlP
     logger.setLevel(defaultLevel as LogLevel)
     logger.enableAll()
     logger.setAllowNonAdminLogging(false)
+
+    // Reset database setting if admin
+    if (isAdmin) {
+      await updateAppSetting('allow_non_admin_logging', false)
+      logger.setDbAllowNonAdminLogging(false)
+    }
+
     setConfig(logger.getConfiguration())
 
     // Clear localStorage
@@ -146,11 +179,21 @@ export default function LoggingControlPanel({ isOpen, onClose }: LoggingControlP
     localStorage.removeItem('LOG_ALLOW_NON_ADMIN')
   }
 
-  const handleToggleNonAdminLogging = () => {
+  const handleToggleNonAdminLogging = async () => {
     const newValue = !allowNonAdminLogging
     setAllowNonAdminLogging(newValue)
-    logger.setAllowNonAdminLogging(newValue)
-    setConfig(logger.getConfiguration())
+
+    // Update database (only admins can do this due to RLS)
+    const success = await updateAppSetting('allow_non_admin_logging', newValue)
+
+    if (success) {
+      logger.setDbAllowNonAdminLogging(newValue)
+      setConfig(logger.getConfiguration())
+    } else {
+      // Revert on failure
+      setAllowNonAdminLogging(!newValue)
+      alert('Failed to update setting. You may not have admin permissions.')
+    }
   }
 
   if (!isOpen) return null
@@ -257,7 +300,7 @@ export default function LoggingControlPanel({ isOpen, onClose }: LoggingControlP
                 {config.enabledNamespaces === 'ALL' ? 'All' : config.enabledNamespaces.length}
               </span></div>
               <div>User Role: <span style={{ fontWeight: 500, color: '#374151' }}>{isAdmin ? 'Admin' : 'Non-Admin'}</span></div>
-              <div>Non-Admin Logging: <span style={{ fontWeight: 500, color: allowNonAdminLogging ? '#10b981' : '#ef4444' }}>
+              <div>Non-Admin Logging (Global): <span style={{ fontWeight: 500, color: allowNonAdminLogging ? '#10b981' : '#ef4444' }}>
                 {allowNonAdminLogging ? 'Enabled' : 'Disabled'}
               </span></div>
             </div>
@@ -279,7 +322,7 @@ export default function LoggingControlPanel({ isOpen, onClose }: LoggingControlP
                 Admin Controls
               </div>
               <div style={{ marginBottom: 12, color: '#78350f' }}>
-                Enable logging for non-admin users. When disabled, only admins can see logs.
+                Enable logging for non-admin users <strong>globally</strong>. When disabled, only admins can see logs. This setting is stored in the database and applies to all users.
               </div>
               <label
                 style={{

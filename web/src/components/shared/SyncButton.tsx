@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useDashboardStore } from '../../../../Dashboard'
-import { authenticatedFetch } from '../../../../../lib/api'
-import { useAuth } from '../../../../auth/AuthProvider'
-import { removeTooltip } from '../../../shared/tooltips'
+import { useDashboardStore } from '../Dashboard'
+import { authenticatedFetch } from '../../lib/api'
+import { useAuth } from '../auth/AuthProvider'
+import { removeTooltip } from '../dashboard/shared/tooltips'
 
 interface SyncButtonProps {
   environment: 'production' | 'sandbox'

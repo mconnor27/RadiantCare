@@ -1,9 +1,9 @@
 import { Fragment } from 'react'
-import { logger } from '../../../../lib/logger'
-import { useDashboardStore, usePartnerComp, calculateProjectedValue } from '../../../Dashboard'
-import { calculateDelayedW2Payment, computeDefaultNonMdEmploymentCosts, getTotalIncome, getEmployeePortionOfYear } from '../calculations'
-import { createTooltip, removeTooltip } from '../tooltips'
-import { currency } from '../utils'
+import { logger } from '../../../../../lib/logger'
+import { useDashboardStore, usePartnerComp, calculateProjectedValue } from '../../../../Dashboard'
+import { calculateDelayedW2Payment, computeDefaultNonMdEmploymentCosts, getTotalIncome, getEmployeePortionOfYear } from '../../../shared/calculations'
+import { createTooltip, removeTooltip } from '../../../shared/tooltips'
+import { currency } from '../../../shared/utils'
 import {
   scenario2024Defaults,
   scenarioADefaultsByYear,
@@ -29,9 +29,9 @@ import {
   STAFF_W2_TOOLTIP,
   MISC_EMPLOYMENT_COSTS_TOOLTIP,
   CONSULTING_SERVICES_TOOLTIP
-} from '../defaults'
-import type { ScenarioKey, FutureYear } from '../types'
-import PhysiciansEditor from './PhysiciansEditor'
+} from '../../../shared/defaults'
+import type { ScenarioKey, FutureYear } from '../../../shared/types'
+import PhysiciansEditor from '../../../shared/components/PhysiciansEditor'
 
 // Helper function to check if a specific year has overrides
 function hasYearOverrides(year: number, scenario: ScenarioKey, store: any): boolean {

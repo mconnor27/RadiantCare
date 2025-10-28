@@ -197,7 +197,7 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
               </ul>
               <h4>Editable Fields</h4>
               <p>
-                Some projected values can be manually adjusted by clicking on the cell (indicated by dotted underline on hover):
+                Projected values can be manually adjusted by clicking on the cell or modifying the corresponding value in the physician panel, eg:
               </p>
               <ul>
                 <li>Projected therapy income (total or by site)</li>
@@ -294,21 +294,26 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
           content: (
             <>
               <p>
-                The <strong>Partner Compensation Panel</strong> (right side of the screen) shows real-time compensation calculations for all partners based on current projections.
+                The <strong>Partner Compensation Panel</strong> shows real-time compensation calculations for all partners based on current projections.
               </p>
               <h4>Compensation Calculation</h4>
               <p>
                 Partner compensation is calculated using a multi-step process:
               </p>
               <ol>
-                <li><strong>Calculate Net Income:</strong> Total income minus all costs and employee salaries</li>
-                <li><strong>Subtract Partner Costs:</strong> Deduct partner benefits and buyout costs</li>
-                <li><strong>Calculate Distributable Income:</strong> Net income minus medical director hours and consulting services</li>
-                <li><strong>Calculate Weeks Adjustment:</strong> Adjust each partner's share based on vacation weeks</li>
-                <li><strong>Distribute to Partners:</strong> Allocate distributable income proportionally based on adjusted weeks</li>
-                <li><strong>Add MD Hours:</strong> Add back each partner's allocated portion of medical director hours</li>
-                <li><strong>Add Consulting Services:</strong> Add consulting services to the designated PRCS director</li>
-                <li><strong>Add Internal Locums:</strong> Add $2,000 per additional day worked</li>
+                <li><strong>Calculate Total Employee Costs:</strong> Sum of all employee salaries, benefits, payroll taxes, and bonuses (includes pro-rated amounts for partial-year employees)</li>
+                <li><strong>Calculate Buyout Costs:</strong> One-time buyout payments for retiring partners</li>
+                <li><strong>Calculate Delayed W2 Costs:</strong> Prior-year W2 payments for employeeToPartner transitions (paid in the year after transition)</li>
+                <li><strong>Calculate Medical Director Allocations:</strong> Shared MD hours allocated by percentage to active partners + PRCS MD hours assigned to PRCS director + trailing MD amounts for prior-year retirees</li>
+                <li><strong>Calculate Additional Days Worked:</strong> Internal locums coverage ($2,000 per day) for partners who work extra shifts</li>
+                <li><strong>Calculate Total Income:</strong> Therapy income + shared MD hours + PRCS MD hours + consulting services</li>
+                <li><strong>Calculate Total Costs:</strong> Non-employment costs + staff employment costs + locums + misc employment costs + total employee costs + buyouts + delayed W2</li>
+                <li><strong>Calculate Base Pool:</strong> Total income - total costs</li>
+                <li><strong>Calculate Distributable Pool:</strong> Base pool - total MD allocations - total additional days allocations (these are distributed separately)</li>
+                <li><strong>Calculate Partner FTE Weights:</strong> For each partner: (52 - weeksOff) × partnerPortionOfYear, then normalize by total weight</li>
+                <li><strong>Distribute Pool by FTE Weight:</strong> Each partner gets their FTE weight percentage of the distributable pool</li>
+                <li><strong>Add Direct Allocations:</strong> Add to each partner: MD hours allocation + additional days worked + buyout (if retiring) + trailing MD (if prior-year retiree)</li>
+                <li><strong>Final Partner K-1:</strong> Pool share + all direct allocations = total partner compensation</li>
               </ol>
               <h4>Real-Time Updates</h4>
               <p>
@@ -427,7 +432,7 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
                 <li><strong>Financial Summary:</strong> Projected therapy income, costs, and net income</li>
                 <li><strong>Physicians Editor:</strong> Manage physician roster for this specific year</li>
                 <li><strong>Compensation Summary:</strong> Projected partner compensation for this year</li>
-                <li><strong>Override Indicators:</strong> Purple borders on fields that have been manually overridden</li>
+                <li><strong>Override Indicators:</strong> Dots on years with fields that have been manually overridden</li>
               </ul>
               <h4>Physician Propagation</h4>
               <p>
@@ -437,8 +442,8 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
                 <li><strong>New Physician:</strong> Added to all future years automatically</li>
                 <li><strong>Employee to Partner:</strong> Becomes a full partner in subsequent years</li>
                 <li><strong>Partner to Retire:</strong> Removed from subsequent years (but may receive trailing medical director hours)</li>
-                <li><strong>Salary Changes:</strong> Propagate forward (minimum, not exact - allows increases)</li>
-                <li><strong>Weeks Off Changes:</strong> Propagate forward (minimum, not exact)</li>
+                <li><strong>Salary Changes:</strong> When you increase a physician's salary in a future year, that new salary becomes the minimum for all subsequent years (they can be increased further, but not reduced below that level)</li>
+                <li><strong>Weeks Off Changes:</strong> When you increase a physician's weeks off in a future year, that becomes the minimum for all subsequent years (they can take more time off, but not less)</li>
               </ul>
               <h4>Parameters Summary</h4>
               <p>
@@ -833,7 +838,7 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
               </p>
               <h4>Dirty Indicators</h4>
               <p>
-                When you modify a loaded scenario, a yellow dot appears next to the scenario name in the toolbar. This indicates "dirty" state - you have unsaved changes.
+                When you modify a loaded scenario, a yellow reset icon appears next to the scenario name in the toolbar. This indicates "dirty" state - you have unsaved changes.
               </p>
               <h4>What Triggers Dirty State</h4>
               <p>
@@ -850,7 +855,7 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
               </p>
               <ul>
                 <li>Changing projection settings (growth rates, global parameters)</li>
-                <li>Adding, editing, or removing physicians in future years (2026-2030)</li>
+                <li>Adding, editing, or removing physicians in future years</li>
                 <li>Manually overriding projected values in future years</li>
                 <li>Changing baseline mode</li>
               </ul>
@@ -904,7 +909,7 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
                 <li>Adjust each partner's share based on vacation weeks (partners with more time off receive slightly less)</li>
                 <li>Distribute remaining income proportionally</li>
                 <li>Add back allocated medical director hours (based on percentage)</li>
-                <li>Add internal locums ($2,000 per additional day worked)</li>
+                <li>Add internal locums ($500 per consult)</li>
               </ol>
               <p>
                 <strong>Key Fields:</strong>
@@ -1321,7 +1326,7 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
                 <li>Parse daily income records into time series format</li>
                 <li>Allocate income to sites based on QBO account classifications</li>
                 <li>Calculate cumulative income for chart display</li>
-                <li>Normalize by working days (if normalization enabled)</li>
+                <li>Normalize (if enabled)</li>
                 <li>Apply smoothing (moving average) if configured</li>
               </ol>
             </>
@@ -1329,18 +1334,18 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
         },
         {
           id: 'historical-data',
-          title: 'Historical Data (2016-2024)',
+          title: 'Historical Data (2016-prior year)',
           content: (
             <>
               <p>
-                Historical financial data from 2016-2024 is embedded in the application for comparison purposes.
+                Historical financial data is embedded in the application for comparison purposes.
               </p>
               <h4>Data Source</h4>
               <p>
                 Historical data is stored in static JSON files within the application:
               </p>
               <ul>
-                <li><strong>therapyIncomeParser.ts:</strong> Contains daily therapy income data for 2016-2024</li>
+                <li><strong>therapyIncomeParser.ts:</strong> Contains daily therapy income data for 2016 to the prior year</li>
                 <li><strong>defaults.ts:</strong> Contains annual summary data (total income, costs, physician rosters)</li>
               </ul>
               <h4>Data Structure</h4>
@@ -1351,12 +1356,6 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
                 <li><strong>Daily Income:</strong> Date, cumulative income, site breakdowns (where available)</li>
                 <li><strong>Annual Summaries:</strong> Total income, costs, employment costs, net income</li>
                 <li><strong>Physician Rosters:</strong> Historical physician configurations by year</li>
-              </ul>
-              <h4>Data Quality Notes</h4>
-              <ul>
-                <li><strong>Site Data:</strong> Site-specific breakdowns are only available for recent years (2020+)</li>
-                <li><strong>Working Days:</strong> Historical working days per year are calculated based on actual calendar data</li>
-                <li><strong>Normalization:</strong> When normalization is enabled, income is divided by working days to enable fair comparison</li>
               </ul>
               <h4>Updating Historical Data</h4>
               <p>
@@ -1552,11 +1551,8 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
               <h4>Shared Components</h4>
               <ul>
                 <li><strong>PhysiciansEditor:</strong> Reusable physician roster management (used in both views)</li>
-                <li><strong>YearPanel:</strong> Year-specific configuration panel (used in Multi-Year view)</li>
-                <li><strong>OverallCompensationSummary:</strong> Partner compensation display (used in both views)</li>
-                <li><strong>WorkforceAnalysis:</strong> Physician workforce metrics over time</li>
-                <li><strong>ProjectionSettingsControls:</strong> Growth rate configuration (Multi-Year view)</li>
                 <li><strong>CollapsibleSection:</strong> Expandable/collapsible UI sections</li>
+                <li><strong>SyncButton:</strong> QuickBooks sync trigger (used in both views)</li>
               </ul>
               <h4>YTD-Specific Components</h4>
               <ul>
@@ -1564,10 +1560,14 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
                 <li><strong>ChartControls:</strong> Chart customization controls (normalization, smoothing, etc.)</li>
                 <li><strong>YearlyDataGrid:</strong> P&L grid with editable projections</li>
                 <li><strong>PartnerCompensation:</strong> Real-time partner compensation panel</li>
-                <li><strong>SyncButton:</strong> QuickBooks sync trigger</li>
                 <li><strong>ProjectedValueSlider:</strong> Slider for manual projection overrides</li>
                 <li><strong>ColorSchemeSelector:</strong> Chart color palette selector</li>
                 <li><strong>NavigationControls:</strong> Chart navigation (timeframe, year selection)</li>
+                <li><strong>YearPanel:</strong> Year-specific configuration panel (used in both views)</li>
+                <li><strong>OverallCompensationSummary:</strong> Partner compensation display (used in both views)</li>
+                <li><strong>WorkforceAnalysis:</strong> Physician workforce metrics over time</li>
+                <li><strong>ProjectionSettingsControls:</strong> Growth rate configuration (Multi-Year view)</li>
+                <li><strong>MobileWarningModal:</strong> Warning for mobile users</li>
               </ul>
               <h4>Multi-Year Specific Components</h4>
               <ul>
@@ -1589,7 +1589,6 @@ export default function ComprehensiveHelpGuide({ isOpen, onClose }: Comprehensiv
                 <li><strong>ShareLinkButton:</strong> Generate and display shareable links</li>
                 <li><strong>ShareLinkModal:</strong> Modal for copying share links</li>
                 <li><strong>SharedLinkWarningModal:</strong> Warning when loading from shared link</li>
-                <li><strong>MobileWarningModal:</strong> Warning for mobile users</li>
               </ul>
             </>
           )

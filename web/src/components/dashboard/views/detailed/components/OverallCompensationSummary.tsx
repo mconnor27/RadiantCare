@@ -2,10 +2,10 @@ import { useState } from 'react'
 import createPlotlyComponent from 'react-plotly.js/factory'
 import Plotly from 'plotly.js-dist-min'
 const Plot = createPlotlyComponent(Plotly)
-import { useDashboardStore } from '../../../Dashboard'
-import { computeAllCompensationsForYear, computeAllCompensationsForYearWithRetired } from '../../../Dashboard'
-import { currency, currencyOrDash } from '../utils'
-import { DEFAULT_LOCUM_COSTS_2025 } from '../defaults'
+import { useDashboardStore } from '../../../../Dashboard'
+import { computeAllCompensationsForYear, computeAllCompensationsForYearWithRetired } from '../../../../Dashboard'
+import { currency, currencyOrDash } from '../../../shared/utils'
+import { DEFAULT_LOCUM_COSTS_2025 } from '../../../shared/defaults'
 
 export default function OverallCompensationSummary() {
   const store = useDashboardStore()

@@ -55,6 +55,7 @@ class Logger {
   private isProduction: boolean
   private isAdminUser: boolean = false
   private allowNonAdminLogging: boolean = false
+  private dbAllowNonAdminLogging: boolean = false
 
   constructor() {
     this.isProduction = import.meta.env.PROD
@@ -93,7 +94,9 @@ class Logger {
 
   private shouldLog(namespace: LogNamespace, level: LogLevel): boolean {
     // Check admin permissions first
-    if (!this.isAdminUser && !this.allowNonAdminLogging) {
+    // Database setting takes precedence over localStorage
+    const allowLogging = this.dbAllowNonAdminLogging || this.allowNonAdminLogging
+    if (!this.isAdminUser && !allowLogging) {
       return false
     }
 
@@ -206,6 +209,11 @@ class Logger {
     }
   }
 
+  // Set database-controlled non-admin logging (takes precedence)
+  setDbAllowNonAdminLogging(allow: boolean): void {
+    this.dbAllowNonAdminLogging = allow
+  }
+
   getConfiguration(): {
     globalLevel: LogLevel
     isProduction: boolean
@@ -213,6 +221,7 @@ class Logger {
     namespaceLevels: Record<string, LogLevel>
     isAdminUser: boolean
     allowNonAdminLogging: boolean
+    dbAllowNonAdminLogging: boolean
   } {
     return {
       globalLevel: this.globalLevel,
@@ -220,7 +229,8 @@ class Logger {
       enabledNamespaces: this.enabledNamespaces === null ? 'ALL' : Array.from(this.enabledNamespaces),
       namespaceLevels: Object.fromEntries(this.namespaceLevels.entries()),
       isAdminUser: this.isAdminUser,
-      allowNonAdminLogging: this.allowNonAdminLogging
+      allowNonAdminLogging: this.allowNonAdminLogging,
+      dbAllowNonAdminLogging: this.dbAllowNonAdminLogging
     }
   }
 }

@@ -1,8 +1,8 @@
-import { useDashboardStore } from '../../../Dashboard'
-import { createTooltip, removeTooltip } from '../tooltips'
-import { currency } from '../utils'
-import type { ScenarioKey, Projection } from '../types'
-import { PROJECTION_DEFAULTS, SLIDER_CONFIGS, UI_DEFAULTS, SHARED_MD_TOOLTIP, PRCS_MD_TOOLTIP_SHORT, THERAPY_INCOME_GROWTH_TOOLTIP, NON_EMPLOYMENT_COSTS_GROWTH_TOOLTIP, STAFF_W2_TOOLTIP, BENEFITS_TOOLTIP, MISC_EMPLOYMENT_COSTS_TOOLTIP, CONSULTING_SERVICES_TOOLTIP } from '../defaults'
+import { useDashboardStore } from '../../../../Dashboard'
+import { createTooltip, removeTooltip } from '../../../shared/tooltips'
+import { currency } from '../../../shared/utils'
+import type { ScenarioKey, Projection } from '../../../shared/types'
+import { PROJECTION_DEFAULTS, SLIDER_CONFIGS, UI_DEFAULTS, SHARED_MD_TOOLTIP, PRCS_MD_TOOLTIP_SHORT, THERAPY_INCOME_GROWTH_TOOLTIP, NON_EMPLOYMENT_COSTS_GROWTH_TOOLTIP, STAFF_W2_TOOLTIP, BENEFITS_TOOLTIP, MISC_EMPLOYMENT_COSTS_TOOLTIP, CONSULTING_SERVICES_TOOLTIP } from '../../../shared/defaults'
 
 export default function ProjectionSettingsControls({ scenario }: { scenario: ScenarioKey }) {
   const store = useDashboardStore()
