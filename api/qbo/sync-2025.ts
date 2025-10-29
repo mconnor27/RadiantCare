@@ -349,7 +349,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    const dailyData = await dailyRes.json()
+    const dailyData = await dailyRes.json() as any
     console.log('Daily P&L fetched successfully, rows:', dailyData?.Rows?.Row?.length || 0)
 
     // 2. Class Summary P&L
@@ -379,7 +379,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    const summaryData = await summaryRes.json()
+    const summaryData = await summaryRes.json() as any
     console.log('Class P&L fetched successfully, rows:', summaryData?.Rows?.Row?.length || 0)
 
     // 3. Balance Sheet
@@ -408,7 +408,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    const equityData = await equityRes.json()
+    const equityData = await equityRes.json() as any
     console.log('Balance Sheet fetched successfully, rows:', equityData?.Rows?.Row?.length || 0)
 
     // Store in cache

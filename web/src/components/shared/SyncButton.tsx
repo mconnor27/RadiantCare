@@ -71,20 +71,18 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
 
   // Handle sync button click
   const handleSyncClick = () => {
-    const hasCustomValues = Object.keys(store.ytdCustomProjectedValues).length > 0
+    // Only show the manual-changes dialog if YTD custom values are truly dirty
+    // Compare against the loaded snapshot so non-dirty sessions with historical overrides don't trigger
+    const snapshotCustom = store.loadedCurrentYearSettingsSnapshot?.ytdCustomProjectedValues || {}
+    const currentCustom = store.ytdCustomProjectedValues || {}
+    const hasTrulyDirtyCustomValues = JSON.stringify(currentCustom) !== JSON.stringify(snapshotCustom)
 
-    // Always show warning about potential refresh
-    if (hasCustomValues) {
+    // Show warning about potential refresh only when dirty grid overrides exist
+    if (hasTrulyDirtyCustomValues) {
       setShowConfirmDialog(true)
     } else {
-      // Show simple warning for users without custom values
-      const confirmed = confirm(
-        'Syncing will refresh your dashboard view with new QuickBooks data.\n\n' +
-        'Any unsaved work in progress may be lost. Continue?'
-      )
-      if (confirmed) {
-        performSync(false)
-      }
+      // No dirty state - proceed with sync immediately
+      performSync(false)
     }
   }
 
@@ -357,11 +355,11 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
             maxWidth: 500,
             animation: 'slideIn 0.3s ease-out'
           }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: 18, fontWeight: 600 }}>Manual Changes Detected</h3>
-            <p style={{ margin: '0 0 24px 0', fontSize: 14, lineHeight: 1.5, color: '#666' }}>
-              You have manually adjusted some projected values in the grid.
-              Syncing will refresh your dashboard with new QuickBooks data.
-              <br/><br/>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: 18, fontWeight: 600, textAlign: 'left' }}>Manual Changes Detected</h3>
+            <p style={{ margin: '0 0 8px 0', fontSize: 14, lineHeight: 1.5, color: '#666', textAlign: 'left' }}>
+              You have manually adjusted some projected values in the grid. Syncing will refresh your dashboard with new QuickBooks data.
+            </p>
+            <p style={{ margin: '0 0 24px 0', fontSize: 14, lineHeight: 1.5, color: '#666', textAlign: 'left' }}>
               Would you like to keep these manual changes or recalculate them based on the new synced data?
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
