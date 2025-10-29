@@ -1,12 +1,12 @@
 {
-  "lastSyncTimestamp": "2025-10-18T22:26:03.923Z",
+  "lastSyncTimestamp": "2025-10-29T04:04:13.560Z",
   "daily": {
     "Header": {
-      "Time": "2025-10-18T15:26:01-07:00",
+      "Time": "2025-10-28T21:04:12-07:00",
       "ReportName": "ProfitAndLoss",
       "ReportBasis": "Cash",
       "StartPeriod": "2025-01-01",
-      "EndPeriod": "2025-10-17",
+      "EndPeriod": "2025-10-28",
       "SummarizeColumnsBy": "Days",
       "Currency": "USD",
       "Option": [
@@ -5253,6 +5253,204 @@
           ]
         },
         {
+          "ColTitle": "Oct 18, 2025",
+          "ColType": "Money",
+          "MetaData": [
+            {
+              "Name": "StartDate",
+              "Value": "2025-10-18"
+            },
+            {
+              "Name": "EndDate",
+              "Value": "2025-10-18"
+            },
+            {
+              "Name": "ColKey",
+              "Value": "Oct 18, 2025"
+            }
+          ]
+        },
+        {
+          "ColTitle": "Oct 19, 2025",
+          "ColType": "Money",
+          "MetaData": [
+            {
+              "Name": "StartDate",
+              "Value": "2025-10-19"
+            },
+            {
+              "Name": "EndDate",
+              "Value": "2025-10-19"
+            },
+            {
+              "Name": "ColKey",
+              "Value": "Oct 19, 2025"
+            }
+          ]
+        },
+        {
+          "ColTitle": "Oct 20, 2025",
+          "ColType": "Money",
+          "MetaData": [
+            {
+              "Name": "StartDate",
+              "Value": "2025-10-20"
+            },
+            {
+              "Name": "EndDate",
+              "Value": "2025-10-20"
+            },
+            {
+              "Name": "ColKey",
+              "Value": "Oct 20, 2025"
+            }
+          ]
+        },
+        {
+          "ColTitle": "Oct 21, 2025",
+          "ColType": "Money",
+          "MetaData": [
+            {
+              "Name": "StartDate",
+              "Value": "2025-10-21"
+            },
+            {
+              "Name": "EndDate",
+              "Value": "2025-10-21"
+            },
+            {
+              "Name": "ColKey",
+              "Value": "Oct 21, 2025"
+            }
+          ]
+        },
+        {
+          "ColTitle": "Oct 22, 2025",
+          "ColType": "Money",
+          "MetaData": [
+            {
+              "Name": "StartDate",
+              "Value": "2025-10-22"
+            },
+            {
+              "Name": "EndDate",
+              "Value": "2025-10-22"
+            },
+            {
+              "Name": "ColKey",
+              "Value": "Oct 22, 2025"
+            }
+          ]
+        },
+        {
+          "ColTitle": "Oct 23, 2025",
+          "ColType": "Money",
+          "MetaData": [
+            {
+              "Name": "StartDate",
+              "Value": "2025-10-23"
+            },
+            {
+              "Name": "EndDate",
+              "Value": "2025-10-23"
+            },
+            {
+              "Name": "ColKey",
+              "Value": "Oct 23, 2025"
+            }
+          ]
+        },
+        {
+          "ColTitle": "Oct 24, 2025",
+          "ColType": "Money",
+          "MetaData": [
+            {
+              "Name": "StartDate",
+              "Value": "2025-10-24"
+            },
+            {
+              "Name": "EndDate",
+              "Value": "2025-10-24"
+            },
+            {
+              "Name": "ColKey",
+              "Value": "Oct 24, 2025"
+            }
+          ]
+        },
+        {
+          "ColTitle": "Oct 25, 2025",
+          "ColType": "Money",
+          "MetaData": [
+            {
+              "Name": "StartDate",
+              "Value": "2025-10-25"
+            },
+            {
+              "Name": "EndDate",
+              "Value": "2025-10-25"
+            },
+            {
+              "Name": "ColKey",
+              "Value": "Oct 25, 2025"
+            }
+          ]
+        },
+        {
+          "ColTitle": "Oct 26, 2025",
+          "ColType": "Money",
+          "MetaData": [
+            {
+              "Name": "StartDate",
+              "Value": "2025-10-26"
+            },
+            {
+              "Name": "EndDate",
+              "Value": "2025-10-26"
+            },
+            {
+              "Name": "ColKey",
+              "Value": "Oct 26, 2025"
+            }
+          ]
+        },
+        {
+          "ColTitle": "Oct 27, 2025",
+          "ColType": "Money",
+          "MetaData": [
+            {
+              "Name": "StartDate",
+              "Value": "2025-10-27"
+            },
+            {
+              "Name": "EndDate",
+              "Value": "2025-10-27"
+            },
+            {
+              "Name": "ColKey",
+              "Value": "Oct 27, 2025"
+            }
+          ]
+        },
+        {
+          "ColTitle": "Oct 28, 2025",
+          "ColType": "Money",
+          "MetaData": [
+            {
+              "Name": "StartDate",
+              "Value": "2025-10-28"
+            },
+            {
+              "Name": "EndDate",
+              "Value": "2025-10-28"
+            },
+            {
+              "Name": "ColKey",
+              "Value": "Oct 28, 2025"
+            }
+          ]
+        },
+        {
           "ColTitle": "Total",
           "ColType": "Money",
           "MetaData": [
@@ -6144,6 +6342,39 @@
               },
               {
                 "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
               }
             ]
           },
@@ -6155,6 +6386,39 @@
                     {
                       "value": "7100 Therapy Income",
                       "id": "51"
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
                     },
                     {
                       "value": ""
@@ -7910,7 +8174,40 @@
                           "value": "7811.13"
                         },
                         {
-                          "value": "1830502.05"
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "5877.71"
+                        },
+                        {
+                          "value": "7802.07"
+                        },
+                        {
+                          "value": "24064.22"
+                        },
+                        {
+                          "value": "12325.55"
+                        },
+                        {
+                          "value": "7225.53"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "10335.98"
+                        },
+                        {
+                          "value": "9414.55"
+                        },
+                        {
+                          "value": "1907547.66"
                         }
                       ],
                       "type": "Data"
@@ -8739,6 +9036,39 @@
                         },
                         {
                           "value": "22364.18"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
                         },
                         {
                           "value": ""
@@ -9674,6 +10004,39 @@
                           "value": ""
                         },
                         {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
                           "value": "387845.58"
                         }
                       ],
@@ -9936,6 +10299,39 @@
                         },
                         {
                           "value": "-62.36"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
                         },
                         {
                           "value": ""
@@ -11439,7 +11835,40 @@
                       "value": "7811.13"
                     },
                     {
-                      "value": "2498153.66"
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "5877.71"
+                    },
+                    {
+                      "value": "7802.07"
+                    },
+                    {
+                      "value": "24064.22"
+                    },
+                    {
+                      "value": "12325.55"
+                    },
+                    {
+                      "value": "7225.53"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "10335.98"
+                    },
+                    {
+                      "value": "9414.55"
+                    },
+                    {
+                      "value": "2575199.27"
                     }
                   ]
                 },
@@ -12322,7 +12751,40 @@
                     "value": ""
                   },
                   {
-                    "value": "133519.18"
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": "12765.00"
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": "146284.18"
                   }
                 ],
                 "type": "Data"
@@ -13205,7 +13667,40 @@
                 "value": "7811.13"
               },
               {
-                "value": "2631672.84"
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "5877.71"
+              },
+              {
+                "value": "20567.07"
+              },
+              {
+                "value": "24064.22"
+              },
+              {
+                "value": "12325.55"
+              },
+              {
+                "value": "7225.53"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "10335.98"
+              },
+              {
+                "value": "9414.55"
+              },
+              {
+                "value": "2721483.45"
               }
             ]
           },
@@ -14090,6 +14585,39 @@
               },
               {
                 "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
               }
             ]
           },
@@ -14101,6 +14629,39 @@
                     {
                       "value": "8100 Insurance Cost",
                       "id": "64"
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
                     },
                     {
                       "value": ""
@@ -15856,6 +16417,39 @@
                           "value": ""
                         },
                         {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
                           "value": "47529.00"
                         }
                       ],
@@ -16580,6 +17174,39 @@
                         },
                         {
                           "value": "3181.00"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
                         },
                         {
                           "value": ""
@@ -17621,6 +18248,39 @@
                       "value": "0.00"
                     },
                     {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
                       "value": "50710.00"
                     }
                   ]
@@ -17633,6 +18293,39 @@
                     {
                       "value": "8106 State/Local Taxes",
                       "id": "67"
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
                     },
                     {
                       "value": ""
@@ -19388,7 +20081,40 @@
                           "value": ""
                         },
                         {
-                          "value": "49943.35"
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "4402.61"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "54345.96"
                         }
                       ],
                       "type": "Data"
@@ -20271,7 +20997,40 @@
                       "value": "0.00"
                     },
                     {
-                      "value": "49943.35"
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "4402.61"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "54345.96"
                     }
                   ]
                 },
@@ -20283,6 +21042,39 @@
                     {
                       "value": "8110 Communications Cost",
                       "id": "70"
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
                     },
                     {
                       "value": ""
@@ -22038,6 +22830,39 @@
                           "value": ""
                         },
                         {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
                           "value": "525.49"
                         }
                       ],
@@ -22920,7 +23745,40 @@
                           "value": ""
                         },
                         {
-                          "value": "1343.16"
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "137.10"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "1480.26"
                         }
                       ],
                       "type": "Data"
@@ -23803,7 +24661,40 @@
                       "value": "0.00"
                     },
                     {
-                      "value": "1868.65"
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "137.10"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "2005.75"
                     }
                   ]
                 },
@@ -23815,6 +24706,39 @@
                     {
                       "value": "8120 Licensure Costs",
                       "id": "77"
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
                     },
                     {
                       "value": ""
@@ -25570,6 +26494,39 @@
                           "value": ""
                         },
                         {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
                           "value": "6614.70"
                         }
                       ],
@@ -25598,6 +26555,39 @@
                         },
                         {
                           "value": "1360.00"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
                         },
                         {
                           "value": ""
@@ -27334,6 +28324,39 @@
                           "value": ""
                         },
                         {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
                           "value": "1050.00"
                         }
                       ],
@@ -28217,6 +29240,39 @@
                       "value": "0.00"
                     },
                     {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
                       "value": "9024.70"
                     }
                   ]
@@ -28229,6 +29285,39 @@
                     {
                       "value": "8310 Promotional Costs",
                       "id": "84"
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
                     },
                     {
                       "value": ""
@@ -29984,6 +31073,39 @@
                           "value": ""
                         },
                         {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
                           "value": "2500.00"
                         }
                       ],
@@ -30866,7 +31988,40 @@
                           "value": ""
                         },
                         {
-                          "value": "5302.18"
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "248.83"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "5551.01"
                         }
                       ],
                       "type": "Data"
@@ -31749,7 +32904,40 @@
                       "value": "0.00"
                     },
                     {
-                      "value": "7802.18"
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "248.83"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "8051.01"
                     }
                   ]
                 },
@@ -31761,6 +32949,39 @@
                     {
                       "value": "8320 Employee Payroll Expense",
                       "id": "93"
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
                     },
                     {
                       "value": ""
@@ -33516,7 +34737,40 @@
                           "value": ""
                         },
                         {
-                          "value": "344178.18"
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "19230.77"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "363408.95"
                         }
                       ],
                       "type": "Data"
@@ -34398,7 +35652,40 @@
                           "value": ""
                         },
                         {
-                          "value": "108662.75"
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "5192.00"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "113854.75"
                         }
                       ],
                       "type": "Data"
@@ -35254,6 +36541,39 @@
                         },
                         {
                           "value": "9000.00"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
                         },
                         {
                           "value": ""
@@ -36162,7 +37482,40 @@
                           "value": ""
                         },
                         {
-                          "value": "6942.95"
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "-33.95"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "859.93"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "7768.93"
                         }
                       ],
                       "type": "Data"
@@ -37044,7 +38397,40 @@
                           "value": ""
                         },
                         {
-                          "value": "31300.06"
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "855.97"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "32156.03"
                         }
                       ],
                       "type": "Data"
@@ -37926,6 +39312,39 @@
                           "value": ""
                         },
                         {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
                           "value": "1352.18"
                         }
                       ],
@@ -38479,6 +39898,39 @@
                         },
                         {
                           "value": "7500.00"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
                         },
                         {
                           "value": ""
@@ -39690,6 +41142,39 @@
                           "value": ""
                         },
                         {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
                           "value": "3867.00"
                         }
                       ],
@@ -40572,6 +42057,39 @@
                           "value": ""
                         },
                         {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
                           "value": "7054.62"
                         }
                       ],
@@ -41128,6 +42646,39 @@
                         },
                         {
                           "value": "7227.37"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
                         },
                         {
                           "value": ""
@@ -42337,7 +43888,40 @@
                       "value": "0.00"
                     },
                     {
-                      "value": "624624.35"
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "25244.79"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "859.93"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "650729.07"
                     }
                   ]
                 },
@@ -42349,6 +43933,39 @@
                     {
                       "value": "8350 Billing Costs",
                       "id": "104"
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
                     },
                     {
                       "value": ""
@@ -44104,6 +45721,39 @@
                           "value": ""
                         },
                         {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
                           "value": "34994.22"
                         }
                       ],
@@ -44957,6 +46607,39 @@
                         },
                         {
                           "value": "209.58"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
                         },
                         {
                           "value": ""
@@ -45869,6 +47552,39 @@
                       "value": "0.00"
                     },
                     {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
                       "value": "36816.03"
                     }
                   ]
@@ -45881,6 +47597,39 @@
                     {
                       "value": "8370 Office Overhead",
                       "id": "109"
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
                     },
                     {
                       "value": ""
@@ -47636,7 +49385,40 @@
                           "value": ""
                         },
                         {
-                          "value": "5023.15"
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "1825.45"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "6848.60"
                         }
                       ],
                       "type": "Data"
@@ -48518,7 +50300,40 @@
                           "value": ""
                         },
                         {
-                          "value": "10865.00"
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "240.00"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "11105.00"
                         }
                       ],
                       "type": "Data"
@@ -48780,6 +50595,39 @@
                         },
                         {
                           "value": "51.50"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
                         },
                         {
                           "value": ""
@@ -50282,7 +52130,40 @@
                           "value": ""
                         },
                         {
-                          "value": "2940.29"
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "98.75"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "3039.04"
                         }
                       ],
                       "type": "Data"
@@ -51165,7 +53046,40 @@
                       "value": "0.00"
                     },
                     {
-                      "value": "21873.94"
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "98.75"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "2065.45"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "24038.14"
                     }
                   ]
                 },
@@ -51177,6 +53091,39 @@
                     {
                       "value": "8500 Capital Expense",
                       "id": "119"
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
+                    },
+                    {
+                      "value": ""
                     },
                     {
                       "value": ""
@@ -52932,6 +54879,39 @@
                           "value": ""
                         },
                         {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
                           "value": "16.88"
                         }
                       ],
@@ -53317,6 +55297,39 @@
                         },
                         {
                           "value": "135.49"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
                         },
                         {
                           "value": ""
@@ -54200,6 +56213,39 @@
                     },
                     {
                       "value": "135.49"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "0.00"
                     },
                     {
                       "value": "0.00"
@@ -55581,7 +57627,40 @@
                 "value": "0.00"
               },
               {
-                "value": "802815.57"
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "25381.89"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "98.75"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "7576.82"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "835873.03"
               }
             ]
           },
@@ -56465,7 +58544,40 @@
                 "value": "7811.13"
               },
               {
-                "value": "1828857.27"
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "-19504.18"
+              },
+              {
+                "value": "20567.07"
+              },
+              {
+                "value": "24064.22"
+              },
+              {
+                "value": "12325.55"
+              },
+              {
+                "value": "7126.78"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "2759.16"
+              },
+              {
+                "value": "9414.55"
+              },
+              {
+                "value": "1885610.42"
               }
             ]
           },
@@ -56477,6 +58589,39 @@
             "ColData": [
               {
                 "value": "Expenses"
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
               },
               {
                 "value": ""
@@ -58223,6 +60368,15 @@
                     "value": ""
                   },
                   {
+                    "value": "-1639.92"
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
                     "value": ""
                   },
                   {
@@ -58232,7 +60386,31 @@
                     "value": ""
                   },
                   {
-                    "value": "0.00"
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": "-1639.92"
                   }
                 ],
                 "type": "Data"
@@ -59106,6 +61284,15 @@
                 "value": "0.00"
               },
               {
+                "value": "-1639.92"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
                 "value": "0.00"
               },
               {
@@ -59116,6 +61303,30 @@
               },
               {
                 "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "-1639.92"
               }
             ]
           },
@@ -59990,7 +62201,7 @@
                 "value": "18287.08"
               },
               {
-                "value": "20294.27"
+                "value": "21934.19"
               },
               {
                 "value": "11335.97"
@@ -59999,7 +62210,40 @@
                 "value": "7811.13"
               },
               {
-                "value": "1828857.27"
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "-19504.18"
+              },
+              {
+                "value": "20567.07"
+              },
+              {
+                "value": "24064.22"
+              },
+              {
+                "value": "12325.55"
+              },
+              {
+                "value": "7126.78"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "2759.16"
+              },
+              {
+                "value": "9414.55"
+              },
+              {
+                "value": "1887250.34"
               }
             ]
           },
@@ -60011,6 +62255,39 @@
             "ColData": [
               {
                 "value": "Other Income"
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
+              },
+              {
+                "value": ""
               },
               {
                 "value": ""
@@ -61766,6 +64043,39 @@
                     "value": ""
                   },
                   {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
                     "value": "1383.51"
                   }
                 ],
@@ -62596,6 +64906,39 @@
               },
               {
                 "value": "90.72"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
               },
               {
                 "value": "0.00"
@@ -63480,6 +65823,39 @@
               },
               {
                 "value": "90.72"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
               },
               {
                 "value": "0.00"
@@ -64408,7 +66784,7 @@
                 "value": "18287.08"
               },
               {
-                "value": "20294.27"
+                "value": "21934.19"
               },
               {
                 "value": "11335.97"
@@ -64417,7 +66793,40 @@
                 "value": "7811.13"
               },
               {
-                "value": "1830240.78"
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "-19504.18"
+              },
+              {
+                "value": "20567.07"
+              },
+              {
+                "value": "24064.22"
+              },
+              {
+                "value": "12325.55"
+              },
+              {
+                "value": "7126.78"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "0.00"
+              },
+              {
+                "value": "2759.16"
+              },
+              {
+                "value": "9414.55"
+              },
+              {
+                "value": "1888633.85"
               }
             ]
           },
@@ -64429,11 +66838,11 @@
   },
   "summary": {
     "Header": {
-      "Time": "2025-10-18T15:26:03-07:00",
+      "Time": "2025-10-28T21:04:12-07:00",
       "ReportName": "ProfitAndLoss",
       "ReportBasis": "Cash",
       "StartPeriod": "2025-01-01",
-      "EndPeriod": "2025-10-17",
+      "EndPeriod": "2025-10-28",
       "SummarizeColumnsBy": "Classes",
       "Currency": "USD",
       "Option": [
@@ -64788,10 +67197,10 @@
                           "value": ""
                         },
                         {
-                          "value": "1829434.26"
+                          "value": "1906479.87"
                         },
                         {
-                          "value": "1829434.26"
+                          "value": "1906479.87"
                         },
                         {
                           "value": ""
@@ -64830,7 +67239,7 @@
                           "value": "1067.79"
                         },
                         {
-                          "value": "1830502.05"
+                          "value": "1907547.66"
                         }
                       ],
                       "type": "Data"
@@ -65041,10 +67450,10 @@
                       "value": "0.00"
                     },
                     {
-                      "value": "2497085.87"
+                      "value": "2574131.48"
                     },
                     {
-                      "value": "2497085.87"
+                      "value": "2574131.48"
                     },
                     {
                       "value": "0.00"
@@ -65083,7 +67492,7 @@
                       "value": "1067.79"
                     },
                     {
-                      "value": "2498153.66"
+                      "value": "2575199.27"
                     }
                   ]
                 },
@@ -65129,25 +67538,25 @@
                     "value": ""
                   },
                   {
-                    "value": "31927.50"
+                    "value": "34560.00"
                   },
                   {
-                    "value": "23625.00"
+                    "value": "26257.50"
                   },
                   {
-                    "value": "56187.50"
+                    "value": "63687.50"
                   },
                   {
                     "value": "8302.50"
                   },
                   {
-                    "value": "120042.50"
+                    "value": "132807.50"
                   },
                   {
                     "value": ""
                   },
                   {
-                    "value": "133519.18"
+                    "value": "146284.18"
                   }
                 ],
                 "type": "Data"
@@ -65169,13 +67578,10 @@
                 "value": "0.00"
               },
               {
-                "value": "2510562.55"
+                "value": "2587608.16"
               },
               {
-                "value": "2510562.55"
-              },
-              {
-                "value": "0.00"
+                "value": "2587608.16"
               },
               {
                 "value": "0.00"
@@ -65193,25 +67599,28 @@
                 "value": "0.00"
               },
               {
-                "value": "31927.50"
+                "value": "0.00"
               },
               {
-                "value": "23625.00"
+                "value": "34560.00"
               },
               {
-                "value": "56187.50"
+                "value": "26257.50"
+              },
+              {
+                "value": "63687.50"
               },
               {
                 "value": "8302.50"
               },
               {
-                "value": "120042.50"
+                "value": "132807.50"
               },
               {
                 "value": "1067.79"
               },
               {
-                "value": "2631672.84"
+                "value": "2721483.45"
               }
             ]
           },
@@ -65619,13 +68028,10 @@
                           "value": ""
                         },
                         {
-                          "value": "47744.19"
+                          "value": "51960.60"
                         },
                         {
-                          "value": "47744.19"
-                        },
-                        {
-                          "value": ""
+                          "value": "51960.60"
                         },
                         {
                           "value": ""
@@ -65643,25 +68049,28 @@
                           "value": ""
                         },
                         {
-                          "value": "588.25"
+                          "value": ""
                         },
                         {
-                          "value": "367.36"
+                          "value": "634.32"
                         },
                         {
-                          "value": "1022.66"
+                          "value": "413.43"
+                        },
+                        {
+                          "value": "1116.72"
                         },
                         {
                           "value": "220.89"
                         },
                         {
-                          "value": "2199.16"
+                          "value": "2385.36"
                         },
                         {
                           "value": ""
                         },
                         {
-                          "value": "49943.35"
+                          "value": "54345.96"
                         }
                       ],
                       "type": "Data"
@@ -65683,13 +68092,10 @@
                       "value": "0.00"
                     },
                     {
-                      "value": "47744.19"
+                      "value": "51960.60"
                     },
                     {
-                      "value": "47744.19"
-                    },
-                    {
-                      "value": "0.00"
+                      "value": "51960.60"
                     },
                     {
                       "value": "0.00"
@@ -65707,25 +68113,28 @@
                       "value": "0.00"
                     },
                     {
-                      "value": "588.25"
+                      "value": "0.00"
                     },
                     {
-                      "value": "367.36"
+                      "value": "634.32"
                     },
                     {
-                      "value": "1022.66"
+                      "value": "413.43"
+                    },
+                    {
+                      "value": "1116.72"
                     },
                     {
                       "value": "220.89"
                     },
                     {
-                      "value": "2199.16"
+                      "value": "2385.36"
                     },
                     {
                       "value": "0.00"
                     },
                     {
-                      "value": "49943.35"
+                      "value": "54345.96"
                     }
                   ]
                 },
@@ -65875,13 +68284,10 @@
                           "value": ""
                         },
                         {
-                          "value": "1343.16"
+                          "value": "1480.26"
                         },
                         {
-                          "value": "1343.16"
-                        },
-                        {
-                          "value": ""
+                          "value": "1480.26"
                         },
                         {
                           "value": ""
@@ -65917,7 +68323,10 @@
                           "value": ""
                         },
                         {
-                          "value": "1343.16"
+                          "value": ""
+                        },
+                        {
+                          "value": "1480.26"
                         }
                       ],
                       "type": "Data"
@@ -65939,13 +68348,10 @@
                       "value": "0.00"
                     },
                     {
-                      "value": "1868.65"
+                      "value": "2005.75"
                     },
                     {
-                      "value": "1868.65"
-                    },
-                    {
-                      "value": "0.00"
+                      "value": "2005.75"
                     },
                     {
                       "value": "0.00"
@@ -65981,7 +68387,10 @@
                       "value": "0.00"
                     },
                     {
-                      "value": "1868.65"
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "2005.75"
                     }
                   ]
                 },
@@ -66447,16 +68856,13 @@
                           "value": "398.00"
                         },
                         {
-                          "value": "877.46"
+                          "value": "1005.27"
                         },
                         {
-                          "value": "4026.72"
+                          "value": "4147.74"
                         },
                         {
-                          "value": "5302.18"
-                        },
-                        {
-                          "value": ""
+                          "value": "5551.01"
                         },
                         {
                           "value": ""
@@ -66492,7 +68898,10 @@
                           "value": ""
                         },
                         {
-                          "value": "5302.18"
+                          "value": ""
+                        },
+                        {
+                          "value": "5551.01"
                         }
                       ],
                       "type": "Data"
@@ -66511,16 +68920,13 @@
                       "value": "398.00"
                     },
                     {
-                      "value": "877.46"
+                      "value": "1005.27"
                     },
                     {
-                      "value": "6526.72"
+                      "value": "6647.74"
                     },
                     {
-                      "value": "7802.18"
-                    },
-                    {
-                      "value": "0.00"
+                      "value": "8051.01"
                     },
                     {
                       "value": "0.00"
@@ -66556,7 +68962,10 @@
                       "value": "0.00"
                     },
                     {
-                      "value": "7802.18"
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "8051.01"
                     }
                   ]
                 },
@@ -66655,19 +69064,13 @@
                           "value": "15289.23"
                         },
                         {
-                          "value": "328888.95"
+                          "value": "348119.72"
                         },
                         {
                           "value": ""
                         },
                         {
-                          "value": "344178.18"
-                        },
-                        {
-                          "value": ""
-                        },
-                        {
-                          "value": ""
+                          "value": "363408.95"
                         },
                         {
                           "value": ""
@@ -66685,7 +69088,13 @@
                           "value": ""
                         },
                         {
-                          "value": "344178.18"
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "363408.95"
                         }
                       ],
                       "type": "Data"
@@ -66706,13 +69115,10 @@
                           "value": ""
                         },
                         {
-                          "value": "108662.75"
+                          "value": "113854.75"
                         },
                         {
-                          "value": "108662.75"
-                        },
-                        {
-                          "value": ""
+                          "value": "113854.75"
                         },
                         {
                           "value": ""
@@ -66748,7 +69154,10 @@
                           "value": ""
                         },
                         {
-                          "value": "108662.75"
+                          "value": ""
+                        },
+                        {
+                          "value": "113854.75"
                         }
                       ],
                       "type": "Data"
@@ -66832,13 +69241,10 @@
                           "value": ""
                         },
                         {
-                          "value": "6942.95"
+                          "value": "7768.93"
                         },
                         {
-                          "value": "6942.95"
-                        },
-                        {
-                          "value": ""
+                          "value": "7768.93"
                         },
                         {
                           "value": ""
@@ -66874,7 +69280,10 @@
                           "value": ""
                         },
                         {
-                          "value": "6942.95"
+                          "value": ""
+                        },
+                        {
+                          "value": "7768.93"
                         }
                       ],
                       "type": "Data"
@@ -66895,10 +69304,10 @@
                           "value": ""
                         },
                         {
-                          "value": "11515.73"
+                          "value": "12109.19"
                         },
                         {
-                          "value": "11515.73"
+                          "value": "12109.19"
                         },
                         {
                           "value": ""
@@ -66907,19 +69316,13 @@
                           "value": "1493.36"
                         },
                         {
-                          "value": "18290.97"
+                          "value": "18553.48"
                         },
                         {
                           "value": ""
                         },
                         {
-                          "value": "19784.33"
-                        },
-                        {
-                          "value": ""
-                        },
-                        {
-                          "value": ""
+                          "value": "20046.84"
                         },
                         {
                           "value": ""
@@ -66937,7 +69340,13 @@
                           "value": ""
                         },
                         {
-                          "value": "31300.06"
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": "32156.03"
                         }
                       ],
                       "type": "Data"
@@ -67274,10 +69683,10 @@
                       "value": "0.00"
                     },
                     {
-                      "value": "154395.23"
+                      "value": "161006.67"
                     },
                     {
-                      "value": "154395.23"
+                      "value": "161006.67"
                     },
                     {
                       "value": "0.00"
@@ -67286,13 +69695,13 @@
                       "value": "16782.59"
                     },
                     {
-                      "value": "347179.92"
+                      "value": "366673.20"
                     },
                     {
                       "value": "52600.03"
                     },
                     {
-                      "value": "416562.54"
+                      "value": "436055.82"
                     },
                     {
                       "value": "0.00"
@@ -67316,7 +69725,7 @@
                       "value": "0.00"
                     },
                     {
-                      "value": "624624.35"
+                      "value": "650729.07"
                     }
                   ]
                 },
@@ -67659,13 +70068,10 @@
                           "value": ""
                         },
                         {
-                          "value": "5023.15"
+                          "value": "6848.60"
                         },
                         {
-                          "value": "5023.15"
-                        },
-                        {
-                          "value": ""
+                          "value": "6848.60"
                         },
                         {
                           "value": ""
@@ -67701,7 +70107,10 @@
                           "value": ""
                         },
                         {
-                          "value": "5023.15"
+                          "value": ""
+                        },
+                        {
+                          "value": "6848.60"
                         }
                       ],
                       "type": "Data"
@@ -67722,13 +70131,10 @@
                           "value": ""
                         },
                         {
-                          "value": "10865.00"
+                          "value": "11105.00"
                         },
                         {
-                          "value": "10865.00"
-                        },
-                        {
-                          "value": ""
+                          "value": "11105.00"
                         },
                         {
                           "value": ""
@@ -67764,7 +70170,10 @@
                           "value": ""
                         },
                         {
-                          "value": "10865.00"
+                          "value": ""
+                        },
+                        {
+                          "value": "11105.00"
                         }
                       ],
                       "type": "Data"
@@ -67848,13 +70257,10 @@
                           "value": ""
                         },
                         {
-                          "value": "2940.29"
+                          "value": "3039.04"
                         },
                         {
-                          "value": "2940.29"
-                        },
-                        {
-                          "value": ""
+                          "value": "3039.04"
                         },
                         {
                           "value": ""
@@ -67890,7 +70296,10 @@
                           "value": ""
                         },
                         {
-                          "value": "2940.29"
+                          "value": ""
+                        },
+                        {
+                          "value": "3039.04"
                         }
                       ],
                       "type": "Data"
@@ -67912,13 +70321,10 @@
                       "value": "0.00"
                     },
                     {
-                      "value": "21873.94"
+                      "value": "24038.14"
                     },
                     {
-                      "value": "21873.94"
-                    },
-                    {
-                      "value": "0.00"
+                      "value": "24038.14"
                     },
                     {
                       "value": "0.00"
@@ -67954,7 +70360,10 @@
                       "value": "0.00"
                     },
                     {
-                      "value": "21873.94"
+                      "value": "0.00"
+                    },
+                    {
+                      "value": "24038.14"
                     }
                   ]
                 },
@@ -68230,13 +70639,13 @@
                 "value": "398.00"
               },
               {
-                "value": "877.46"
+                "value": "1005.27"
               },
               {
-                "value": "294358.33"
+                "value": "307608.50"
               },
               {
-                "value": "295633.79"
+                "value": "309011.77"
               },
               {
                 "value": "0.00"
@@ -68245,37 +70654,37 @@
                 "value": "16782.59"
               },
               {
-                "value": "347179.92"
+                "value": "366673.20"
               },
               {
                 "value": "52600.03"
               },
               {
-                "value": "416562.54"
+                "value": "436055.82"
               },
               {
                 "value": "0.00"
               },
               {
-                "value": "12789.25"
+                "value": "12835.32"
               },
               {
-                "value": "9987.61"
+                "value": "10033.68"
               },
               {
-                "value": "13954.91"
+                "value": "14048.97"
               },
               {
                 "value": "53887.47"
               },
               {
-                "value": "90619.24"
+                "value": "90805.44"
               },
               {
                 "value": "0.00"
               },
               {
-                "value": "802815.57"
+                "value": "835873.03"
               }
             ]
           },
@@ -68295,13 +70704,13 @@
                 "value": "-398.00"
               },
               {
-                "value": "-877.46"
+                "value": "-1005.27"
               },
               {
-                "value": "2216204.22"
+                "value": "2279999.66"
               },
               {
-                "value": "2214928.76"
+                "value": "2278596.39"
               },
               {
                 "value": "0.00"
@@ -68310,37 +70719,37 @@
                 "value": "-16782.59"
               },
               {
-                "value": "-347179.92"
+                "value": "-366673.20"
               },
               {
                 "value": "-52600.03"
               },
               {
-                "value": "-416562.54"
+                "value": "-436055.82"
               },
               {
                 "value": "0.00"
               },
               {
-                "value": "19138.25"
+                "value": "21724.68"
               },
               {
-                "value": "13637.39"
+                "value": "16223.82"
               },
               {
-                "value": "42232.59"
+                "value": "49638.53"
               },
               {
                 "value": "-45584.97"
               },
               {
-                "value": "29423.26"
+                "value": "42002.06"
               },
               {
                 "value": "1067.79"
               },
               {
-                "value": "1828857.27"
+                "value": "1885610.42"
               }
             ]
           },
@@ -68466,10 +70875,10 @@
                     "value": ""
                   },
                   {
-                    "value": "0.00"
+                    "value": "-1639.92"
                   },
                   {
-                    "value": "0.00"
+                    "value": "-1639.92"
                   }
                 ],
                 "type": "Data"
@@ -68530,10 +70939,10 @@
                 "value": "0.00"
               },
               {
-                "value": "0.00"
+                "value": "-1639.92"
               },
               {
-                "value": "0.00"
+                "value": "-1639.92"
               }
             ]
           },
@@ -68553,13 +70962,13 @@
                 "value": "-398.00"
               },
               {
-                "value": "-877.46"
+                "value": "-1005.27"
               },
               {
-                "value": "2216204.22"
+                "value": "2279999.66"
               },
               {
-                "value": "2214928.76"
+                "value": "2278596.39"
               },
               {
                 "value": "0.00"
@@ -68568,37 +70977,37 @@
                 "value": "-16782.59"
               },
               {
-                "value": "-347179.92"
+                "value": "-366673.20"
               },
               {
                 "value": "-52600.03"
               },
               {
-                "value": "-416562.54"
+                "value": "-436055.82"
               },
               {
                 "value": "0.00"
               },
               {
-                "value": "19138.25"
+                "value": "21724.68"
               },
               {
-                "value": "13637.39"
+                "value": "16223.82"
               },
               {
-                "value": "42232.59"
+                "value": "49638.53"
               },
               {
                 "value": "-45584.97"
               },
               {
-                "value": "29423.26"
+                "value": "42002.06"
               },
               {
-                "value": "1067.79"
+                "value": "2707.71"
               },
               {
-                "value": "1828857.27"
+                "value": "1887250.34"
               }
             ]
           },
@@ -68876,13 +71285,13 @@
                 "value": "-398.00"
               },
               {
-                "value": "-877.46"
+                "value": "-1005.27"
               },
               {
-                "value": "2217259.59"
+                "value": "2281055.03"
               },
               {
-                "value": "2215984.13"
+                "value": "2279651.76"
               },
               {
                 "value": "0.00"
@@ -68891,37 +71300,37 @@
                 "value": "-16782.59"
               },
               {
-                "value": "-347179.92"
+                "value": "-366673.20"
               },
               {
                 "value": "-52600.03"
               },
               {
-                "value": "-416562.54"
+                "value": "-436055.82"
               },
               {
                 "value": "0.00"
               },
               {
-                "value": "19138.25"
+                "value": "21724.68"
               },
               {
-                "value": "13637.39"
+                "value": "16223.82"
               },
               {
-                "value": "42232.59"
+                "value": "49638.53"
               },
               {
                 "value": "-45584.97"
               },
               {
-                "value": "29423.26"
+                "value": "42002.06"
               },
               {
-                "value": "1395.93"
+                "value": "3035.85"
               },
               {
-                "value": "1830240.78"
+                "value": "1888633.85"
               }
             ]
           },
@@ -68933,12 +71342,12 @@
   },
   "equity": {
     "Header": {
-      "Time": "2025-10-18T15:26:04-07:00",
+      "Time": "2025-10-28T21:04:13-07:00",
       "ReportName": "BalanceSheet",
       "DateMacro": "this calendar year-to-date",
       "ReportBasis": "Cash",
       "StartPeriod": "2025-01-01",
-      "EndPeriod": "2025-10-18",
+      "EndPeriod": "2025-10-28",
       "SummarizeColumnsBy": "Total",
       "Currency": "USD",
       "Option": [
@@ -69038,7 +71447,7 @@
                                       "id": "172"
                                     },
                                     {
-                                      "value": "-1792.84"
+                                      "value": "-15206.55"
                                     }
                                   ],
                                   "type": "Data"
@@ -69050,7 +71459,7 @@
                                       "id": "173"
                                     },
                                     {
-                                      "value": "255554.98"
+                                      "value": "210615.98"
                                     }
                                   ],
                                   "type": "Data"
@@ -69062,7 +71471,7 @@
                                       "id": "370"
                                     },
                                     {
-                                      "value": "114909.56"
+                                      "value": "74734.66"
                                     }
                                   ],
                                   "type": "Data"
@@ -69135,7 +71544,7 @@
                                   "value": "Total 1000 Cash"
                                 },
                                 {
-                                  "value": "369031.70"
+                                  "value": "270504.09"
                                 }
                               ]
                             },
@@ -69149,7 +71558,7 @@
                             "value": "Total Bank Accounts"
                           },
                           {
-                            "value": "369031.70"
+                            "value": "270504.09"
                           }
                         ]
                       },
@@ -69380,7 +71789,7 @@
                       "value": "Total Current Assets"
                     },
                     {
-                      "value": "369031.70"
+                      "value": "270504.09"
                     }
                   ]
                 },
@@ -69595,7 +72004,7 @@
                 "value": "TOTAL ASSETS"
               },
               {
-                "value": "369031.70"
+                "value": "270504.09"
               }
             ]
           },
@@ -69701,7 +72110,7 @@
                                       "id": "365"
                                     },
                                     {
-                                      "value": "1639.92"
+                                      "value": "258.12"
                                     }
                                   ],
                                   "type": "Data"
@@ -69714,7 +72123,7 @@
                                   "value": "Total Credit Cards"
                                 },
                                 {
-                                  "value": "1639.92"
+                                  "value": "258.12"
                                 }
                               ]
                             },
@@ -69753,7 +72162,7 @@
                                       "id": "42"
                                     },
                                     {
-                                      "value": "-4000.00"
+                                      "value": "0.69"
                                     }
                                   ],
                                   "type": "Data"
@@ -69765,7 +72174,7 @@
                                       "id": "181"
                                     },
                                     {
-                                      "value": "-9083.32"
+                                      "value": "0.00"
                                     }
                                   ],
                                   "type": "Data"
@@ -69850,7 +72259,7 @@
                                   "value": "Total Other Current Liabilities"
                                 },
                                 {
-                                  "value": "71416.72"
+                                  "value": "84500.73"
                                 }
                               ]
                             },
@@ -69865,7 +72274,7 @@
                             "value": "Total Current Liabilities"
                           },
                           {
-                            "value": "73056.64"
+                            "value": "84758.85"
                           }
                         ]
                       },
@@ -70080,7 +72489,7 @@
                       "value": "Total Liabilities"
                     },
                     {
-                      "value": "73056.64"
+                      "value": "84758.85"
                     }
                   ]
                 },
@@ -70143,80 +72552,8 @@
                                 {
                                   "ColData": [
                                     {
-                                      "value": "3102 Beginning Equity - Hartman",
-                                      "id": "329"
-                                    },
-                                    {
-                                      "value": "0.00"
-                                    }
-                                  ],
-                                  "type": "Data"
-                                },
-                                {
-                                  "ColData": [
-                                    {
-                                      "value": "3105 Member Contribution - Hartman",
-                                      "id": "327"
-                                    },
-                                    {
-                                      "value": "0.00"
-                                    }
-                                  ],
-                                  "type": "Data"
-                                },
-                                {
-                                  "ColData": [
-                                    {
                                       "value": "3110 Member Draw - Hartman",
                                       "id": "337"
-                                    },
-                                    {
-                                      "value": "0.00"
-                                    }
-                                  ],
-                                  "type": "Data"
-                                },
-                                {
-                                  "ColData": [
-                                    {
-                                      "value": "3113 Med Dir - Hartman",
-                                      "id": "332"
-                                    },
-                                    {
-                                      "value": "0.00"
-                                    }
-                                  ],
-                                  "type": "Data"
-                                },
-                                {
-                                  "ColData": [
-                                    {
-                                      "value": "3115 ES Payments - Hartman",
-                                      "id": "333"
-                                    },
-                                    {
-                                      "value": "0.00"
-                                    }
-                                  ],
-                                  "type": "Data"
-                                },
-                                {
-                                  "ColData": [
-                                    {
-                                      "value": "3120 Retirement Contributions - Hart",
-                                      "id": "334"
-                                    },
-                                    {
-                                      "value": "0.00"
-                                    }
-                                  ],
-                                  "type": "Data"
-                                },
-                                {
-                                  "ColData": [
-                                    {
-                                      "value": "3125 Health Insurance - Hartman",
-                                      "id": "328"
                                     },
                                     {
                                       "value": "0.00"
@@ -70271,7 +72608,7 @@
                                       "id": "375"
                                     },
                                     {
-                                      "value": "-463208.00"
+                                      "value": "-509783.00"
                                     }
                                   ],
                                   "type": "Data"
@@ -70283,7 +72620,7 @@
                                       "id": "376"
                                     },
                                     {
-                                      "value": "-23625.00"
+                                      "value": "-26257.50"
                                     }
                                   ],
                                   "type": "Data"
@@ -70295,7 +72632,7 @@
                                       "id": "378"
                                     },
                                     {
-                                      "value": "-37000.00"
+                                      "value": "-43000.00"
                                     }
                                   ],
                                   "type": "Data"
@@ -70308,7 +72645,7 @@
                                   "value": "Total 3200 Dr. Connor"
                                 },
                                 {
-                                  "value": "-493833.00"
+                                  "value": "-549040.50"
                                 }
                               ]
                             },
@@ -70507,7 +72844,7 @@
                                       "id": "219"
                                     },
                                     {
-                                      "value": "-552613.00"
+                                      "value": "-590113.00"
                                     }
                                   ],
                                   "type": "Data"
@@ -70519,7 +72856,7 @@
                                       "id": "296"
                                     },
                                     {
-                                      "value": "-31927.50"
+                                      "value": "-34560.00"
                                     }
                                   ],
                                   "type": "Data"
@@ -70543,7 +72880,7 @@
                                       "id": "221"
                                     },
                                     {
-                                      "value": "-41333.33"
+                                      "value": "-49083.32"
                                     }
                                   ],
                                   "type": "Data"
@@ -70555,7 +72892,7 @@
                                       "id": "222"
                                     },
                                     {
-                                      "value": "-28557.87"
+                                      "value": "-31780.69"
                                     }
                                   ],
                                   "type": "Data"
@@ -70592,7 +72929,7 @@
                                   "value": "Total 3700 Dr. Allen"
                                 },
                                 {
-                                  "value": "-477062.81"
+                                  "value": "-528168.12"
                                 }
                               ]
                             },
@@ -70643,7 +72980,7 @@
                                       "id": "356"
                                     },
                                     {
-                                      "value": "-630414.00"
+                                      "value": "-676614.00"
                                     }
                                   ],
                                   "type": "Data"
@@ -70655,7 +72992,7 @@
                                       "id": "357"
                                     },
                                     {
-                                      "value": "-56187.50"
+                                      "value": "-63687.50"
                                     }
                                   ],
                                   "type": "Data"
@@ -70667,7 +73004,7 @@
                                       "id": "359"
                                     },
                                     {
-                                      "value": "-36958.33"
+                                      "value": "-42833.32"
                                     }
                                   ],
                                   "type": "Data"
@@ -70679,7 +73016,7 @@
                                       "id": "360"
                                     },
                                     {
-                                      "value": "-24405.15"
+                                      "value": "-27140.24"
                                     }
                                   ],
                                   "type": "Data"
@@ -70704,7 +73041,7 @@
                                   "value": "Total 3900 Dr Suszko"
                                 },
                                 {
-                                  "value": "-563369.91"
+                                  "value": "-625679.99"
                                 }
                               ]
                             },
@@ -70718,7 +73055,7 @@
                             "value": "Total 3001 Member's Equity"
                           },
                           {
-                            "value": "-1534265.72"
+                            "value": "-1702888.61"
                           }
                         ]
                       },
@@ -70766,7 +73103,7 @@
                           "value": "Net Income"
                         },
                         {
-                          "value": "1830240.78"
+                          "value": "1888633.85"
                         }
                       ],
                       "type": "Data",
@@ -70780,7 +73117,7 @@
                       "value": "Total Equity"
                     },
                     {
-                      "value": "295975.06"
+                      "value": "185745.24"
                     }
                   ]
                 },
@@ -70795,7 +73132,7 @@
                 "value": "TOTAL LIABILITIES AND EQUITY"
               },
               {
-                "value": "369031.70"
+                "value": "270504.09"
               }
             ]
           },

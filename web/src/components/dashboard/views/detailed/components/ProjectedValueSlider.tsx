@@ -580,9 +580,9 @@ export default function ProjectedValueSlider({
           }}>
             <div
               onClick={() => {
-                setSliderValue(defaultValue)
-                setActualValue(defaultValue)
-                setInputValue(formatCurrency(defaultValue))
+                setSliderValue(currentValue)
+                setActualValue(currentValue)
+                setInputValue(formatCurrency(currentValue))
               }}
               style={{
                 cursor: 'pointer',
@@ -611,13 +611,13 @@ export default function ProjectedValueSlider({
               onMouseUp={(e) => {
                 e.currentTarget.style.transform = 'none'
               }}
-              title="Click to reset to Default"
+              title="Click to reset to Scenario Value"
             >
               <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                Default
+                Scenario
               </div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151' }}>
-                {formatCurrency(defaultValue)}
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#10b981' }}>
+                {formatCurrency(currentValue)}
               </div>
             </div>
             <div

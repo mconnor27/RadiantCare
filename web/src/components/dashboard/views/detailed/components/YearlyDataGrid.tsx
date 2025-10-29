@@ -1051,7 +1051,10 @@ export default function YearlyDataGrid({
             }
           }
         }
-        
+
+        // Hide any visible tooltip when opening slider
+        setTooltip({ show: false, text: '', x: 0, y: 0 })
+
         setSlider({
           isVisible: true,
           position: cellPosition,

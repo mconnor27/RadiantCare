@@ -385,6 +385,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 3. Balance Sheet
     const equityUrl = new URL(`${baseUrl}/v3/company/${encodeURIComponent(realmId)}/reports/BalanceSheet`)
     equityUrl.searchParams.set('date_macro', 'This Fiscal Year-to-date')
+    equityUrl.searchParams.set('accounting_method', 'Cash') // Use cash basis to exclude accruals
     equityUrl.searchParams.set('minorversion', '75')
 
     console.log('Fetching Balance Sheet from:', equityUrl.toString())
