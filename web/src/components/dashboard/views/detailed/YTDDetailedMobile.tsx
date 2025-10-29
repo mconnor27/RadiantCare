@@ -636,7 +636,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string | null | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<YTDPoint[]>([])
-  const [cachedData, setCachedData] = useState<{ daily?: any, summary?: any, equity?: any, lastSyncTimestamp?: string } | null>(null)
+  const [cachedData, setCachedData] = useState<{ daily?: any, summary?: any, equity?: any, retirement_gl_data?: any, lastSyncTimestamp?: string } | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [showControls, setShowControls] = useState(false)
   const [showLoadModal, setShowLoadModal] = useState(false) // Mobile scenario load modal
@@ -789,7 +789,13 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
                 const points = parseTherapyIncome2025(cache.daily)
                 return {
                   data: points,
-                  cache: { daily: cache.daily, summary: cache.summary, equity: cache.equity, lastSyncTimestamp: cache.lastSyncTimestamp }
+                  cache: {
+                    daily: cache.daily,
+                    summary: cache.summary,
+                    equity: cache.equity,
+                    retirement_gl_data: cache.retirement_gl_data,
+                    lastSyncTimestamp: cache.lastSyncTimestamp
+                  }
                 }
               } else {
                 return { data: historical2025Data, cache: { daily: null, summary: null, equity: null, lastSyncTimestamp: null } }
@@ -1388,6 +1394,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
             environment="production"
             cachedSummary={cachedData?.summary}
             cachedEquity={cachedData?.equity}
+            cachedRetirementGL={cachedData?.retirement_gl_data}
             isMobile={true}
           />
         )}

@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { requireAuth, handleCors } from '../_lib/auth.js'
 import { getSupabaseAdmin } from '../_lib/supabase.js'
+import { fetchEquityAccounts, fetchGeneralLedgerForAccount, type RetirementGLData } from '../_lib/qbo-retirement.js'
 
 interface QboToken {
   access_token: string
@@ -411,10 +412,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const equityData = await equityRes.json() as any
     console.log('Balance Sheet fetched successfully, rows:', equityData?.Rows?.Row?.length || 0)
 
+    // Step 4: Fetch retirement account IDs
+    console.log('Fetching retirement account IDs...')
+    const retirementAccounts = await fetchEquityAccounts(token.access_token, realmId, baseUrl)
+    console.log('Found retirement accounts:', Object.keys(retirementAccounts))
+
+    // Step 5: Fetch GL data for each retirement account
+    console.log('Fetching General Ledger data for retirement accounts...')
+    const retirementGLData: Record<string, RetirementGLData> = {}
+
+    for (const [physician, accountInfo] of Object.entries(retirementAccounts)) {
+      console.log(`Fetching GL for ${physician} (account ${accountInfo.accountId})...`)
+      const glData = await fetchGeneralLedgerForAccount(
+        token.access_token,
+        realmId,
+        baseUrl,
+        accountInfo.accountId,
+        start,
+        end
+      )
+      retirementGLData[physician] = glData
+      console.log(`${physician} retirement totals:`, glData.totals)
+    }
+
     // Store in cache
     const lastSyncTimestamp = new Date().toISOString()
     console.log('Updating cache with timestamp:', lastSyncTimestamp)
-    console.log('Cache data sizes - Daily:', JSON.stringify(dailyData).length, 'Summary:', JSON.stringify(summaryData).length, 'Equity:', JSON.stringify(equityData).length)
+    console.log('Cache data sizes - Daily:', JSON.stringify(dailyData).length, 'Summary:', JSON.stringify(summaryData).length, 'Equity:', JSON.stringify(equityData).length, 'Retirement GL:', JSON.stringify(retirementGLData).length)
 
     const { error: cacheError } = await supabase
       .from('qbo_cache')
@@ -424,6 +448,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         daily: dailyData,
         summary: summaryData,
         equity: equityData,
+        retirement_accounts: retirementAccounts,
+        retirement_gl_data: retirementGLData,
         synced_by: isCronRequest ? null : user.id,
       })
 

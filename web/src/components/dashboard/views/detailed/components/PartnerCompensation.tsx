@@ -8,6 +8,7 @@ import { calculateDelayedW2Payment } from '../../../shared/calculations'
 import { calculateAllCompensations } from '../../../shared/compensationEngine'
 import type { Physician } from '../../../shared/types'
 import CollapsibleSection from '../../../shared/components/CollapsibleSection'
+import { createTooltip, removeTooltip } from '../../../shared/tooltips'
 
 interface PhysicianData {
   [rowName: string]: {
@@ -141,10 +142,15 @@ function parseProjectedData(physicians: Physician[], fy2025: any): { data: Physi
 }
 
 // Parse YTD actual data from equity and summary files (for "Paid to Date" row)
-function parseYTDPhysicianData(physicians: Physician[], equityData: any, summaryData: any): { data: PhysicianData; totals: PhysicianTotals } {
+function parseYTDPhysicianData(
+  physicians: Physician[],
+  equityData: any,
+  summaryData: any,
+  retirementGLData?: Record<string, RetirementGLData>
+): { data: PhysicianData; totals: PhysicianTotals } {
   const data: PhysicianData = {}
   const totals: PhysicianTotals = {}
-  
+
   // Initialize totals for all physicians
   physicians.forEach(physician => {
     totals[physician.name] = 0
@@ -199,15 +205,20 @@ function parseYTDPhysicianData(physicians: Physician[], equityData: any, summary
         if (row.type === "Data" && row.ColData) {
           const accountName = row.ColData[0]?.value || ''
           const value = parseFloat(row.ColData[1]?.value || '0')
-          
+
           if (accountName) {
             const cleanName = cleanRowName(accountName)
-            
+
+            // Skip retirement contributions - we'll use GL data instead
+            if (cleanName === 'Retirement Contributions') {
+              return
+            }
+
             // Initialize row if it doesn't exist
             if (!data[cleanName]) {
               data[cleanName] = {}
             }
-            
+
             // Store the value for this partner
             data[cleanName][physician.name] = value
             // Add to totals for all items (Beginning Equity represents money already paid out)
@@ -215,6 +226,40 @@ function parseYTDPhysicianData(physicians: Physician[], equityData: any, summary
           }
         }
       })
+    })
+  }
+
+  // Process retirement contributions from GL data (new approach)
+  console.log('Processing retirement GL data, physicians:', physicians.map(p => p.name), 'retirementGLData:', retirementGLData ? Object.keys(retirementGLData) : 'undefined')
+  if (retirementGLData) {
+    physicians.forEach(physician => {
+      if (retirementGLData[physician.name]) {
+        const glData = retirementGLData[physician.name]
+        // Display value: actual cash paid out (excluding journal entries)
+        const displayValue = glData.totals.excludingJournals
+        // Tooltip value: total amount including journal entries (as positive number)
+        const accruedValue = Math.abs(glData.totals.allNonPositive)
+        console.log(`Retirement GL for ${physician.name}: display=${displayValue}, accrued=${accruedValue}`)
+
+        if (displayValue !== 0) {
+          // Initialize row if it doesn't exist
+          if (!data['Retirement Contributions']) {
+            data['Retirement Contributions'] = {}
+          }
+
+          // Store display value (cash paid out, excluding journals)
+          data['Retirement Contributions'][physician.name] = displayValue
+          totals[physician.name] += displayValue
+
+          // Store accrued value for tooltip (shown as "$xxxx accrued")
+          // We use a special __accrued property on the row data
+          if (!data['Retirement Contributions'].__accrued) {
+            (data['Retirement Contributions'] as any).__accrued = {}
+          }
+          (data['Retirement Contributions'] as any).__accrued[physician.name] = accruedValue
+          console.log(`Stored accrued for ${physician.name}:`, accruedValue)
+        }
+      }
     })
   }
 
@@ -306,10 +351,22 @@ function parseYTDPhysicianData(physicians: Physician[], equityData: any, summary
   return { data, totals }
 }
 
+interface RetirementGLTotals {
+  allNonPositive: number
+  excludingJournals: number
+}
+
+interface RetirementGLData {
+  accountId: string
+  transactions: any[]
+  totals: RetirementGLTotals
+}
+
 interface PartnerCompensationProps {
   environment?: 'production' | 'sandbox'
   cachedSummary?: any
   cachedEquity?: any
+  cachedRetirementGL?: Record<string, RetirementGLData>
   isMobile?: boolean
   isResyncing?: boolean
 }
@@ -318,12 +375,16 @@ export default function PartnerCompensation({
   environment = 'sandbox',
   cachedSummary,
   cachedEquity,
+  cachedRetirementGL,
   isMobile = false,
   isResyncing = false
 }: PartnerCompensationProps = {}) {
   // Use cached data in production mode, otherwise use static files
   const equityData = (environment === 'production' && cachedEquity) ? cachedEquity : equityDataStatic
   const summaryData = (environment === 'production' && cachedSummary) ? cachedSummary : summaryDataStatic
+
+  // Debug: Log retirement GL data
+  console.log('PartnerCompensation - cachedRetirementGL:', cachedRetirementGL ? Object.keys(cachedRetirementGL) : 'undefined')
   const store = useDashboardStore()
   const [isExpanded, setIsExpanded] = useState(false)
   const [hoveredPhysician, setHoveredPhysician] = useState<string | null>(null)
@@ -385,7 +446,7 @@ export default function PartnerCompensation({
     store.scenarioA.projection?.benefitCostsGrowthPct
     // Removed: isRefreshing, isMobile (don't affect calculation)
   ])
-  const ytdData = useMemo(() => parseYTDPhysicianData(physicians, equityData, summaryData), [physicians, equityData, summaryData])
+  const ytdData = useMemo(() => parseYTDPhysicianData(physicians, equityData, summaryData, cachedRetirementGL), [physicians, equityData, summaryData, cachedRetirementGL])
   
   // Don't calculate until 2025 data exists (prevents wrong calcs on first load without localStorage)
   if (!fy2025) {
@@ -997,11 +1058,32 @@ export default function PartnerCompensation({
             <div style={{ textAlign: 'right', paddingLeft: '16px' }}>{rowName}</div>
             {physicianNames.map(physician => {
               const value = getValue(rowName, physician, ytdData.data)
+              const accruedValue = rowName === 'Retirement Contributions' && !isMobile ? (ytdData.data[rowName] as any)?.__accrued?.[physician] : undefined
+
               return (
-                <div key={physician} style={{ 
-                  textAlign: 'right',
-                  color: value < 0 ? '#dc3545' : value > 0 ? '#28a745' : '#6c757d'
-                }}>
+                <div
+                  key={physician}
+                  style={{
+                    textAlign: 'right',
+                    color: value < 0 ? '#dc3545' : value > 0 ? '#28a745' : '#6c757d',
+                    cursor: accruedValue ? 'help' : 'default'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (accruedValue !== undefined) {
+                      console.log(`Tooltip for ${physician}: accruedValue=${accruedValue}`)
+                      createTooltip(
+                        `retirement-accrued-${physician}`,
+                        `$${accruedValue.toLocaleString()} accrued`,
+                        e
+                      )
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    if (accruedValue) {
+                      removeTooltip(`retirement-accrued-${physician}`)
+                    }
+                  }}
+                >
                   {value !== 0 ? formatCurrency(value) : '-'}
                 </div>
               )

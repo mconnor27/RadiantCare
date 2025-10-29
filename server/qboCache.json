@@ -1,8 +1,8 @@
 {
-  "lastSyncTimestamp": "2025-10-29T04:04:13.560Z",
+  "lastSyncTimestamp": "2025-10-29T22:54:05.123Z",
   "daily": {
     "Header": {
-      "Time": "2025-10-28T21:04:12-07:00",
+      "Time": "2025-10-29T15:54:02-07:00",
       "ReportName": "ProfitAndLoss",
       "ReportBasis": "Cash",
       "StartPeriod": "2025-01-01",
@@ -66838,7 +66838,7 @@
   },
   "summary": {
     "Header": {
-      "Time": "2025-10-28T21:04:12-07:00",
+      "Time": "2025-10-29T15:54:03-07:00",
       "ReportName": "ProfitAndLoss",
       "ReportBasis": "Cash",
       "StartPeriod": "2025-01-01",
@@ -71342,12 +71342,12 @@
   },
   "equity": {
     "Header": {
-      "Time": "2025-10-28T21:04:13-07:00",
+      "Time": "2025-10-29T15:54:03-07:00",
       "ReportName": "BalanceSheet",
       "DateMacro": "this calendar year-to-date",
       "ReportBasis": "Cash",
       "StartPeriod": "2025-01-01",
-      "EndPeriod": "2025-10-28",
+      "EndPeriod": "2025-10-29",
       "SummarizeColumnsBy": "Total",
       "Currency": "USD",
       "Option": [
@@ -71447,7 +71447,7 @@
                                       "id": "172"
                                     },
                                     {
-                                      "value": "-15206.55"
+                                      "value": "-10803.94"
                                     }
                                   ],
                                   "type": "Data"
@@ -71459,7 +71459,7 @@
                                       "id": "173"
                                     },
                                     {
-                                      "value": "210615.98"
+                                      "value": "232602.50"
                                     }
                                   ],
                                   "type": "Data"
@@ -71544,7 +71544,7 @@
                                   "value": "Total 1000 Cash"
                                 },
                                 {
-                                  "value": "270504.09"
+                                  "value": "296893.22"
                                 }
                               ]
                             },
@@ -71558,7 +71558,7 @@
                             "value": "Total Bank Accounts"
                           },
                           {
-                            "value": "270504.09"
+                            "value": "296893.22"
                           }
                         ]
                       },
@@ -71789,7 +71789,7 @@
                       "value": "Total Current Assets"
                     },
                     {
-                      "value": "270504.09"
+                      "value": "296893.22"
                     }
                   ]
                 },
@@ -72004,7 +72004,7 @@
                 "value": "TOTAL ASSETS"
               },
               {
-                "value": "270504.09"
+                "value": "296893.22"
               }
             ]
           },
@@ -73103,7 +73103,7 @@
                           "value": "Net Income"
                         },
                         {
-                          "value": "1888633.85"
+                          "value": "1915022.98"
                         }
                       ],
                       "type": "Data",
@@ -73117,7 +73117,7 @@
                       "value": "Total Equity"
                     },
                     {
-                      "value": "185745.24"
+                      "value": "212134.37"
                     }
                   ]
                 },
@@ -73132,7 +73132,7 @@
                 "value": "TOTAL LIABILITIES AND EQUITY"
               },
               {
-                "value": "270504.09"
+                "value": "296893.22"
               }
             ]
           },
@@ -73140,6 +73140,805 @@
           "group": "TotalLiabilitiesAndEquity"
         }
       ]
+    }
+  },
+  "retirement_accounts": {
+    "Suszko": {
+      "accountId": "359",
+      "accountName": "Member's Equity:Dr Suszko:Retirement Contributions - Suszko"
+    },
+    "Allen": {
+      "accountId": "221",
+      "accountName": "Member's Equity:Dr. Allen:Retirement contributions - Alle"
+    },
+    "Connor": {
+      "accountId": "378",
+      "accountName": "Member's Equity:Dr. Connor:Retirement Contributions"
+    }
+  },
+  "retirement_gl_data": {
+    "Suszko": {
+      "accountId": "359",
+      "transactions": [
+        {
+          "ColData": [
+            {
+              "value": "Beginning Balance"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Journal Entry",
+              "id": "85352"
+            },
+            {
+              "value": "To close draws and equity"
+            },
+            {
+              "value": "3920 Member's Equity:Dr Suszko:Retirement Contributions - Suszko",
+              "id": "359"
+            },
+            {
+              "value": "69000.00"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "82873"
+            },
+            {
+              "value": "Record payroll pp ended 01.10.25 ck dated 01.17.25"
+            },
+            {
+              "value": "3920 Member's Equity:Dr Suszko:Retirement Contributions - Suszko",
+              "id": "359"
+            },
+            {
+              "value": "-1958.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "83402"
+            },
+            {
+              "value": "Record payroll pp ended 02.21.25 ck dated 02.28.25"
+            },
+            {
+              "value": "3920 Member's Equity:Dr Suszko:Retirement Contributions - Suszko",
+              "id": "359"
+            },
+            {
+              "value": "-1958.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Journal Entry",
+              "id": "85355"
+            },
+            {
+              "value": "To accrue quarterly 401k est"
+            },
+            {
+              "value": "3920 Member's Equity:Dr Suszko:Retirement Contributions - Suszko",
+              "id": "359"
+            },
+            {
+              "value": "-11625.01"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "83844"
+            },
+            {
+              "value": "Record payroll pp ended 03.21.25 ck dated 03.28.25"
+            },
+            {
+              "value": "3920 Member's Equity:Dr Suszko:Retirement Contributions - Suszko",
+              "id": "359"
+            },
+            {
+              "value": "-1958.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "84296"
+            },
+            {
+              "value": "Record payroll pp ended 04.18.25 ck dated 04.25.25"
+            },
+            {
+              "value": "3920 Member's Equity:Dr Suszko:Retirement Contributions - Suszko",
+              "id": "359"
+            },
+            {
+              "value": "-1958.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "84757"
+            },
+            {
+              "value": "Record payroll pp ended 05.16.25 ck dated 05.23.25"
+            },
+            {
+              "value": "3920 Member's Equity:Dr Suszko:Retirement Contributions - Suszko",
+              "id": "359"
+            },
+            {
+              "value": "-1958.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "85122"
+            },
+            {
+              "value": "Record payroll pp ended 06.13.25 ck dated 06.20.25"
+            },
+            {
+              "value": "3920 Member's Equity:Dr Suszko:Retirement Contributions - Suszko",
+              "id": "359"
+            },
+            {
+              "value": "-1958.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Journal Entry",
+              "id": "85356"
+            },
+            {
+              "value": "To accrue quarterly 401k est"
+            },
+            {
+              "value": "3920 Member's Equity:Dr Suszko:Retirement Contributions - Suszko",
+              "id": "359"
+            },
+            {
+              "value": "-11625.01"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "85551"
+            },
+            {
+              "value": "Record payroll pp ended 07.11.25 ck dated 07.18.25"
+            },
+            {
+              "value": "3920 Member's Equity:Dr Suszko:Retirement Contributions - Suszko",
+              "id": "359"
+            },
+            {
+              "value": "-1958.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "85930"
+            },
+            {
+              "value": "Record payroll pp ended 08.08.25 ck dated 08.15.25"
+            },
+            {
+              "value": "3920 Member's Equity:Dr Suszko:Retirement Contributions - Suszko",
+              "id": "359"
+            },
+            {
+              "value": "-1958.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "86480"
+            },
+            {
+              "value": "Record payroll pp ended 09.19.25 ck dated 09.26.25"
+            },
+            {
+              "value": "3920 Member's Equity:Dr Suszko:Retirement Contributions - Suszko",
+              "id": "359"
+            },
+            {
+              "value": "-1958.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "86791"
+            },
+            {
+              "value": "Record payroll pp ended10.17.25 ck dated 10.24.25"
+            },
+            {
+              "value": "3920 Member's Equity:Dr Suszko:Retirement Contributions - Suszko",
+              "id": "359"
+            },
+            {
+              "value": "-1958.33"
+            }
+          ],
+          "type": "Data"
+        }
+      ],
+      "totals": {
+        "allNonPositive": -42833.320000000014,
+        "excludingJournals": -19583.300000000003
+      }
+    },
+    "Allen": {
+      "accountId": "221",
+      "transactions": [
+        {
+          "ColData": [
+            {
+              "value": "Beginning Balance"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Journal Entry",
+              "id": "85352"
+            },
+            {
+              "value": "To close draws and equity"
+            },
+            {
+              "value": "3720 Member's Equity:Dr. Allen:Retirement contributions - Alle",
+              "id": "221"
+            },
+            {
+              "value": "76500.00"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "82873"
+            },
+            {
+              "value": "Record payroll pp ended 01.10.25 ck dated 01.17.25"
+            },
+            {
+              "value": "3720 Member's Equity:Dr. Allen:Retirement contributions - Alle",
+              "id": "221"
+            },
+            {
+              "value": "-2583.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "83402"
+            },
+            {
+              "value": "Record payroll pp ended 02.21.25 ck dated 02.28.25"
+            },
+            {
+              "value": "3720 Member's Equity:Dr. Allen:Retirement contributions - Alle",
+              "id": "221"
+            },
+            {
+              "value": "-2583.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "83844"
+            },
+            {
+              "value": "Record payroll pp ended 03.21.25 ck dated 03.28.25"
+            },
+            {
+              "value": "3720 Member's Equity:Dr. Allen:Retirement contributions - Alle",
+              "id": "221"
+            },
+            {
+              "value": "-2583.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Journal Entry",
+              "id": "85355"
+            },
+            {
+              "value": "To accrue quarterly 401k est"
+            },
+            {
+              "value": "3720 Member's Equity:Dr. Allen:Retirement contributions - Alle",
+              "id": "221"
+            },
+            {
+              "value": "-11625.01"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "84296"
+            },
+            {
+              "value": "Record payroll pp ended 04.18.25 ck dated 04.25.25"
+            },
+            {
+              "value": "3720 Member's Equity:Dr. Allen:Retirement contributions - Alle",
+              "id": "221"
+            },
+            {
+              "value": "-2583.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "84757"
+            },
+            {
+              "value": "Record payroll pp ended 05.16.25 ck dated 05.23.25"
+            },
+            {
+              "value": "3720 Member's Equity:Dr. Allen:Retirement contributions - Alle",
+              "id": "221"
+            },
+            {
+              "value": "-2583.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "85122"
+            },
+            {
+              "value": "Record payroll pp ended 06.13.25 ck dated 06.20.25"
+            },
+            {
+              "value": "3720 Member's Equity:Dr. Allen:Retirement contributions - Alle",
+              "id": "221"
+            },
+            {
+              "value": "-2583.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Journal Entry",
+              "id": "85356"
+            },
+            {
+              "value": "To accrue quarterly 401k est"
+            },
+            {
+              "value": "3720 Member's Equity:Dr. Allen:Retirement contributions - Alle",
+              "id": "221"
+            },
+            {
+              "value": "-11625.01"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "85551"
+            },
+            {
+              "value": "Record payroll pp ended 07.11.25 ck dated 07.18.25"
+            },
+            {
+              "value": "3720 Member's Equity:Dr. Allen:Retirement contributions - Alle",
+              "id": "221"
+            },
+            {
+              "value": "-2583.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "85930"
+            },
+            {
+              "value": "Record payroll pp ended 08.08.25 ck dated 08.15.25"
+            },
+            {
+              "value": "3720 Member's Equity:Dr. Allen:Retirement contributions - Alle",
+              "id": "221"
+            },
+            {
+              "value": "-2583.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "86480"
+            },
+            {
+              "value": "Record payroll pp ended 09.19.25 ck dated 09.26.25"
+            },
+            {
+              "value": "3720 Member's Equity:Dr. Allen:Retirement contributions - Alle",
+              "id": "221"
+            },
+            {
+              "value": "-2583.33"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "86791"
+            },
+            {
+              "value": "Record payroll pp ended10.17.25 ck dated 10.24.25"
+            },
+            {
+              "value": "3720 Member's Equity:Dr. Allen:Retirement contributions - Alle",
+              "id": "221"
+            },
+            {
+              "value": "-2583.33"
+            }
+          ],
+          "type": "Data"
+        }
+      ],
+      "totals": {
+        "allNonPositive": -49083.320000000014,
+        "excludingJournals": -25833.300000000003
+      }
+    },
+    "Connor": {
+      "accountId": "378",
+      "transactions": [
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "82873"
+            },
+            {
+              "value": "Record payroll pp ended 01.10.25 ck dated 01.17.25"
+            },
+            {
+              "value": "3220 Member's Equity:Dr. Connor:Retirement Contributions",
+              "id": "378"
+            },
+            {
+              "value": "-2000.00"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "83402"
+            },
+            {
+              "value": "Record payroll pp ended 02.21.25 ck dated 02.28.25"
+            },
+            {
+              "value": "3220 Member's Equity:Dr. Connor:Retirement Contributions",
+              "id": "378"
+            },
+            {
+              "value": "-2000.00"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Journal Entry",
+              "id": "85355"
+            },
+            {
+              "value": "To accrue quarterly 401k est"
+            },
+            {
+              "value": "3220 Member's Equity:Dr. Connor:Retirement Contributions",
+              "id": "378"
+            },
+            {
+              "value": "-11500.00"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "83844"
+            },
+            {
+              "value": "Record payroll pp ended 03.21.25 ck dated 03.28.25"
+            },
+            {
+              "value": "3220 Member's Equity:Dr. Connor:Retirement Contributions",
+              "id": "378"
+            },
+            {
+              "value": "-2000.00"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "84296"
+            },
+            {
+              "value": "Record payroll pp ended 04.18.25 ck dated 04.25.25"
+            },
+            {
+              "value": "3220 Member's Equity:Dr. Connor:Retirement Contributions",
+              "id": "378"
+            },
+            {
+              "value": "-2000.00"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "84757"
+            },
+            {
+              "value": "Record payroll pp ended 05.16.25 ck dated 05.23.25"
+            },
+            {
+              "value": "3220 Member's Equity:Dr. Connor:Retirement Contributions",
+              "id": "378"
+            },
+            {
+              "value": "-2000.00"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "85122"
+            },
+            {
+              "value": "Record payroll pp ended 06.13.25 ck dated 06.20.25"
+            },
+            {
+              "value": "3220 Member's Equity:Dr. Connor:Retirement Contributions",
+              "id": "378"
+            },
+            {
+              "value": "-2000.00"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Journal Entry",
+              "id": "85356"
+            },
+            {
+              "value": "To accrue quarterly 401k est"
+            },
+            {
+              "value": "3220 Member's Equity:Dr. Connor:Retirement Contributions",
+              "id": "378"
+            },
+            {
+              "value": "-11500.00"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "85551"
+            },
+            {
+              "value": "Record payroll pp ended 07.11.25 ck dated 07.18.25"
+            },
+            {
+              "value": "3220 Member's Equity:Dr. Connor:Retirement Contributions",
+              "id": "378"
+            },
+            {
+              "value": "-2000.00"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "85930"
+            },
+            {
+              "value": "Record payroll pp ended 08.08.25 ck dated 08.15.25"
+            },
+            {
+              "value": "3220 Member's Equity:Dr. Connor:Retirement Contributions",
+              "id": "378"
+            },
+            {
+              "value": "-2000.00"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "86480"
+            },
+            {
+              "value": "Record payroll pp ended 09.19.25 ck dated 09.26.25"
+            },
+            {
+              "value": "3220 Member's Equity:Dr. Connor:Retirement Contributions",
+              "id": "378"
+            },
+            {
+              "value": "-2000.00"
+            }
+          ],
+          "type": "Data"
+        },
+        {
+          "ColData": [
+            {
+              "value": "Check",
+              "id": "86791"
+            },
+            {
+              "value": "Record payroll pp ended10.17.25 ck dated 10.24.25"
+            },
+            {
+              "value": "3220 Member's Equity:Dr. Connor:Retirement Contributions",
+              "id": "378"
+            },
+            {
+              "value": "-2000.00"
+            }
+          ],
+          "type": "Data"
+        }
+      ],
+      "totals": {
+        "allNonPositive": -43000,
+        "excludingJournals": -20000
+      }
     }
   }
 }

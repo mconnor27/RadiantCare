@@ -10,7 +10,7 @@ interface SyncButtonProps {
   onSyncComplete?: () => void
 }
 
-type SyncStep = 'daily' | 'summary' | 'equity' | 'complete' | 'error'
+type SyncStep = 'daily' | 'summary' | 'equity' | 'retirement_accounts' | 'retirement_gl' | 'complete' | 'error'
 
 // Custom tooltip function that positions below the button
 function createSyncTooltip(content: string, e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>) {
@@ -115,6 +115,16 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
       // Update step to equity
       setSyncStep('equity')
       setSyncMessage('Fetching balance sheet...')
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Update step to retirement accounts
+      setSyncStep('retirement_accounts')
+      setSyncMessage('Fetching retirement accounts...')
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Update step to retirement GL
+      setSyncStep('retirement_gl')
+      setSyncMessage('Fetching retirement general ledger...')
       await new Promise(resolve => setTimeout(resolve, 500))
 
       const data = await response.json()
@@ -476,6 +486,18 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
                   height: 8,
                   borderRadius: '50%',
                   background: syncStep === 'equity' ? '#0ea5e9' : '#cbd5e1'
+                }}></div>
+                <div style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: syncStep === 'retirement_accounts' ? '#0ea5e9' : '#cbd5e1'
+                }}></div>
+                <div style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: syncStep === 'retirement_gl' ? '#0ea5e9' : '#cbd5e1'
                 }}></div>
               </div>
             )}

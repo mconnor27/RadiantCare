@@ -6,6 +6,7 @@ import crypto from 'crypto'
 import dotenv from 'dotenv'
 import { customAlphabet } from 'nanoid'
 import { createClient } from '@supabase/supabase-js'
+import { fetchEquityAccounts, fetchGeneralLedgerForAccount } from './qbo-retirement.js'
 
 // Load environment variables from both root and server directories
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
@@ -480,12 +481,37 @@ app.post('/api/qbo/sync-2025', async (req, res) => {
     }
     const equityData = await equityRes.json()
 
+    // 4. Fetch retirement account IDs
+    console.log('Fetching retirement account IDs...')
+    const retirementAccounts = await fetchEquityAccounts(token.access_token, realmId, baseUrl)
+    console.log('Found retirement accounts:', Object.keys(retirementAccounts))
+
+    // 5. Fetch GL data for each retirement account
+    console.log('Fetching General Ledger data for retirement accounts...')
+    const retirementGLData = {}
+
+    for (const [physician, accountInfo] of Object.entries(retirementAccounts)) {
+      console.log(`Fetching GL for ${physician} (account ${accountInfo.accountId})...`)
+      const glData = await fetchGeneralLedgerForAccount(
+        token.access_token,
+        realmId,
+        baseUrl,
+        accountInfo.accountId,
+        start,
+        end
+      )
+      retirementGLData[physician] = glData
+      console.log(`${physician} retirement totals:`, glData.totals)
+    }
+
     // Cache the results
     const cacheData = {
       lastSyncTimestamp: new Date().toISOString(),
       daily: dailyData,
       summary: summaryData,
-      equity: equityData
+      equity: equityData,
+      retirement_accounts: retirementAccounts,
+      retirement_gl_data: retirementGLData
     }
     writeCache(cacheData)
 
