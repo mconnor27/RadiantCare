@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadiantCare Admin - User Management</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .btn {
+            background: #7c2a83;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn:hover {
+            background: #651f6b;
+        }
+        .btn-secondary {
+            background: #6b7280;
+        }
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+        .btn-danger {
+            background: #dc2626;
+        }
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        input, select {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .table th, .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .table th {
+            background: #f9fafb;
+            font-weight: 600;
+        }
+        .status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .status-claimed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status-expired {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .status-admin {
+            background: #ddd6fe;
+            color: #5b21b6;
+        }
+        .alert {
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        .hidden {
+            display: none;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1 style="margin: 0; color: #7c2a83;">RadiantCare Admin</h1>
+            <p style="margin: 5px 0 0 0; color: #6b7280;">User Management Dashboard</p>
+        </div>
+        <div>
+            <span id="admin-email" style="margin-right: 15px; color: #6b7280;"></span>
+            <button class="btn btn-secondary" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="login-form" class="card">
+        <h2>Admin Login</h2>
+        <div id="login-error" class="alert alert-error hidden"></div>
+        <form onsubmit="login(event)">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" required>
+            </div>
+            <button type="submit" class="btn">Login</button>
+        </form>
+    </div>
+
+    <div id="admin-panel" class="hidden">
+        <div class="grid">
+            <div class="card">
+                <h2>Create User Invitation</h2>
+                <div id="invitation-success" class="alert alert-success hidden"></div>
+                <div id="invitation-error" class="alert alert-error hidden"></div>
+                <form onsubmit="createInvitation(event)">
+                    <div class="form-group">
+                        <label for="invite-email">Email Address</label>
+                        <input type="email" id="invite-email" required placeholder="user@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="expires-days">Expires In (Days)</label>
+                        <select id="expires-days">
+                            <option value="7">7 days</option>
+                            <option value="14">14 days</option>
+                            <option value="30">30 days</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn">Create Invitation</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Quick Stats</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div style="text-align: center; padding: 15px; background: #f9fafb; border-radius: 4px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #7c2a83;" id="total-users">-</div>
+                        <div style="font-size: 12px; color: #6b7280;">Total Users</div>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: #f9fafb; border-radius: 4px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #7c2a83;" id="pending-invitations">-</div>
+                        <div style="font-size: 12px; color: #6b7280;">Pending Invitations</div>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: #f9fafb; border-radius: 4px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #7c2a83;" id="total-scenarios">-</div>
+                        <div style="font-size: 12px; color: #6b7280;">Total Scenarios</div>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: #f9fafb; border-radius: 4px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #7c2a83;" id="public-scenarios">-</div>
+                        <div style="font-size: 12px; color: #6b7280;">Public Scenarios</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0;">Users</h2>
+                <button class="btn" onclick="loadUsers()">Refresh</button>
+            </div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Display Name</th>
+                        <th>Status</th>
+                        <th>Scenarios</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="users-table">
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #6b7280;">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0;">Pending Invitations</h2>
+                <button class="btn" onclick="loadInvitations()">Refresh</button>
+            </div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Expires</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="invitations-table">
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #6b7280;">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Replace with your actual Supabase credentials
+        const SUPABASE_URL = 'https://jbiervzcpyxgpcdqyzpl.supabase.co'
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpiaWVydnpjcHl4Z3BjZHF5enBsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3OTY5NTAsImV4cCI6MjA3NTM3Mjk1MH0.XUz0Iu7W_hthiYCOlymx0Z7kb0ZaJ-MC5PDsQM5JF7A'
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+        
+        let currentUser = null
+
+        // Check if user is already logged in
+        checkAuth()
+
+        async function checkAuth() {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session) {
+                await verifyAdmin(session.user)
+            }
+        }
+
+        async function verifyAdmin(user) {
+            const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single()
+
+            if (error || !profile?.is_admin) {
+                showError('login-error', 'Access denied. Admin privileges required.')
+                await supabase.auth.signOut()
+                return
+            }
+
+            currentUser = user
+            document.getElementById('admin-email').textContent = user.email
+            document.getElementById('login-form').classList.add('hidden')
+            document.getElementById('admin-panel').classList.remove('hidden')
+            
+            loadUsers()
+            loadInvitations()
+            loadStats()
+        }
+
+        async function login(event) {
+            event.preventDefault()
+            
+            const email = document.getElementById('email').value
+            const password = document.getElementById('password').value
+            
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password
+            })
+            
+            if (error) {
+                showError('login-error', error.message)
+                return
+            }
+            
+            await verifyAdmin(data.user)
+        }
+
+        async function logout() {
+            await supabase.auth.signOut()
+            currentUser = null
+            document.getElementById('login-form').classList.remove('hidden')
+            document.getElementById('admin-panel').classList.add('hidden')
+            document.getElementById('email').value = ''
+            document.getElementById('password').value = ''
+        }
+
+        async function createInvitation(event) {
+            event.preventDefault()
+            
+            const email = document.getElementById('invite-email').value
+            const expiresDays = parseInt(document.getElementById('expires-days').value)
+            
+            const { data, error } = await supabase.rpc('create_user_invitation', {
+                invitation_email: email,
+                expires_in_days: expiresDays
+            })
+            
+            if (error) {
+                showError('invitation-error', error.message)
+                return
+            }
+            
+            // Get the invitation URL
+            const { data: urlData, error: urlError } = await supabase.rpc('get_invitation_url', {
+                invitation_id: data
+            })
+            
+            if (urlError) {
+                showError('invitation-error', 'Invitation created but failed to generate URL: ' + urlError.message)
+                return
+            }
+            
+            showSuccess('invitation-success', `Invitation created! Share this URL: ${urlData}`)
+            document.getElementById('invite-email').value = ''
+            loadInvitations()
+            loadStats()
+        }
+
+        async function loadUsers() {
+            const { data, error } = await supabase
+                .from('admin_user_overview')
+                .select('*')
+                .order('created_at', { ascending: false })
+            
+            if (error) {
+                console.error('Error loading users:', error)
+                return
+            }
+            
+            const tbody = document.getElementById('users-table')
+            tbody.innerHTML = data.map(user => `
+                <tr>
+                    <td>${user.email}</td>
+                    <td>${user.display_name || '-'}</td>
+                    <td>
+                        <span class="status ${user.is_admin ? 'status-admin' : 'status-claimed'}">
+                            ${user.is_admin ? 'Admin' : 'User'}
+                        </span>
+                    </td>
+                    <td>${user.scenario_count} (${user.public_scenario_count} public)</td>
+                    <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                    <td>
+                        ${!user.is_admin ? `<button class="btn btn-secondary" onclick="promoteToAdmin('${user.email}')">Make Admin</button>` : '-'}
+                    </td>
+                </tr>
+            `).join('')
+        }
+
+        async function loadInvitations() {
+            const { data, error } = await supabase
+                .from('pending_invitations')
+                .select('*')
+                .order('created_at', { ascending: false })
+            
+            if (error) {
+                console.error('Error loading invitations:', error)
+                return
+            }
+            
+            const tbody = document.getElementById('invitations-table')
+            tbody.innerHTML = data.length ? data.map(invitation => `
+                <tr>
+                    <td>${invitation.email}</td>
+                    <td>
+                        <span class="status status-${invitation.status}">
+                            ${invitation.status}
+                        </span>
+                    </td>
+                    <td>${new Date(invitation.expires_at).toLocaleDateString()}</td>
+                    <td>${new Date(invitation.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-secondary" onclick="copyInvitationUrl('${invitation.id}')">Copy URL</button>
+                        <button class="btn btn-danger" onclick="deleteInvitation('${invitation.id}')">Delete</button>
+                    </td>
+                </tr>
+            `).join('') : '<tr><td colspan="5" style="text-align: center; color: #6b7280;">No pending invitations</td></tr>'
+        }
+
+        async function loadStats() {
+            // Load user count
+            const { count: userCount } = await supabase
+                .from('profiles')
+                .select('*', { count: 'exact', head: true })
+            
+            // Load pending invitations count
+            const { count: pendingCount } = await supabase
+                .from('user_invitations')
+                .select('*', { count: 'exact', head: true })
+                .is('claimed_at', null)
+                .gt('expires_at', new Date().toISOString())
+            
+            // Load total scenarios count
+            const { count: scenarioCount } = await supabase
+                .from('scenarios')
+                .select('*', { count: 'exact', head: true })
+            
+            // Load public scenarios count
+            const { count: publicCount } = await supabase
+                .from('scenarios')
+                .select('*', { count: 'exact', head: true })
+                .eq('is_public', true)
+            
+            document.getElementById('total-users').textContent = userCount || 0
+            document.getElementById('pending-invitations').textContent = pendingCount || 0
+            document.getElementById('total-scenarios').textContent = scenarioCount || 0
+            document.getElementById('public-scenarios').textContent = publicCount || 0
+        }
+
+        async function promoteToAdmin(email) {
+            if (!confirm(`Promote ${email} to admin?`)) return
+            
+            const { error } = await supabase.rpc('promote_to_admin', {
+                user_email: email
+            })
+            
+            if (error) {
+                alert('Error: ' + error.message)
+                return
+            }
+            
+            alert('User promoted to admin successfully!')
+            loadUsers()
+        }
+
+        async function copyInvitationUrl(invitationId) {
+            const { data, error } = await supabase.rpc('get_invitation_url', {
+                invitation_id: invitationId
+            })
+            
+            if (error) {
+                alert('Error: ' + error.message)
+                return
+            }
+            
+            navigator.clipboard.writeText(data).then(() => {
+                alert('Invitation URL copied to clipboard!')
+            })
+        }
+
+        async function deleteInvitation(invitationId) {
+            if (!confirm('Delete this invitation?')) return
+            
+            const { error } = await supabase
+                .from('user_invitations')
+                .delete()
+                .eq('id', invitationId)
+            
+            if (error) {
+                alert('Error: ' + error.message)
+                return
+            }
+            
+            loadInvitations()
+            loadStats()
+        }
+
+        function showError(elementId, message) {
+            const element = document.getElementById(elementId)
+            element.textContent = message
+            element.classList.remove('hidden')
+            setTimeout(() => element.classList.add('hidden'), 5000)
+        }
+
+        function showSuccess(elementId, message) {
+            const element = document.getElementById(elementId)
+            element.textContent = message
+            element.classList.remove('hidden')
+            setTimeout(() => element.classList.add('hidden'), 10000)
+        }
+    </script>
+</body>
+</html>
