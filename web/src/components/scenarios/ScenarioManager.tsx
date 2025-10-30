@@ -297,13 +297,17 @@ export default function ScenarioManager({
       // MODULAR SCENARIO HANDLING
       if (isCurrentYearSettingsScenario(scenario)) {
         // Loading Current Year Settings (modular)
+        // Notify YTDDetailed to freeze compensation and prepare for reload
+        const reloadEvent = new CustomEvent('scenarioManagerReload')
+        window.dispatchEvent(reloadEvent)
+
         const loadedData = await store.loadCurrentYearSettings(id)
-        
+
         // Apply ytd_settings if available
         if (loadedData.ytd_settings && onYtdSettingsChange) {
           onYtdSettingsChange(loadedData.ytd_settings)
         }
-        
+
         onClose()
         return
       }

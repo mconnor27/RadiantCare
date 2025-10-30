@@ -134,6 +134,7 @@ export default function ScenarioCard({
                 <div
                   onClick={(e) => {
                     e.stopPropagation()
+                    removeTooltip(`fav-a-${scenario.id}`)
                     onToggleFavorite(scenario.id, 'A')
                   }}
                   style={{
@@ -173,6 +174,7 @@ export default function ScenarioCard({
                 <div
                   onClick={(e) => {
                     e.stopPropagation()
+                    removeTooltip(`fav-b-${scenario.id}`)
                     onToggleFavorite(scenario.id, 'B')
                   }}
                   style={{
@@ -215,6 +217,7 @@ export default function ScenarioCard({
               <div
                 onClick={(e) => {
                   e.stopPropagation()
+                  removeTooltip(`fav-current-${scenario.id}`)
                   onToggleFavorite(scenario.id, 'CURRENT')
                 }}
                 style={{
@@ -346,7 +349,10 @@ export default function ScenarioCard({
                 <FontAwesomeIcon icon={faTrash} />
               </button>
               <button
-                onClick={() => onEdit(scenario)}
+                onClick={() => {
+                  removeTooltip(`edit-${scenario.id}`)
+                  onEdit(scenario)
+                }}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -372,7 +378,10 @@ export default function ScenarioCard({
               {/* Show Update Baseline button for stale Multi-Year scenarios with 2025 Data */}
               {onUpdateBaseline && isMultiYearScenario(scenario) && scenario.baseline_mode === '2025 Data' && daysSinceBaseline > 7 && (
                 <button
-                  onClick={() => onUpdateBaseline(scenario.id)}
+                  onClick={() => {
+                    removeTooltip(`update-${scenario.id}`)
+                    onUpdateBaseline(scenario.id)
+                  }}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -432,7 +441,10 @@ export default function ScenarioCard({
           {viewMode === 'Multi-Year' && isMultiYearScenario(scenario) ? (
             <>
               <button
-                onClick={() => onLoad(scenario.id, 'B')}
+                onClick={() => {
+                  removeTooltip(`load-b-${scenario.id}`)
+                  onLoad(scenario.id, 'B')
+                }}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -460,7 +472,10 @@ export default function ScenarioCard({
                 <span style={{ fontSize: '12px', fontWeight: 'bold' }}>B</span>
               </button>
               <button
-                onClick={() => onLoad(scenario.id, 'A')}
+                onClick={() => {
+                  removeTooltip(`load-a-${scenario.id}`)
+                  onLoad(scenario.id, 'A')
+                }}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -493,7 +508,12 @@ export default function ScenarioCard({
             const isLoadable = viewMode !== 'YTD Detailed' || isCurrentYearSettingsScenario(scenario)
             return (
               <button
-                onClick={() => isLoadable && onLoad(scenario.id)}
+                onClick={() => {
+                  removeTooltip(`load-${scenario.id}`)
+                  if (isLoadable) {
+                    onLoad(scenario.id)
+                  }
+                }}
                 disabled={!isLoadable}
                 style={{
                   background: 'none',

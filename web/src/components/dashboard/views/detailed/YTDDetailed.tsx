@@ -342,6 +342,19 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
     })
   }, [store.currentYearSettingId, gridReloadTrigger])
 
+  // Listen for scenario manager reload event
+  useEffect(() => {
+    const handleScenarioManagerReload = () => {
+      logger.debug('CHART', '🔄 [Desktop] Scenario Manager reload detected, freezing compensation and incrementing reload trigger')
+      setIsResyncingCompensation(true)
+      setGridReloadTrigger(prev => prev + 1)
+    }
+    window.addEventListener('scenarioManagerReload', handleScenarioManagerReload)
+    return () => {
+      window.removeEventListener('scenarioManagerReload', handleScenarioManagerReload)
+    }
+  }, [])
+
   // Watch for scenario loads and freeze compensation until grid re-syncs
   // This includes explicit reloads of the same scenario (via gridReloadTrigger)
   useEffect(() => {

@@ -12,6 +12,7 @@ import { useAuth } from '../auth/AuthProvider'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faFolderOpen, faStar as faSolidStar } from '@fortawesome/free-solid-svg-icons'
 import { faStar as faRegularStarOutline } from '@fortawesome/free-regular-svg-icons'
+import { createTooltip, removeTooltip } from '../dashboard/shared/tooltips'
 
 interface ScenarioLoadModalProps {
   isOpen: boolean
@@ -561,19 +562,25 @@ export default function ScenarioLoadModal({
                           {isProjectionScenario(scenario) && (
                             <>
                               {/* Star A */}
-                              <div 
-                                onClick={(e) => { 
-                                  e.stopPropagation(); 
-                                  handleToggleFavorite(scenario.id, 'A') 
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeTooltip(`fav-a-${scenario.id}`)
+                                  handleToggleFavorite(scenario.id, 'A')
                                 }}
-                                style={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
                                   position: 'relative',
                                   cursor: 'pointer',
                                   padding: '2px'
                                 }}
-                                title={scenario.is_favorite_a ? 'Remove from favorites A' : 'Add to favorites A'}
+                                onMouseEnter={(e) => {
+                                  createTooltip(`fav-a-${scenario.id}`, scenario.is_favorite_a ? 'Remove from Favorite A' : 'Set as Favorite A', e, { placement: 'below-center' })
+                                }}
+                                onMouseLeave={() => {
+                                  removeTooltip(`fav-a-${scenario.id}`)
+                                }}
                               >
                                 <FontAwesomeIcon
                                   icon={scenario.is_favorite_a ? faSolidStar : faRegularStarOutline}
@@ -593,19 +600,25 @@ export default function ScenarioLoadModal({
                               </div>
 
                               {/* Star B */}
-                              <div 
-                                onClick={(e) => { 
-                                  e.stopPropagation(); 
-                                  handleToggleFavorite(scenario.id, 'B') 
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeTooltip(`fav-b-${scenario.id}`)
+                                  handleToggleFavorite(scenario.id, 'B')
                                 }}
-                                style={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
                                   position: 'relative',
                                   cursor: 'pointer',
                                   padding: '2px'
                                 }}
-                                title={scenario.is_favorite_b ? 'Remove from favorites B' : 'Add to favorites B'}
+                                onMouseEnter={(e) => {
+                                  createTooltip(`fav-b-${scenario.id}`, scenario.is_favorite_b ? 'Remove from Favorite B' : 'Set as Favorite B', e, { placement: 'below-center' })
+                                }}
+                                onMouseLeave={() => {
+                                  removeTooltip(`fav-b-${scenario.id}`)
+                                }}
                               >
                                 <FontAwesomeIcon
                                   icon={scenario.is_favorite_b ? faSolidStar : faRegularStarOutline}
@@ -628,19 +641,25 @@ export default function ScenarioLoadModal({
 
                           {/* Current Year scenarios: Show single star */}
                           {isCurrentYearSettingsScenario(scenario) && (
-                            <div 
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                handleToggleFavorite(scenario.id, 'CURRENT') 
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeTooltip(`fav-current-${scenario.id}`)
+                                handleToggleFavorite(scenario.id, 'CURRENT')
                               }}
-                              style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
                                 position: 'relative',
                                 cursor: 'pointer',
                                 padding: '2px'
                               }}
-                              title={scenario.is_favorite_current ? 'Remove from current favorites' : 'Add to current favorites'}
+                              onMouseEnter={(e) => {
+                                createTooltip(`fav-current-${scenario.id}`, scenario.is_favorite_current ? 'Remove from Current Year Favorite' : 'Set as Current Year Favorite', e, { placement: 'below-center' })
+                              }}
+                              onMouseLeave={() => {
+                                removeTooltip(`fav-current-${scenario.id}`)
+                              }}
                             >
                               <FontAwesomeIcon
                                 icon={scenario.is_favorite_current ? faSolidStar : faRegularStarOutline}
@@ -701,6 +720,7 @@ export default function ScenarioLoadModal({
                       {/* Right: Load Button */}
                       <button
                         onClick={() => {
+                          removeTooltip(`load-${scenario.id}`)
                           onLoad(scenario.id)
                           onClose()
                         }}
@@ -717,11 +737,12 @@ export default function ScenarioLoadModal({
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.opacity = '0.7'
+                          createTooltip(`load-${scenario.id}`, 'Load scenario', e, { placement: 'below-center' })
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.opacity = '1'
+                          removeTooltip(`load-${scenario.id}`)
                         }}
-                        title="Load scenario"
                       >
                         <FontAwesomeIcon icon={faFolderOpen} style={{ transform: 'translateY(3px)' }} />
                       </button>
