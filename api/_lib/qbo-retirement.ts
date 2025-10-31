@@ -59,7 +59,7 @@ export async function fetchEquityAccounts(
     throw new Error('Failed to fetch equity accounts')
   }
 
-  const data = await response.json()
+  const data = await response.json() as { QueryResponse?: { Account?: any[] } }
   const accounts: Record<string, RetirementAccount> = {}
 
   // Pattern: "Retirement Contributions" (with optional "- NAME" suffix)
@@ -140,7 +140,7 @@ export async function fetchGeneralLedgerForAccount(
     throw new Error(`Failed to fetch General Ledger for account ${accountId}`)
   }
 
-  const data = await response.json()
+  const data = await response.json() as { Rows?: { Row?: any[] } }
 
   // Parse transactions and calculate totals
   const transactions: RetirementTransaction[] = []

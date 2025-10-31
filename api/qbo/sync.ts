@@ -216,7 +216,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single()
 
     // Check if admin override
-    const isAdmin = !isCronRequest && user?.is_admin === true
+    const isAdmin = !isCronRequest && user?.isAdmin === true
 
     if (!isAdmin && cacheData?.last_sync_timestamp) {
       if (!canSyncNow(cacheData.last_sync_timestamp)) {
