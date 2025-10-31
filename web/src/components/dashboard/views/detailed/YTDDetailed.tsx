@@ -210,7 +210,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
           }
         } else {
           // Production mode: try to load cached data, fall back to historical
-          authenticatedFetch('/api/qbo/cached-2025')
+          authenticatedFetch('/api/qbo/cached?year=2025')
             .then((res: Response) => {
               if (!res.ok) {
                 // No cached data, use fallback

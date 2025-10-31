@@ -4,18 +4,18 @@ import { authenticatedFetch } from '../../../../../lib/api'
 import type { Physician } from '../../../shared/types'
 import { logger } from '../../../../../lib/logger'
 
-export type Cached2025Data = {
+export type CachedYearData = {
   daily: any
   summary: any
   equity: any
 }
 
-export type Load2025Result = {
+export type LoadYearResult = {
   ytdPoints: any[]
-  cachedData: Cached2025Data | null
+  cachedData: CachedYearData | null
 }
 
-export type Extracted2025Values = {
+export type ExtractedYearValues = {
   therapyIncome: number
   therapyLacey: number
   therapyCentralia: number
@@ -30,13 +30,13 @@ export type Extracted2025Values = {
 }
 
 /**
- * Loads 2025 data based on environment mode.
+ * Loads current year data (2025) based on environment mode.
  * In production: tries to fetch cached data from API, falls back to historical JSON
  * In sandbox: uses historical JSON data directly
  *
  * If environment is not specified, tries production first, then falls back to sandbox
  */
-export async function load2025Data(environment?: 'sandbox' | 'production'): Promise<Load2025Result> {
+export async function loadCurrentYearData(environment?: 'sandbox' | 'production'): Promise<LoadYearResult> {
   if (environment === 'sandbox') {
     logger.info('QBO_CACHE', 'Using sandbox mode - loading historical JSON')
     const ytdPoints = parseTherapyIncome2025()
@@ -49,7 +49,7 @@ export async function load2025Data(environment?: 'sandbox' | 'production'): Prom
   // Production mode (or auto-detect): try to load cached data, fall back to historical
   try {
     logger.debug('QBO_CACHE', 'Attempting to load cached 2025 data')
-    const res = await authenticatedFetch('/api/qbo/cached-2025')
+    const res = await authenticatedFetch('/api/qbo/cached?year=2025')
 
     if (!res.ok) {
       logger.info('QBO_CACHE', 'No cached data available, using historical JSON fallback')
@@ -115,17 +115,17 @@ function extractGridValue(gridData: { rows: any[], columns: any[] }, accountName
 }
 
 /**
- * Loads 2025 data and extracts all values needed for the store.
+ * Loads current year (2025) data and extracts all values needed for the store.
  * This combines data loading + grid calculation + value extraction.
  */
-export async function load2025ValuesForReset(
+export async function loadCurrentYearValuesForReset(
   physicians: Physician[],
   benefitGrowthPct: number,
   locumCosts: number,
   environment?: 'sandbox' | 'production'
-): Promise<Extracted2025Values> {
+): Promise<ExtractedYearValues> {
   // Load the 2025 data
-  const { cachedData } = await load2025Data(environment)
+  const { cachedData } = await loadCurrentYearData(environment)
 
   // Import the actual 2025 PRCS value from defaults
   const { ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS } = await import('../../../shared/defaults')
@@ -197,14 +197,14 @@ export async function load2025ValuesForReset(
 }
 
 /**
- * Syncs fresh 2025 values from QBO cache to the store.
+ * Syncs fresh current year (2025) values from QBO cache to the store.
  * This is needed on mobile where YearlyDataGrid doesn't render (and thus doesn't auto-sync).
  * Respects user's custom projected values (grid overrides) from scenarios or desktop edits.
  *
  * @param store - Dashboard store instance
  * @param cachedSummary - Cached QBO summary data
  */
-export async function syncStoreFrom2025Cache(
+export async function syncStoreFromCurrentYearCache(
   store: any,
   cachedSummary: any | null
 ): Promise<void> {

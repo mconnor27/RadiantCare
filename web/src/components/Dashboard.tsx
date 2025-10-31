@@ -1486,7 +1486,7 @@ export const useDashboardStore = create<Store>()(
         resetOnly2025: async (scenario: ScenarioKey) => {
           logger.debug('SCENARIO', 'resetOnly2025 START')
           // Import the load function dynamically to avoid circular dependencies
-          const { load2025ValuesForReset } = await import('./dashboard/views/detailed/utils/load2025Data')
+          const { loadCurrentYearValuesForReset } = await import('./dashboard/views/detailed/utils/loadCurrentYearData')
 
           const state = get()
           const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
@@ -1518,7 +1518,7 @@ export const useDashboardStore = create<Store>()(
 
           // Load 2025 values dynamically based on environment (tries production, falls back to sandbox)
           logger.debug('SCENARIO', 'Loading 2025 values from grid...')
-          const values = await load2025ValuesForReset(
+          const values = await loadCurrentYearValuesForReset(
             defaultPhysicians,
             sc.projection.benefitCostsGrowthPct,
             baselineYearData.locumCosts ?? DEFAULT_LOCUM_COSTS_2025
@@ -1601,9 +1601,9 @@ export const useDashboardStore = create<Store>()(
 
           // For 2025 specifically, load values dynamically
           if (year === YEAR_CONFIG.baselineYear) {
-            const { load2025ValuesForReset } = await import('./dashboard/views/detailed/utils/load2025Data')
+            const { loadCurrentYearValuesForReset } = await import('./dashboard/views/detailed/utils/loadCurrentYearData')
 
-            const values = await load2025ValuesForReset(
+            const values = await loadCurrentYearValuesForReset(
               defaultPhysicians,
               sc.projection.benefitCostsGrowthPct,
               DEFAULT_LOCUM_COSTS_2025

@@ -13,7 +13,7 @@ import { useAuth } from '../../../auth/AuthProvider'
 import DetailedChart from './components/DetailedChart'
 import ChartControls from './components/ChartControls'
 import PartnerCompensation from './components/PartnerCompensation'
-import { syncStoreFrom2025Cache } from './utils/load2025Data'
+import { syncStoreFromCurrentYearCache } from './utils/loadCurrentYearData'
 
 // Mobile Scenario Load Modal Component
 function MobileScenarioLoadModal({
@@ -778,7 +778,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
 
     requestAnimationFrame(() => {
       setTimeout(() => {
-        authenticatedFetch('/api/qbo/cached-2025')
+        authenticatedFetch('/api/qbo/cached?year=2025')
           .then((res: Response) => {
             if (!res.ok) {
               logger.debug('CHART', 'No cached data available,  using historical JSON fallback')
@@ -884,7 +884,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
         syncTimestamp: cachedData.lastSyncTimestamp || null
       }
 
-      syncStoreFrom2025Cache(store, cachedData.summary)
+      syncStoreFromCurrentYearCache(store, cachedData.summary)
         .then(() => {
           // Log store state AFTER sync
           logger.debug('CHART', '📊 Store state AFTER sync:', {
@@ -921,7 +921,7 @@ export default function YTDDetailedMobile({ onRefreshRequest, onPasswordChange, 
   // Load last sync timestamp
   useEffect(() => {
     if (!showLoadingModal) {
-      authenticatedFetch('/api/qbo/cached-2025')
+      authenticatedFetch('/api/qbo/cached?year=2025')
         .then(res => res.ok ? res.json() : null)
         .then(cache => {
           if (cache?.lastSyncTimestamp) {

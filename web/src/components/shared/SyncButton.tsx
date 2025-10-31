@@ -44,7 +44,7 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
   // Load last sync timestamp on mount - but wait for dashboard loading to complete
   useEffect(() => {
     if (environment === 'production' && !isLoadingDashboard) {
-      authenticatedFetch('/api/qbo/cached-2025')
+      authenticatedFetch('/api/qbo/cached?year=2025')
         .then(res => res.ok ? res.json() : null)
         .then(cache => {
           if (cache?.lastSyncTimestamp) {
@@ -97,7 +97,7 @@ export default function SyncButton({ environment, isLoadingDashboard = false, on
 
     try {
       // Simulate the sync process with step updates
-      const response = await authenticatedFetch('/api/qbo/sync-2025', {
+      const response = await authenticatedFetch('/api/qbo/sync?year=2025', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

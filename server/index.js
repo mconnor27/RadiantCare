@@ -379,9 +379,16 @@ function getPriorBusinessDayEnd(now) {
   return `${year}-${month}-${day}`
 }
 
-// Sync endpoint for all 2025 data
-app.post('/api/qbo/sync-2025', async (req, res) => {
+// Sync endpoint (year-agnostic)
+app.post('/api/qbo/sync', async (req, res) => {
   try {
+    const year = req.query.year || '2025' // Default to 2025 if no year specified
+
+    // For now, we only support 2025 in local dev
+    if (year !== '2025') {
+      return res.status(400).json({ error: 'unsupported_year', message: 'Local dev only supports year=2025' })
+    }
+
     let token = readToken()
     if (!token) return res.status(401).json({ error: 'not_connected' })
     token = await refreshAccessTokenIfNeeded()
@@ -403,7 +410,6 @@ app.post('/api/qbo/sync-2025', async (req, res) => {
     }
 
     const now = new Date()
-    const year = now.getFullYear()
     const start = `${year}-01-01`
     const end = getPriorBusinessDayEnd(now)
 
@@ -518,7 +524,7 @@ app.post('/api/qbo/sync-2025', async (req, res) => {
     res.json({
       success: true,
       lastSyncTimestamp: cacheData.lastSyncTimestamp,
-      message: 'Successfully synced all 2025 data'
+      message: `Successfully synced all ${year} data`
     })
   } catch (e) {
     console.error('Sync error:', e)
@@ -526,9 +532,15 @@ app.post('/api/qbo/sync-2025', async (req, res) => {
   }
 })
 
-// Get cached 2025 data
-app.get('/api/qbo/cached-2025', (req, res) => {
+// Get cached data (year-agnostic endpoint)
+app.get('/api/qbo/cached', (req, res) => {
   try {
+    const year = req.query.year || '2025' // Default to 2025 if no year specified
+    // For now, we only support 2025 in local dev
+    if (year !== '2025') {
+      return res.status(400).json({ error: 'unsupported_year', message: 'Local dev only supports year=2025' })
+    }
+
     const cache = readCache()
     if (!cache) {
       return res.status(404).json({ error: 'no_cached_data' })
