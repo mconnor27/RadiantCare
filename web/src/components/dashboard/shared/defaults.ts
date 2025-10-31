@@ -1,5 +1,5 @@
 import type { Physician, PhysicianType, YearRow, FutureYear } from './types'
-import { getPartnerPortionOfYear, computeDefaultNonMdEmploymentCosts } from './calculations'
+import { getPartnerPortionOfYear } from './calculations'
 import { calendarDateToPortion } from './utils'
 import { YEAR_CONFIG, getProjectionYearRange } from '../../../config/yearConfig'
 

@@ -164,7 +164,6 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
   // Dynamic year range for titles
   const yearRangeTitle = useMemo(() => {
     const projectionYears = getProjectionYearRange()
-    const firstYear = projectionYears[0]
     const lastYear = projectionYears[projectionYears.length - 1]
     return `${YEAR_CONFIG.baselineYear}-${lastYear}`
   }, [])

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faCalendarAlt,
@@ -22,7 +22,7 @@ export default function YearSettingsPanel({ isOpen, onClose }: YearSettingsPanel
   const [projectionYears, setProjectionYears] = useState<number>(5)
   const [priorYearMarkedComplete, setPriorYearMarkedComplete] = useState<boolean>(false)
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string | null>(null)
-  const [loading, setLoading] = useState<boolean>(true)
+  const [_loading, setLoading] = useState<boolean>(true)
   const [saving, setSaving] = useState<boolean>(false)
   const [syncing, setSyncing] = useState<boolean>(false)
   const [showRolloverModal, setShowRolloverModal] = useState<boolean>(false)

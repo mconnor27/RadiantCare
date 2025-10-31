@@ -4,6 +4,7 @@ export type YearRow = {
   therapyIncome: number // For 2024+, this represents only therapy income (not including medical director income)
   nonEmploymentCosts: number
   employeePayroll?: number
+  description?: string
 }
 
 // Site data for per-site income mode
@@ -335,11 +336,11 @@ export type Store = {
   } | null
   // Expected projection snapshots (for dirty detection against baseline changes)
   expectedProjectionSnapshotA: {
-    baseline2025: FutureYear
+    baselineYear: FutureYear
     future_2026_2030: FutureYear[]
   } | null
   expectedProjectionSnapshotB: {
-    baseline2025: FutureYear
+    baselineYear: FutureYear
     future_2026_2030: FutureYear[]
   } | null
   setScenarioEnabled: (enabled: boolean) => void
@@ -429,11 +430,11 @@ export type Store = {
   buildScenarioFromProjection: (params: {
     projection: Projection
     futureYearsFromScenario: FutureYear[]
-    baseline2025: FutureYear
+    baselineYear: FutureYear
     baselineMode: BaselineMode
   }) => { future: FutureYear[] }
   computeExpectedFromBaseline: (params: {
-    baseline2025: FutureYear
+    baselineYear: FutureYear
     projection: Projection
     baselineMode: BaselineMode
   }) => FutureYear[]

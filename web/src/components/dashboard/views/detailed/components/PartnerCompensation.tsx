@@ -1066,7 +1066,10 @@ export default function PartnerCompensation({
                   style={{
                     textAlign: 'right',
                     color: value < 0 ? '#dc3545' : value > 0 ? '#28a745' : '#6c757d',
-                    cursor: accruedValue ? 'help' : 'default'
+                    cursor: accruedValue ? 'help' : 'default',
+                    textDecoration: accruedValue ? 'underline' : 'none',
+                    textDecorationStyle: accruedValue ? 'dotted' : undefined,
+                    textDecorationColor: accruedValue ? 'currentColor' : undefined
                   }}
                   onMouseEnter={(e) => {
                     if (accruedValue !== undefined) {
