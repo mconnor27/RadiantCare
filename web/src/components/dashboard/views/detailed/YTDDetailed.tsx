@@ -48,7 +48,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<YTDPoint[]>([])
   const [environment] = useState<'production' | 'sandbox'>('production')
-  const [cachedData, setCachedData] = useState<{ daily?: any, summary?: any, equity?: any, retirement_gl_data?: any } | null>(null)
+  const [cachedData, setCachedData] = useState<{ daily?: any, summary?: any, equity?: any, retirementGLData?: any } | null>(null)
   const [isResyncingCompensation, setIsResyncingCompensation] = useState(true) // Keep compensation frozen until cache syncs
   const [refreshTrigger, setRefreshTrigger] = useState(0) // Trigger for data refresh after sync
   const [isNormalized, setIsNormalized] = useState(initialSettings?.isNormalized ?? false)
@@ -227,7 +227,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
                       daily: cache.daily,
                       summary: cache.summary,
                       equity: cache.equity,
-                      retirement_gl_data: cache.retirement_gl_data
+                      retirementGLData: cache.retirementGLData
                     }
                   }
                 } else {
@@ -1123,7 +1123,7 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
             environment={environment}
             cachedSummary={cachedData?.summary}
             cachedEquity={cachedData?.equity}
-            cachedRetirementGL={cachedData?.retirement_gl_data}
+            cachedRetirementGL={cachedData?.retirementGLData}
             isResyncing={isResyncingCompensation}
           />
         )}
