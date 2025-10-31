@@ -112,7 +112,7 @@ export type ScenarioState = {
   future: FutureYear[]
   projection: Projection
   selectedYear: number
-  dataMode: 'Custom' | '2024 Data' | '2025 Data'
+  dataMode: BaselineMode // Use BaselineMode type for consistency
 }
 
 export type ScenarioKey = 'A' | 'B'
@@ -121,7 +121,14 @@ export type ScenarioKey = 'A' | 'B'
 export type ViewMode = 'YTD Detailed' | 'Multi-Year' | 'YTD Mobile'
 
 // Baseline mode for Multi-Year scenarios
-export type BaselineMode = '2024 Data' | '2025 Data' | 'Custom'
+// NOTE: Now year-agnostic, but keeping old values for backward compat
+export type BaselineMode =
+  | 'Current Year Data'  // New preferred value
+  | 'Prior Year Data'    // New preferred value
+  | 'Custom'
+  | '2024 Data'          // Legacy (converted to Prior/Current Year Data on load)
+  | '2025 Data'          // Legacy (converted to Prior/Current Year Data on load)
+  | '2026 Data'          // Legacy (converted to Prior/Current Year Data on load)
 
 // YTD-specific settings
 export type YTDSettings = {
@@ -133,7 +140,7 @@ export type YTDSettings = {
   [key: string]: any // Allow other YTD chart settings
 }
 
-// YTD Scenario (2025 baseline customizations + chart settings)
+// YTD Scenario (current year baseline customizations + chart settings)
 export type YTDScenario = {
   id: string
   user_id: string
@@ -144,9 +151,11 @@ export type YTDScenario = {
   ytd_settings: YTDSettings
   baseline_date: string // ISO date (YYYY-MM-DD)
   qbo_sync_timestamp: string | null // ISO timestamp
-  // 2025 baseline customizations (physicians + grid overrides)
-  year_2025_data: FutureYear // Physician panel settings for 2025
-  custom_projected_values: Record<string, number> // User's grid overrides for 2025
+  baseline_year?: number // NEW: Year this scenario was created for (for migration warnings)
+  // Current year baseline customizations (physicians + grid overrides)
+  baseline_year_data?: FutureYear // NEW: Renamed from year_2025_data
+  year_2025_data?: FutureYear // LEGACY: Keep for backward compat, converted on load
+  custom_projected_values: Record<string, number> // User's grid overrides for baseline year
   is_favorite_a?: boolean // Populated by JOIN with user_favorites
   is_favorite_current?: boolean // Populated by JOIN with user_favorites
   created_at: string
@@ -181,7 +190,7 @@ export type MultiYearScenario = {
 
 // NEW MODULAR TYPES
 
-// Current Year Settings Scenario (2025 baseline customizations ONLY)
+// Current Year Settings Scenario (current year baseline customizations ONLY)
 export type CurrentYearSettingsScenario = {
   id: string
   user_id: string
@@ -190,8 +199,10 @@ export type CurrentYearSettingsScenario = {
   is_public: boolean
   scenario_type: 'current_year'
   view_mode: 'YTD Detailed'
-  year_2025_data: Partial<FutureYear> & { year: number, physicians: Physician[] } // Only modified fields saved
-  custom_projected_values: Record<string, number> // Grid overrides for 2025 ONLY ('2025-*' keys)
+  baseline_year?: number // NEW: Year this scenario was created for (for migration warnings)
+  baseline_year_data?: Partial<FutureYear> & { year: number, physicians: Physician[] } // NEW: Renamed
+  year_2025_data?: Partial<FutureYear> & { year: number, physicians: Physician[] } // LEGACY: Only modified fields saved
+  custom_projected_values: Record<string, number> // Grid overrides for baseline year ONLY
   ytd_settings: null // Chart settings not saved
   baseline_date: string // ISO date (YYYY-MM-DD)
   qbo_sync_timestamp: string | null
@@ -202,7 +213,7 @@ export type CurrentYearSettingsScenario = {
   creator_email?: string
 }
 
-// Projection Scenario (projection settings + 2026-2030, optionally 2024/Custom baseline)
+// Projection Scenario (projection settings + future years, optionally Prior Year/Custom baseline)
 export type ProjectionScenario = {
   id: string
   user_id: string
@@ -212,10 +223,12 @@ export type ProjectionScenario = {
   scenario_type: 'projection'
   view_mode: 'Multi-Year'
   baseline_mode: BaselineMode
-  baseline_years: FutureYear[] | null // For 2024/Custom modes (basic data, no grid overrides)
+  baseline_year?: number // NEW: Year this scenario was created for (for migration warnings)
+  projection_year_range?: number[] // NEW: Years included in projection [2026, 2027, 2028, 2029, 2030]
+  baseline_years: FutureYear[] | null // For Prior Year/Custom modes (basic data, no grid overrides)
   projection_settings: Projection // Growth rates, global params
-  future_years: FutureYear[] // 2026-2030 only
-  future_custom_values: Record<string, number> // Grid overrides for 2026-2030 ONLY
+  future_years: FutureYear[] // Projection years (dynamic based on baseline year)
+  future_custom_values: Record<string, number> // Grid overrides for projection years ONLY
   baseline_date: string // ISO date (YYYY-MM-DD)
   qbo_sync_timestamp: string | null
   is_favorite_a?: boolean
@@ -247,6 +260,32 @@ export function isCurrentYearSettingsScenario(scenario: SavedScenario): scenario
 // Type guard for Projection
 export function isProjectionScenario(scenario: SavedScenario): scenario is ProjectionScenario {
   return 'scenario_type' in scenario && scenario.scenario_type === 'projection'
+}
+
+/**
+ * Normalize baseline mode from legacy year-specific values to generic values
+ * @param mode The baseline mode to normalize
+ * @param baselineYear The current baseline year (from app settings)
+ * @returns Normalized baseline mode
+ */
+export function normalizeBaselineMode(mode: BaselineMode, baselineYear: number): BaselineMode {
+  // Already normalized or Custom
+  if (mode === 'Current Year Data' || mode === 'Prior Year Data' || mode === 'Custom') {
+    return mode
+  }
+
+  // Convert old year-specific modes to generic
+  const yearMatch = mode.match(/(\d{4})/)
+  if (yearMatch) {
+    const modeYear = parseInt(yearMatch[1], 10)
+    if (modeYear === baselineYear) return 'Current Year Data'
+    if (modeYear === baselineYear - 1) return 'Prior Year Data'
+    // If neither, treat as custom (shouldn't happen but safe fallback)
+    return 'Custom'
+  }
+
+  // Fallback
+  return mode
 }
 
 export type Store = {

@@ -12,7 +12,6 @@ import {
   MONTHLY_BENEFITS_DENTAL,
   MONTHLY_BENEFITS_VISION,
   ANNUAL_BENEFITS_FULLTIME,
-  SOCIAL_SECURITY_WAGE_BASES,
   TAX_RATES,
   DEFAULT_CONSULTING_SERVICES_2024,
   DEFAULT_CONSULTING_SERVICES_2025,
@@ -22,15 +21,13 @@ import {
   ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
   ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
   DEFAULT_MD_SHARED_PROJECTION,
-  DEFAULT_MD_PRCS_PROJECTION
+  DEFAULT_MD_PRCS_PROJECTION,
+  getSocialSecurityWageBase
 } from './defaults'
-
-export function getSocialSecurityWageBase(year: number): number {
-  return SOCIAL_SECURITY_WAGE_BASES[year as keyof typeof SOCIAL_SECURITY_WAGE_BASES] || SOCIAL_SECURITY_WAGE_BASES[2030] // Use 2030 as fallback for later years
-}
+import { YEAR_CONFIG } from '../../../config/yearConfig'
 
 // Helper: employer payroll taxes for W2 annual wages (WA State medical practice <50 employees)
-export function calculateEmployerPayrollTaxes(annualWages: number, year: number = 2025): number {
+export function calculateEmployerPayrollTaxes(annualWages: number, year: number = YEAR_CONFIG.baselineYear): number {
   const ssWageBase = getSocialSecurityWageBase(year)
   
   // Federal taxes
@@ -51,7 +48,7 @@ export function calculateEmployerPayrollTaxes(annualWages: number, year: number 
 
 // Helper: Calculate benefit costs for a given year with growth applied
 export function getBenefitCostsForYear(year: number, benefitGrowthPct: number): number {
-  const baseYear = 2025
+  const baseYear = YEAR_CONFIG.baselineYear
   const baseCost = (MONTHLY_BENEFITS_MED + MONTHLY_BENEFITS_DENTAL + MONTHLY_BENEFITS_VISION) * 12
   if (year <= baseYear) {
     return baseCost
@@ -62,8 +59,8 @@ export function getBenefitCostsForYear(year: number, benefitGrowthPct: number): 
 }
 
 // Default Staff employment costs (wages + employer taxes + benefits for FT 1)
-export function computeDefaultNonMdEmploymentCosts(year: number = 2025): number {
-  // Calculate based on standard staff structure (for any year including 2025)
+export function computeDefaultNonMdEmploymentCosts(year: number = YEAR_CONFIG.baselineYear): number {
+  // Calculate based on standard staff structure (for any year)
   // Employee 1: $31.25/hr, 40 hrs/week, full-time + benefits
   const emp1Wages = 31.25 * 40 * 52
   const emp1Taxes = calculateEmployerPayrollTaxes(emp1Wages, year)
@@ -80,7 +77,7 @@ export function computeDefaultNonMdEmploymentCosts(year: number = 2025): number 
 }
 
 // Calculate total cost for an employee including benefits and payroll taxes (WA State medical practice <50 employees)
-export function calculateEmployeeTotalCost(employee: Physician, year: number = 2025, benefitGrowthPct: number = 5.0): number {
+export function calculateEmployeeTotalCost(employee: Physician, year: number = YEAR_CONFIG.baselineYear, benefitGrowthPct: number = 5.0): number {
   
   const baseSalary = employee.salary || 0
   const bonusAmount = employee.bonusAmount || 0
@@ -169,8 +166,8 @@ export function calculateDelayedW2Payment(physician: Physician, year: number): {
     return { amount: 0, taxes: 0, periodDetails: '' }
   }
   
-  // Manual override for Connor in 2025
-  if (physician.name === 'Connor' && year === 2025) {
+  // Manual override for Connor in baseline year (2025)
+  if (physician.name === 'Connor' && year === YEAR_CONFIG.baselineYear) {
     return {
       amount: 15289.23,
       taxes: 1493.36,
@@ -244,7 +241,7 @@ export function calculateDelayedW2Payment(physician: Physician, year: number): {
 }
 
 // Generate tooltip content for employee cost breakdown (WA State medical practice <50 employees)
-export function getEmployeeCostTooltip(employee: Physician, year: number = 2025, benefitGrowthPct: number = 5.0, delayedW2Amount: number = 0, delayedW2Taxes: number = 0, delayedW2Details: string = ''): string {
+export function getEmployeeCostTooltip(employee: Physician, year: number = YEAR_CONFIG.baselineYear, benefitGrowthPct: number = 5.0, delayedW2Amount: number = 0, delayedW2Taxes: number = 0, delayedW2Details: string = ''): string {
   
   const baseSalary = employee.salary || 0
   const bonusAmount = employee.bonusAmount || 0
@@ -344,7 +341,7 @@ export function getTotalIncome(yearData: YearRow | FutureYear): number {
   return therapyIncome + medicalDirectorIncome + prcsMedicalDirectorIncome + consultingServicesIncome
 }
 
-// Calculate guaranteed payments (buyout costs) from retiring partners for 2025 projected values
+// Calculate guaranteed payments (buyout costs) from retiring partners
 export function calculateGuaranteedPayments(physicians: Physician[]): number {
   const totalBuyoutCosts = physicians.reduce((sum, p) => {
     if (p.type === 'partnerToRetire') {
@@ -357,13 +354,13 @@ export function calculateGuaranteedPayments(physicians: Physician[]): number {
   return Math.round(totalBuyoutCosts)
 }
 
-// Calculate locums salary from physician panel locum costs for 2025 projected values
+// Calculate locums salary from physician panel locum costs
 export function calculateLocumsSalary(locumCosts: number): number {
   return Math.round(locumCosts)
 }
 
-// Aggregate MD Associates costs from employee/part-employee physicians for 2025 projected values
-export function calculateMDAssociatesCosts(physicians: Physician[], year: number = 2025, benefitGrowthPct: number = 5.0): {
+// Aggregate MD Associates costs from employee/part-employee physicians for projected values
+export function calculateMDAssociatesCosts(physicians: Physician[], year: number = YEAR_CONFIG.baselineYear, benefitGrowthPct: number = 5.0): {
   totalSalary: number;
   totalBenefits: number;
   totalPayrollTaxes: number;

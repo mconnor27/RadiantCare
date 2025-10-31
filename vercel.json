@@ -6,11 +6,11 @@
   "devCommand": "cd web && npm run dev",
   "crons": [
     {
-      "path": "/api/qbo/sync-2025",
+      "path": "/api/qbo/sync",
       "schedule": "0 9 * 1-2,11-12 2-6"
     },
     {
-      "path": "/api/qbo/sync-2025",
+      "path": "/api/qbo/sync",
       "schedule": "0 8 * 3-10 2-6"
     }
   ],

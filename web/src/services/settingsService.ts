@@ -105,3 +105,7 @@ export function subscribeToAppSettings(
     channel.unsubscribe()
   }
 }
+
+// Aliases for compatibility with yearConfig
+export const getSetting = getAppSetting
+export const setSetting = updateAppSetting

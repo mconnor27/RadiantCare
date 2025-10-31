@@ -6,6 +6,7 @@ import {
   parseTherapyIncome2025,
   type YTDPoint
 } from '../../../../historical_data/therapyIncomeParser'
+import { YEAR_CONFIG } from '../../../../config/yearConfig'
 import { getCurrentDateInfo } from './utils/dataProcessing'
 import { authenticatedFetch } from '../../../../lib/api'
 import type { IncomeMode } from '../../shared/types'
@@ -387,12 +388,12 @@ export default function YTDDetailed({ initialSettings, onSettingsChange, onRefre
 
       let totalMonths = 0
 
-      // Count full months from historical years (2016-2024)
-      const historicalYears = selectedYears.filter(y => y >= 2016 && y <= 2024)
+      // Count full months from historical years (2016 up to baseline year - 1)
+      const historicalYears = selectedYears.filter(y => y >= 2016 && y < YEAR_CONFIG.baselineYear)
       totalMonths += historicalYears.length * 12
 
-      // Add partial year from 2025 (only count up to current month)
-      if (currentYear === 2025) {
+      // Add partial year from current baseline year (only count up to current month)
+      if (currentYear === YEAR_CONFIG.baselineYear) {
         totalMonths += currentMonth
       }
 

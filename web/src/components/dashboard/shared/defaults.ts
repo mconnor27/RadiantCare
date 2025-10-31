@@ -1,9 +1,11 @@
 import type { Physician, PhysicianType, YearRow, FutureYear } from './types'
 import { getPartnerPortionOfYear, computeDefaultNonMdEmploymentCosts } from './calculations'
 import { calendarDateToPortion } from './utils'
+import { YEAR_CONFIG, getProjectionYearRange } from '../../../config/yearConfig'
 
-// Constants
-const HISTORIC_DATA: YearRow[] = [
+// Base historic data (2016-2025)
+// NOTE: This will be dynamically extended with future years from QBO cache on app load
+let HISTORIC_DATA: YearRow[] = [
   // 2016-2023: therapyIncome represents total gross income (from yearly data grid)
   { year: 2016, therapyIncome: 2325242, nonEmploymentCosts: 167375.03, employeePayroll: 188151.97 },
   { year: 2017, therapyIncome: 2373335, nonEmploymentCosts: 170366.16, employeePayroll: 180060.96 },
@@ -18,6 +20,64 @@ const HISTORIC_DATA: YearRow[] = [
   // 2025 actuals per provided figures (rounded to whole dollars to match grid display)
   { year: 2025, therapyIncome: 3164007, nonEmploymentCosts: 229714, employeePayroll: 752156 },
 ]
+
+/**
+ * Initialize historic data by loading any missing years from QBO cache
+ * This allows automatic population of 2026, 2027, etc. without code changes
+ */
+export async function initializeHistoricData() {
+  const baselineYear = YEAR_CONFIG.baselineYear
+  const maxExistingYear = Math.max(...HISTORIC_DATA.map(row => row.year))
+
+  // Check if we need to load any years between maxExisting and baseline
+  if (baselineYear > maxExistingYear) {
+    try {
+      // Dynamically import supabase to avoid circular dependencies
+      const { supabase } = await import('../../../lib/supabase')
+
+      for (let year = maxExistingYear + 1; year <= baselineYear; year++) {
+        // Check if this year exists in QBO cache
+        const { data, error } = await supabase
+          .from('qbo_cache')
+          .select('summary')
+          .eq('year', year)
+          .single()
+
+        if (!error && data?.summary) {
+          // Extract relevant data from QBO cache summary
+          const summary = data.summary
+          const therapyIncome = summary.total_income || 0
+          const nonEmploymentCosts = summary.operating_expenses || 0
+          const employeePayroll = summary.payroll_expenses || 0
+
+          // Add to HISTORIC_DATA
+          HISTORIC_DATA.push({
+            year,
+            therapyIncome,
+            nonEmploymentCosts,
+            employeePayroll,
+            description: `Auto-loaded from QBO cache`
+          })
+
+          console.log(`✅ Auto-loaded historic data for ${year}`)
+        }
+      }
+
+      // Sort by year
+      HISTORIC_DATA.sort((a, b) => a.year - b.year)
+    } catch (err) {
+      console.warn('Failed to auto-load historic data:', err)
+      // Non-fatal - app continues with base data
+    }
+  }
+}
+
+/**
+ * Get historic data (call after initialization)
+ */
+export function getHistoricData(): YearRow[] {
+  return HISTORIC_DATA
+}
 
 // Default employment costs
 export const DEFAULT_MISC_EMPLOYMENT_COSTS = 29115.51
@@ -39,14 +99,46 @@ export const ANNUAL_BENEFITS_FULLTIME = (MONTHLY_BENEFITS_MED + MONTHLY_BENEFITS
 // Removed NET_PARTNER_POOL_2025 - now calculating dynamically everywhere
 
 // Social Security Wage Bases by year (moved from calculations.ts)
-export const SOCIAL_SECURITY_WAGE_BASES = {
+// NOTE: These are known values. For future years beyond this range, we'll extrapolate.
+export const SOCIAL_SECURITY_WAGE_BASES: Record<number, number> = {
+  2024: 168600,
   2025: 176100,
   2026: 183600,
   2027: 190800,
   2028: 198900,
   2029: 207000,
   2030: 215400,
-} as const
+}
+
+/**
+ * Get Social Security wage base for a given year
+ * Extrapolates using 4% growth rate if year not in table
+ */
+export function getSocialSecurityWageBase(year: number): number {
+  // Return known value if available
+  if (SOCIAL_SECURITY_WAGE_BASES[year]) {
+    return SOCIAL_SECURITY_WAGE_BASES[year]
+  }
+
+  // Extrapolate for future years
+  const knownYears = Object.keys(SOCIAL_SECURITY_WAGE_BASES).map(Number).sort((a, b) => a - b)
+  const latestYear = knownYears[knownYears.length - 1]
+  const latestBase = SOCIAL_SECURITY_WAGE_BASES[latestYear]
+
+  if (year > latestYear) {
+    // Extrapolate forward
+    const yearDiff = year - latestYear
+    const growthRate = 0.04 // 4% annual growth
+    return Math.round(latestBase * Math.pow(1 + growthRate, yearDiff))
+  } else {
+    // Extrapolate backward (shouldn't happen, but safe fallback)
+    const earliestYear = knownYears[0]
+    const earliestBase = SOCIAL_SECURITY_WAGE_BASES[earliestYear]
+    const yearDiff = earliestYear - year
+    const growthRate = 0.04
+    return Math.round(earliestBase / Math.pow(1 + growthRate, yearDiff))
+  }
+}
 
 // Tax rate constants (moved from calculations.ts)
 export const TAX_RATES = {
@@ -392,15 +484,19 @@ export function scenarioBDefaultsByYear(year: number): Physician[] {
 }
 
 // Create the base future years array (function to avoid circular dependency)
+// NOW YEAR-AGNOSTIC: Uses YEAR_CONFIG to determine projection years
 export function getFutureYearsBase(): Omit<FutureYear, 'physicians'>[] {
-  return Array.from({ length: 5 }).map((_, idx) => {
-    const startYear = HISTORIC_DATA[HISTORIC_DATA.length - 1].year + 1 // start after last actual (2025)
-    const year = startYear + idx
+  const projectionYears = getProjectionYearRange()
+  const baselineYear = YEAR_CONFIG.baselineYear
+
+  // Get baseline year data (last year in HISTORIC_DATA or fallback)
+  const baselineData = HISTORIC_DATA.find(d => d.year === baselineYear) || HISTORIC_DATA[HISTORIC_DATA.length - 1]
+
+  return projectionYears.map((year) => {
     return {
       year,
-      therapyIncome: HISTORIC_DATA[HISTORIC_DATA.length - 1].therapyIncome,
-      nonEmploymentCosts:
-        HISTORIC_DATA[HISTORIC_DATA.length - 1].nonEmploymentCosts,
+      therapyIncome: baselineData.therapyIncome,
+      nonEmploymentCosts: baselineData.nonEmploymentCosts,
       nonMdEmploymentCosts: getDefaultNonMdEmploymentCostsForYear(year),
       locumCosts: PROJECTION_DEFAULTS.A.locumsCosts,
       miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
@@ -442,20 +538,9 @@ export function getInitialFutureYearsA(): FutureYear[] {
   })
 }
 
-// Future years base configuration
-export const FUTURE_YEARS_BASE: Omit<FutureYear, 'physicians'>[] = Array.from({ length: 5 }).map((_, idx) => {
-  const startYear = HISTORIC_DATA[HISTORIC_DATA.length - 1].year + 1 // start after last actual (2025)
-  const year = startYear + idx
-  return {
-    year,
-    therapyIncome: HISTORIC_DATA[HISTORIC_DATA.length - 1].therapyIncome,
-    nonEmploymentCosts:
-      HISTORIC_DATA[HISTORIC_DATA.length - 1].nonEmploymentCosts,
-    nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(year),
-    locumCosts: PROJECTION_DEFAULTS.A.locumsCosts,
-    miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-  }
-})
+// Future years base configuration (NOW DYNAMIC - use getFutureYearsBase() function instead)
+// This constant is kept for backward compat but will be computed dynamically
+export const FUTURE_YEARS_BASE: Omit<FutureYear, 'physicians'>[] = getFutureYearsBase()
 
 export const INITIAL_FUTURE_YEARS_A: FutureYear[] = FUTURE_YEARS_BASE.map((b) => {
   const physicians = scenarioADefaultsByYear(b.year)
@@ -482,4 +567,5 @@ export const INITIAL_FUTURE_YEARS_B: FutureYear[] = FUTURE_YEARS_BASE.map((b) =>
 })
 
 // Export historic data for use in other modules
+// NOTE: Use getHistoricData() after app initialization, or HISTORIC_DATA for immediate access
 export { HISTORIC_DATA }

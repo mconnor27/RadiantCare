@@ -17,11 +17,17 @@ import ShareLinkButton from '../../../shared/ShareLinkButton'
 import { useAuth } from '../../../auth/AuthProvider'
 import { supabase } from '../../../../lib/supabase'
 import { createTooltip, removeTooltip } from '../../shared/tooltips'
+import { YEAR_CONFIG, getProjectionYearRange } from '../../../../config/yearConfig'
 
 // Helper function to get baseline year from data mode
 function getBaselineYear(dataMode: string): number {
   if (dataMode === '2024 Data') return 2024
-  return 2025 // Default for '2025 Data' and 'Custom'
+  if (dataMode === 'Current Year Data') return YEAR_CONFIG.baselineYear
+  if (dataMode === 'Prior Year Data') return YEAR_CONFIG.baselineYear - 1
+  // Legacy values
+  const yearMatch = dataMode.match(/(\d{4})/)
+  if (yearMatch) return parseInt(yearMatch[1], 10)
+  return YEAR_CONFIG.baselineYear // Default for 'Custom'
 }
 
 // Helper function to create projection settings summary
@@ -53,7 +59,7 @@ function createProjectionSummary(scenario: 'A' | 'B', store: Store): string {
   return summaryParts.join(' • ')
 }
 
-// Helper function to check if any future years (2026-2030) have overrides or modified physicians
+// Helper function to check if any future years (projection years) have overrides or modified physicians
 function hasFutureYearOverrides(scenario: 'A' | 'B', store: Store): boolean {
   const scenarioData = scenario === 'A' ? store.scenarioA : store.scenarioB
   if (!scenarioData) return false
@@ -66,9 +72,13 @@ function hasFutureYearOverrides(scenario: 'A' | 'B', store: Store): boolean {
     : ('scenarioB' in snapshot ? snapshot.scenarioB : null)
   if (!snapshotScenario) return false
   
-  // Check each future year (2026-2030)
+  // Check each future year (projection years)
+  const projectionYears = getProjectionYearRange()
+  const minYear = projectionYears[0]
+  const maxYear = projectionYears[projectionYears.length - 1]
+
   for (const fy of scenarioData.future) {
-    if (fy.year < 2026 || fy.year > 2030) continue
+    if (fy.year < minYear || fy.year > maxYear) continue
     
     // Check if year has any override flags
     if (fy._overrides && Object.keys(fy._overrides).length > 0) {
@@ -105,7 +115,7 @@ function hasFutureYearOverrides(scenario: 'A' | 'B', store: Store): boolean {
   return false
 }
 
-// Helper function to reset all future years (2026-2030) to be calculated from current projection settings
+// Helper function to reset all future years (projection years) to be calculated from current projection settings
 function resetFutureYearsToProjection(scenario: 'A' | 'B', store: Store) {
   logger.debug('CHART', `🔄 Resetting all future years for Scenario ${scenario} to current projection settings...`)
   
@@ -115,16 +125,17 @@ function resetFutureYearsToProjection(scenario: 'A' | 'B', store: Store) {
     return
   }
   
-  // Clear all overrides for years 2026-2030
+  // Clear all overrides for projection years
+  const projectionYears = getProjectionYearRange()
   scenarioData.future.forEach((fy) => {
-    if (fy.year >= 2026 && fy.year <= 2030) {
+    if (projectionYears.includes(fy.year)) {
       fy._overrides = {}
       logger.debug('CHART', `  ✓ Cleared overrides for year ${fy.year}`)
     }
   })
-  
-  // Reset physicians for years 2026-2030 to loaded snapshot
-  for (let year = 2026; year <= 2030; year++) {
+
+  // Reset physicians for projection years to loaded snapshot
+  for (const year of projectionYears) {
     store.resetPhysicians(scenario, year)
     logger.debug('CHART', `  ✓ Reset physicians for year ${year}`)
   }
@@ -149,6 +160,14 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
   const [showLoadModal, setShowLoadModal] = useState(false)
   const [showLoadModalB, setShowLoadModalB] = useState(false)
   const [showModularSaveDialog, setShowModularSaveDialog] = useState(false)
+
+  // Dynamic year range for titles
+  const yearRangeTitle = useMemo(() => {
+    const projectionYears = getProjectionYearRange()
+    const firstYear = projectionYears[0]
+    const lastYear = projectionYears[projectionYears.length - 1]
+    return `${YEAR_CONFIG.baselineYear}-${lastYear}`
+  }, [])
   const [isScenarioDirty, setIsScenarioDirty] = useState(false)
   const [isScenarioBDirty, setIsScenarioBDirty] = useState(false)
   const [scenarioAIsPublic, setScenarioAIsPublic] = useState(false)
@@ -248,7 +267,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
           logger.debug('CHART', `[Multi-Year Init] Loading ${isFavorite ? 'favorite A' : 'Default (Optimistic)'}...`, scenarioToLoadA.name)
           await store.loadScenarioFromDatabase(scenarioToLoadA.id, 'A', true)
           // Ensure selectedYear is set to 2025 (Baseline) after load
-          store.setSelectedYear('A', 2025)
+          store.setSelectedYear('A', YEAR_CONFIG.baselineYear)
         }
 
         // Load scenario B if needed (only if persisted or favorite)
@@ -259,7 +278,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
           await store.loadScenarioFromDatabase(scenarioToLoadB.id, 'B', false)
           
           // Set selectedYear to 2025
-          store.setSelectedYear('B', 2025)
+          store.setSelectedYear('B', YEAR_CONFIG.baselineYear)
 
           // Enable visibility if it's a favorite or if it was persisted as enabled
           if (isFavoriteB || store.scenarioBEnabled) {
@@ -339,7 +358,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
           
           // Load the scenario
           await store.loadScenarioFromDatabase(scenarioToLoad.id, 'B', false)
-          store.setSelectedYear('B', 2025)
+          store.setSelectedYear('B', YEAR_CONFIG.baselineYear)
           logger.debug('CHART', '[Scenario B] Loaded successfully:',  scenarioToLoad.name)
         } catch (err) {
           logger.error('CHART', '[Scenario B] Error loading scenario:',  err)
@@ -1254,7 +1273,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
                   ) : null
                 }
               >
-                <YearPanel year={store.scenarioA.selectedYear ?? store.scenarioA.future[0]?.year ?? 2025} scenario={'A'} />
+                <YearPanel year={store.scenarioA.selectedYear ?? store.scenarioA.future[0]?.year ?? YEAR_CONFIG.baselineYear} scenario={'A'} />
               </CollapsibleSection>
             </div>
 
@@ -1484,7 +1503,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
                     ) : null
                   }
                 >
-                  <YearPanel year={store.scenarioB.selectedYear ?? store.scenarioB.future[0]?.year ?? 2025} scenario={'B'} />
+                  <YearPanel year={store.scenarioB.selectedYear ?? store.scenarioB.future[0]?.year ?? YEAR_CONFIG.baselineYear} scenario={'B'} />
                 </CollapsibleSection>
               </div>
             )}
@@ -1493,7 +1512,7 @@ export default function MultiYearView({ hasPendingSharedLink }: MultiYearViewPro
       </div>
       
       <div className="overall-compensation-container" style={{ maxWidth: store.scenarioBEnabled ? 1100 : 1000, minWidth: store.scenarioBEnabled ? 1100 : 1000, margin: '0 auto' }}>
-        <CollapsibleSection title="Overall Compensation Summary (2025-2030)" open={overallOpen} onOpenChange={setOverallOpen} tone="neutral">
+        <CollapsibleSection title={`Overall Compensation Summary (${yearRangeTitle})`} open={overallOpen} onOpenChange={setOverallOpen} tone="neutral">
           <OverallCompensationSummary />
         </CollapsibleSection>
       </div>

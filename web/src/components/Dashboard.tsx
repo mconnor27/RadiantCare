@@ -6,12 +6,13 @@ import { immer } from 'zustand/middleware/immer'
 import * as LZString from 'lz-string'
 import { useAuth } from './auth/AuthProvider'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faGear, faSignOutAlt, faBug, faUserShield } from '@fortawesome/free-solid-svg-icons'
+import { faGear, faSignOutAlt, faBug, faUserShield, faCalendarAlt } from '@fortawesome/free-solid-svg-icons'
 import LoginModal from './auth/LoginModal'
 import SignupModal from './auth/SignupModal'
 import PasswordResetModal from './auth/PasswordResetModal'
 import ScenarioManager from './scenarios/ScenarioManager'
 import LoggingControlPanel from './admin/LoggingControlPanel'
+import YearSettingsPanel from './admin/YearSettingsPanel'
 import YTDDetailed from './dashboard/views/detailed/YTDDetailed'
 import YTDDetailedMobile from './dashboard/views/detailed/YTDDetailedMobile'
 import MultiYearView from './dashboard/views/multi-year/MultiYearView'
@@ -59,6 +60,7 @@ import {
   ANNUAL_BENEFITS_FULLTIME,
   INITIAL_FUTURE_YEARS_A
 } from './dashboard/shared/defaults'
+import { YEAR_CONFIG } from '../config/yearConfig'
 
 
 export const useDashboardStore = create<Store>()(
@@ -81,26 +83,26 @@ export const useDashboardStore = create<Store>()(
             miscEmploymentCostsPct: PROJECTION_DEFAULTS.A.miscEmploymentCostsPct, 
             benefitCostsGrowthPct: PROJECTION_DEFAULTS.A.benefitCostsGrowthPct 
           },
-          selectedYear: 2025, // Default to Baseline tab
-          dataMode: '2025 Data',
+          selectedYear: YEAR_CONFIG.baselineYear, // Default to Baseline tab
+          dataMode: 'Current Year Data',
         },
         scenarioB: undefined,
         scenarioBEnabled: false,
         // REMOVED: customProjectedValues (legacy - never used in modular system)
         // Multi-Year uses _overrides flags, YTD uses ytdCustomProjectedValues
         // NEW: Dedicated YTD state (separate from Scenario A/B)
-        ytdData: INITIAL_FUTURE_YEARS_A.find(f => f.year === 2025) || {
-          year: 2025,
+        ytdData: INITIAL_FUTURE_YEARS_A.find(f => f.year === YEAR_CONFIG.baselineYear) || {
+          year: YEAR_CONFIG.baselineYear,
           therapyIncome: 0,
           nonEmploymentCosts: 0,
-          nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+          nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(YEAR_CONFIG.baselineYear),
           locumCosts: DEFAULT_LOCUM_COSTS_2025,
           miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
           medicalDirectorHours: ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
           prcsMedicalDirectorHours: ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
           consultingServicesAgreement: DEFAULT_CONSULTING_SERVICES_2025,
-          prcsDirectorPhysicianId: scenarioADefaultsByYear(2025).find(p => p.name === 'Suszko')?.id,
-          physicians: scenarioADefaultsByYear(2025),
+          prcsDirectorPhysicianId: scenarioADefaultsByYear(YEAR_CONFIG.baselineYear).find(p => p.name === 'Suszko')?.id,
+          physicians: scenarioADefaultsByYear(YEAR_CONFIG.baselineYear),
         },
         ytdCustomProjectedValues: {},
         currentScenarioId: null,
@@ -176,7 +178,7 @@ export const useDashboardStore = create<Store>()(
               }
 
               // NEW: Mark as overridden for future years (2026+)
-              if (f.year >= 2026) {
+              if (f.year >= (YEAR_CONFIG.baselineYear + 1)) {
                 if (!f._overrides) f._overrides = {}
                 f._overrides.prcsDirectorPhysicianId = true
                 logger.debug('STORE', 'Marked prcsDirectorPhysicianId as overridden', { year: f.year })
@@ -203,15 +205,15 @@ export const useDashboardStore = create<Store>()(
 
               // NEW: Mark this field as user-overridden (for sparse saving)
               // Only mark as override for future years (2026+), not baseline year (2025)
-              if (year >= 2026) {
+              if (year >= (YEAR_CONFIG.baselineYear + 1)) {
                 if (!fy._overrides) fy._overrides = {}
                 fy._overrides[field] = true
                 logger.debug('STORE', 'Marked field as overridden', { field, year })
               }
 
-              // If we're updating a 2025 baseline value, trigger projection recalculation
+              // If we're updating a baseline year value, trigger projection recalculation
               // for future years without switching to Custom mode
-              if (year === 2025) {
+              if (year === YEAR_CONFIG.baselineYear) {
                 setTimeout(() => {
                   get().applyProjectionFromLastActual(scenario)
                 }, 0)
@@ -545,7 +547,7 @@ export const useDashboardStore = create<Store>()(
             }
 
             // NEW: Mark physicians as overridden for the edited year (2026+)
-            if (year >= 2026) {
+            if (year >= (YEAR_CONFIG.baselineYear + 1)) {
               if (!fy._overrides) fy._overrides = {}
               fy._overrides.physicians = true
               logger.debug('STORE', 'Marked physicians as overridden', { year })
@@ -846,7 +848,7 @@ export const useDashboardStore = create<Store>()(
             // Clear any per-year overrides since the user is setting a new global value
             if (field === 'locumsCosts' || field === 'medicalDirectorHours' || field === 'prcsMedicalDirectorHours' || field === 'consultingServicesAgreement') {
               for (const fy of sc.future) {
-                if (fy.year === 2025) continue // Skip baseline year
+                if (fy.year === YEAR_CONFIG.baselineYear) continue // Skip baseline year
                 // Map field names from projection to future year properties
                 const futureYearField = field === 'locumsCosts' ? 'locumCosts' : field
                 fy[futureYearField] = sc.projection[field]
@@ -863,26 +865,26 @@ export const useDashboardStore = create<Store>()(
             // Use baseline data based on selected dataMode
             const dataMode = sc.dataMode
             const last2024 = state.historic.find((h) => h.year === 2024)
-            const last2025 = state.historic.find((h) => h.year === 2025)
+            const lastBaseline = state.historic.find((h) => h.year === YEAR_CONFIG.baselineYear)
 
             logger.debug('SCENARIO', 'setProjectionField data mode check', {
               dataMode,
               has2024: !!last2024,
-              has2025: !!last2025
+              has2025: !!lastBaseline
             })
 
             // Check current 2025 value in future array
-            const current2025 = sc.future.find(f => f.year === 2025)
+            const currentBaseline = sc.future.find(f => f.year === YEAR_CONFIG.baselineYear)
             logger.debug('SCENARIO', 'setProjectionField current 2025 data', {
-              therapyIncome: current2025?.therapyIncome,
-              historic2025: last2025?.therapyIncome
+              therapyIncome: currentBaseline?.therapyIncome,
+              historic2025: lastBaseline?.therapyIncome
             })
             
             // Determine starting values based on data mode
             let baselineData
             if (dataMode === 'Custom') {
               // For Custom mode, use the existing baseline data from year 2025 in future array
-              const customBaseline = sc.future.find(f => f.year === 2025)
+              const customBaseline = sc.future.find(f => f.year === YEAR_CONFIG.baselineYear)
               if (customBaseline) {
                 baselineData = {
                   therapyIncome: customBaseline.therapyIncome,
@@ -894,10 +896,10 @@ export const useDashboardStore = create<Store>()(
               } else {
                 // Fallback if Custom baseline missing (shouldn't happen)
                 baselineData = {
-                  therapyIncome: last2025?.therapyIncome || 0,
-                  nonEmploymentCosts: last2025?.nonEmploymentCosts || 0,
+                  therapyIncome: lastBaseline?.therapyIncome || 0,
+                  nonEmploymentCosts: lastBaseline?.nonEmploymentCosts || 0,
                   miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-                  nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+                  nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(YEAR_CONFIG.baselineYear),
                 }
                 logger.warn('SCENARIO', 'Custom mode but no baseline found, using historic 2025')
               }
@@ -909,23 +911,23 @@ export const useDashboardStore = create<Store>()(
                 nonMdEmploymentCosts: ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS,
               }
               logger.debug('SCENARIO', 'Using 2024 Data baseline from historic[2024]')
-            } else if (last2025) {
+            } else if (lastBaseline) {
               // In '2025 Data' mode, ALWAYS use future[2025] (synced from YTD grid)
               // The historic[2025] data is stale and should NOT be used as fallback
-              const baseline2025 = sc.future.find(f => f.year === 2025)
-              if (!baseline2025) {
+              const baselineYear = sc.future.find(f => f.year === YEAR_CONFIG.baselineYear)
+              if (!baselineYear) {
                 logger.error('SCENARIO', 'No 2025 baseline found in future array!')
                 return
               }
               baselineData = {
-                therapyIncome: baseline2025.therapyIncome,
-                nonEmploymentCosts: baseline2025.nonEmploymentCosts,
-                miscEmploymentCosts: baseline2025.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
-                nonMdEmploymentCosts: baseline2025.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
+                therapyIncome: baselineYear.therapyIncome,
+                nonEmploymentCosts: baselineYear.nonEmploymentCosts,
+                miscEmploymentCosts: baselineYear.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
+                nonMdEmploymentCosts: baselineYear.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(YEAR_CONFIG.baselineYear),
               }
               logger.debug('SCENARIO', 'Using 2025 Data baseline from FUTURE[2025] (grid-synced)', {
                 therapyIncome: baselineData.therapyIncome,
-                historicTherapyIncome: last2025.therapyIncome
+                historicTherapyIncome: lastBaseline.therapyIncome
               })
             } else {
               // Fallback to 2025 hardcoded values
@@ -933,7 +935,7 @@ export const useDashboardStore = create<Store>()(
                 therapyIncome: 0,
                 nonEmploymentCosts: 0,
                 miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-                nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+                nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(YEAR_CONFIG.baselineYear),
               }
               logger.warn('SCENARIO', 'Using fallback hardcoded baseline')
             }
@@ -969,14 +971,14 @@ export const useDashboardStore = create<Store>()(
             // Apply projections to each future year (SKIP baseline year 2025)
             // Only recalculate fields affected by the changed growth rate
             for (const fy of sc.future) {
-              if (fy.year === 2025) continue  // Never overwrite baseline data
+              if (fy.year === YEAR_CONFIG.baselineYear) continue  // Never overwrite baseline data
 
               // Calculate all growth-based values (we need them for cumulative growth)
               income = income * (1 + incomeGpct)
               nonEmploymentCosts = nonEmploymentCosts * (1 + nonEmploymentGpct)
               miscEmploymentCosts = miscEmploymentCosts * (1 + miscEmploymentGpct)
 
-              const yearsSince2025 = fy.year - 2025
+              const yearsSince2025 = fy.year - YEAR_CONFIG.baselineYear
               const wagesAndTaxes = baseWagesTaxes2025 * Math.pow(1 + nonMdEmploymentGpct, yearsSince2025)
               const benefits = getBenefitCostsForYear(fy.year, benefitGrowthPct)
               const staffEmploymentCosts = wagesAndTaxes + benefits
@@ -1007,26 +1009,26 @@ export const useDashboardStore = create<Store>()(
             // Use baseline data based on selected dataMode
             const dataMode = sc.dataMode
             const last2024 = state.historic.find((h) => h.year === 2024)
-            const last2025 = state.historic.find((h) => h.year === 2025)
+            const lastBaseline = state.historic.find((h) => h.year === YEAR_CONFIG.baselineYear)
 
             logger.debug('SCENARIO', 'applyProjectionFromLastActual data mode check', {
               dataMode,
               has2024: !!last2024,
-              has2025: !!last2025
+              has2025: !!lastBaseline
             })
 
             // Check current 2025 value in future array
-            const updated2025 = sc.future.find(f => f.year === 2025)
+            const updatedBaseline = sc.future.find(f => f.year === YEAR_CONFIG.baselineYear)
             logger.debug('SCENARIO', 'applyProjectionFromLastActual updated 2025 data', {
-              therapyIncome: updated2025?.therapyIncome,
-              historic2025: last2025?.therapyIncome
+              therapyIncome: updatedBaseline?.therapyIncome,
+              historic2025: lastBaseline?.therapyIncome
             })
 
             // Determine starting values based on data mode
             let baselineData
             if (dataMode === 'Custom') {
               // For Custom mode, use the existing baseline data from year 2025 in future array
-              const customBaseline = sc.future.find(f => f.year === 2025)
+              const customBaseline = sc.future.find(f => f.year === YEAR_CONFIG.baselineYear)
               if (customBaseline) {
                 baselineData = {
                   therapyIncome: customBaseline.therapyIncome,
@@ -1038,10 +1040,10 @@ export const useDashboardStore = create<Store>()(
               } else {
                 // Fallback if Custom baseline missing (shouldn't happen)
                 baselineData = {
-                  therapyIncome: last2025?.therapyIncome || 0,
-                  nonEmploymentCosts: last2025?.nonEmploymentCosts || 0,
+                  therapyIncome: lastBaseline?.therapyIncome || 0,
+                  nonEmploymentCosts: lastBaseline?.nonEmploymentCosts || 0,
                   miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-                  nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+                  nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(YEAR_CONFIG.baselineYear),
                 }
                 logger.warn('SCENARIO', 'Custom mode but no baseline found, using historic 2025')
               }
@@ -1053,23 +1055,23 @@ export const useDashboardStore = create<Store>()(
                 nonMdEmploymentCosts: ACTUAL_2024_NON_MD_EMPLOYMENT_COSTS,
               }
               logger.debug('SCENARIO', 'Using 2024 Data baseline from historic[2024]')
-            } else if (last2025) {
+            } else if (lastBaseline) {
               // In '2025 Data' mode, ALWAYS use future[2025] (synced from YTD grid)
               // The historic[2025] data is stale and should NOT be used as fallback
-              const baseline2025 = updated2025
-              if (!baseline2025) {
+              const baselineYear = updatedBaseline
+              if (!baselineYear) {
                 logger.error('SCENARIO', 'No 2025 baseline found in future array!')
                 return
               }
               baselineData = {
-                therapyIncome: baseline2025.therapyIncome,
-                nonEmploymentCosts: baseline2025.nonEmploymentCosts,
-                miscEmploymentCosts: baseline2025.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
-                nonMdEmploymentCosts: baseline2025.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
+                therapyIncome: baselineYear.therapyIncome,
+                nonEmploymentCosts: baselineYear.nonEmploymentCosts,
+                miscEmploymentCosts: baselineYear.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
+                nonMdEmploymentCosts: baselineYear.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(YEAR_CONFIG.baselineYear),
               }
               logger.debug('SCENARIO', 'Using 2025 Data baseline from FUTURE[2025] (grid-synced)', {
                 therapyIncome: baselineData.therapyIncome,
-                historicTherapyIncome: last2025.therapyIncome
+                historicTherapyIncome: lastBaseline.therapyIncome
               })
             } else {
               // Fallback to 2025 hardcoded values
@@ -1077,7 +1079,7 @@ export const useDashboardStore = create<Store>()(
                 therapyIncome: 0,
                 nonEmploymentCosts: 0,
                 miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-                nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+                nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(YEAR_CONFIG.baselineYear),
               }
               logger.warn('SCENARIO', 'Using fallback hardcoded baseline')
             }
@@ -1105,14 +1107,14 @@ export const useDashboardStore = create<Store>()(
             
             // Apply projections to each future year (SKIP baseline year 2025)
             for (const fy of sc.future) {
-              if (fy.year === 2025) continue  // Never overwrite baseline data
+              if (fy.year === YEAR_CONFIG.baselineYear) continue  // Never overwrite baseline data
               
               income = income * (1 + incomeGpct)
               nonEmploymentCosts = nonEmploymentCosts * (1 + nonEmploymentGpct)
               miscEmploymentCosts = miscEmploymentCosts * (1 + miscEmploymentGpct)
 
               // Compute staff employment costs using split growth.
-              const yearsSince2025 = fy.year - 2025
+              const yearsSince2025 = fy.year - YEAR_CONFIG.baselineYear
               const wagesAndTaxes = baseWagesTaxes2025 * Math.pow(1 + nonMdEmploymentGpct, yearsSince2025)
               const benefits = getBenefitCostsForYear(fy.year, benefitGrowthPct)
               const staffEmploymentCosts = wagesAndTaxes + benefits
@@ -1198,45 +1200,45 @@ export const useDashboardStore = create<Store>()(
                 }
               } else if (sc.dataMode === '2025 Data') {
                 // When switching from '2025 Data' to Custom, capture current future[2025] state (NOT historic)
-                const current2025 = sc.future.find(f => f.year === 2025)
-                if (!current2025) {
+                const currentBaseline = sc.future.find(f => f.year === YEAR_CONFIG.baselineYear)
+                if (!currentBaseline) {
                   logger.error('SCENARIO', 'No 2025 baseline found in future array when switching to Custom!')
                   return
                 }
                 baselineData = {
                   year: 2025,
-                  therapyIncome: current2025.therapyIncome,
-                  nonEmploymentCosts: current2025.nonEmploymentCosts,
-                  nonMdEmploymentCosts: current2025.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
-                  locumCosts: current2025.locumCosts ?? DEFAULT_LOCUM_COSTS_2025,
-                  miscEmploymentCosts: current2025.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
-                  physicians: current2025.physicians ?? (scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)),
+                  therapyIncome: currentBaseline.therapyIncome,
+                  nonEmploymentCosts: currentBaseline.nonEmploymentCosts,
+                  nonMdEmploymentCosts: currentBaseline.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(YEAR_CONFIG.baselineYear),
+                  locumCosts: currentBaseline.locumCosts ?? DEFAULT_LOCUM_COSTS_2025,
+                  miscEmploymentCosts: currentBaseline.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
+                  physicians: currentBaseline.physicians ?? (scenario === 'A' ? scenarioADefaultsByYear(YEAR_CONFIG.baselineYear) : scenarioBDefaultsByYear(2025)),
                 }
                 logger.debug('SCENARIO', 'Captured 2025 baseline for Custom mode', { therapyIncome: baselineData.therapyIncome })
               } else {
                 // Fallback to 2025 defaults (should rarely happen)
-                const physicians = scenario === 'A' ? scenarioADefaultsByYear(2025) : scenarioBDefaultsByYear(2025)
+                const physicians = scenario === 'A' ? scenarioADefaultsByYear(YEAR_CONFIG.baselineYear) : scenarioBDefaultsByYear(2025)
                 const js = physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
                 // Try to get from future[2025] first, then fall back to hardcoded defaults
-                const current2025 = sc.future.find(f => f.year === 2025)
+                const currentBaseline = sc.future.find(f => f.year === YEAR_CONFIG.baselineYear)
                 baselineData = {
                   year: 2025,
-                  therapyIncome: current2025?.therapyIncome ?? 0,
-                  nonEmploymentCosts: current2025?.nonEmploymentCosts ?? 0,
-                  nonMdEmploymentCosts: current2025?.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
-                  locumCosts: current2025?.locumCosts ?? DEFAULT_LOCUM_COSTS_2025,
-                  miscEmploymentCosts: current2025?.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
-                  medicalDirectorHours: current2025?.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
-                  prcsMedicalDirectorHours: current2025?.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
-                  consultingServicesAgreement: current2025?.consultingServicesAgreement ?? DEFAULT_CONSULTING_SERVICES_2025,
-                  prcsDirectorPhysicianId: current2025?.prcsDirectorPhysicianId ?? js?.id,
-                  physicians: current2025?.physicians ?? physicians,
+                  therapyIncome: currentBaseline?.therapyIncome ?? 0,
+                  nonEmploymentCosts: currentBaseline?.nonEmploymentCosts ?? 0,
+                  nonMdEmploymentCosts: currentBaseline?.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(YEAR_CONFIG.baselineYear),
+                  locumCosts: currentBaseline?.locumCosts ?? DEFAULT_LOCUM_COSTS_2025,
+                  miscEmploymentCosts: currentBaseline?.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
+                  medicalDirectorHours: currentBaseline?.medicalDirectorHours ?? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS,
+                  prcsMedicalDirectorHours: currentBaseline?.prcsMedicalDirectorHours ?? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS,
+                  consultingServicesAgreement: currentBaseline?.consultingServicesAgreement ?? DEFAULT_CONSULTING_SERVICES_2025,
+                  prcsDirectorPhysicianId: currentBaseline?.prcsDirectorPhysicianId ?? js?.id,
+                  physicians: currentBaseline?.physicians ?? physicians,
                 }
                 logger.warn('SCENARIO', 'Using fallback baseline for Custom mode', { therapyIncome: baselineData.therapyIncome })
               }
               
               // Set the baseline data as the first entry in future years (replacing or adding 2025)
-              const existingIndex = sc.future.findIndex(f => f.year === 2025)
+              const existingIndex = sc.future.findIndex(f => f.year === YEAR_CONFIG.baselineYear)
               if (existingIndex >= 0) {
                 sc.future[existingIndex] = baselineData
               } else {
@@ -1311,7 +1313,7 @@ export const useDashboardStore = create<Store>()(
             if (snapshot) {
               const snapshotScenario = scenario === 'A' ? ('scenarioA' in snapshot ? snapshot.scenarioA : null) : ('scenarioB' in snapshot ? snapshot.scenarioB : null)
               scenarioState.future.forEach(fy => {
-                if (skip2025 && fy.year === 2025) return
+                if (skip2025 && fy.year === YEAR_CONFIG.baselineYear) return
                 const snapshotFy = snapshotScenario?.future.find((f: FutureYear) => f.year === fy.year)
                 if (snapshotFy) {
                   // Deep copy physicians from snapshot
@@ -1326,7 +1328,7 @@ export const useDashboardStore = create<Store>()(
             } else {
               // Fall back to hardcoded defaults if no snapshot
               scenarioState.future.forEach(fy => {
-                if (skip2025 && fy.year === 2025) return
+                if (skip2025 && fy.year === YEAR_CONFIG.baselineYear) return
                 const defaultPhysicians = scenario === 'A'
                   ? scenarioADefaultsByYear(fy.year)
                   : scenarioBDefaultsByYear(fy.year)
@@ -1364,7 +1366,7 @@ export const useDashboardStore = create<Store>()(
             // NEW: Clear all override flags - everything will be recomputed from formulas
             logger.debug('SCENARIO', 'Clearing all override flags for projection reset')
             scenarioState.future.forEach(fy => {
-              if (fy.year >= 2026) {
+              if (fy.year >= (YEAR_CONFIG.baselineYear + 1)) {
                 delete fy._overrides
               }
             })
@@ -1429,7 +1431,7 @@ export const useDashboardStore = create<Store>()(
         resetToDefaults: (skip2025?: boolean) => {
           set((state) => {
             // When skip2025 is true, preserve the 2025 year data
-            const existing2025 = skip2025 ? state.scenarioA.future.find(f => f.year === 2025) : null
+            const existingBaseline = skip2025 ? state.scenarioA.future.find(f => f.year === YEAR_CONFIG.baselineYear) : null
             const existingSelectedYear = skip2025 ? state.scenarioA.selectedYear : 2025
             const existingDataMode = skip2025 ? state.scenarioA.dataMode : '2025 Data'
 
@@ -1459,9 +1461,9 @@ export const useDashboardStore = create<Store>()(
             }
 
             // If preserving 2025, restore the existing 2025 data
-            if (existing2025) {
+            if (existingBaseline) {
               // INITIAL_FUTURE_YEARS_A starts at 2026, so we need to add 2025 back
-              state.scenarioA.future.unshift({ ...existing2025 })
+              state.scenarioA.future.unshift({ ...existingBaseline })
             }
 
             // Reset app-level state (not handled by section resets)
@@ -1490,18 +1492,18 @@ export const useDashboardStore = create<Store>()(
           const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
           if (!sc) return
 
-          let year2025 = sc.future.find(f => f.year === 2025)
-          if (!year2025) {
+          let baselineYearData = sc.future.find(f => f.year === YEAR_CONFIG.baselineYear)
+          if (!baselineYearData) {
             // If 2025 baseline doesn't exist yet (e.g., user clicked quickly), create it first
             await useDashboardStore.getState().ensureBaselineYear(scenario, 2025)
-            year2025 = useDashboardStore.getState()[scenario === 'A' ? 'scenarioA' : 'scenarioB']?.future.find(f => f.year === 2025)
-            if (!year2025) return
+            baselineYearData = useDashboardStore.getState()[scenario === 'A' ? 'scenarioA' : 'scenarioB']?.future.find(f => f.year === YEAR_CONFIG.baselineYear)
+            if (!baselineYearData) return
           }
 
           logger.debug('SCENARIO', 'Current 2025 values before reset', {
-            therapyIncome: year2025.therapyIncome,
-            nonEmploymentCosts: year2025.nonEmploymentCosts,
-            nonMdEmploymentCosts: year2025.nonMdEmploymentCosts
+            therapyIncome: baselineYearData.therapyIncome,
+            nonEmploymentCosts: baselineYearData.nonEmploymentCosts,
+            nonMdEmploymentCosts: baselineYearData.nonMdEmploymentCosts
           })
 
           // Suppress the next grid->store sync to avoid transient flashes while resetting
@@ -1511,7 +1513,7 @@ export const useDashboardStore = create<Store>()(
 
           // Reset 2025 physicians to defaults first
           const defaultPhysicians = scenario === 'A'
-            ? scenarioADefaultsByYear(2025)
+            ? scenarioADefaultsByYear(YEAR_CONFIG.baselineYear)
             : scenarioBDefaultsByYear(2025)
 
           // Load 2025 values dynamically based on environment (tries production, falls back to sandbox)
@@ -1519,7 +1521,7 @@ export const useDashboardStore = create<Store>()(
           const values = await load2025ValuesForReset(
             defaultPhysicians,
             sc.projection.benefitCostsGrowthPct,
-            year2025.locumCosts ?? DEFAULT_LOCUM_COSTS_2025
+            baselineYearData.locumCosts ?? DEFAULT_LOCUM_COSTS_2025
           )
           logger.debug('SCENARIO', 'Loaded values from grid', {
             therapyIncome: values.therapyIncome,
@@ -1535,33 +1537,33 @@ export const useDashboardStore = create<Store>()(
             const sc = scenario === 'A' ? state.scenarioA : state.scenarioB
             if (!sc) return
 
-            const year2025 = sc.future.find(f => f.year === 2025)
-            if (!year2025) return
+            const baselineYearData = sc.future.find(f => f.year === YEAR_CONFIG.baselineYear)
+            if (!baselineYearData) return
 
             // Reset physicians
-            year2025.physicians = defaultPhysicians.map(p => ({ ...p }))
+            baselineYearData.physicians = defaultPhysicians.map(p => ({ ...p }))
 
             // Reset 2025 grid values using dynamically loaded values
-            year2025.therapyIncome = values.therapyIncome
-            year2025.therapyLacey = values.therapyLacey
-            year2025.therapyCentralia = values.therapyCentralia
-            year2025.therapyAberdeen = values.therapyAberdeen
-            year2025.nonEmploymentCosts = values.nonEmploymentCosts
-            year2025.nonMdEmploymentCosts = values.nonMdEmploymentCosts
-            year2025.miscEmploymentCosts = values.miscEmploymentCosts
-            year2025.locumCosts = values.locumCosts
-            year2025.medicalDirectorHours = values.medicalDirectorHours
-            year2025.prcsMedicalDirectorHours = values.prcsMedicalDirectorHours
-            year2025.consultingServicesAgreement = values.consultingServicesAgreement
+            baselineYearData.therapyIncome = values.therapyIncome
+            baselineYearData.therapyLacey = values.therapyLacey
+            baselineYearData.therapyCentralia = values.therapyCentralia
+            baselineYearData.therapyAberdeen = values.therapyAberdeen
+            baselineYearData.nonEmploymentCosts = values.nonEmploymentCosts
+            baselineYearData.nonMdEmploymentCosts = values.nonMdEmploymentCosts
+            baselineYearData.miscEmploymentCosts = values.miscEmploymentCosts
+            baselineYearData.locumCosts = values.locumCosts
+            baselineYearData.medicalDirectorHours = values.medicalDirectorHours
+            baselineYearData.prcsMedicalDirectorHours = values.prcsMedicalDirectorHours
+            baselineYearData.consultingServicesAgreement = values.consultingServicesAgreement
 
             // Reset PRCS Director to default
-            const jsPhysician = year2025.physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
-            year2025.prcsDirectorPhysicianId = jsPhysician?.id
+            const jsPhysician = baselineYearData.physicians.find(p => p.name === 'Suszko' && (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
+            baselineYearData.prcsDirectorPhysicianId = jsPhysician?.id
 
             logger.debug('SCENARIO', 'Batched update complete - new 2025 values', {
-              therapyIncome: year2025.therapyIncome,
-              nonEmploymentCosts: year2025.nonEmploymentCosts,
-              nonMdEmploymentCosts: year2025.nonMdEmploymentCosts
+              therapyIncome: baselineYearData.therapyIncome,
+              nonEmploymentCosts: baselineYearData.nonEmploymentCosts,
+              nonMdEmploymentCosts: baselineYearData.nonMdEmploymentCosts
             })
           })
 
@@ -1598,7 +1600,7 @@ export const useDashboardStore = create<Store>()(
           let baseline: FutureYear
 
           // For 2025 specifically, load values dynamically
-          if (year === 2025) {
+          if (year === YEAR_CONFIG.baselineYear) {
             const { load2025ValuesForReset } = await import('./dashboard/views/detailed/utils/load2025Data')
 
             const values = await load2025ValuesForReset(
@@ -2005,12 +2007,12 @@ export const useDashboardStore = create<Store>()(
             }
 
             // Step 2: Compare 2026-2030 years against LOADED SNAPSHOT (what was loaded from DB)
-            const current2026Plus = scenario.future.filter(f => f.year >= 2026 && f.year <= 2030)
+            const current2026Plus = scenario.future.filter(f => f.year >= (YEAR_CONFIG.baselineYear + 1) && f.year <= 2030)
 
             // Get the loaded future years from the loaded snapshot
             const loadedFutureYears = target === 'A'
               ? state.loadedProjectionSnapshot?.future_2026_2030
-              : state.loadedScenarioBSnapshot?.scenarioB?.future?.filter(f => f.year >= 2026 && f.year <= 2030)
+              : state.loadedScenarioBSnapshot?.scenarioB?.future?.filter(f => f.year >= (YEAR_CONFIG.baselineYear + 1) && f.year <= 2030)
 
             if (!loadedFutureYears) {
               logger.warn('SCENARIO', `No loaded future years found for ${target}`)
@@ -2081,10 +2083,10 @@ export const useDashboardStore = create<Store>()(
           if (projectionDirty) return true
 
           // Compare 2026-2030 years
-          const current2026Plus = scenario.future.filter(f => f.year >= 2026 && f.year <= 2030)
+          const current2026Plus = scenario.future.filter(f => f.year >= (YEAR_CONFIG.baselineYear + 1) && f.year <= 2030)
           const snapshot2026Plus = target === 'A'
             ? (snapshotForLegacy as typeof state.loadedProjectionSnapshot)?.future_2026_2030
-            : (snapshotForLegacy as ScenarioState)?.future?.filter(f => f.year >= 2026 && f.year <= 2030)
+            : (snapshotForLegacy as ScenarioState)?.future?.filter(f => f.year >= (YEAR_CONFIG.baselineYear + 1) && f.year <= 2030)
 
           if (snapshot2026Plus && JSON.stringify(current2026Plus) !== JSON.stringify(snapshot2026Plus)) {
             return true
@@ -2131,7 +2133,7 @@ export const useDashboardStore = create<Store>()(
 
             // Revert 2026-2030 years
             state.scenarioA.future = [
-              ...state.scenarioA.future.filter(f => f.year < 2026),
+              ...state.scenarioA.future.filter(f => f.year < (YEAR_CONFIG.baselineYear + 1)),
               ...JSON.parse(JSON.stringify(state.loadedProjectionSnapshot.future_2026_2030))
             ].sort((a, b) => a.year - b.year)
 
@@ -2164,7 +2166,7 @@ export const useDashboardStore = create<Store>()(
 
         updateProjectionSnapshot: () => {
           set((state) => {
-            const future2026Plus = state.scenarioA.future.filter(f => f.year >= 2026 && f.year <= 2030)
+            const future2026Plus = state.scenarioA.future.filter(f => f.year >= (YEAR_CONFIG.baselineYear + 1) && f.year <= 2030)
             
             // REMOVED: Extract customFutureValues (legacy)
             // Multi-Year uses _overrides flags, not grid overrides
@@ -2239,7 +2241,7 @@ export const useDashboardStore = create<Store>()(
           }
 
           // Check if prcsDirectorPhysicianId differs from default (Suszko)
-          const defaultPhysicians = scenarioADefaultsByYear(2025)
+          const defaultPhysicians = scenarioADefaultsByYear(YEAR_CONFIG.baselineYear)
           const defaultSuszko = defaultPhysicians.find(p => p.name === 'Suszko' && 
             (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
 
@@ -2342,7 +2344,7 @@ export const useDashboardStore = create<Store>()(
           if (scenario.dataMode === '2025 Data') {
             logger.debug('SCENARIO', 'saveProjection: 2025 Data mode - using override flags for sparse saving')
 
-            const currentFuture = scenario.future.filter(f => f.year >= 2026 && f.year <= 2030)
+            const currentFuture = scenario.future.filter(f => f.year >= (YEAR_CONFIG.baselineYear + 1) && f.year <= 2030)
 
             for (const currentYear of currentFuture) {
               // Check if this year has any overrides marked (but ALWAYS save physicians!)
@@ -2379,7 +2381,7 @@ export const useDashboardStore = create<Store>()(
             logger.debug('SCENARIO', 'saveProjection: Saving years with overrides', { withOverrides: future2026Plus.length, total: currentFuture.length })
           } else {
             // Legacy: For non-2025 modes, save all years as before
-            future2026Plus = scenario.future.filter(f => f.year >= 2026 && f.year <= 2030)
+            future2026Plus = scenario.future.filter(f => f.year >= (YEAR_CONFIG.baselineYear + 1) && f.year <= 2030)
           }
 
           // REMOVED: Extract future grid overrides (legacy customProjectedValues)
@@ -2490,7 +2492,7 @@ export const useDashboardStore = create<Store>()(
           set((state) => {
             // Build COMPLETE 2025 data by merging: defaults → loaded scenario
             // Do NOT use existing store values - this is a fresh load
-            const defaultPhysicians = scenarioADefaultsByYear(2025)
+            const defaultPhysicians = scenarioADefaultsByYear(YEAR_CONFIG.baselineYear)
             const defaultSuszko = defaultPhysicians.find(p => p.name === 'Suszko' && 
               (p.type === 'partner' || p.type === 'employeeToPartner' || p.type === 'partnerToRetire'))
             
@@ -2512,7 +2514,7 @@ export const useDashboardStore = create<Store>()(
               // Compensation will be frozen during this sync to prevent showing incorrect values
               therapyIncome: 0,
               nonEmploymentCosts: 0,
-              nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+              nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(YEAR_CONFIG.baselineYear),
               therapyLacey: undefined,
               therapyCentralia: undefined,
               therapyAberdeen: undefined,
@@ -2616,13 +2618,13 @@ export const useDashboardStore = create<Store>()(
             await get().ensureYtdBaseline2025()
 
             // Step 2: Get baseline 2025 from YTD store
-            const baseline2025 = get().getYtdBaselineFutureYear2025()
+            const baselineYear = get().getYtdBaselineFutureYear2025()
 
             // Step 3: Build scenario by overlaying projection on baseline
             const { future } = get().buildScenarioFromProjection({
               projection: data.projection_settings,
               futureYearsFromScenario: data.future_years || [],
-              baseline2025,
+              baselineYear,
               baselineMode
             })
 
@@ -2648,14 +2650,14 @@ export const useDashboardStore = create<Store>()(
                       miscEmploymentCostsPct: PROJECTION_DEFAULTS.B.miscEmploymentCostsPct,
                       benefitCostsGrowthPct: PROJECTION_DEFAULTS.B.benefitCostsGrowthPct
                     },
-                    selectedYear: 2025,
-                    dataMode: '2025 Data',
+                    selectedYear: YEAR_CONFIG.baselineYear,
+                    dataMode: 'Current Year Data',
                   }
                 }
                 state.scenarioB.projection = data.projection_settings
                 // Deep copy future to avoid sharing references with scenario A
                 state.scenarioB.future = JSON.parse(JSON.stringify(future))
-                state.scenarioB.dataMode = '2025 Data'
+                state.scenarioB.dataMode = 'Current Year Data'
               }
 
               // REMOVED: Restore future grid overrides (legacy customProjectedValues)
@@ -2679,13 +2681,13 @@ export const useDashboardStore = create<Store>()(
               const scenario = target === 'A' ? state.scenarioA : state.scenarioB
               if (!scenario) return
 
-              const baseline2025 = state.scenarioA.future.find(f => f.year === 2025)
-              if (!baseline2025) return
+              const baselineYear = state.scenarioA.future.find(f => f.year === YEAR_CONFIG.baselineYear)
+              if (!baselineYear) return
 
-              const future_2026_2030 = scenario.future.filter(f => f.year >= 2026 && f.year <= 2030)
+              const future_2026_2030 = scenario.future.filter(f => f.year >= (YEAR_CONFIG.baselineYear + 1) && f.year <= 2030)
 
               const snapshot = {
-                baseline2025: JSON.parse(JSON.stringify(baseline2025)),
+                baselineYear: JSON.parse(JSON.stringify(baselineYear)),
                 future_2026_2030: JSON.parse(JSON.stringify(future_2026_2030))
               }
 
@@ -2731,8 +2733,8 @@ export const useDashboardStore = create<Store>()(
                     miscEmploymentCostsPct: PROJECTION_DEFAULTS.B.miscEmploymentCostsPct,
                     benefitCostsGrowthPct: PROJECTION_DEFAULTS.B.benefitCostsGrowthPct
                   },
-                  selectedYear: 2025,
-                  dataMode: '2025 Data',
+                  selectedYear: YEAR_CONFIG.baselineYear,
+                  dataMode: 'Current Year Data',
                 }
               }
               state.scenarioB.projection = data.projection_settings
@@ -2742,13 +2744,13 @@ export const useDashboardStore = create<Store>()(
             const future2026Plus = data.future_years || []
             if (target === 'A') {
               state.scenarioA.future = [
-                ...state.scenarioA.future.filter(f => f.year < 2026),
+                ...state.scenarioA.future.filter(f => f.year < (YEAR_CONFIG.baselineYear + 1)),
                 ...future2026Plus
               ].sort((a, b) => a.year - b.year)
             } else {
               // Deep copy to avoid sharing references with scenario A
               state.scenarioB!.future = JSON.parse(JSON.stringify([
-                ...state.scenarioB!.future.filter(f => f.year < 2026),
+                ...state.scenarioB!.future.filter(f => f.year < (YEAR_CONFIG.baselineYear + 1)),
                 ...future2026Plus
               ].sort((a, b) => a.year - b.year)))
             }
@@ -2879,7 +2881,7 @@ export const useDashboardStore = create<Store>()(
           const state = get()
 
           // Return a normalized 2025 FutureYear from YTD store
-          const baseline2025: FutureYear = {
+          const baselineYear: FutureYear = {
             year: 2025,
             therapyIncome: state.ytdData.therapyIncome,
             nonEmploymentCosts: state.ytdData.nonEmploymentCosts,
@@ -2897,16 +2899,16 @@ export const useDashboardStore = create<Store>()(
           }
 
           logger.debug('SCENARIO', 'getYtdBaselineFutureYear2025: Returning 2025 baseline', {
-            therapyIncome: baseline2025.therapyIncome,
-            physicians: baseline2025.physicians?.length,
-            locumCosts: baseline2025.locumCosts,
-            medicalDirectorHours: baseline2025.medicalDirectorHours,
+            therapyIncome: baselineYear.therapyIncome,
+            physicians: baselineYear.physicians?.length,
+            locumCosts: baselineYear.locumCosts,
+            medicalDirectorHours: baselineYear.medicalDirectorHours,
           })
 
-          return baseline2025
+          return baselineYear
         },
 
-        computeExpectedFromBaseline: ({ baseline2025, projection }) => {
+        computeExpectedFromBaseline: ({ baselineYear, projection }) => {
           // Compute what the projected years (2026-2030) should look like
           // given the current baseline and projection settings
 
@@ -2922,12 +2924,12 @@ export const useDashboardStore = create<Store>()(
           const benefitGrowthPct = projection.benefitCostsGrowthPct
 
           // Starting values from baseline
-          let income = baseline2025.therapyIncome
-          let nonEmploymentCosts = baseline2025.nonEmploymentCosts
-          let miscEmploymentCosts = baseline2025.miscEmploymentCosts
+          let income = baselineYear.therapyIncome
+          let nonEmploymentCosts = baselineYear.nonEmploymentCosts
+          let miscEmploymentCosts = baselineYear.miscEmploymentCosts
 
           // For staff costs, decompose base (2025) into wages+taxes vs benefits
-          const baseStaff2025 = baseline2025.nonMdEmploymentCosts
+          const baseStaff2025 = baselineYear.nonMdEmploymentCosts
           const baseWagesTaxes2025 = Math.max(0, baseStaff2025 - ANNUAL_BENEFITS_FULLTIME)
 
           // Project years 2026-2030
@@ -2937,7 +2939,7 @@ export const useDashboardStore = create<Store>()(
             miscEmploymentCosts = miscEmploymentCosts * (1 + miscEmploymentGpct)
 
             // Compute staff employment costs using split growth
-            const yearsSince2025 = year - 2025
+            const yearsSince2025 = year - YEAR_CONFIG.baselineYear
             const wagesAndTaxes = baseWagesTaxes2025 * Math.pow(1 + nonMdEmploymentGpct, yearsSince2025)
             const benefits = getBenefitCostsForYear(year, benefitGrowthPct)
             const staffEmploymentCosts = wagesAndTaxes + benefits
@@ -2971,18 +2973,18 @@ export const useDashboardStore = create<Store>()(
           return expectedFuture
         },
 
-        buildScenarioFromProjection: ({ projection, futureYearsFromScenario, baseline2025, baselineMode }) => {
+        buildScenarioFromProjection: ({ projection, futureYearsFromScenario, baselineYear, baselineMode }) => {
           // compute removed
 
           // Compute expected derived years from baseline
           const expectedDerived = get().computeExpectedFromBaseline({
-            baseline2025,
+            baselineYear,
             projection,
             baselineMode
           })
 
           // Start with baseline 2025 as year 0
-          const future: FutureYear[] = [JSON.parse(JSON.stringify(baseline2025))]
+          const future: FutureYear[] = [JSON.parse(JSON.stringify(baselineYear))]
 
           // For 2026-2030, merge sparse user overrides with expected computed values
           for (let year = 2026; year <= 2030; year++) {
@@ -3041,18 +3043,18 @@ export const useDashboardStore = create<Store>()(
             }
 
             // Get baseline from YTD store
-            const baseline2025 = get().getYtdBaselineFutureYear2025()
+            const baselineYear = get().getYtdBaselineFutureYear2025()
 
             // Compute expected future years from baseline
             const expectedFuture = get().computeExpectedFromBaseline({
-              baseline2025,
+              baselineYear,
               projection: scenario.projection,
               baselineMode: scenario.dataMode
             })
 
             // Store snapshot
             const snapshot = {
-              baseline2025: JSON.parse(JSON.stringify(baseline2025)),
+              baselineYear: JSON.parse(JSON.stringify(baselineYear)),
               future_2026_2030: JSON.parse(JSON.stringify(expectedFuture))
             }
 
@@ -3072,21 +3074,21 @@ export const useDashboardStore = create<Store>()(
             // compute removed
 
             // Get current baseline from YTD store
-            const baseline2025 = get().getYtdBaselineFutureYear2025()
+            const baselineYear = get().getYtdBaselineFutureYear2025()
 
             // Recompute Scenario A if in 2025 Data mode
             if (state.scenarioA.dataMode === '2025 Data') {
               // compute removed
 
               // Update year 2025 from baseline
-              const year2025Index = state.scenarioA.future.findIndex(f => f.year === 2025)
-              if (year2025Index >= 0) {
-                state.scenarioA.future[year2025Index] = JSON.parse(JSON.stringify(baseline2025))
+              const baselineYearDataIndex = state.scenarioA.future.findIndex(f => f.year === YEAR_CONFIG.baselineYear)
+              if (baselineYearDataIndex >= 0) {
+                state.scenarioA.future[baselineYearDataIndex] = JSON.parse(JSON.stringify(baselineYear))
               }
 
               // Recompute 2026-2030 from new baseline
               const expectedFuture = get().computeExpectedFromBaseline({
-                baseline2025,
+                baselineYear,
                 projection: state.scenarioA.projection,
                 baselineMode: state.scenarioA.dataMode
               })
@@ -3128,14 +3130,14 @@ export const useDashboardStore = create<Store>()(
               const scenarioB = state.scenarioB
 
               // Update year 2025 from baseline
-              const year2025Index = scenarioB.future.findIndex(f => f.year === 2025)
-              if (year2025Index >= 0) {
-                scenarioB.future[year2025Index] = JSON.parse(JSON.stringify(baseline2025))
+              const baselineYearDataIndex = scenarioB.future.findIndex(f => f.year === YEAR_CONFIG.baselineYear)
+              if (baselineYearDataIndex >= 0) {
+                scenarioB.future[baselineYearDataIndex] = JSON.parse(JSON.stringify(baselineYear))
               }
 
               // Recompute 2026-2030 from new baseline
               const expectedFuture = get().computeExpectedFromBaseline({
-                baseline2025,
+                baselineYear,
                 projection: scenarioB.projection,
                 baselineMode: scenarioB.dataMode
               })
@@ -3292,8 +3294,8 @@ setTimeout(() => {
   
   // Only apply projections if data doesn't exist from sessionStorage
   // On page refresh, sessionStorage already has the correct computed data
-  const hasScenarioAData = store.scenarioA?.future?.some(fy => fy.year >= 2026 && fy.therapyIncome > 0)
-  const hasScenarioBData = store.scenarioB?.future?.some(fy => fy.year >= 2026 && fy.therapyIncome > 0)
+  const hasScenarioAData = store.scenarioA?.future?.some(fy => fy.year >= (YEAR_CONFIG.baselineYear + 1) && fy.therapyIncome > 0)
+  const hasScenarioBData = store.scenarioB?.future?.some(fy => fy.year >= (YEAR_CONFIG.baselineYear + 1) && fy.therapyIncome > 0)
   
   if (!hasScenarioAData) {
     logger.debug('SCENARIO', 'No scenario A data found, computing projections')
@@ -3356,7 +3358,7 @@ function getDefaultValuesForYear(scenario: ScenarioKey, year: number, store: Sto
 
   // Determine default locumCosts
   let defaultLocumCosts: number
-  if (year === 2025) {
+  if (year === YEAR_CONFIG.baselineYear) {
     defaultLocumCosts = DEFAULT_LOCUM_COSTS_2025
   } else if (year === 2026) {
     defaultLocumCosts = DEFAULT_LOCUM_COSTS_2026
@@ -3365,12 +3367,12 @@ function getDefaultValuesForYear(scenario: ScenarioKey, year: number, store: Sto
   }
 
   // Determine default medicalDirectorHours
-  const defaultMedicalDirectorHours = year === 2025
+  const defaultMedicalDirectorHours = year === YEAR_CONFIG.baselineYear
     ? ACTUAL_2025_MEDICAL_DIRECTOR_HOURS
     : (sc?.projection?.medicalDirectorHours ?? DEFAULT_MD_SHARED_PROJECTION)
 
   // Determine default prcsMedicalDirectorHours
-  const defaultPrcsMedicalDirectorHours = year === 2025
+  const defaultPrcsMedicalDirectorHours = year === YEAR_CONFIG.baselineYear
     ? ACTUAL_2025_PRCS_MEDICAL_DIRECTOR_HOURS
     : (sc?.projection?.prcsMedicalDirectorHours ?? DEFAULT_MD_PRCS_PROJECTION)
 
@@ -3651,7 +3653,7 @@ export function calculateNetIncomeForMDs(year: number, scenario: ScenarioKey): n
   const store = useDashboardStore.getState()
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB!
   const fy = sc.future.find(f => f.year === year)
-  const locumCost = year === 2025 
+  const locumCost = year === YEAR_CONFIG.baselineYear 
     ? DEFAULT_LOCUM_COSTS_2025 // 2025 default
     : (fy?.locumCosts ?? 0)
   
@@ -3666,14 +3668,14 @@ export function calculateProjectedValue(
   store: Store
 ): number {
   const sc = scenario === 'A' ? store.scenarioA : store.scenarioB
-  if (!sc || year === 2025) return 0 // No projections for baseline year
+  if (!sc || year === YEAR_CONFIG.baselineYear) return 0 // No projections for baseline year
 
   // Get baseline data based on data mode
   // IMPORTANT: Must match the logic in applyProjectionFromLastActual to ensure reset button works correctly
   let baselineData
   if (sc.dataMode === 'Custom') {
     // For Custom mode, use the existing baseline data from year 2025 in future array
-    const customBaseline = sc.future.find((f: FutureYear) => f.year === 2025)
+    const customBaseline = sc.future.find((f: FutureYear) => f.year === YEAR_CONFIG.baselineYear)
     if (customBaseline) {
       baselineData = {
         therapyIncome: customBaseline.therapyIncome,
@@ -3688,7 +3690,7 @@ export function calculateProjectedValue(
         therapyIncome: 0,
         nonEmploymentCosts: 0,
         miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-        nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+        nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(YEAR_CONFIG.baselineYear),
       }
     }
   } else if (sc.dataMode === '2024 Data') {
@@ -3702,16 +3704,16 @@ export function calculateProjectedValue(
   } else if (sc.dataMode === '2025 Data') {
     // In '2025 Data' mode, ALWAYS use future[2025] (synced from YTD grid)
     // The historic[2025] data is stale and should NOT be used
-    const baseline2025 = sc.future.find((f: FutureYear) => f.year === 2025)
-    if (!baseline2025) {
+    const baselineYear = sc.future.find((f: FutureYear) => f.year === YEAR_CONFIG.baselineYear)
+    if (!baselineYear) {
       logger.error('SCENARIO', 'calculateProjectedValue: No 2025 baseline found in future array!')
       return 0
     }
     baselineData = {
-      therapyIncome: baseline2025.therapyIncome,
-      nonEmploymentCosts: baseline2025.nonEmploymentCosts,
-      miscEmploymentCosts: baseline2025.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
-      nonMdEmploymentCosts: baseline2025.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(2025),
+      therapyIncome: baselineYear.therapyIncome,
+      nonEmploymentCosts: baselineYear.nonEmploymentCosts,
+      miscEmploymentCosts: baselineYear.miscEmploymentCosts ?? DEFAULT_MISC_EMPLOYMENT_COSTS,
+      nonMdEmploymentCosts: baselineYear.nonMdEmploymentCosts ?? computeDefaultNonMdEmploymentCosts(YEAR_CONFIG.baselineYear),
     }
   } else {
     // Fallback to 2025 hardcoded values
@@ -3719,7 +3721,7 @@ export function calculateProjectedValue(
       therapyIncome: 0,
       nonEmploymentCosts: 0,
       miscEmploymentCosts: DEFAULT_MISC_EMPLOYMENT_COSTS,
-      nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(2025),
+      nonMdEmploymentCosts: computeDefaultNonMdEmploymentCosts(YEAR_CONFIG.baselineYear),
     }
   }
 
@@ -3731,7 +3733,7 @@ export function calculateProjectedValue(
   const benefitGrowthPct = sc.projection.benefitCostsGrowthPct
 
   // Calculate projected value for the specific year
-  const yearsSinceBaseline = year - 2025
+  const yearsSinceBaseline = year - YEAR_CONFIG.baselineYear
   if (field === 'therapyIncome') {
     return baselineData.therapyIncome * Math.pow(1 + incomeGpct, yearsSinceBaseline)
   } else if (field === 'nonEmploymentCosts') {
@@ -3777,6 +3779,7 @@ export function Dashboard() {
   const [showHelpModal, setShowHelpModal] = useState(false)
   const [showComprehensiveHelp, setShowComprehensiveHelp] = useState(false)
   const [showLoggingPanel, setShowLoggingPanel] = useState(false)
+  const [showYearSettingsPanel, setShowYearSettingsPanel] = useState(false)
   const [showPasswordReset, setShowPasswordReset] = useState(false)
   const [showSignupModal, setShowSignupModal] = useState(false)
   const [showScenarioManager, setShowScenarioManager] = useState(false)
@@ -4678,6 +4681,46 @@ export function Dashboard() {
         >
           <FontAwesomeIcon icon={faGear} />
         </button>
+        {/* Admin Year Settings Button - Only for admins */}
+        {profile?.is_admin && (
+          <button
+            onClick={() => setShowYearSettingsPanel(true)}
+            style={{
+              padding: '8px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              color: '#ffffff',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '4px',
+              fontSize: 16,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              width: 32,
+              height: 32,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'
+              createTooltip('year-settings-tooltip', 'Year Settings (Admin)', e, { placement: 'below-center' })
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
+              removeTooltip('year-settings-tooltip')
+            }}
+            onTouchStart={(e) => {
+              createTooltip('year-settings-tooltip', 'Year Settings (Admin)', e, { placement: 'below-center' })
+            }}
+            onTouchEnd={() => {
+              removeTooltip('year-settings-tooltip')
+            }}
+          >
+            <FontAwesomeIcon icon={faCalendarAlt} />
+          </button>
+        )}
+
         {/* Admin Logging Control Button - Only for admins */}
         {profile?.is_admin && (
           <button
@@ -4932,6 +4975,14 @@ export function Dashboard() {
         isOpen={showMobileWarning}
         onClose={() => setShowMobileWarning(false)}
       />
+
+      {/* Admin Year Settings Panel */}
+      {profile?.is_admin && (
+        <YearSettingsPanel
+          isOpen={showYearSettingsPanel}
+          onClose={() => setShowYearSettingsPanel(false)}
+        />
+      )}
 
       {/* Admin Logging Control Panel */}
       {profile?.is_admin && (
