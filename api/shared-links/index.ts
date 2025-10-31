@@ -82,11 +82,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // Increment view count asynchronously (don't wait for it)
-      void supabase.rpc('increment_shared_link_view', { link_id: id })
+      supabase.rpc('increment_shared_link_view', { link_id: id })
         .then(() => {
           // Successfully incremented view count
-        })
-        .catch((err: unknown) => {
+        }, (err: unknown) => {
           console.error('Failed to increment view count:', err)
         })
 
